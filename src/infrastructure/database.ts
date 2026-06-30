@@ -34,9 +34,23 @@ export class AgentDatabase {
       this.db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM sessions WHERE id = ?").run(sessionId);
-      this.ensureSession(sessionId);
+      this.createSession(sessionId);
     });
     tx();
+  }
+
+  createSession(sessionId: string) {
+    if (this.hasSession(sessionId)) {
+      throw new Error(`会话已存在：${sessionId}`);
+    }
+    const result = this.db
+      .query(
+        "INSERT INTO sessions (id, control, status, created_at, updated_at) VALUES (?, 'running', 'idle', unixepoch(), unixepoch())",
+      )
+      .run(sessionId);
+    if (result.changes !== 1) {
+      throw new Error(`会话已存在：${sessionId}`);
+    }
   }
 
   ensureSession(sessionId: string) {
@@ -47,8 +61,17 @@ export class AgentDatabase {
       .run(sessionId);
   }
 
+  hasSession(sessionId: string) {
+    const row = this.db
+      .query<{ value: number }, [string]>(
+        "SELECT 1 AS value FROM sessions WHERE id = ?",
+      )
+      .get(sessionId);
+    return row !== null && row !== undefined;
+  }
+
   appendUser(sessionId: string, content: string) {
-    this.ensureSession(sessionId);
+    this.requireSession(sessionId);
     const result = this.db
       .query(
         "INSERT INTO queue (session_id, content, status, created_at) VALUES (?, ?, 'pending', unixepoch())",
@@ -115,6 +138,7 @@ export class AgentDatabase {
   }
 
   history(sessionId: string): TranscriptMessage[] {
+    this.requireSession(sessionId);
     return this.db
       .query<{ role: "user" | "assistant"; content: string }, [string]>(
         "SELECT role, content FROM messages WHERE session_id = ? ORDER BY id",
@@ -123,17 +147,20 @@ export class AgentDatabase {
   }
 
   control(sessionId: string): Control {
-    this.ensureSession(sessionId);
+    this.requireSession(sessionId);
     const row = this.db
       .query<{ control: Control }, [string]>(
         "SELECT control FROM sessions WHERE id = ?",
       )
       .get(sessionId);
-    return row?.control ?? "running";
+    if (!row) {
+      throw new Error(`会话不存在：${sessionId}`);
+    }
+    return row.control;
   }
 
   setControl(sessionId: string, control: Control) {
-    this.ensureSession(sessionId);
+    this.requireSession(sessionId);
     this.db
       .query(
         "UPDATE sessions SET control = ?, updated_at = unixepoch() WHERE id = ?",
@@ -159,6 +186,12 @@ export class AgentDatabase {
   private migrate() {
     for (const sql of migrationSql) {
       this.db.run(sql);
+    }
+  }
+
+  private requireSession(sessionId: string) {
+    if (!this.hasSession(sessionId)) {
+      throw new Error(`会话不存在：${sessionId}`);
     }
   }
 }

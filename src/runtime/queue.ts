@@ -114,5 +114,6 @@ async function cancelQueue(
   ctx.db.setQueueStatus(item.id, "canceled");
   ctx.db.setControl(ctx.sessionId, "running");
   await ctx.checkpointer.deleteThread(threadId);
-  ctx.logger.warn("队列已取消", { queueId: item.id });
+  ctx.signal.stopping = true;
+  ctx.logger.warn("队列已取消，Host 已关闭", { queueId: item.id });
 }

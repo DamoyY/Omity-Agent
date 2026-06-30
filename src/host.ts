@@ -1,24 +1,35 @@
+import { existsSync, rmSync } from "node:fs";
 import { buildGraph } from "./agent";
-import { loadSettings, sessionPaths } from "./infrastructure/config";
+import {
+  loadSettings,
+  resolveSessionPaths,
+  sessionPaths,
+} from "./infrastructure/config";
 import { AgentDatabase } from "./infrastructure/database";
 import { Logger } from "./infrastructure/logger";
 import { loadMcp } from "./infrastructure/mcp";
 import { hostLoop } from "./runtime/loop";
 import type { StopSignal } from "./runtime/context";
 
-type HostMode = { kind: "new" | "load"; sessionId: string };
+export type HostMode = {
+  kind: "new" | "load" | "overwrite";
+  sessionId: string;
+};
 
 export async function runHost(mode: HostMode, root = process.cwd()) {
   const settings = loadSettings(root);
   const logger = new Logger(settings.logging.level);
-  const paths = sessionPaths(settings, mode.sessionId);
-  const db = new AgentDatabase(paths.appDb);
+  const paths =
+    mode.kind === "load"
+      ? resolveSessionPaths(settings, mode.sessionId)
+      : prepareWritableSession(settings, mode);
+  const db = openHostDatabase(paths.appDb, mode);
   if (mode.kind === "new") {
-    db.resetSession(mode.sessionId);
     logger.info("已创建新会话", { sessionId: mode.sessionId, db: paths.appDb });
-  } else {
-    db.ensureSession(mode.sessionId);
+  } else if (mode.kind === "load") {
     logger.info("已加载会话", { sessionId: mode.sessionId, db: paths.appDb });
+  } else {
+    logger.info("已覆盖会话", { sessionId: mode.sessionId, db: paths.appDb });
   }
   const mcp = await loadMcp(root, logger);
   const { graph, checkpointer } = buildGraph(
@@ -46,4 +57,47 @@ export async function runHost(mode: HostMode, root = process.cwd()) {
     checkpointer.close();
     db.close();
   }
+}
+
+export function deleteHostSession(sessionId: string, root = process.cwd()) {
+  const settings = loadSettings(root);
+  const paths = resolveSessionPaths(settings, sessionId);
+  if (!existsSync(paths.dir)) {
+    throw new Error(`会话不存在：${sessionId}`);
+  }
+  rmSync(paths.dir, { recursive: true, force: true });
+}
+
+function prepareWritableSession(
+  settings: ReturnType<typeof loadSettings>,
+  mode: HostMode,
+) {
+  const planned = resolveSessionPaths(settings, mode.sessionId);
+  const exists = existsSync(planned.dir);
+  if (mode.kind === "new" && exists) {
+    throw new Error(`会话已存在：${mode.sessionId}`);
+  }
+  if (mode.kind === "overwrite" && !exists) {
+    throw new Error(`会话不存在：${mode.sessionId}`);
+  }
+  if (mode.kind === "overwrite") {
+    rmSync(planned.dir, { recursive: true, force: true });
+  }
+  return sessionPaths(settings, mode.sessionId);
+}
+
+function openHostDatabase(path: string, mode: HostMode) {
+  if (mode.kind === "load" && !existsSync(path)) {
+    throw new Error(`会话不存在：${mode.sessionId}`);
+  }
+  const db = new AgentDatabase(path);
+  if (mode.kind === "load") {
+    if (!db.hasSession(mode.sessionId)) {
+      db.close();
+      throw new Error(`会话不存在：${mode.sessionId}`);
+    }
+    return db;
+  }
+  db.createSession(mode.sessionId);
+  return db;
 }

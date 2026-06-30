@@ -17,8 +17,11 @@ export async function putCheckpoint(
   checkpoint: Checkpoint,
   metadata: CheckpointMetadata,
 ): Promise<RunnableConfig> {
-  const { thread_id, checkpoint_ns = "", checkpoint_id } =
-    config.configurable ?? {};
+  const {
+    thread_id,
+    checkpoint_ns = "",
+    checkpoint_id,
+  } = config.configurable ?? {};
   if (!thread_id) {
     throw new Error("缺少 config.configurable.thread_id，无法保存 checkpoint");
   }
@@ -53,8 +56,11 @@ export async function putPendingWrites(
   writes: PendingWrite[],
   taskId: string,
 ) {
-  const { thread_id, checkpoint_ns = "", checkpoint_id } =
-    config.configurable ?? {};
+  const {
+    thread_id,
+    checkpoint_ns = "",
+    checkpoint_id,
+  } = config.configurable ?? {};
   if (!thread_id || !checkpoint_id) {
     throw new Error("缺少 thread_id 或 checkpoint_id，无法保存 pending writes");
   }

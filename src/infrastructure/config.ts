@@ -50,11 +50,16 @@ export function loadSettings(root = process.cwd()): Settings {
 }
 
 export function sessionPaths(settings: Settings, sessionId: string) {
+  const paths = resolveSessionPaths(settings, sessionId);
+  mkdirSync(paths.dir, { recursive: true });
+  mkdirSync(dirname(paths.appDb), { recursive: true });
+  return paths;
+}
+
+export function resolveSessionPaths(settings: Settings, sessionId: string) {
   const dir = resolve(settings.paths.dataDir, "sessions", safeId(sessionId));
-  mkdirSync(dir, { recursive: true });
   const appDb = resolve(dir, "agent.sqlite");
   const checkpointDb = resolve(dir, "checkpoints.sqlite");
-  mkdirSync(dirname(appDb), { recursive: true });
   return { dir, appDb, checkpointDb };
 }
 

@@ -44,3 +44,21 @@ test("control is stored in sql", () => {
   expect(db.control("123")).toBe("running");
   db.close();
 });
+
+test("existing sessions are explicit", () => {
+  const db = makeDb();
+  expect(db.hasSession("123")).toBe(false);
+  db.createSession("123");
+  expect(db.hasSession("123")).toBe(true);
+  expect(() => db.createSession("123")).toThrow("会话已存在：123");
+  db.close();
+});
+
+test("client operations reject missing sessions", () => {
+  const db = makeDb();
+  expect(() => db.appendUser("missing", "你好")).toThrow("会话不存在：missing");
+  expect(() => db.setControl("missing", "pause")).toThrow(
+    "会话不存在：missing",
+  );
+  db.close();
+});

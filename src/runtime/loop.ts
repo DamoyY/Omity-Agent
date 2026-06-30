@@ -7,6 +7,13 @@ export async function hostLoop(ctx: HostContext) {
   while (!ctx.signal.stopping) {
     const item = ctx.db.nextQueue(ctx.sessionId);
     if (!item) {
+      if (ctx.db.control(ctx.sessionId) === "cancel") {
+        ctx.db.setControl(ctx.sessionId, "running");
+        ctx.logger.warn("收到 cancel，Host 已关闭", {
+          sessionId: ctx.sessionId,
+        });
+        return;
+      }
       const now = Date.now();
       if (now - lastIdle >= ctx.settings.host.idleLogMs) {
         ctx.logger.debug("等待 Client 输入", { sessionId: ctx.sessionId });
