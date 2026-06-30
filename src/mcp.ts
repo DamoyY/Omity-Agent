@@ -8,7 +8,7 @@ const envPlaceholder = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
 
 export function expandEnvPlaceholders(
   value: unknown,
-  path = "mcp.yaml",
+  path = "settings/mcp.yaml",
 ): unknown {
   if (typeof value === "string") {
     return value.replaceAll(envPlaceholder, (_match, name: string) => {
@@ -36,7 +36,7 @@ export function expandEnvPlaceholders(
 }
 
 export async function loadMcp(root: string, logger: Logger) {
-  const path = resolve(root, "mcp.yaml");
+  const path = resolve(root, "settings", "mcp.yaml");
   if (!existsSync(path)) {
     logger.info("MCP 配置不存在，跳过工具加载", { path });
     return { tools: [], close: async () => {} };

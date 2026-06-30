@@ -14,13 +14,20 @@ afterEach(() => {
 
 test("settings yaml resolves data directory", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
+  const settingsDir = join(root, "settings");
   dirs.push(root);
+  mkdirSync(settingsDir);
   writeFileSync(
-    join(root, "settings.yaml"),
-    "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\nagent:\n  systemPrompt: test\n",
+    join(settingsDir, "main.yaml"),
+    "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\n",
+  );
+  writeFileSync(
+    join(settingsDir, "prompts.yaml"),
+    "agent:\n  systemPrompt: test\n",
   );
   const settings = loadSettings(root);
   mkdirSync(settings.paths.dataDir, { recursive: true });
   expect(settings.paths.dataDir).toEndWith("data");
+  expect(settings.agent.systemPrompt).toBe("test");
   expect(sessionPaths(settings, "abc/def").dir).toContain(safeId("abc/def"));
 });

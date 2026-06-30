@@ -62,6 +62,6 @@ test("mcp config reports missing env placeholders", () => {
   expect(() =>
     expandEnvPlaceholders({ env: { API_KEY: "${MISSING_MCP_KEY}" } }),
   ).toThrow(
-    "MCP 配置 mcp.yaml.env.API_KEY 引用了未设置的环境变量 MISSING_MCP_KEY",
+    "MCP 配置 settings/mcp.yaml.env.API_KEY 引用了未设置的环境变量 MISSING_MCP_KEY",
   );
 });

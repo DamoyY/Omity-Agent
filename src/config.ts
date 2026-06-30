@@ -4,7 +4,7 @@ import YAML from "yaml";
 import { z } from "zod";
 import type { Settings } from "./types";
 
-const schema = z.object({
+const mainSchema = z.object({
   paths: z.object({
     dataDir: z.string().min(1),
   }),
@@ -27,20 +27,25 @@ const schema = z.object({
     level: z.enum(["debug", "info", "warn", "error"]),
     streamTokens: z.boolean(),
   }),
+});
+
+const promptsSchema = z.object({
   agent: z.object({
     systemPrompt: z.string(),
   }),
 });
 
 export function loadSettings(root = process.cwd()): Settings {
-  const path = resolve(root, "settings.yaml");
-  const parsed = YAML.parse(readFileSync(path, "utf8"));
-  const settings = schema.parse(parsed);
-  const dataDir = isAbsolute(settings.paths.dataDir)
-    ? settings.paths.dataDir
-    : resolve(root, settings.paths.dataDir);
+  const settingsDir = resolve(root, "settings");
+  const main = mainSchema.parse(readYaml(resolve(settingsDir, "main.yaml")));
+  const prompts = promptsSchema.parse(
+    readYaml(resolve(settingsDir, "prompts.yaml")),
+  );
+  const dataDir = isAbsolute(main.paths.dataDir)
+    ? main.paths.dataDir
+    : resolve(root, main.paths.dataDir);
   mkdirSync(dataDir, { recursive: true });
-  return { ...settings, paths: { dataDir } };
+  return { ...main, ...prompts, paths: { dataDir } };
 }
 
 export function sessionPaths(settings: Settings, sessionId: string) {
@@ -58,4 +63,8 @@ export function safeId(value: string) {
     throw new Error("会话 ID 不能为空");
   }
   return safe;
+}
+
+function readYaml(path: string) {
+  return YAML.parse(readFileSync(path, "utf8"));
 }
