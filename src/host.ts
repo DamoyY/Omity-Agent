@@ -26,13 +26,24 @@ export async function runHost(mode: HostMode, root = process.cwd()) {
     logger.info("已加载会话", { sessionId: mode.sessionId, db: paths.appDb });
   }
   const mcp = await loadMcp(root, logger);
-  const { graph, checkpointer } = buildGraph(settings, mcp.tools, paths.checkpointDb);
+  const { graph, checkpointer } = buildGraph(
+    settings,
+    mcp.tools,
+    paths.checkpointDb,
+  );
   process.on("SIGINT", () => {
     stopping = true;
     logger.warn("收到 Ctrl+C，Host 将在当前边界停止");
   });
   try {
-    await hostLoop({ settings, logger, db, graph, checkpointer, sessionId: mode.sessionId });
+    await hostLoop({
+      settings,
+      logger,
+      db,
+      graph,
+      checkpointer,
+      sessionId: mode.sessionId,
+    });
   } finally {
     await mcp.close();
     db.close();
@@ -71,10 +82,19 @@ async function processQueue(ctx: HostContext, item: QueueItem) {
   try {
     ctx.db.startQueue(ctx.sessionId, item);
     await waitIfPaused(ctx, item);
-    let input: unknown = item.status === "pending" ? { messages: ctx.db.history(ctx.sessionId) } : null;
-    const config = { configurable: { thread_id: threadId }, recursionLimit: ctx.settings.host.recursionLimit };
+    let input: unknown =
+      item.status === "pending"
+        ? { messages: ctx.db.history(ctx.sessionId) }
+        : null;
+    const config = {
+      configurable: { thread_id: threadId },
+      recursionLimit: ctx.settings.host.recursionLimit,
+    };
     while (!stopping) {
-      const stream = await ctx.graph.stream(input, { ...config, streamMode: ["messages", "updates", "debug"] });
+      const stream = await ctx.graph.stream(input, {
+        ...config,
+        streamMode: ["messages", "updates", "debug"],
+      });
       for await (const event of stream) {
         handleStreamEvent(ctx, event);
       }
@@ -84,14 +104,20 @@ async function processQueue(ctx: HostContext, item: QueueItem) {
         return;
       }
       const state = await ctx.graph.getState(config);
-      ctx.logger.debug("LangGraph 边界", { next: state.next, tasks: state.tasks?.map((task: { name: string }) => task.name) ?? [] });
+      ctx.logger.debug("LangGraph 边界", {
+        next: state.next,
+        tasks: state.tasks?.map((task: { name: string }) => task.name) ?? [],
+      });
       if (!state.next || state.next.length === 0) {
         finishQueue(ctx, item, state.values?.messages ?? []);
         return;
       }
       if (control === "pause") {
         ctx.db.setQueueStatus(item.id, "paused");
-        ctx.logger.warn("已在节点边界暂停", { queueId: item.id, next: state.next });
+        ctx.logger.warn("已在节点边界暂停", {
+          queueId: item.id,
+          next: state.next,
+        });
         await waitIfPaused(ctx, { ...item, status: "paused" });
       }
       input = null;
@@ -145,7 +171,11 @@ async function waitIfPaused(ctx: HostContext, item: QueueItem) {
   }
 }
 
-function finishQueue(ctx: HostContext, item: QueueItem, messages: BaseMessage[]) {
+function finishQueue(
+  ctx: HostContext,
+  item: QueueItem,
+  messages: BaseMessage[],
+) {
   const last = messages.findLast((message) => message.getType() === "ai");
   const content = contentToText(last?.content);
   if (!content) {
@@ -159,7 +189,11 @@ function finishQueue(ctx: HostContext, item: QueueItem, messages: BaseMessage[])
   }
 }
 
-async function cancelQueue(ctx: HostContext, item: QueueItem, threadId: string) {
+async function cancelQueue(
+  ctx: HostContext,
+  item: QueueItem,
+  threadId: string,
+) {
   ctx.db.setQueueStatus(item.id, "canceled");
   ctx.db.setControl(ctx.sessionId, "running");
   await ctx.checkpointer.deleteThread(threadId);
@@ -172,14 +206,26 @@ function contentToText(content: unknown): string {
   }
   if (Array.isArray(content)) {
     return content
-      .map((part) => (typeof part === "string" ? part : typeof part?.text === "string" ? part.text : ""))
+      .map((part) =>
+        typeof part === "string"
+          ? part
+          : typeof part?.text === "string"
+            ? part.text
+            : "",
+      )
       .join("");
   }
   return "";
 }
 
 function summarize(value: unknown) {
-  return JSON.parse(JSON.stringify(value, (_key, current) => (typeof current === "string" && current.length > 240 ? `${current.slice(0, 240)}…` : current)));
+  return JSON.parse(
+    JSON.stringify(value, (_key, current) =>
+      typeof current === "string" && current.length > 240
+        ? `${current.slice(0, 240)}…`
+        : current,
+    ),
+  );
 }
 
 function sleep(ms: number) {

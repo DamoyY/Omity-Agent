@@ -36,7 +36,9 @@ export function loadSettings(root = process.cwd()): Settings {
   const path = resolve(root, "settings.yaml");
   const parsed = YAML.parse(readFileSync(path, "utf8"));
   const settings = schema.parse(parsed);
-  const dataDir = isAbsolute(settings.paths.dataDir) ? settings.paths.dataDir : resolve(root, settings.paths.dataDir);
+  const dataDir = isAbsolute(settings.paths.dataDir)
+    ? settings.paths.dataDir
+    : resolve(root, settings.paths.dataDir);
   mkdirSync(dataDir, { recursive: true });
   return { ...settings, paths: { dataDir } };
 }

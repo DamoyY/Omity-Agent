@@ -28,7 +28,10 @@ test("queue append and transcript lifecycle", () => {
   expect(db.history("123")).toEqual([{ role: "user", content: "你好" }]);
   db.appendAssistant("123", queueId, "你好，有什么可以帮你？");
   db.setQueueStatus(queueId, "done");
-  expect(db.history("123").at(-1)).toEqual({ role: "assistant", content: "你好，有什么可以帮你？" });
+  expect(db.history("123").at(-1)).toEqual({
+    role: "assistant",
+    content: "你好，有什么可以帮你？",
+  });
   db.close();
 });
 

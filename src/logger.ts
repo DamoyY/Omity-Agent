@@ -41,7 +41,12 @@ export class Logger {
     process.stdout.write(text);
   }
 
-  private write(level: LogLevel, mark: string, message: string, data?: unknown) {
+  private write(
+    level: LogLevel,
+    mark: string,
+    message: string,
+    data?: unknown,
+  ) {
     if (priority[level] < priority[this.level]) {
       return;
     }

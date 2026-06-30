@@ -7,13 +7,21 @@ import type { Control } from "./types";
 async function main() {
   const [command, ...rest] = Bun.argv.slice(2);
   if (command === "host") {
-    const values = parseArgs({ args: rest, options: { new: { type: "string" }, load: { type: "string" } }, strict: true }).values;
+    const values = parseArgs({
+      args: rest,
+      options: { new: { type: "string" }, load: { type: "string" } },
+      strict: true,
+    }).values;
     const fresh = values.new;
     const load = values.load;
     if ((fresh ? 1 : 0) + (load ? 1 : 0) !== 1) {
       throw new Error("host 需要且仅需要 --new=<id> 或 --load=<id>");
     }
-    await runHost(fresh ? { kind: "new", sessionId: fresh } : { kind: "load", sessionId: load! });
+    await runHost(
+      fresh
+        ? { kind: "new", sessionId: fresh }
+        : { kind: "load", sessionId: load! },
+    );
     return;
   }
   if (command === "client") {
@@ -39,10 +47,16 @@ async function main() {
     if (controls.length > 1) {
       throw new Error("pause/resume/cancel 只能选择一个");
     }
-    runClient({ sessionId, append: parsed.values.append, control: controls[0] });
+    runClient({
+      sessionId,
+      append: parsed.values.append,
+      control: controls[0],
+    });
     return;
   }
-  throw new Error("用法：agent host --new=<id> | agent host --load=<id> | agent client <id> --append=<text> | --pause | --resume | --cancel");
+  throw new Error(
+    "用法：agent host --new=<id> | agent host --load=<id> | agent client <id> --append=<text> | --pause | --resume | --cancel",
+  );
 }
 
 main().catch((error) => {

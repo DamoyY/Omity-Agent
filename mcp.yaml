@@ -4,10 +4,11 @@ mcpServers: {}
 
 # 示例：
 # mcpServers:
-#   filesystem:
+#   brave:
 #     transport: stdio
 #     command: npx
 #     args:
 #       - -y
-#       - "@modelcontextprotocol/server-filesystem"
-#       - "F:/workspace"
+#       - "@modelcontextprotocol/server-brave-search"
+#     env:
+#       BRAVE_API_KEY: ${BRAVE_API_KEY}

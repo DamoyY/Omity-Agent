@@ -16,11 +16,17 @@ export function buildModel(settings: Settings) {
     maxRetries: settings.model.maxRetries,
     timeout: settings.model.timeoutMs,
     streaming: true,
-    configuration: settings.model.baseURL ? { baseURL: settings.model.baseURL } : undefined,
+    configuration: settings.model.baseURL
+      ? { baseURL: settings.model.baseURL }
+      : undefined,
   });
 }
 
-export function buildGraph(settings: Settings, tools: StructuredToolInterface[], checkpointPath: string) {
+export function buildGraph(
+  settings: Settings,
+  tools: StructuredToolInterface[],
+  checkpointPath: string,
+) {
   const checkpointer = SqliteSaver.fromConnString(checkpointPath);
   const graph = createReactAgent({
     llm: buildModel(settings),

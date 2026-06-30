@@ -1,6 +1,7 @@
 export type Control = "running" | "pause" | "cancel";
 
-export type QueueStatus = "pending" | "running" | "paused" | "done" | "canceled" | "failed";
+export type QueueStatus =
+  "pending" | "running" | "paused" | "done" | "canceled" | "failed";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 

@@ -1,5 +1,10 @@
 import { Database } from "bun:sqlite";
-import type { Control, QueueItem, QueueStatus, TranscriptMessage } from "./types";
+import type {
+  Control,
+  QueueItem,
+  QueueStatus,
+  TranscriptMessage,
+} from "./types";
 
 type QueueRow = {
   id: number;
@@ -35,14 +40,22 @@ export class AgentDatabase {
 
   ensureSession(sessionId: string) {
     this.db
-      .query("INSERT OR IGNORE INTO sessions (id, control, status, created_at, updated_at) VALUES (?, 'running', 'idle', unixepoch(), unixepoch())")
+      .query(
+        "INSERT OR IGNORE INTO sessions (id, control, status, created_at, updated_at) VALUES (?, 'running', 'idle', unixepoch(), unixepoch())",
+      )
       .run(sessionId);
   }
 
   appendUser(sessionId: string, content: string) {
     this.ensureSession(sessionId);
-    const result = this.db.query("INSERT INTO queue (session_id, content, status, created_at) VALUES (?, ?, 'pending', unixepoch())").run(sessionId, content);
-    this.event(sessionId, "info", "client", "append", { queueId: Number(result.lastInsertRowid) });
+    const result = this.db
+      .query(
+        "INSERT INTO queue (session_id, content, status, created_at) VALUES (?, ?, 'pending', unixepoch())",
+      )
+      .run(sessionId, content);
+    this.event(sessionId, "info", "client", "append", {
+      queueId: Number(result.lastInsertRowid),
+    });
     return Number(result.lastInsertRowid);
   }
 
@@ -52,7 +65,14 @@ export class AgentDatabase {
         "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
       )
       .get(sessionId);
-    return row ? { id: row.id, content: row.content, status: row.status, userMessageId: row.user_message_id } : null;
+    return row
+      ? {
+          id: row.id,
+          content: row.content,
+          status: row.status,
+          userMessageId: row.user_message_id,
+        }
+      : null;
   }
 
   startQueue(sessionId: string, item: QueueItem) {
@@ -61,43 +81,77 @@ export class AgentDatabase {
       return item.userMessageId;
     }
     const tx = this.db.transaction(() => {
-      const msg = this.db.query("INSERT INTO messages (session_id, role, content, queue_id, created_at) VALUES (?, 'user', ?, ?, unixepoch())").run(sessionId, item.content, item.id);
+      const msg = this.db
+        .query(
+          "INSERT INTO messages (session_id, role, content, queue_id, created_at) VALUES (?, 'user', ?, ?, unixepoch())",
+        )
+        .run(sessionId, item.content, item.id);
       const messageId = Number(msg.lastInsertRowid);
-      this.db.query("UPDATE queue SET status = 'running', started_at = unixepoch(), user_message_id = ? WHERE id = ?").run(messageId, item.id);
+      this.db
+        .query(
+          "UPDATE queue SET status = 'running', started_at = unixepoch(), user_message_id = ? WHERE id = ?",
+        )
+        .run(messageId, item.id);
       return messageId;
     });
     return tx();
   }
 
   setQueueStatus(queueId: number, status: QueueStatus, error?: string) {
-    this.db.query("UPDATE queue SET status = ?, error = ?, updated_at = unixepoch() WHERE id = ?").run(status, error ?? null, queueId);
+    this.db
+      .query(
+        "UPDATE queue SET status = ?, error = ?, updated_at = unixepoch() WHERE id = ?",
+      )
+      .run(status, error ?? null, queueId);
   }
 
   appendAssistant(sessionId: string, queueId: number, content: string) {
-    this.db.query("INSERT INTO messages (session_id, role, content, queue_id, created_at) VALUES (?, 'assistant', ?, ?, unixepoch())").run(sessionId, content, queueId);
+    this.db
+      .query(
+        "INSERT INTO messages (session_id, role, content, queue_id, created_at) VALUES (?, 'assistant', ?, ?, unixepoch())",
+      )
+      .run(sessionId, content, queueId);
   }
 
   history(sessionId: string): TranscriptMessage[] {
     return this.db
-      .query<{ role: "user" | "assistant"; content: string }, [string]>("SELECT role, content FROM messages WHERE session_id = ? ORDER BY id")
+      .query<{ role: "user" | "assistant"; content: string }, [string]>(
+        "SELECT role, content FROM messages WHERE session_id = ? ORDER BY id",
+      )
       .all(sessionId);
   }
 
   control(sessionId: string): Control {
     this.ensureSession(sessionId);
-    const row = this.db.query<{ control: Control }, [string]>("SELECT control FROM sessions WHERE id = ?").get(sessionId);
+    const row = this.db
+      .query<{ control: Control }, [string]>(
+        "SELECT control FROM sessions WHERE id = ?",
+      )
+      .get(sessionId);
     return row?.control ?? "running";
   }
 
   setControl(sessionId: string, control: Control) {
     this.ensureSession(sessionId);
-    this.db.query("UPDATE sessions SET control = ?, updated_at = unixepoch() WHERE id = ?").run(control, sessionId);
+    this.db
+      .query(
+        "UPDATE sessions SET control = ?, updated_at = unixepoch() WHERE id = ?",
+      )
+      .run(control, sessionId);
     this.event(sessionId, "info", "client", "control", { control });
   }
 
-  event(sessionId: string, level: string, category: string, message: string, payload: unknown) {
+  event(
+    sessionId: string,
+    level: string,
+    category: string,
+    message: string,
+    payload: unknown,
+  ) {
     this.db
-      .query("INSERT INTO events (session_id, level, category, message, payload_json, created_at) VALUES (?, ?, ?, ?, ?, unixepoch())")
+      .query(
+        "INSERT INTO events (session_id, level, category, message, payload_json, created_at) VALUES (?, ?, ?, ?, ?, unixepoch())",
+      )
       .run(sessionId, level, category, message, JSON.stringify(payload));
   }
 
