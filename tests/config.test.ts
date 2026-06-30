@@ -1,0 +1,26 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, expect, test } from "bun:test";
+import { loadSettings, safeId, sessionPaths } from "../src/config";
+
+const dirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("settings yaml resolves data directory", () => {
+  const root = mkdtempSync(join(tmpdir(), "agent-config-"));
+  dirs.push(root);
+  writeFileSync(
+    join(root, "settings.yaml"),
+    "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\nagent:\n  systemPrompt: test\n",
+  );
+  const settings = loadSettings(root);
+  mkdirSync(settings.paths.dataDir, { recursive: true });
+  expect(settings.paths.dataDir).toEndWith("data");
+  expect(sessionPaths(settings, "abc/def").dir).toContain(safeId("abc/def"));
+});

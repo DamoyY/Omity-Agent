@@ -1,0 +1,29 @@
+# SQL 文件、LangGraph checkpoint 与运行日志的根目录。
+paths:
+  dataDir: ./data
+
+# 模型配置；默认兼容 OpenAI 与 OpenAI-compatible 网关。
+model:
+  provider: openai-compatible
+  model: gpt-4o-mini
+  apiKeyEnv: OPENAI_API_KEY
+  baseURL: null
+  temperature: 0.2
+  maxRetries: 2
+  timeoutMs: 120000
+
+# Host 轮询、暂停与 LangGraph 运行边界。
+host:
+  pollMs: 300
+  pausePollMs: 500
+  idleLogMs: 5000
+  recursionLimit: 25
+
+# 控制台日志层级；debug 会打印最详细的图执行事件。
+logging:
+  level: debug
+  streamTokens: true
+
+# Agent 的系统提示词。
+agent:
+  systemPrompt: 你是一个基于 LangGraph 的命令行 Agent。回答应简洁、准确，并在需要时使用可用工具。

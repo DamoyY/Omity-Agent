@@ -1,0 +1,13 @@
+# 默认不加载任何工具。
+# 添加 MCP 服务器后，Host 启动时会将这些工具接入 Agent。
+mcpServers: {}
+
+# 示例：
+# mcpServers:
+#   filesystem:
+#     transport: stdio
+#     command: npx
+#     args:
+#       - -y
+#       - "@modelcontextprotocol/server-filesystem"
+#       - "F:/workspace"
