@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
@@ -28,11 +29,19 @@ const mainSchema = z.object({
     level: z.enum(["debug", "info", "warn", "error"]),
     streamTokens: z.boolean(),
   }),
+  skills: z.object({
+    enabled: z.boolean(),
+    directory: z.string().min(1),
+    skillEnabled: z.record(z.string(), z.boolean()),
+  }),
 });
 
 const promptsSchema = z.object({
   agent: z.object({
     systemPrompt: z.string(),
+  }),
+  skills: z.object({
+    usagePrompt: z.string().min(1),
   }),
 });
 
@@ -45,8 +54,14 @@ export function loadSettings(root = process.cwd()): Settings {
   const dataDir = isAbsolute(main.paths.dataDir)
     ? main.paths.dataDir
     : resolve(root, main.paths.dataDir);
+  const skillsDirectory = resolveConfigPath(root, main.skills.directory);
   mkdirSync(dataDir, { recursive: true });
-  return { ...main, ...prompts, paths: { dataDir } };
+  return {
+    ...main,
+    agent: prompts.agent,
+    skills: { ...main.skills, ...prompts.skills, directory: skillsDirectory },
+    paths: { dataDir },
+  };
 }
 
 export function sessionPaths(settings: Settings, sessionId: string) {
@@ -73,4 +88,12 @@ export function safeId(value: string) {
 
 function readYaml(path: string) {
   return YAML.parse(readFileSync(path, "utf8"));
+}
+
+function resolveConfigPath(root: string, path: string) {
+  const expanded =
+    path === "~" || path.startsWith("~/") || path.startsWith("~\\")
+      ? resolve(homedir(), path.slice(2))
+      : path;
+  return isAbsolute(expanded) ? expanded : resolve(root, expanded);
 }

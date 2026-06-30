@@ -123,5 +123,11 @@ function makeSettings(): Settings {
     agent: {
       systemPrompt: "test",
     },
+    skills: {
+      enabled: false,
+      directory: "~/agents/skills",
+      usagePrompt: "use skills",
+      skillEnabled: {},
+    },
   };
 }

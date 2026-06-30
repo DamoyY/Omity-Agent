@@ -1,3 +1,9 @@
 # Agent 的系统提示词。
 agent:
   systemPrompt: 你是一位助手。
+
+# Skills 使用方法提示词；程序会在后面追加当前启用的 Skills 列表。
+skills:
+  usagePrompt: |-
+    当用户任务适合某个 Skill 时，先读取对应 SKILL.md，理解并遵守其中的工作流与约束。
+    只有在 Skill 与任务相关时才使用它；多个 Skill 同时相关时，应按任务需要组合使用。

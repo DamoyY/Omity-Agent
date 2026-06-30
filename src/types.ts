@@ -32,6 +32,18 @@ export type Settings = {
   agent: {
     systemPrompt: string;
   };
+  skills: {
+    enabled: boolean;
+    directory: string;
+    usagePrompt: string;
+    skillEnabled: Record<string, boolean>;
+  };
+};
+
+export type SkillInfo = {
+  name: string;
+  description: string;
+  source: string;
 };
 
 export type QueueItem = {
