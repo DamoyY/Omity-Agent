@@ -5,6 +5,8 @@ paths:
 # 模型配置；默认兼容 OpenAI 与 OpenAI-compatible 网关。
 model:
   provider: openai-compatible
+  # 可选 responses 或 completions；OpenAI-compatible 网关通常使用 completions。
+  api: completions
   model: gpt-4o-mini
   apiKeyEnv: OPENAI_API_KEY
   baseURL: null

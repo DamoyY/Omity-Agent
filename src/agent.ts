@@ -1,4 +1,4 @@
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { SqliteSaver } from "@langchain/langgraph-checkpoint-sqlite";
 import type { StructuredToolInterface } from "@langchain/core/tools";
@@ -9,7 +9,7 @@ export function buildModel(settings: Settings) {
   if (!apiKey) {
     throw new Error(`缺少环境变量 ${settings.model.apiKeyEnv}`);
   }
-  return new ChatOpenAI({
+  const fields = {
     model: settings.model.model,
     apiKey,
     temperature: settings.model.temperature,
@@ -19,7 +19,11 @@ export function buildModel(settings: Settings) {
     configuration: settings.model.baseURL
       ? { baseURL: settings.model.baseURL }
       : undefined,
-  });
+  };
+  if (settings.model.api === "responses") {
+    return new ChatOpenAIResponses(fields);
+  }
+  return new ChatOpenAICompletions(fields);
 }
 
 export function buildGraph(

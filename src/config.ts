@@ -10,6 +10,7 @@ const mainSchema = z.object({
   }),
   model: z.object({
     provider: z.literal("openai-compatible"),
+    api: z.enum(["responses", "completions"]),
     model: z.string().min(1),
     apiKeyEnv: z.string().min(1),
     baseURL: z.string().url().nullable(),

@@ -11,6 +11,7 @@ export type Settings = {
   };
   model: {
     provider: "openai-compatible";
+    api: "responses" | "completions";
     model: string;
     apiKeyEnv: string;
     baseURL: string | null;
