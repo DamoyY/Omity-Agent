@@ -20,7 +20,7 @@ export function runClient(command: ClientCommand, root = process.cwd()) {
     1
   ) {
     throw new Error(
-      "client 需要且仅需要一个 append、pause、resume 或 cancel 指令",
+      "client 需要且仅需要一个 append、pause、continue、resume 或 cancel 指令",
     );
   }
   const settings = loadSettings(root);
@@ -52,13 +52,13 @@ export function parseClientIntent(
 ): Omit<ClientCommand, "sessionId"> {
   const [head, ...tail] = tokens;
   if (!head) {
-    throw new Error("client 需要 append=<文本>、pause、resume 或 cancel");
+    throw new Error("client 需要 append=<文本>、pause、continue、resume 或 cancel");
   }
   if (head === "pause" || head === "cancel") {
     requireNoExtraTokens(head, tail);
     return { control: head };
   }
-  if (head === "resume") {
+  if (head === "continue" || head === "resume") {
     requireNoExtraTokens(head, tail);
     return { control: "running" satisfies Control };
   }
@@ -70,7 +70,7 @@ export function parseClientIntent(
       append: requireMessage([head.slice("append=".length), ...tail].join(" ")),
     };
   }
-  throw new Error("client 需要 append=<文本>、pause、resume 或 cancel");
+  throw new Error("client 需要 append=<文本>、pause、continue、resume 或 cancel");
 }
 
 function requireNoExtraTokens(command: string, tail: string[]) {

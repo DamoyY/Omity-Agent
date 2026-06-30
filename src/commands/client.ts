@@ -9,6 +9,7 @@ export default class Client extends Command {
   static override usage = [
     "client <session-id> append=<text>",
     "client <session-id> pause",
+    "client <session-id> continue",
     "client <session-id> cancel",
   ];
 
@@ -18,6 +19,10 @@ export default class Client extends Command {
       description: "发送一条用户消息",
     },
     { command: "<%= config.bin %> client 123 pause", description: "请求暂停" },
+    {
+      command: "<%= config.bin %> client 123 continue",
+      description: "请求继续",
+    },
     {
       command: "<%= config.bin %> client 123 cancel",
       description: "关闭 Host",

@@ -7,6 +7,7 @@ test("client intent parses append assignment", () => {
 
 test("client intent parses controls", () => {
   expect(parseClientIntent(["pause"])).toEqual({ control: "pause" });
+  expect(parseClientIntent(["continue"])).toEqual({ control: "running" });
   expect(parseClientIntent(["resume"])).toEqual({ control: "running" });
   expect(parseClientIntent(["cancel"])).toEqual({ control: "cancel" });
 });
