@@ -89,6 +89,7 @@ async function processQueue(ctx: HostContext, item: QueueItem) {
     const config = {
       configurable: { thread_id: threadId },
       recursionLimit: ctx.settings.host.recursionLimit,
+      interruptAfter: ["model_request", "tools"],
     };
     while (!stopping) {
       const stream = await ctx.graph.stream(input, {
@@ -176,7 +177,7 @@ function finishQueue(
   item: QueueItem,
   messages: BaseMessage[],
 ) {
-  const last = messages.findLast((message) => message.getType() === "ai");
+  const last = messages.findLast((message) => message.type === "ai");
   const content = contentToText(last?.content);
   if (!content) {
     throw new Error("模型没有生成可记录的最终文本");

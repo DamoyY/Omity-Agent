@@ -1,6 +1,5 @@
 # 默认不加载任何工具。
 # 添加 MCP 服务器后，Host 启动时会将这些工具接入 Agent。
-mcpServers: {}
 
 # 示例：
 # mcpServers:
@@ -12,3 +11,13 @@ mcpServers: {}
 #       - "@modelcontextprotocol/server-brave-search"
 #     env:
 #       BRAVE_API_KEY: ${BRAVE_API_KEY}
+
+mcpServers:
+  web:
+    transport: stdio
+    command: F:/workspace/web-rs/target/release/web-rs.exe
+    args:
+      - --exa-api-key
+      - ${EXA_API_KEY}
+      - --tinyfish-api-key
+      - ${TINYFISH_API_KEY}

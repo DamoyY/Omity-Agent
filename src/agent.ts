@@ -1,5 +1,5 @@
 import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import { SqliteSaver } from "@langchain/langgraph-checkpoint-sqlite";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Settings } from "./types";
@@ -32,12 +32,11 @@ export function buildGraph(
   checkpointPath: string,
 ) {
   const checkpointer = SqliteSaver.fromConnString(checkpointPath);
-  const graph = createReactAgent({
-    llm: buildModel(settings),
+  const graph = createAgent({
+    model: buildModel(settings),
     tools,
-    prompt: settings.agent.systemPrompt,
+    systemPrompt: settings.agent.systemPrompt,
     checkpointer,
-    interruptAfter: ["agent", "tools"],
   });
   return { graph, checkpointer };
 }

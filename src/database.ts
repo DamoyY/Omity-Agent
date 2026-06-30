@@ -18,8 +18,8 @@ export class AgentDatabase {
 
   constructor(path: string) {
     this.db = new Database(path, { create: true, strict: true });
-    this.db.exec("PRAGMA journal_mode = WAL");
-    this.db.exec("PRAGMA foreign_keys = ON");
+    this.db.run("PRAGMA journal_mode = WAL");
+    this.db.run("PRAGMA foreign_keys = ON");
     this.migrate();
   }
 
@@ -156,14 +156,16 @@ export class AgentDatabase {
   }
 
   private migrate() {
-    this.db.exec(`
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         control TEXT NOT NULL,
         status TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
-      );
+      )
+    `);
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS queue (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT NOT NULL,
@@ -175,7 +177,9 @@ export class AgentDatabase {
         started_at INTEGER,
         updated_at INTEGER,
         FOREIGN KEY (session_id) REFERENCES sessions(id)
-      );
+      )
+    `);
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT NOT NULL,
@@ -184,7 +188,9 @@ export class AgentDatabase {
         queue_id INTEGER,
         created_at INTEGER NOT NULL,
         FOREIGN KEY (session_id) REFERENCES sessions(id)
-      );
+      )
+    `);
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT NOT NULL,
@@ -193,7 +199,7 @@ export class AgentDatabase {
         message TEXT NOT NULL,
         payload_json TEXT NOT NULL,
         created_at INTEGER NOT NULL
-      );
+      )
     `);
   }
 }

@@ -4,14 +4,13 @@ paths:
 
 # 模型配置；默认兼容 OpenAI 与 OpenAI-compatible 网关。
 model:
-  provider: openai-compatible
+  provider: cockpit
   # 可选 responses 或 completions；OpenAI-compatible 网关通常使用 completions。
-  api: completions
-  model: gpt-4o-mini
-  apiKeyEnv: OPENAI_API_KEY
-  baseURL: null
-  temperature: 0.2
-  maxRetries: 2
+  api: responses
+  model: gpt-5.5
+  apiKeyEnv: COCKPIT_API_KEY
+  baseURL: http://localhost:40403/v1
+  maxRetries: 5
   timeoutMs: 120000
 
 # Host 轮询、暂停与 LangGraph 运行边界。
