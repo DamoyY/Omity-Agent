@@ -1,5 +1,5 @@
-import { loadSettings, sessionPaths } from "./config";
-import { AgentDatabase } from "./database";
+import { loadSettings, sessionPaths } from "./infrastructure/config";
+import { AgentDatabase } from "./infrastructure/database";
 import type { Control } from "./types";
 
 export type ClientCommand = {

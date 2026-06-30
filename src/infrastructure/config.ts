@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
-import type { Settings } from "./types";
+import type { Settings } from "../types";
 
 const mainSchema = z.object({
   paths: z.object({

@@ -17,6 +17,8 @@ mcpServers:
     transport: stdio
     command: F:/workspace/web-rs/target/release/web-rs.exe
     args:
+      - --transport
+      - stdio
       - --exa-api-key
       - ${EXA_API_KEY}
       - --tinyfish-api-key

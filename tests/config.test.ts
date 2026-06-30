@@ -2,7 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
-import { loadSettings, safeId, sessionPaths } from "../src/config";
+import {
+  loadSettings,
+  safeId,
+  sessionPaths,
+} from "../src/infrastructure/config";
 
 const dirs: string[] = [];
 

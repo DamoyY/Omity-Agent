@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { expandEnvPlaceholders } from "../src/mcp";
+import { expandEnvPlaceholders } from "../src/infrastructure/mcp";
 
 const savedEnv = new Map<string, string | undefined>();
 

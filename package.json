@@ -22,7 +22,7 @@
   "dependencies": {
     "@langchain/core": "latest",
     "@langchain/langgraph": "latest",
-    "@langchain/langgraph-checkpoint-sqlite": "latest",
+    "@langchain/langgraph-checkpoint": "latest",
     "@langchain/mcp-adapters": "latest",
     "@langchain/openai": "latest",
     "@modelcontextprotocol/sdk": "latest",

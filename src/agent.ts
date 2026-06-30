@@ -1,7 +1,7 @@
 import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
 import { createAgent } from "langchain";
-import { SqliteSaver } from "@langchain/langgraph-checkpoint-sqlite";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import { BunSqliteSaver } from "./checkpointer";
 import type { Settings } from "./types";
 
 export function buildModel(settings: Settings) {
@@ -33,7 +33,7 @@ export function buildGraph(
   tools: StructuredToolInterface[],
   checkpointPath: string,
 ) {
-  const checkpointer = SqliteSaver.fromConnString(checkpointPath);
+  const checkpointer = new BunSqliteSaver(checkpointPath);
   const graph = createAgent({
     model: buildModel(settings),
     tools,
