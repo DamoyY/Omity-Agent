@@ -21,7 +21,7 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
   };
   try {
     ctx.db.startQueue(ctx.sessionId, item);
-    await waitIfPaused(ctx, run);
+    if (!(await waitIfPaused(ctx, run))) return;
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
     if (error instanceof CanceledRun) return;
@@ -60,7 +60,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       next: state.next,
       tasks: state.tasks?.map((task: { name: string }) => task.name) ?? [],
     });
-    if (control === "pause") {
+    if (control === "pause" || control === "pause_cancel") {
       setRunStatus(ctx, run, "paused");
       ctx.logger.warn("已在节点边界暂停", {
         queueId: item.id,
@@ -108,16 +108,30 @@ function consumeBoundaryAppends(
 }
 
 async function waitIfPaused(ctx: HostContext, run: QueueRun) {
-  while (!ctx.signal.stopping) {
+  while (true) {
+    if (ctx.signal.stopping) {
+      setRunStatus(ctx, run, "paused");
+      return false;
+    }
     const control = ctx.db.control(ctx.sessionId);
+    if (control === "pause_cancel") {
+      setRunStatus(ctx, run, "paused");
+      ctx.db.setControl(ctx.sessionId, "pause");
+      ctx.signal.stopping = true;
+      ctx.logger.warn("暂停状态收到 cancel，Host 已关闭", {
+        queueId: run.items[0].id,
+      });
+      return false;
+    }
     if (control === "cancel") {
       await cancelRun(ctx, run);
       throw new CanceledRun("运行已取消");
     }
     if (control === "running") {
       setRunStatus(ctx, run, "running");
-      return;
+      return true;
     }
+    setRunStatus(ctx, run, "paused");
     ctx.logger.info("暂停中，等待 resume 或 cancel", {
       queueId: run.items[0].id,
     });

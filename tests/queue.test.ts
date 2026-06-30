@@ -49,6 +49,36 @@ test("append is consumed at a LangGraph boundary", async () => {
   db.close();
 });
 
+test("cancel while paused stops host without ending pause", async () => {
+  const db = makeDb();
+  db.resetSession("123");
+  db.appendUser("123", "暂停中的输入");
+  db.setControl("123", "pause_cancel");
+  const item = db.nextQueue("123");
+
+  await processQueue(makeContext(db, {}), item!);
+
+  expect(db.control("123")).toBe("pause");
+  expect(db.nextQueue("123")?.status).toBe("paused");
+  db.close();
+});
+
+test("ctrl-c while paused stops host without ending pause", async () => {
+  const db = makeDb();
+  db.resetSession("123");
+  db.appendUser("123", "暂停中的输入");
+  db.setControl("123", "pause");
+  const item = db.nextQueue("123");
+  const context = makeContext(db, {});
+  context.signal.stopping = true;
+
+  await processQueue(context, item!);
+
+  expect(db.control("123")).toBe("pause");
+  expect(db.nextQueue("123")?.status).toBe("paused");
+  db.close();
+});
+
 function makeDb() {
   const dir = mkdtempSync(join(tmpdir(), "agent-queue-"));
   dirs.push(dir);

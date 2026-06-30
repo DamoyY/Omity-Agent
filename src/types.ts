@@ -1,4 +1,4 @@
-export type Control = "running" | "pause" | "cancel";
+export type Control = "running" | "pause" | "cancel" | "pause_cancel";
 
 export type QueueStatus =
   "pending" | "running" | "paused" | "done" | "canceled" | "failed";

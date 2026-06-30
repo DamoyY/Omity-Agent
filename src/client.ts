@@ -38,7 +38,13 @@ export function runClient(command: ClientCommand, root = process.cwd()) {
       result.queueId = db.appendUser(command.sessionId, command.append);
     }
     if (command.control !== undefined) {
-      db.setControl(command.sessionId, command.control);
+      const control =
+        command.control === "cancel" &&
+        (db.control(command.sessionId) === "pause" ||
+          db.control(command.sessionId) === "pause_cancel")
+          ? "pause_cancel"
+          : command.control;
+      db.setControl(command.sessionId, control);
       result.control = command.control;
     }
     return result;
@@ -52,7 +58,9 @@ export function parseClientIntent(
 ): Omit<ClientCommand, "sessionId"> {
   const [head, ...tail] = tokens;
   if (!head) {
-    throw new Error("client 需要 append=<文本>、pause、continue、resume 或 cancel");
+    throw new Error(
+      "client 需要 append=<文本>、pause、continue、resume 或 cancel",
+    );
   }
   if (head === "pause" || head === "cancel") {
     requireNoExtraTokens(head, tail);
@@ -70,7 +78,9 @@ export function parseClientIntent(
       append: requireMessage([head.slice("append=".length), ...tail].join(" ")),
     };
   }
-  throw new Error("client 需要 append=<文本>、pause、continue、resume 或 cancel");
+  throw new Error(
+    "client 需要 append=<文本>、pause、continue、resume 或 cancel",
+  );
 }
 
 function requireNoExtraTokens(command: string, tail: string[]) {
