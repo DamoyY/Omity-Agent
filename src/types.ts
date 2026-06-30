@@ -15,7 +15,7 @@ export type Settings = {
     model: string;
     apiKeyEnv: string;
     baseURL: string | null;
-    temperature: number;
+    temperature?: number;
     maxRetries: number;
     timeoutMs: number;
   };

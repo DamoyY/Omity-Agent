@@ -14,7 +14,7 @@ const mainSchema = z.object({
     model: z.string().min(1),
     apiKeyEnv: z.string().min(1),
     baseURL: z.url().nullable(),
-    temperature: z.number(),
+    temperature: z.number().optional(),
     maxRetries: z.number().int().nonnegative(),
     timeoutMs: z.number().int().positive(),
   }),

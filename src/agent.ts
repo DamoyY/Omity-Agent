@@ -12,13 +12,15 @@ export function buildModel(settings: Settings) {
   const fields = {
     model: settings.model.model,
     apiKey,
-    temperature: settings.model.temperature,
     maxRetries: settings.model.maxRetries,
     timeout: settings.model.timeoutMs,
     streaming: true,
     configuration: settings.model.baseURL
       ? { baseURL: settings.model.baseURL }
       : undefined,
+    ...(settings.model.temperature === undefined
+      ? {}
+      : { temperature: settings.model.temperature }),
   };
   if (settings.model.api === "responses") {
     return new ChatOpenAIResponses(fields);
