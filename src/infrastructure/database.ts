@@ -40,17 +40,13 @@ export class AgentDatabase {
   }
 
   createSession(sessionId: string) {
-    if (this.hasSession(sessionId)) {
-      throw new Error(`会话已存在：${sessionId}`);
-    }
+    if (this.hasSession(sessionId)) throw new Error(`会话已存在：${sessionId}`);
     const result = this.db
       .query(
         "INSERT INTO sessions (id, control, status, created_at, updated_at) VALUES (?, 'running', 'idle', unixepoch(), unixepoch())",
       )
       .run(sessionId);
-    if (result.changes !== 1) {
-      throw new Error(`会话已存在：${sessionId}`);
-    }
+    if (result.changes !== 1) throw new Error(`会话已存在：${sessionId}`);
   }
 
   ensureSession(sessionId: string) {
@@ -83,20 +79,22 @@ export class AgentDatabase {
     return Number(result.lastInsertRowid);
   }
 
+  pendingAppends(sessionId: string): QueueItem[] {
+    return this.db
+      .query<QueueRow, [string]>(
+        "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status = 'pending' ORDER BY id",
+      )
+      .all(sessionId)
+      .map(toQueueItem);
+  }
+
   nextQueue(sessionId: string): QueueItem | null {
     const row = this.db
       .query<QueueRow, [string]>(
         "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
       )
       .get(sessionId);
-    return row
-      ? {
-          id: row.id,
-          content: row.content,
-          status: row.status,
-          userMessageId: row.user_message_id,
-        }
-      : null;
+    return row ? toQueueItem(row) : null;
   }
 
   startQueue(sessionId: string, item: QueueItem) {
@@ -153,9 +151,7 @@ export class AgentDatabase {
         "SELECT control FROM sessions WHERE id = ?",
       )
       .get(sessionId);
-    if (!row) {
-      throw new Error(`会话不存在：${sessionId}`);
-    }
+    if (!row) throw new Error(`会话不存在：${sessionId}`);
     return row.control;
   }
 
@@ -184,14 +180,20 @@ export class AgentDatabase {
   }
 
   private migrate() {
-    for (const sql of migrationSql) {
-      this.db.run(sql);
-    }
+    for (const sql of migrationSql) this.db.run(sql);
   }
 
   private requireSession(sessionId: string) {
-    if (!this.hasSession(sessionId)) {
+    if (!this.hasSession(sessionId))
       throw new Error(`会话不存在：${sessionId}`);
-    }
   }
+}
+
+function toQueueItem(row: QueueRow): QueueItem {
+  return {
+    id: row.id,
+    content: row.content,
+    status: row.status,
+    userMessageId: row.user_message_id,
+  };
 }
