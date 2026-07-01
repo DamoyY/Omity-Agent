@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { AgentDatabase } from "../src/infrastructure/database";
 
@@ -25,13 +26,49 @@ test("queue append and transcript lifecycle", () => {
   const item = db.nextQueue("123");
   expect(item?.id).toBe(queueId);
   db.startQueue("123", item!);
-  expect(db.history("123")).toEqual([{ role: "user", content: "你好" }]);
+  expect(db.history("123").map((message) => message.text)).toEqual(["你好"]);
   db.appendAssistant("123", queueId, "你好，有什么可以帮你？");
   db.setQueueStatus(queueId, "done");
-  expect(db.history("123").at(-1)).toEqual({
-    role: "assistant",
-    content: "你好，有什么可以帮你？",
-  });
+  expect(db.history("123").at(-1)?.text).toBe("你好，有什么可以帮你？");
+  db.close();
+});
+
+test("transcript preserves full LangChain message structure", () => {
+  const db = makeDb();
+  db.resetSession("123");
+  const reasoning = {
+    id: "rs_1",
+    type: "reasoning",
+    encrypted_content: "sealed",
+    summary: [{ type: "summary_text", text: "visible summary" }],
+  };
+  const output = [
+    reasoning,
+    {
+      type: "message",
+      role: "assistant",
+      content: [{ type: "output_text", text: "答案", annotations: [] }],
+    },
+  ];
+  db.replaceHistory("123", [
+    new HumanMessage("问题"),
+    new AIMessage({
+      content: [{ type: "text", text: "答案", annotations: [] }],
+      additional_kwargs: { reasoning },
+      response_metadata: { model_provider: "openai", output },
+    }),
+  ]);
+
+  const restored = db.history("123");
+
+  expect(restored.map((message) => message.text)).toEqual(["问题", "答案"]);
+  expect(restored[1]).toBeInstanceOf(AIMessage);
+  expect(restored[1]?.additional_kwargs["reasoning"]).toEqual(reasoning);
+  expect(
+    (restored[1]?.response_metadata as Record<string, unknown> | undefined)?.[
+      "output"
+    ],
+  ).toEqual(output);
   db.close();
 });
 

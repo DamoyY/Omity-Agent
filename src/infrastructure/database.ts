@@ -1,18 +1,14 @@
 import { Database } from "bun:sqlite";
-import type {
-  Control,
-  QueueItem,
-  QueueStatus,
-  TranscriptMessage,
-} from "../types";
+import type { BaseMessage } from "@langchain/core/messages";
+import type { Control, QueueItem, QueueStatus } from "../types";
+import {
+  appendAssistantMessage,
+  insertUserMessage,
+  loadMessages,
+  replaceMessages,
+} from "./messages";
+import { toQueueItem, type QueueRow } from "./queueRows";
 import { migrationSql } from "./schema";
-
-type QueueRow = {
-  id: number;
-  content: string;
-  status: QueueStatus;
-  user_message_id: number | null;
-};
 
 export class AgentDatabase {
   readonly db: Database;
@@ -21,7 +17,7 @@ export class AgentDatabase {
     this.db = new Database(path, { create: true, strict: true });
     this.db.run("PRAGMA journal_mode = WAL");
     this.db.run("PRAGMA foreign_keys = ON");
-    this.migrate();
+    for (const sql of migrationSql) this.db.run(sql);
   }
 
   close() {
@@ -103,12 +99,12 @@ export class AgentDatabase {
       return item.userMessageId;
     }
     const tx = this.db.transaction(() => {
-      const msg = this.db
-        .query(
-          "INSERT INTO messages (session_id, role, content, queue_id, created_at) VALUES (?, 'user', ?, ?, unixepoch())",
-        )
-        .run(sessionId, item.content, item.id);
-      const messageId = Number(msg.lastInsertRowid);
+      const messageId = insertUserMessage(
+        this.db,
+        sessionId,
+        item.content,
+        item.id,
+      );
       this.db
         .query(
           "UPDATE queue SET status = 'running', started_at = unixepoch(), user_message_id = ? WHERE id = ?",
@@ -128,20 +124,18 @@ export class AgentDatabase {
   }
 
   appendAssistant(sessionId: string, queueId: number, content: string) {
-    this.db
-      .query(
-        "INSERT INTO messages (session_id, role, content, queue_id, created_at) VALUES (?, 'assistant', ?, ?, unixepoch())",
-      )
-      .run(sessionId, content, queueId);
+    this.requireSession(sessionId);
+    appendAssistantMessage(this.db, sessionId, queueId, content);
   }
 
-  history(sessionId: string): TranscriptMessage[] {
+  replaceHistory(sessionId: string, messages: BaseMessage[]) {
     this.requireSession(sessionId);
-    return this.db
-      .query<{ role: "user" | "assistant"; content: string }, [string]>(
-        "SELECT role, content FROM messages WHERE session_id = ? ORDER BY id",
-      )
-      .all(sessionId);
+    replaceMessages(this.db, sessionId, messages);
+  }
+
+  history(sessionId: string): BaseMessage[] {
+    this.requireSession(sessionId);
+    return loadMessages(this.db, sessionId);
   }
 
   control(sessionId: string): Control {
@@ -179,21 +173,8 @@ export class AgentDatabase {
       .run(sessionId, level, category, message, JSON.stringify(payload));
   }
 
-  private migrate() {
-    for (const sql of migrationSql) this.db.run(sql);
-  }
-
   private requireSession(sessionId: string) {
     if (!this.hasSession(sessionId))
       throw new Error(`会话不存在：${sessionId}`);
   }
-}
-
-function toQueueItem(row: QueueRow): QueueItem {
-  return {
-    id: row.id,
-    content: row.content,
-    status: row.status,
-    userMessageId: row.user_message_id,
-  };
 }

@@ -56,8 +56,3 @@ export type QueueItem = {
   status: QueueStatus;
   userMessageId: number | null;
 };
-
-export type TranscriptMessage = {
-  role: "user" | "assistant";
-  content: string;
-};

@@ -62,7 +62,9 @@ export function loadSettings(root = process.cwd()): Settings {
     },
     skills: {
       ...main.skills,
-      usagePrompt: readPrompt(join(promptsDir, "skills.md"), { nonEmpty: true }),
+      usagePrompt: readPrompt(join(promptsDir, "skills.md"), {
+        nonEmpty: true,
+      }),
       directory: skillsDirectory,
     },
     paths: { dataDir },

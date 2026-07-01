@@ -1,7 +1,7 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import type { QueueItem } from "../types";
 import type { HostContext } from "./context";
 import { errorMessage, modelNetworkRetryDelayMs } from "./network";
-import { sleep } from "./time";
 
 type RetriedRun = {
   items: [QueueItem, ...QueueItem[]];

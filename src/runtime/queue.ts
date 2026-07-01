@@ -1,4 +1,6 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { Command } from "@langchain/langgraph";
+import { HumanMessage } from "@langchain/core/messages";
 import type { QueueItem } from "../types";
 import type { HostContext } from "./context";
 import { isModelNetworkError } from "./network";
@@ -11,8 +13,6 @@ import {
   type QueueRun,
 } from "./run";
 import { createStreamLogState, handleStreamEvent } from "./stream";
-import { sleep } from "./time";
-import { persistNodeMessages } from "./transcript";
 
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id}`);
@@ -88,7 +88,11 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       return;
     }
     const state = await ctx.graph.getState(config);
-    persistNodeMessages(ctx, state.values?.messages ?? []);
+    const messages = state.values?.messages ?? [];
+    if (messages.length > 0) {
+      ctx.db.replaceHistory(ctx.sessionId, messages);
+      ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
+    }
     ctx.logger.debug("LangGraph 边界", {
       next: state.next,
       tasks: state.tasks?.map((task: { name: string }) => task.name) ?? [],
@@ -131,10 +135,7 @@ function consumeBoundaryAppends(
   });
   return new Command({
     update: {
-      messages: appends.map((item) => ({
-        role: "user",
-        content: item.content,
-      })),
+      messages: appends.map((item) => new HumanMessage(item.content)),
     },
     goto: "model_request",
   });

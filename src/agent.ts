@@ -63,6 +63,16 @@ export function createSkillsMiddleware(skillsMessage: string) {
 }
 
 class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
+  override invocationParams(options?: this["ParsedCallOptions"]) {
+    const params = super.invocationParams(options);
+    return {
+      ...params,
+      include: mergeResponseIncludes(params.include, [
+        "reasoning.encrypted_content",
+      ]),
+    };
+  }
+
   override completionWithRetry(
     request: OpenAI.Responses.ResponseCreateParamsStreaming,
     requestOptions?: OpenAI.RequestOptions,
@@ -151,4 +161,11 @@ async function* normalizeResponsesStream(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function mergeResponseIncludes(
+  current: OpenAI.Responses.ResponseCreateParams["include"],
+  required: OpenAI.Responses.ResponseCreateParams["include"],
+) {
+  return Array.from(new Set([...(current ?? []), ...(required ?? [])]));
 }

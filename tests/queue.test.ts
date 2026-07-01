@@ -41,11 +41,11 @@ test("append is consumed at a LangGraph boundary", async () => {
   await processQueue(makeContext(db, graph), item!);
   expect(model.callCount).toBe(2);
   expect(db.nextQueue("123")).toBeNull();
-  expect(db.history("123")).toEqual([
-    { role: "user", content: "第一条" },
-    { role: "assistant", content: "中间响应" },
-    { role: "user", content: "第二条" },
-    { role: "assistant", content: "最终响应" },
+  expect(db.history("123").map((message) => message.text)).toEqual([
+    "第一条",
+    "中间响应",
+    "第二条",
+    "最终响应",
   ]);
   db.close();
 });

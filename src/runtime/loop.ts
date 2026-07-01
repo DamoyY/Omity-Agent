@@ -1,6 +1,6 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import type { HostContext } from "./context";
 import { processQueue } from "./queue";
-import { sleep } from "./time";
 
 export async function hostLoop(ctx: HostContext) {
   let lastIdle = 0;
