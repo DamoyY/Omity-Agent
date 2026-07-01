@@ -43,9 +43,28 @@ test("append is consumed at a LangGraph boundary", async () => {
   expect(db.nextQueue("123")).toBeNull();
   expect(db.history("123")).toEqual([
     { role: "user", content: "第一条" },
+    { role: "assistant", content: "中间响应" },
     { role: "user", content: "第二条" },
     { role: "assistant", content: "最终响应" },
   ]);
+  db.close();
+});
+
+test("unexpected errors pause the queue", async () => {
+  const db = makeDb();
+  db.resetSession("123");
+  db.appendUser("123", "会失败的输入");
+  const item = db.nextQueue("123");
+  const graph = {
+    stream: async () => {
+      throw new Error("boom");
+    },
+  };
+
+  await processQueue(makeContext(db, graph), item!);
+
+  expect(db.nextQueue("123")?.status).toBe("paused");
+  expect(db.control("123")).toBe("pause");
   db.close();
 });
 

@@ -1,6 +1,6 @@
 # Agent 的系统提示词。
 agent:
-  systemPrompt: 你是一位助手。
+  systemPrompt: 你是一位通用智能体，与用户共同操作同一台计算机。
 
 # Skills 使用方法提示词；程序会在后面追加当前启用的 Skills 列表。
 skills:

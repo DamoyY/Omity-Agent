@@ -12,6 +12,7 @@ import {
 } from "./run";
 import { createStreamLogState, handleStreamEvent } from "./stream";
 import { sleep } from "./time";
+import { persistNodeMessages } from "./transcript";
 
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id}`);
@@ -26,8 +27,9 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
   } catch (error) {
     if (error instanceof CanceledRun) return;
     const message = error instanceof Error ? error.message : String(error);
-    setRunStatus(ctx, run, "failed", message);
-    ctx.logger.error("队列执行失败", { queueId: item.id, error: message });
+    setRunStatus(ctx, run, "paused", message);
+    ctx.db.setControl(ctx.sessionId, "pause");
+    ctx.logger.error("队列异常，已暂停", { queueId: item.id, error: message });
   } finally {
     end();
   }
@@ -86,6 +88,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       return;
     }
     const state = await ctx.graph.getState(config);
+    persistNodeMessages(ctx, state.values?.messages ?? []);
     ctx.logger.debug("LangGraph 边界", {
       next: state.next,
       tasks: state.tasks?.map((task: { name: string }) => task.name) ?? [],

@@ -21,7 +21,7 @@ export async function waitBeforeModelNetworkRetry(
   controls: RetryControls,
 ) {
   const delayMs = modelNetworkRetryDelayMs(attempt);
-  ctx.logger.warn("模型 API 网络异常，将无限重试", {
+  ctx.logger.warn("模型 API 网络异常，将继续重试", {
     queueId: run.items[0].id,
     attempt,
     delayMs,

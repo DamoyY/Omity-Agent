@@ -23,6 +23,7 @@ const retryableMessageParts = [
   "connection error",
   "fetch failed",
   "network",
+  "received empty response from chat model call.",
   "socket",
   "terminated",
   "tls",

@@ -20,7 +20,6 @@ export function finishRun(
   if (!content) throw new Error("模型没有生成可记录的最终文本");
   const lastItem = run.items.at(-1);
   if (!lastItem) throw new Error("运行没有可记录的队列项");
-  ctx.db.appendAssistant(ctx.sessionId, lastItem.id, content);
   setRunStatus(ctx, run, "done");
   ctx.logger.info("队列完成", { queueId: lastItem.id, chars: content.length });
   if (ctx.settings.logging.streamTokens) process.stdout.write("\n");

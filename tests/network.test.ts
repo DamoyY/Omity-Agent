@@ -6,6 +6,9 @@ import {
 
 test("detects retryable model network errors", () => {
   expect(isModelNetworkError(new Error("fetch failed"))).toBe(true);
+  expect(
+    isModelNetworkError(new Error("Received empty response from chat model call.")),
+  ).toBe(true);
   expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
   expect(isModelNetworkError({ name: "TimeoutError" })).toBe(true);
   expect(isModelNetworkError({ cause: { code: "ENOTFOUND" } })).toBe(true);
