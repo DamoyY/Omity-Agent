@@ -1,9 +1,28 @@
 import type { HostContext } from "./context";
 import { contentToText } from "./content";
 
-export function handleStreamEvent(ctx: HostContext, event: unknown) {
+const omitted = Symbol("omitted");
+
+export type StreamLogState = {
+  seenFacts: Set<string>;
+  seenStructures: Set<string>;
+};
+
+export function createStreamLogState(): StreamLogState {
+  return {
+    seenFacts: new Set(),
+    seenStructures: new Set(),
+  };
+}
+
+export function handleStreamEvent(
+  ctx: HostContext,
+  event: unknown,
+  state = createStreamLogState(),
+) {
   if (!Array.isArray(event) || event.length !== 2) {
-    ctx.logger.debug("LangGraph 事件", event);
+    const delta = incrementalSummary(event, state);
+    if (delta !== undefined) ctx.logger.debug("LangGraph 事件增量", delta);
     return;
   }
   const [mode, payload] = event;
@@ -16,10 +35,50 @@ export function handleStreamEvent(ctx: HostContext, event: unknown) {
     return;
   }
   if (mode === "updates") {
-    ctx.logger.debug("状态更新", summarize(payload));
+    const delta = incrementalSummary(payload, state);
+    if (delta !== undefined) ctx.logger.debug("状态更新增量", delta);
     return;
   }
-  ctx.logger.debug("调试事件", summarize(payload));
+  const delta = incrementalSummary(payload, state);
+  if (delta !== undefined) ctx.logger.debug("调试事件增量", delta);
+}
+
+export function incrementalSummary(
+  value: unknown,
+  state: StreamLogState,
+): unknown | undefined {
+  const delta = diffSeen(value, state, "$");
+  return delta === omitted ? undefined : summarize(delta);
+}
+
+function diffSeen(
+  value: unknown,
+  state: StreamLogState,
+  key: string,
+): unknown | typeof omitted {
+  if (isRecord(value)) {
+    const hash = stableStringify(value);
+    if (state.seenStructures.has(hash)) return omitted;
+    state.seenStructures.add(hash);
+    const entries = Object.entries(value)
+      .map(([name, child]) => [name, diffSeen(child, state, name)] as const)
+      .filter(([, child]) => child !== omitted);
+    if (entries.length === 0) return omitted;
+    return Object.fromEntries(entries);
+  }
+  if (Array.isArray(value)) {
+    const hash = stableStringify(value);
+    if (state.seenStructures.has(hash)) return omitted;
+    state.seenStructures.add(hash);
+    const items = value
+      .map((child) => diffSeen(child, state, key))
+      .filter((child) => child !== omitted);
+    return items.length === 0 ? omitted : items;
+  }
+  const fact = `${key}:${stableStringify(value)}`;
+  if (state.seenFacts.has(fact)) return omitted;
+  state.seenFacts.add(fact);
+  return value;
 }
 
 function summarize(value: unknown) {
@@ -30,4 +89,22 @@ function summarize(value: unknown) {
         : current,
     ),
   );
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(stableValue(value));
+}
+
+function stableValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, stableValue(value[key])]),
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

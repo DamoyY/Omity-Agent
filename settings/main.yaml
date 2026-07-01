@@ -17,7 +17,7 @@ model:
 host:
   pollMs: 300
   pausePollMs: 500
-  idleLogMs: 5000
+  idleLogMs: 10000
   recursionLimit: 25
 
 # 控制台日志层级；debug 会打印最详细的图执行事件。
