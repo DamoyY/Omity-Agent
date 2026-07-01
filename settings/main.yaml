@@ -10,6 +10,7 @@ model:
   model: gpt-5.5
   apiKeyEnv: 78CODE
   baseURL: https://api.78code.cc/v1/
+  reasoning_effort: high
   maxRetries: 5
   timeoutMs: 120000
 
@@ -17,7 +18,7 @@ model:
 host:
   pollMs: 300
   pausePollMs: 500
-  idleLogMs: 10000
+  idleLogMs: 25000
   recursionLimit: 25
 
 # 控制台日志层级；debug 会打印最详细的图执行事件。

@@ -24,6 +24,9 @@ export function buildModel(settings: Settings) {
     ...(settings.model.temperature === undefined
       ? {}
       : { temperature: settings.model.temperature }),
+    ...(settings.model.reasoning_effort === undefined
+      ? {}
+      : { reasoning: { effort: settings.model.reasoning_effort } }),
   };
   if (settings.model.api === "responses") {
     return new CompatibleChatOpenAIResponses(fields);

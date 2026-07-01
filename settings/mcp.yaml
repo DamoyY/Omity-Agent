@@ -23,7 +23,11 @@ mcpServers:
       - ${EXA_API_KEY}
       - --tinyfish-api-key
       - ${TINYFISH_API_KEY}
-  shell:
+  terminal:
     transport: stdio
     command: F:/workspace/shell-mcp/target/release/shell-mcp-pty.exe
     args: ["mcp"]
+  diff:
+    transport: stdio
+    command: F:/workspace/apply-patch-mcp/target/release/apply-patch-mcp.exe
+    args: []

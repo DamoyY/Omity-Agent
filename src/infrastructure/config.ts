@@ -5,6 +5,15 @@ import YAML from "yaml";
 import { z } from "zod";
 import type { Settings } from "../types";
 
+const reasoningEffortSchema = z.enum([
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+]);
+
 const mainSchema = z.object({
   paths: z.object({
     dataDir: z.string().min(1),
@@ -16,6 +25,7 @@ const mainSchema = z.object({
     apiKeyEnv: z.string().min(1),
     baseURL: z.url().nullable(),
     temperature: z.number().optional(),
+    reasoning_effort: reasoningEffortSchema.optional(),
     maxRetries: z.number().int().nonnegative(),
     timeoutMs: z.number().int().positive(),
   }),

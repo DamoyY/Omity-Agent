@@ -5,6 +5,9 @@ export type QueueStatus =
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
+export type ReasoningEffort =
+  "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
 export type Settings = {
   paths: {
     dataDir: string;
@@ -16,6 +19,7 @@ export type Settings = {
     apiKeyEnv: string;
     baseURL: string | null;
     temperature?: number;
+    reasoning_effort?: ReasoningEffort;
     maxRetries: number;
     timeoutMs: number;
   };

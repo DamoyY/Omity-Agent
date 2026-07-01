@@ -76,6 +76,31 @@ test("buildModel selects OpenAI Responses API", () => {
   );
 });
 
+test("buildModel passes reasoning_effort to OpenAI Completions API", () => {
+  setEnv("TEST_OPENAI_KEY", "test-key");
+  const settings = makeSettings("completions");
+  settings.model.model = "gpt-5";
+  settings.model.reasoning_effort = "high";
+  const model = buildModel(settings);
+
+  expect(model).toBeInstanceOf(ChatOpenAICompletions);
+  expect((model as ChatOpenAICompletions).invocationParams().reasoning_effort)
+    .toBe("high");
+});
+
+test("buildModel passes reasoning_effort to OpenAI Responses API", () => {
+  setEnv("TEST_OPENAI_KEY", "test-key");
+  const settings = makeSettings("responses");
+  settings.model.model = "gpt-5";
+  settings.model.reasoning_effort = "low";
+  const model = buildModel(settings);
+
+  expect(model).toBeInstanceOf(ChatOpenAIResponses);
+  expect((model as ChatOpenAIResponses).invocationParams().reasoning).toEqual({
+    effort: "low",
+  });
+});
+
 test("normalizes missing Responses API output_text annotations", () => {
   const response = {
     output: [
