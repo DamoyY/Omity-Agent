@@ -3,6 +3,8 @@ import { Command } from "@langchain/langgraph";
 import type { QueueItem } from "../types";
 import type { HostContext } from "./context";
 import { contentToText } from "./content";
+import { isModelNetworkError } from "./network";
+import { waitBeforeModelNetworkRetry } from "./retry";
 import { handleStreamEvent } from "./stream";
 import { sleep } from "./time";
 
@@ -44,12 +46,40 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     recursionLimit: ctx.settings.host.recursionLimit,
     interruptAfter: ["model_request", "tools"],
   };
+  let modelNetworkRetry = 0;
   while (!ctx.signal.stopping) {
-    const stream = await ctx.graph.stream(input, {
-      ...config,
-      streamMode: ["messages", "updates", "debug"],
-    });
-    for await (const event of stream) handleStreamEvent(ctx, event);
+    try {
+      const stream = await ctx.graph.stream(input, {
+        ...config,
+        streamMode: ["messages", "updates", "debug"],
+      });
+      for await (const event of stream) handleStreamEvent(ctx, event);
+      modelNetworkRetry = 0;
+    } catch (error) {
+      if (!isModelNetworkError(error) || ctx.signal.stopping) {
+        throw error;
+      }
+      modelNetworkRetry += 1;
+      const shouldRetry = await waitBeforeModelNetworkRetry(
+        ctx,
+        run,
+        error,
+        modelNetworkRetry,
+        {
+          stop: () => setRunStatus(ctx, run, "paused"),
+          pause: async () => {
+            setRunStatus(ctx, run, "paused");
+            return waitIfPaused(ctx, run);
+          },
+          cancel: async () => {
+            await cancelRun(ctx, run);
+            throw new CanceledRun("运行已取消");
+          },
+        },
+      );
+      if (!shouldRetry) return;
+      continue;
+    }
     const control = ctx.db.control(ctx.sessionId);
     if (control === "cancel") {
       await cancelRun(ctx, run);

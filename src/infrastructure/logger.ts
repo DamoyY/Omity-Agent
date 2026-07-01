@@ -68,7 +68,9 @@ export class Logger {
     const prefix = this.prefix(meta);
     console.log(`${prefix}${"  ".repeat(this.indent)}${message}`);
     for (const line of formatData(data)) {
-      console.log(`${this.continuationPrefix()}${"  ".repeat(this.indent)}${line}`);
+      console.log(
+        `${this.continuationPrefix()}${"  ".repeat(this.indent)}${line}`,
+      );
     }
   }
 
@@ -120,8 +122,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 function isScalar(value: unknown) {
   return (
-    value === null ||
-    ["string", "number", "boolean"].includes(typeof value)
+    value === null || ["string", "number", "boolean"].includes(typeof value)
   );
 }
 
