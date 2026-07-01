@@ -1,5 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
-import { expandEnvPlaceholders } from "../src/infrastructure/mcp";
+import {
+  expandEnvPlaceholders,
+  normalizeMcpServers,
+} from "../src/infrastructure/mcp";
 
 const savedEnv = new Map<string, string | undefined>();
 
@@ -64,4 +67,31 @@ test("mcp config reports missing env placeholders", () => {
   ).toThrow(
     "MCP 配置 settings/mcp.yaml.env.API_KEY 引用了未设置的环境变量 MISSING_MCP_KEY",
   );
+});
+
+test("mcp stdio config allows omitted or blank args", () => {
+  expect(
+    normalizeMcpServers({
+      omitted: {
+        transport: "stdio",
+        command: "server.exe",
+      },
+      blank: {
+        transport: "stdio",
+        command: "server.exe",
+        args: null,
+      },
+    }),
+  ).toEqual({
+    omitted: {
+      transport: "stdio",
+      command: "server.exe",
+      args: [],
+    },
+    blank: {
+      transport: "stdio",
+      command: "server.exe",
+      args: [],
+    },
+  });
 });

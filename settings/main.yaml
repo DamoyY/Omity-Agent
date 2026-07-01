@@ -8,8 +8,8 @@ model:
   # 可选 responses 或 completions；OpenAI-compatible 网关通常使用 completions。
   api: responses
   model: gpt-5.5
-  apiKeyEnv: RIGHT_CODE
-  baseURL: https://www.right.codes/codex/v1/
+  apiKeyEnv: 78CODE
+  baseURL: https://api.78code.cc/v1/
   maxRetries: 5
   timeoutMs: 120000
 
