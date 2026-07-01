@@ -47,13 +47,17 @@ function makeSession(sessionId: string) {
     join(settingsDir, "main.yaml"),
     "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
   );
-  writeFileSync(
-    join(settingsDir, "prompts.yaml"),
-    "agent:\n  systemPrompt: test\nskills:\n  usagePrompt: use skills\n",
-  );
+  writePrompts(settingsDir);
   const paths = sessionPaths(loadSettings(root), sessionId);
   const db = new AgentDatabase(paths.appDb);
   db.createSession(sessionId);
   db.close();
   return { dbPath: paths.appDb, root };
+}
+
+function writePrompts(settingsDir: string) {
+  const promptsDir = join(settingsDir, "prompts");
+  mkdirSync(promptsDir);
+  writeFileSync(join(promptsDir, "system.md"), "test");
+  writeFileSync(join(promptsDir, "skills.md"), "use skills");
 }

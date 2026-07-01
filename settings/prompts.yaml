@@ -1,8 +1,0 @@
-# Agent 的系统提示词。
-agent:
-  systemPrompt: 你是一位通用智能体，与用户共同操作同一台计算机。
-
-# Skills 使用方法提示词；程序会在后面追加当前启用的 Skills 列表。
-skills:
-  usagePrompt: |-
-    A skill is a set of instructions provided through a `SKILL.md` source. Below is the list of skills that can be used. Each entry includes a name, description, and source locator. `file` locators are on the host filesystem, `environment resource` locators are owned by an execution environment, `orchestrator resource` locators are opaque non-filesystem resources, and `custom resource` locators use their provider's access mechanism.

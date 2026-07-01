@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 import type { Settings } from "../types";
@@ -46,21 +46,10 @@ const mainSchema = z.object({
   }),
 });
 
-const promptsSchema = z.object({
-  agent: z.object({
-    systemPrompt: z.string(),
-  }),
-  skills: z.object({
-    usagePrompt: z.string().min(1),
-  }),
-});
-
 export function loadSettings(root = process.cwd()): Settings {
   const settingsDir = resolve(root, "settings");
   const main = mainSchema.parse(readYaml(resolve(settingsDir, "main.yaml")));
-  const prompts = promptsSchema.parse(
-    readYaml(resolve(settingsDir, "prompts.yaml")),
-  );
+  const promptsDir = resolve(settingsDir, "prompts");
   const dataDir = isAbsolute(main.paths.dataDir)
     ? main.paths.dataDir
     : resolve(root, main.paths.dataDir);
@@ -68,8 +57,14 @@ export function loadSettings(root = process.cwd()): Settings {
   mkdirSync(dataDir, { recursive: true });
   return {
     ...main,
-    agent: prompts.agent,
-    skills: { ...main.skills, ...prompts.skills, directory: skillsDirectory },
+    agent: {
+      systemPrompt: readPrompt(join(promptsDir, "system.md")),
+    },
+    skills: {
+      ...main.skills,
+      usagePrompt: readPrompt(join(promptsDir, "skills.md"), { nonEmpty: true }),
+      directory: skillsDirectory,
+    },
     paths: { dataDir },
   };
 }
@@ -98,6 +93,14 @@ export function safeId(value: string) {
 
 function readYaml(path: string) {
   return YAML.parse(readFileSync(path, "utf8"));
+}
+
+function readPrompt(path: string, options: { nonEmpty?: boolean } = {}) {
+  const content = readFileSync(path, "utf8").trimEnd();
+  if (options.nonEmpty && content.length === 0) {
+    throw new Error(`提示词文件不能为空：${path}`);
+  }
+  return content;
 }
 
 function resolveConfigPath(root: string, path: string) {
