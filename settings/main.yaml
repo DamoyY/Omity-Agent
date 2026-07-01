@@ -28,6 +28,6 @@ logging:
 # Skills 控制；directory 用于读取 Skill 子目录中的 SKILL.md。
 skills:
   enabled: true
-  directory: ~/agents/skills
+  directory: ~/.agents/skills
   # 未列出的 Skill 默认启用；设置为 false 可单独关闭。
   skillEnabled: {}

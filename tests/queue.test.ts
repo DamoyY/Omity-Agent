@@ -125,7 +125,7 @@ function makeSettings(): Settings {
     },
     skills: {
       enabled: false,
-      directory: "~/agents/skills",
+      directory: "~/.agents/skills",
       usagePrompt: "use skills",
       skillEnabled: {},
     },

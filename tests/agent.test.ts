@@ -51,7 +51,7 @@ function makeSettings(api: Settings["model"]["api"]): Settings {
     },
     skills: {
       enabled: false,
-      directory: "~/agents/skills",
+      directory: "~/.agents/skills",
       usagePrompt: "use skills",
       skillEnabled: {},
     },
