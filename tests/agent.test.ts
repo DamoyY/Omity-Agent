@@ -1,6 +1,10 @@
 import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
 import { afterEach, expect, test } from "bun:test";
-import { buildModel } from "../src/agent";
+import {
+  buildModel,
+  normalizeResponsesPayload,
+  normalizeResponsesStreamEvent,
+} from "../src/agent";
 import type { Settings } from "../src/types";
 
 const savedEnv = new Map<string, string | undefined>();
@@ -70,4 +74,53 @@ test("buildModel selects OpenAI Responses API", () => {
   expect(buildModel(makeSettings("responses"))).toBeInstanceOf(
     ChatOpenAIResponses,
   );
+});
+
+test("normalizes missing Responses API output_text annotations", () => {
+  const response = {
+    output: [
+      {
+        type: "message",
+        content: [{ type: "output_text", text: "hello" }],
+      },
+    ],
+  };
+
+  expect(normalizeResponsesPayload(response as unknown)).toEqual({
+    output: [
+      {
+        type: "message",
+        content: [{ type: "output_text", text: "hello", annotations: [] }],
+      },
+    ],
+  });
+});
+
+test("normalizes completed Responses API stream events", () => {
+  const event = {
+    type: "response.completed",
+    response: {
+      output: [
+        {
+          type: "message",
+          content: [{ type: "output_text", text: "hello" }],
+        },
+      ],
+    },
+  };
+
+  const normalized = normalizeResponsesStreamEvent(
+    event as Parameters<typeof normalizeResponsesStreamEvent>[0],
+  );
+  expect(normalized as unknown).toEqual({
+    type: "response.completed",
+    response: {
+      output: [
+        {
+          type: "message",
+          content: [{ type: "output_text", text: "hello", annotations: [] }],
+        },
+      ],
+    },
+  });
 });

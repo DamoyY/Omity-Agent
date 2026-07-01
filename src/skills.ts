@@ -68,8 +68,8 @@ function parseSkillMeta(content: string, source: string): SkillMeta {
 
 function resolveUserPath(path: string) {
   const expanded =
-    path === "~" || path.startsWith("~/") || path.startsWith("~\\") ?
-      join(homedir(), path.slice(2))
-    : path;
+    path === "~" || path.startsWith("~/") || path.startsWith("~\\")
+      ? join(homedir(), path.slice(2))
+      : path;
   return isAbsolute(expanded) ? expanded : resolve(process.cwd(), expanded);
 }

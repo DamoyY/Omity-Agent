@@ -81,7 +81,9 @@ export async function loadMcp(root: string, logger: Logger) {
     mcpServers?: Record<string, unknown>;
     servers?: Record<string, unknown>;
   };
-  const mcpServers = normalizeMcpServers(parsed.mcpServers ?? parsed.servers ?? {});
+  const mcpServers = normalizeMcpServers(
+    parsed.mcpServers ?? parsed.servers ?? {},
+  );
   const names = Object.keys(mcpServers);
   if (names.length === 0) {
     logger.info("MCP 未配置服务器，Agent 将不带工具运行");
@@ -149,7 +151,9 @@ function flattenBestIssues(issues: ZodIssueLike[]): ZodIssueLike[] {
     const candidates = issue.unionErrors
       .map((unionError) => flattenBestIssues(unionError.issues ?? []))
       .filter((candidate) => candidate.length > 0);
-    const best = candidates.toSorted((left, right) => left.length - right.length)[0];
+    const best = candidates.toSorted(
+      (left, right) => left.length - right.length,
+    )[0];
     return best ?? [issue];
   });
 }
