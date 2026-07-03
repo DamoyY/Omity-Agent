@@ -25,7 +25,7 @@ mcpServers:
       - ${TINYFISH_API_KEY}
   terminal:
     transport: stdio
-    command: F:/workspace/shell-mcp/target/release/shell-mcp-pty.exe
+    command: F:/workspace/FuncTerm/target/release/functerm.exe
     args: ["mcp"]
   diff:
     transport: stdio

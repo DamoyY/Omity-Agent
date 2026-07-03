@@ -47,23 +47,28 @@ const mainSchema = z.object({
 });
 
 export function loadSettings(root = process.cwd()): Settings {
-  const settingsDir = resolve(root, "settings");
+  const cwd = resolve(root);
+  const settingsDir = resolve(cwd, "settings");
   const main = mainSchema.parse(readYaml(resolve(settingsDir, "main.yaml")));
   const promptsDir = resolve(settingsDir, "prompts");
+  const promptContext = { cwd };
   const dataDir = isAbsolute(main.paths.dataDir)
     ? main.paths.dataDir
-    : resolve(root, main.paths.dataDir);
-  const skillsDirectory = resolveConfigPath(root, main.skills.directory);
+    : resolve(cwd, main.paths.dataDir);
+  const skillsDirectory = resolveConfigPath(cwd, main.skills.directory);
   mkdirSync(dataDir, { recursive: true });
   return {
     ...main,
     agent: {
-      systemPrompt: readPrompt(join(promptsDir, "system.md")),
+      systemPrompt: readPrompt(join(promptsDir, "system.md"), {
+        context: promptContext,
+      }),
     },
     skills: {
       ...main.skills,
       usagePrompt: readPrompt(join(promptsDir, "skills.md"), {
         nonEmpty: true,
+        context: promptContext,
       }),
       directory: skillsDirectory,
     },
@@ -97,12 +102,26 @@ function readYaml(path: string) {
   return YAML.parse(readFileSync(path, "utf8"));
 }
 
-function readPrompt(path: string, options: { nonEmpty?: boolean } = {}) {
-  const content = readFileSync(path, "utf8").trimEnd();
+function readPrompt(
+  path: string,
+  options: { context: PromptContext; nonEmpty?: boolean },
+) {
+  const content = expandPromptPlaceholders(
+    readFileSync(path, "utf8").trimEnd(),
+    options.context,
+  );
   if (options.nonEmpty && content.length === 0) {
     throw new Error(`提示词文件不能为空：${path}`);
   }
   return content;
+}
+
+type PromptContext = {
+  cwd: string;
+};
+
+function expandPromptPlaceholders(content: string, context: PromptContext) {
+  return content.replaceAll("${cwd}", context.cwd);
 }
 
 function resolveConfigPath(root: string, path: string) {
