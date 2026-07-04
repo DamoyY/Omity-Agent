@@ -7,7 +7,7 @@ import { BunSqliteSaver } from "./checkpointer";
 import { buildSkillsMessage } from "./skills";
 import type { Settings } from "./types";
 
-export function buildModel(settings: Settings) {
+export function buildModel(settings: Settings, instructions?: string) {
   const apiKey = process.env[settings.model.apiKeyEnv];
   if (!apiKey) {
     throw new Error(`缺少环境变量 ${settings.model.apiKeyEnv}`);
@@ -29,7 +29,10 @@ export function buildModel(settings: Settings) {
       : { reasoning: { effort: settings.model.reasoning_effort } }),
   };
   if (settings.model.api === "responses") {
-    return new CompatibleChatOpenAIResponses(fields);
+    return new CompatibleChatOpenAIResponses({
+      ...fields,
+      ...(instructions ? { modelKwargs: { instructions } } : {}),
+    });
   }
   return new ChatOpenAICompletions(fields);
 }
@@ -41,14 +44,34 @@ export function buildGraph(
 ) {
   const checkpointer = new BunSqliteSaver(checkpointPath);
   const skillsMessage = buildSkillsMessage(settings);
+  const responseInstructions = buildResponsesInstructions(
+    settings.agent.systemPrompt,
+    skillsMessage,
+  );
+  const usesResponsesInstructions = settings.model.api === "responses";
   const graph = createAgent({
-    model: buildModel(settings),
+    model: buildModel(
+      settings,
+      usesResponsesInstructions ? responseInstructions : undefined,
+    ),
     tools,
-    systemPrompt: settings.agent.systemPrompt,
-    middleware: skillsMessage ? [createSkillsMiddleware(skillsMessage)] : [],
+    ...(usesResponsesInstructions
+      ? {}
+      : { systemPrompt: settings.agent.systemPrompt }),
+    middleware:
+      skillsMessage && !usesResponsesInstructions
+        ? [createSkillsMiddleware(skillsMessage)]
+        : [],
     checkpointer,
   });
   return { graph, checkpointer };
+}
+
+export function buildResponsesInstructions(
+  systemPrompt: string,
+  skillsMessage: string | null | undefined,
+) {
+  return [systemPrompt, skillsMessage].filter(Boolean).join("\n\n");
 }
 
 export function createSkillsMiddleware(skillsMessage: string) {

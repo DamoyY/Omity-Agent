@@ -2,6 +2,7 @@ import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
 import { afterEach, expect, test } from "bun:test";
 import {
   buildModel,
+  buildResponsesInstructions,
   normalizeResponsesPayload,
   normalizeResponsesStreamEvent,
 } from "../src/agent";
@@ -111,6 +112,22 @@ test("buildModel requests encrypted reasoning from OpenAI Responses API", () => 
   expect((model as ChatOpenAIResponses).invocationParams().include).toContain(
     "reasoning.encrypted_content",
   );
+});
+
+test("buildModel passes instructions to OpenAI Responses API", () => {
+  setEnv("TEST_OPENAI_KEY", "test-key");
+  const model = buildModel(makeSettings("responses"), "system\n\nskills");
+
+  expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe(
+    "system\n\nskills",
+  );
+});
+
+test("buildResponsesInstructions appends skills after system prompt", () => {
+  expect(buildResponsesInstructions("system", "skills")).toBe(
+    "system\n\nskills",
+  );
+  expect(buildResponsesInstructions("system", "")).toBe("system");
 });
 
 test("normalizes missing Responses API output_text annotations", () => {
