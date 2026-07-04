@@ -28,6 +28,7 @@ const retryableMessageParts = [
   "terminated",
   "tls",
   "timeout",
+  "unexpected eof",
 ];
 
 export function isModelNetworkError(error: unknown): boolean {

@@ -14,6 +14,7 @@ test("detects retryable model network errors", () => {
   expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
   expect(isModelNetworkError({ name: "TimeoutError" })).toBe(true);
   expect(isModelNetworkError({ cause: { code: "ENOTFOUND" } })).toBe(true);
+  expect(isModelNetworkError(new Error("Unexpected EOF"))).toBe(true);
 });
 
 test("does not retry user abort or API validation errors", () => {

@@ -142,6 +142,7 @@ function consumeBoundaryAppends(
 }
 
 async function waitIfPaused(ctx: HostContext, run: QueueRun) {
+  let pauseLogged = false;
   while (true) {
     if (ctx.signal.stopping) {
       setRunStatus(ctx, run, "paused");
@@ -166,9 +167,12 @@ async function waitIfPaused(ctx: HostContext, run: QueueRun) {
       return true;
     }
     setRunStatus(ctx, run, "paused");
-    ctx.logger.info("暂停中，等待 resume 或 cancel", {
-      queueId: run.items[0].id,
-    });
+    if (!pauseLogged) {
+      ctx.logger.info("暂停中，等待 resume 或 cancel", {
+        queueId: run.items[0].id,
+      });
+      pauseLogged = true;
+    }
     await sleep(ctx.settings.host.pausePollMs);
   }
 }

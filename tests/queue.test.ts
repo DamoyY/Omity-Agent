@@ -13,8 +13,12 @@ import type { HostContext } from "../src/runtime/context";
 import type { Settings } from "../src/types";
 
 const dirs: string[] = [];
+const logs: string[] = [];
+const originalLog = console.log;
 
 afterEach(() => {
+  console.log = originalLog;
+  logs.length = 0;
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -98,10 +102,49 @@ test("ctrl-c while paused stops host without ending pause", async () => {
   db.close();
 });
 
+test("pause wait message is logged once per pause", async () => {
+  console.log = (message?: unknown) => {
+    logs.push(String(message));
+  };
+
+  const db = makeDb();
+  db.resetSession("123");
+  db.appendUser("123", "暂停中的输入");
+  db.setControl("123", "pause");
+  const item = db.nextQueue("123");
+  const graph = {
+    stream: async function* () {},
+    getState: async () => ({
+      values: { messages: [new AIMessage("完成")] },
+      next: [],
+    }),
+  };
+  const context = makeContext(db, graph);
+  context.logger = new Logger("info");
+  context.settings.logging.level = "info";
+  context.settings.host.pausePollMs = 1;
+
+  try {
+    setTimeout(() => db.setControl("123", "running"), 10);
+    await processQueue(context, item!);
+
+    const pauseLogs = logs.filter((line) =>
+      stripAnsi(line).includes("暂停中，等待 resume 或 cancel"),
+    );
+    expect(pauseLogs).toHaveLength(1);
+  } finally {
+    db.close();
+  }
+});
+
 function makeDb() {
   const dir = mkdtempSync(join(tmpdir(), "agent-queue-"));
   dirs.push(dir);
   return new AgentDatabase(join(dir, "app.sqlite"));
+}
+
+function stripAnsi(value: string) {
+  return value.replace(/\x1B\[[0-9;]*m/g, "");
 }
 
 function makeContext(db: AgentDatabase, graph: unknown): HostContext {
