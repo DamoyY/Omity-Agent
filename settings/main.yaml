@@ -1,6 +1,6 @@
 # SQL 文件、LangGraph checkpoint 与运行日志的根目录。
 paths:
-  dataDir: ./data
+  dataDir: ${appData}/omity-agent
 
 # 模型配置；默认兼容 OpenAI 与 OpenAI-compatible 网关。
 model:

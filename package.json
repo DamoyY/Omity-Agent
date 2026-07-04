@@ -1,5 +1,5 @@
 {
-  "name": "langgraph-bun-agent",
+  "name": "omity-agent",
   "module": "src/cli.ts",
   "type": "module",
   "private": true,
@@ -8,7 +8,7 @@
   },
   "oclif": {
     "bin": "agent",
-    "dirname": "langgraph-bun-agent",
+    "dirname": "omity-agent",
     "commands": "./src/commands",
     "topicSeparator": " ",
     "topics": {

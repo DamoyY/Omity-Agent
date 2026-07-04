@@ -55,9 +55,7 @@ export function loadSettings(root = process.cwd()): Settings {
   const main = mainSchema.parse(readYaml(resolve(settingsDir, "main.yaml")));
   const promptsDir = resolve(settingsDir, "prompts");
   const promptContext = { cwd };
-  const dataDir = isAbsolute(main.paths.dataDir)
-    ? main.paths.dataDir
-    : resolve(cwd, main.paths.dataDir);
+  const dataDir = resolveConfigPath(cwd, main.paths.dataDir);
   const skillsDirectory = resolveConfigPath(cwd, main.skills.directory);
   mkdirSync(dataDir, { recursive: true });
   return {
@@ -128,9 +126,26 @@ function expandPromptPlaceholders(content: string, context: PromptContext) {
 }
 
 function resolveConfigPath(root: string, path: string) {
+  const withAppData = path.replaceAll("${appData}", appDataRoot());
   const expanded =
-    path === "~" || path.startsWith("~/") || path.startsWith("~\\")
-      ? resolve(homedir(), path.slice(2))
-      : path;
-  return isAbsolute(expanded) ? expanded : resolve(root, expanded);
+    withAppData === "~" ||
+    withAppData.startsWith("~/") ||
+    withAppData.startsWith("~\\")
+      ? resolve(homedir(), withAppData.slice(2))
+      : withAppData;
+  return isAbsolute(expanded) ? resolve(expanded) : resolve(root, expanded);
+}
+
+export function appDataRoot() {
+  if (process.platform === "win32") {
+    const path = process.env["APPDATA"];
+    if (!path) {
+      throw new Error("缺少环境变量 APPDATA，无法定位用户 AppData 目录");
+    }
+    return path;
+  }
+  if (process.platform === "darwin") {
+    return join(homedir(), "Library", "Application Support");
+  }
+  return process.env["XDG_DATA_HOME"] ?? join(homedir(), ".local", "share");
 }
