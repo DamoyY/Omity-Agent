@@ -43,6 +43,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       : null;
   const config = {
     configurable: { thread_id: run.threadId },
+    context: { sessionId: ctx.sessionId },
     recursionLimit: ctx.settings.host.recursionLimit,
     interruptAfter: ["model_request", "tools"],
   };

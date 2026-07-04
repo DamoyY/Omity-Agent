@@ -26,6 +26,10 @@ logging:
   level: debug
   streamTokens: true
 
+# 工具输出超过该 token 数时写入文件，仅把文件路径发送回模型。
+toolOutput:
+  maxTokens: 8192
+
 # Skills 控制；directory 用于读取 Skill 子目录中的 SKILL.md。
 skills:
   enabled: true

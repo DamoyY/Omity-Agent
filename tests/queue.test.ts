@@ -182,6 +182,9 @@ function makeSettings(): Settings {
       level: "error",
       streamTokens: false,
     },
+    toolOutput: {
+      maxTokens: 8192,
+    },
     agent: {
       systemPrompt: "test",
     },

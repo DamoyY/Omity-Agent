@@ -39,6 +39,9 @@ const mainSchema = z.object({
     level: z.enum(["debug", "info", "warn", "error"]),
     streamTokens: z.boolean(),
   }),
+  toolOutput: z.object({
+    maxTokens: z.number().int().positive(),
+  }),
   skills: z.object({
     enabled: z.boolean(),
     directory: z.string().min(1),

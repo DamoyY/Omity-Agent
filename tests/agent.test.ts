@@ -51,6 +51,9 @@ function makeSettings(api: Settings["model"]["api"]): Settings {
       level: "debug",
       streamTokens: false,
     },
+    toolOutput: {
+      maxTokens: 8192,
+    },
     agent: {
       systemPrompt: "test",
     },

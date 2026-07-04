@@ -13,7 +13,7 @@
 - For structured data, you use structured APIs or parsers instead of ad hoc string manipulation whenever the codebase or standard toolchain gives you a reasonable option.
 - 当前可能开启了系统代理，且可能开启了 TUN。
 - 由于连接不到客户端你将无法进行下一步操作，所以请避免运行以下几类命令：
-  * 有可能终止 `codex.exe` 进程的。
-  * 有可能导致设备无法连接公网的。
-  * 会导致系统代理异常的。
+  - 有可能终止 `codex.exe` 进程的。
+  - 有可能导致设备无法连接公网的。
+  - 会导致系统代理异常的。
 - 用户当前所处的目录：${cwd}

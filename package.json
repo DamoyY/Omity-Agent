@@ -41,6 +41,7 @@
     "@langchain/openai": "latest",
     "@modelcontextprotocol/sdk": "latest",
     "@oclif/core": "latest",
+    "js-tiktoken": "latest",
     "langchain": "latest",
     "yaml": "latest",
     "zod": "latest"

@@ -4,6 +4,7 @@ import { createAgent, createMiddleware } from "langchain";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { OpenAI } from "openai";
 import { BunSqliteSaver } from "./checkpointer";
+import { createLargeToolOutputMiddleware } from "./runtime/largeOutput";
 import { buildSkillsMessage } from "./skills";
 import type { Settings } from "./types";
 
@@ -49,6 +50,12 @@ export function buildGraph(
     skillsMessage,
   );
   const usesResponsesInstructions = settings.model.api === "responses";
+  const middleware = [
+    createLargeToolOutputMiddleware(settings),
+    ...(skillsMessage && !usesResponsesInstructions
+      ? [createSkillsMiddleware(skillsMessage)]
+      : []),
+  ];
   const graph = createAgent({
     model: buildModel(
       settings,
@@ -58,10 +65,7 @@ export function buildGraph(
     ...(usesResponsesInstructions
       ? {}
       : { systemPrompt: settings.agent.systemPrompt }),
-    middleware:
-      skillsMessage && !usesResponsesInstructions
-        ? [createSkillsMiddleware(skillsMessage)]
-        : [],
+    middleware,
     checkpointer,
   });
   return { graph, checkpointer };

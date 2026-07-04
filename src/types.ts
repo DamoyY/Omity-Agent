@@ -33,6 +33,9 @@ export type Settings = {
     level: LogLevel;
     streamTokens: boolean;
   };
+  toolOutput: {
+    maxTokens: number;
+  };
   agent: {
     systemPrompt: string;
   };
