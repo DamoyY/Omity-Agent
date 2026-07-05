@@ -6,14 +6,18 @@ import { Code } from "./ParkUI";
 
 const markdown = css({
   lineHeight: "1.7",
+  maxW: "full",
+  minW: 0,
   "& p": { mb: "3" },
   "& pre": {
     borderWidth: "1px",
     borderColor: "line",
+    maxW: "full",
     overflowX: "auto",
     p: "3",
   },
-  "& ul, & ol": { pl: "5", mb: "3" },
+  "& code": { wordBreak: "break-word" },
+  "& ul, & ol": { mb: "3", pl: "5" },
   "& a": { color: "text", textDecoration: "underline" },
   "& table": { borderCollapse: "collapse", w: "full" },
   "& th, & td": { borderWidth: "1px", borderColor: "line", p: "2" },

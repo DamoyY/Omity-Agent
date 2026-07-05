@@ -9,19 +9,30 @@ const details = css({
   color: "muted",
   fontFamily: "mono",
   fontSize: "sm",
+  maxW: "full",
   mt: "2",
+  minW: 0,
   p: "3",
+  w: "fit-content",
+  "& pre": {
+    maxW: "full",
+    m: 0,
+    overflowX: "auto",
+  },
 });
 
 const summary = css({
   cursor: "pointer",
+  maxW: "full",
 });
 
 const codeBlock = css({
   display: "block",
+  maxW: "full",
   overflowX: "auto",
   p: "3",
   whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
 });
 
 export function ToolCall({

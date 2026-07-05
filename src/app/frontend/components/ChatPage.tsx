@@ -32,8 +32,10 @@ const messageRoot = css({
   borderColor: "line",
   display: "grid",
   gap: "3",
+  justifyItems: "start",
   maxW: "52rem",
   mb: "4",
+  minW: 0,
   p: "4",
   w: "fit-content",
 });
