@@ -7,6 +7,10 @@ export type StopSignal = {
   stopping: boolean;
 };
 
+export type HostObserver = {
+  token(sessionId: string, queueId: number, text: string): void;
+};
+
 export type HostContext = {
   settings: Settings;
   logger: Logger;
@@ -15,4 +19,5 @@ export type HostContext = {
   checkpointer: BunSqliteSaver;
   sessionId: string;
   signal: StopSignal;
+  observer?: HostObserver;
 };

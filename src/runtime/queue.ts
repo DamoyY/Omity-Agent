@@ -56,7 +56,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         streamMode: ["messages", "updates", "debug"],
       });
       for await (const event of stream)
-        handleStreamEvent(ctx, event, streamLogState);
+        handleStreamEvent(ctx, event, streamLogState, item.id);
       modelNetworkRetry = 0;
     } catch (error) {
       if (!isModelNetworkError(error) || ctx.signal.stopping) {

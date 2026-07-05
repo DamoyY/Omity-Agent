@@ -31,9 +31,7 @@ test("settings yaml resolves AppData data directory", () => {
   withAppDataRoot(appData, () => {
     const settings = loadSettings(root);
     mkdirSync(settings.paths.dataDir, { recursive: true });
-    expect(settings.paths.dataDir).toBe(
-      resolve(appDataRoot(), "omity-agent"),
-    );
+    expect(settings.paths.dataDir).toBe(resolve(appDataRoot(), "omity-agent"));
     expect(settings.model.reasoning_effort).toBe("medium");
     expect(settings.toolOutput.maxTokens).toBe(8192);
     expect(settings.agent.systemPrompt).toBe("test");

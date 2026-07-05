@@ -173,6 +173,10 @@ export class AgentDatabase {
       .run(sessionId, level, category, message, JSON.stringify(payload));
   }
 
+  streamToken(sessionId: string, queueId: number, text: string) {
+    this.event(sessionId, "info", "stream", "token", { queueId, text });
+  }
+
   private requireSession(sessionId: string) {
     if (!this.hasSession(sessionId))
       throw new Error(`会话不存在：${sessionId}`);

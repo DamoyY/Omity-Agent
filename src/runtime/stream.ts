@@ -19,6 +19,7 @@ export function handleStreamEvent(
   ctx: HostContext,
   event: unknown,
   state = createStreamLogState(),
+  queueId?: number,
 ) {
   if (!Array.isArray(event) || event.length !== 2) {
     const delta = incrementalSummary(event, state);
@@ -31,6 +32,10 @@ export function handleStreamEvent(
     const text = contentToText(chunk?.content);
     if (text && ctx.settings.logging.streamTokens) {
       ctx.logger.token(text);
+    }
+    if (text && queueId !== undefined) {
+      ctx.db.streamToken(ctx.sessionId, queueId, text);
+      ctx.observer?.token(ctx.sessionId, queueId, text);
     }
     return;
   }

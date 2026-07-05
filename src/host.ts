@@ -9,14 +9,37 @@ import { AgentDatabase } from "./infrastructure/database";
 import { Logger } from "./infrastructure/logger";
 import { loadMcp } from "./infrastructure/mcp";
 import { hostLoop } from "./runtime/loop";
-import type { StopSignal } from "./runtime/context";
+import type { HostObserver, StopSignal } from "./runtime/context";
 
 export type HostMode = {
   kind: "new" | "load" | "overwrite";
   sessionId: string;
 };
 
-export async function runHost(mode: HostMode, root = process.cwd()) {
+export type HostRunOptions = {
+  observer?: HostObserver;
+  signal?: StopSignal;
+  wireSigint?: boolean;
+};
+
+export async function runHost(
+  mode: HostMode,
+  root = process.cwd(),
+  options: HostRunOptions = {},
+) {
+  const signal: StopSignal = options.signal ?? { stopping: false };
+  await runHostSession(mode, root, {
+    ...options,
+    signal,
+    wireSigint: options.wireSigint ?? true,
+  });
+}
+
+export async function runHostSession(
+  mode: HostMode,
+  root = process.cwd(),
+  options: HostRunOptions = {},
+) {
   const settings = loadSettings(root);
   const logger = new Logger(settings.logging.level);
   const paths =
@@ -37,11 +60,13 @@ export async function runHost(mode: HostMode, root = process.cwd()) {
     mcp.tools,
     paths.checkpointDb,
   );
-  const signal: StopSignal = { stopping: false };
-  process.on("SIGINT", () => {
-    signal.stopping = true;
-    logger.warn("收到 Ctrl+C，Host 将在当前边界停止");
-  });
+  const signal: StopSignal = options.signal ?? { stopping: false };
+  if (options.wireSigint ?? false) {
+    process.on("SIGINT", () => {
+      signal.stopping = true;
+      logger.warn("收到 Ctrl+C，Host 将在当前边界停止");
+    });
+  }
   try {
     await hostLoop({
       settings,
@@ -51,6 +76,7 @@ export async function runHost(mode: HostMode, root = process.cwd()) {
       checkpointer,
       sessionId: mode.sessionId,
       signal,
+      observer: options.observer,
     });
   } finally {
     await mcp.close();

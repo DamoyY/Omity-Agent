@@ -1,0 +1,22 @@
+{
+  "brand": "Omity",
+  "newSession": "新建会话",
+  "workspace": "工作目录",
+  "create": "创建",
+  "messagePlaceholder": "输入消息",
+  "send": "发送",
+  "empty": "选择或新建会话",
+  "noMessages": "没有消息",
+  "user": "用户",
+  "assistant": "模型",
+  "tool": "工具",
+  "toolCall": "工具调用",
+  "input": "输入",
+  "output": "输出",
+  "running": "运行中",
+  "idle": "空闲",
+  "pause": "暂停",
+  "resume": "继续",
+  "cancel": "取消",
+  "error": "请求失败"
+}

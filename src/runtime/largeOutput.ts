@@ -155,7 +155,9 @@ function isMcpCallToolResult(
 }
 
 function isMcpContentShape(value: unknown) {
-  return Array.isArray(value) || isMcpCallToolResult(value) || isTextContent(value);
+  return (
+    Array.isArray(value) || isMcpCallToolResult(value) || isTextContent(value)
+  );
 }
 
 function isTextContent(value: unknown): value is { text: string } {
