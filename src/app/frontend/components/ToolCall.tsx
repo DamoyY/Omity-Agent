@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { Message, ToolCall as ToolCallData } from "../services/client";
+import { Badge, Code } from "./ParkUI";
 
 const details = css({
   borderWidth: "1px",
@@ -14,11 +15,12 @@ const details = css({
 
 const summary = css({
   cursor: "pointer",
-  color: "text",
 });
 
-const pre = css({
+const codeBlock = css({
+  display: "block",
   overflowX: "auto",
+  p: "3",
   whiteSpace: "pre-wrap",
 });
 
@@ -33,14 +35,24 @@ export function ToolCall({
   return (
     <details className={details}>
       <summary className={summary}>
-        {t("toolCall")} · {call.name}
+        <Badge size="sm" variant="outline">
+          {t("toolCall")} · {call.name}
+        </Badge>
       </summary>
       <p>{t("input")}</p>
-      <pre className={pre}>{JSON.stringify(call.input, null, 2)}</pre>
+      <pre>
+        <Code className={codeBlock} size="sm" variant="outline">
+          {JSON.stringify(call.input, null, 2)}
+        </Code>
+      </pre>
       {output ? (
         <>
           <p>{t("output")}</p>
-          <pre className={pre}>{output.content}</pre>
+          <pre>
+            <Code className={codeBlock} size="sm" variant="outline">
+              {output.content}
+            </Code>
+          </pre>
         </>
       ) : null}
     </details>

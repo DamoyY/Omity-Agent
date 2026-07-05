@@ -5,16 +5,10 @@ const execFileAsync = promisify(execFile);
 
 const windowsFolderPicker = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-Add-Type -AssemblyName System.Windows.Forms
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = '选择工作目录'
-$dialog.ShowNewFolderButton = $true
-try {
-  if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-    [Console]::WriteLine($dialog.SelectedPath)
-  }
-} finally {
-  $dialog.Dispose()
+$shell = New-Object -ComObject Shell.Application
+$folder = $shell.BrowseForFolder(0, '选择工作目录', 0x41)
+if ($null -ne $folder) {
+  [Console]::WriteLine($folder.Self.Path)
 }
 `;
 

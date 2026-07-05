@@ -1,11 +1,13 @@
-import { Pause, Play, Square } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
+import { css, cx } from "styled-system/css";
 import type { Message, QueueItem, StreamEvent } from "../services/client";
-import { button, message, scroll } from "../design";
+import { scroll } from "../design";
+import { buildView } from "./chatView";
 import { Composer } from "./Composer";
 import { MarkdownView } from "./MarkdownView";
+import { Button } from "./ParkUI";
 import { ToolCall } from "./ToolCall";
 
 const header = css({
@@ -14,7 +16,7 @@ const header = css({
   display: "flex",
   gap: "2",
   justifyContent: "flex-end",
-  p: "4",
+  p: "3",
 });
 
 const empty = css({
@@ -24,7 +26,24 @@ const empty = css({
   placeItems: "center",
 });
 
-const label = css({
+const messageRoot = css({
+  bg: "panel",
+  borderWidth: "1px",
+  borderColor: "line",
+  display: "grid",
+  gap: "3",
+  maxW: "52rem",
+  mb: "4",
+  p: "4",
+  w: "fit-content",
+});
+
+const userMessage = css({
+  ml: "auto",
+  textAlign: "right",
+});
+
+const roleLabel = css({
   color: "muted",
   fontSize: "xs",
 });
@@ -51,23 +70,19 @@ export function ChatPage({
     () => buildView(messages, queue, events),
     [messages, queue, events],
   );
+  const paused = queue.some((item) => item.status === "paused");
   if (!activeId) return <div className={empty}>{t("empty")}</div>;
   return (
     <>
       {canControl ? (
         <header className={header}>
-          <button className={button()} onClick={() => void onControl("pause")}>
-            <Pause size={14} /> {t("pause")}
-          </button>
-          <button
-            className={button()}
-            onClick={() => void onControl("running")}
+          <Button
+            onClick={() => void onControl(paused ? "running" : "pause")}
+            variant="outline"
           >
-            <Play size={14} /> {t("resume")}
-          </button>
-          <button className={button()} onClick={() => void onControl("cancel")}>
-            <Square size={14} /> {t("cancel")}
-          </button>
+            {paused ? <Play size={14} /> : <Pause size={14} />}
+            {paused ? t("resume") : t("pause")}
+          </Button>
         </header>
       ) : null}
       <section className={scroll}>
@@ -75,91 +90,26 @@ export function ChatPage({
           <div className={empty}>{t("noMessages")}</div>
         ) : null}
         {view.map((item) => (
-          <article className={message({ role: item.role })} key={item.key}>
-            <div className={label}>{t(item.role)}</div>
-            <MarkdownView content={item.content} />
-            {item.toolCalls.map((call) => (
-              <ToolCall
-                call={call}
-                key={call.id}
-                output={item.outputs.get(call.id)}
-              />
-            ))}
+          <article
+            className={cx(messageRoot, item.role === "user" && userMessage)}
+            key={item.key}
+          >
+            <div className={roleLabel}>{t(item.role)}</div>
+            {item.parts.map((part, index) =>
+              part.type === "content" ? (
+                <MarkdownView content={part.content} key={`content-${index}`} />
+              ) : (
+                <ToolCall
+                  call={part.call}
+                  key={part.call.id}
+                  output={item.outputs.get(part.call.id)}
+                />
+              ),
+            )}
           </article>
         ))}
       </section>
       <Composer disabled={!activeId} onSend={onSend} />
     </>
   );
-}
-
-type ViewMessage = Message & {
-  key: string;
-  outputs: Map<string, Message>;
-};
-
-function buildView(
-  messages: Message[],
-  queue: QueueItem[],
-  events: StreamEvent[],
-): ViewMessage[] {
-  const outputs = new Map(
-    messages
-      .filter((item) => item.role === "tool" && item.toolCallId)
-      .map((item) => [item.toolCallId!, item]),
-  );
-  const visible = messages
-    .filter((item) => item.role !== "tool")
-    .map((item) => ({ ...item, key: `message-${item.id}`, outputs }));
-  const knownQueue = new Set(messages.map((item) => item.queueId));
-  const syntheticUsers = queue
-    .filter((item) => item.status === "pending" && !knownQueue.has(item.id))
-    .map((item) =>
-      synthetic("user", item.content, `queue-${item.id}`, outputs),
-    );
-  const streaming = queue
-    .filter((item) => item.status === "running" || item.status === "paused")
-    .map((item) => streamMessage(item, events, outputs))
-    .filter((item) => item.content.length > 0);
-  return [...visible, ...syntheticUsers, ...streaming];
-}
-
-function streamMessage(
-  item: QueueItem,
-  events: StreamEvent[],
-  outputs: Map<string, Message>,
-): ViewMessage {
-  const content = events
-    .map((event) => eventText(event, item.id))
-    .filter((text) => text.length > 0)
-    .join("");
-  return synthetic("assistant", content, `stream-${item.id}`, outputs);
-}
-
-function synthetic(
-  role: Message["role"],
-  content: string,
-  key: string,
-  outputs: Map<string, Message>,
-): ViewMessage {
-  return {
-    id: -1,
-    role,
-    content,
-    queueId: null,
-    toolCalls: [],
-    createdAt: 0,
-    key,
-    outputs,
-  };
-}
-
-function eventText(event: StreamEvent, queueId: number) {
-  if (!isRecord(event.payload) || event.payload["queueId"] !== queueId)
-    return "";
-  return typeof event.payload["text"] === "string" ? event.payload["text"] : "";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

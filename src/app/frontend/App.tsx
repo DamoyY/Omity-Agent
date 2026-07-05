@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cx } from "styled-system/css";
 import {
   bootstrap,
   createSession,
@@ -62,7 +63,7 @@ export function App() {
   }, [activeId, activeSession?.draft]);
 
   return (
-    <div className={layout}>
+    <div className={cx("dark", layout)}>
       <aside className={sidebar}>
         <Sidebar
           activeId={activeId}

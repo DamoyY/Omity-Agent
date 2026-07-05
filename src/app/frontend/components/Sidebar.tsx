@@ -1,9 +1,9 @@
 import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
+import { css, cx } from "styled-system/css";
 import type { SessionInfo } from "../services/client";
-import { button, panel, stack, textInput } from "../design";
+import { Button, Field, IconButton, Input } from "./ParkUI";
 
 type SessionView = SessionInfo & {
   draft?: boolean;
@@ -12,13 +12,29 @@ type SessionView = SessionInfo & {
 const title = css({
   fontSize: "md",
   fontWeight: "normal",
+  m: 0,
+});
+
+const panel = css({
+  borderBottomWidth: "1px",
+  borderBottomColor: "line",
+  p: "3",
 });
 
 const list = css({
+  alignContent: "start",
   display: "grid",
   gap: "2",
+  gridAutoRows: "max-content",
+  overflowX: "hidden",
   overflowY: "auto",
-  p: "4",
+  p: "3",
+});
+
+const itemTitle = css({
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 });
 
 const itemMeta = css({
@@ -30,27 +46,50 @@ const itemMeta = css({
 });
 
 const sessionRow = css({
+  alignItems: "start",
   display: "grid",
   gap: "2",
-  gridTemplateColumns: "1fr auto",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  minW: 0,
 });
 
 const pickerRow = css({
   display: "grid",
   gap: "2",
-  gridTemplateColumns: "1fr auto",
+  gridTemplateColumns: "1fr",
+  minW: 0,
 });
 
-const deleteButton = css({
-  alignItems: "center",
-  bg: "canvas",
-  borderWidth: "1px",
-  borderColor: "line",
-  color: "muted",
-  cursor: "pointer",
-  display: "flex",
-  px: "3",
-  _hover: { borderColor: "muted", color: "text" },
+const sessionButton = css({
+  alignItems: "stretch",
+  flexDirection: "column",
+  h: "auto",
+  justifyContent: "flex-start",
+  minW: 0,
+  overflow: "hidden",
+  py: "2",
+  textAlign: "left",
+});
+
+const activeSession = css({
+  outlineWidth: "1px",
+  outlineStyle: "solid",
+  outlineColor: "text",
+});
+
+const stack = css({
+  display: "grid",
+  gap: "2",
+});
+
+const fullButton = css({
+  justifyContent: "flex-start",
+  w: "full",
+});
+
+const pathInput = css({
+  minW: 0,
+  textOverflow: "ellipsis",
 });
 
 export function Sidebar({
@@ -87,12 +126,16 @@ export function Sidebar({
             void onCreate(workspace);
           }}
         >
-          <label>
-            <span className={itemMeta}>{t("workspace")}</span>
+          <Field.Root>
+            <Field.Label>{t("workspace")}</Field.Label>
             <span className={pickerRow}>
-              <input className={textInput} readOnly value={workspace} />
-              <button
-                className={button()}
+              <Input
+                className={pathInput}
+                value={workspace}
+                onChange={(event) => setWorkspace(event.currentTarget.value)}
+              />
+              <Button
+                className={fullButton}
                 disabled={picking}
                 onClick={async () => {
                   setPicking(true);
@@ -106,33 +149,38 @@ export function Sidebar({
                 type="button"
               >
                 <FolderOpen size={14} /> {t("chooseFolder")}
-              </button>
+              </Button>
             </span>
-          </label>
-          <button className={button()} type="submit">
-            <Plus size={14} /> {t("newSession")}
-          </button>
+          </Field.Root>
+          <Button className={fullButton} type="submit">
+            <Plus size={14} />
+            {t("newSession")}
+          </Button>
         </form>
       </section>
       <nav className={list}>
         {sessions.map((session) => (
           <div className={sessionRow} key={session.id}>
-            <button
-              className={button({ active: session.id === activeId })}
+            <Button
+              className={cx(
+                sessionButton,
+                session.id === activeId && activeSession,
+              )}
               onClick={() => onSelect(session.id)}
               type="button"
             >
-              <div>{session.draft ? t("newSession") : session.id}</div>
+              <div className={itemTitle}>
+                {session.draft ? t("newSession") : session.id}
+              </div>
               <div className={itemMeta}>{session.workspace}</div>
-            </button>
-            <button
+            </Button>
+            <IconButton
               aria-label={t("delete")}
-              className={deleteButton}
               onClick={() => void onDelete(session.id)}
               type="button"
             >
               <Trash2 size={14} />
-            </button>
+            </IconButton>
           </div>
         ))}
       </nav>
