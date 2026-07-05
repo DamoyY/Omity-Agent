@@ -51,7 +51,7 @@ export class AppController {
 
   createSession(workspace: string) {
     const root = resolve(workspace);
-    loadSettings(root);
+    loadSettings(this.appRoot, { cwd: root });
     const id = `web-${randomUUID()}`;
     const session = this.registry.add(id, root);
     this.startHost(id, root, "new");
@@ -62,35 +62,35 @@ export class AppController {
   sendMessage(sessionId: string, content: string) {
     const session = this.registry.require(sessionId);
     this.ensureHost(session.id, session.workspace);
-    const result = runClient({ sessionId, append: content }, session.workspace);
+    const result = runClient({ sessionId, append: content }, this.appRoot);
     this.hostErrors.delete(sessionId);
     this.registry.touch(sessionId);
     return result;
   }
 
   control(sessionId: string, control: Control) {
-    const session = this.registry.require(sessionId);
-    const result = runClient({ sessionId, control }, session.workspace);
+    this.registry.require(sessionId);
+    const result = runClient({ sessionId, control }, this.appRoot);
     this.registry.touch(sessionId);
     return result;
   }
 
   async deleteSession(sessionId: string) {
-    const session = this.registry.require(sessionId);
+    this.registry.require(sessionId);
     const running = this.hosts.get(sessionId);
     if (running) {
       running.signal.stopping = true;
       await running.done;
     }
-    deleteHostSession(sessionId, session.workspace);
+    deleteHostSession(sessionId, this.appRoot);
     this.hostErrors.delete(sessionId);
     this.registry.remove(sessionId);
     return { deleted: sessionId };
   }
 
   transcript(sessionId: string) {
-    const session = this.registry.require(sessionId);
-    const settings = loadSettings(session.workspace);
+    this.registry.require(sessionId);
+    const settings = loadSettings(this.appRoot);
     const paths = resolveSessionPaths(settings, sessionId);
     if (!existsSync(paths.appDb)) throw new Error(`会话不存在：${sessionId}`);
     const db = new AgentDatabase(paths.appDb);
@@ -112,7 +112,8 @@ export class AppController {
     kind: "new" | "load" | "overwrite",
   ) {
     const signal = { stopping: false };
-    const done = runHostSession({ kind, sessionId }, root, {
+    const done = runHostSession({ kind, sessionId }, this.appRoot, {
+      cwd: root,
       quiet: true,
       signal,
       observer: {

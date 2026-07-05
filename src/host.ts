@@ -17,6 +17,7 @@ export type HostMode = {
 };
 
 export type HostRunOptions = {
+  cwd?: string;
   observer?: HostObserver;
   quiet?: boolean;
   signal?: StopSignal;
@@ -41,7 +42,7 @@ export async function runHostSession(
   root = process.cwd(),
   options: HostRunOptions = {},
 ) {
-  const loadedSettings = loadSettings(root);
+  const loadedSettings = loadSettings(root, { cwd: options.cwd });
   const settings = options.quiet
     ? {
         ...loadedSettings,

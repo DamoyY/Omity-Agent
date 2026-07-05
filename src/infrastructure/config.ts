@@ -49,14 +49,22 @@ const mainSchema = z.object({
   }),
 });
 
-export function loadSettings(root = process.cwd()): Settings {
-  const cwd = resolve(root);
-  const settingsDir = resolve(cwd, "settings");
+export type LoadSettingsOptions = {
+  cwd?: string;
+};
+
+export function loadSettings(
+  root = process.cwd(),
+  options: LoadSettingsOptions = {},
+): Settings {
+  const configRoot = resolve(root);
+  const cwd = resolve(options.cwd ?? configRoot);
+  const settingsDir = resolve(configRoot, "settings");
   const main = mainSchema.parse(readYaml(resolve(settingsDir, "main.yaml")));
   const promptsDir = resolve(settingsDir, "prompts");
   const promptContext = { cwd };
-  const dataDir = resolveConfigPath(cwd, main.paths.dataDir);
-  const skillsDirectory = resolveConfigPath(cwd, main.skills.directory);
+  const dataDir = resolveConfigPath(configRoot, main.paths.dataDir);
+  const skillsDirectory = resolveConfigPath(configRoot, main.skills.directory);
   mkdirSync(dataDir, { recursive: true });
   return {
     ...main,

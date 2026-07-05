@@ -32,17 +32,23 @@ export function ToolCall({
   output?: Message;
 }) {
   const { t } = useTranslation();
+  const input = call.inputText ?? JSON.stringify(call.input, null, 2);
   return (
     <details className={details}>
       <summary className={summary}>
         <Badge size="sm" variant="outline">
           {t("toolCall")} · {call.name}
         </Badge>
+        {call.streaming ? (
+          <Badge size="sm" variant="outline">
+            {t("streaming")}
+          </Badge>
+        ) : null}
       </summary>
       <p>{t("input")}</p>
       <pre>
         <Code className={codeBlock} size="sm" variant="outline">
-          {JSON.stringify(call.input, null, 2)}
+          {input}
         </Code>
       </pre>
       {output ? (

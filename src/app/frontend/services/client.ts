@@ -18,8 +18,10 @@ export type Message = {
 
 export type ToolCall = {
   id: string;
+  inputText?: string;
   name: string;
   input: unknown;
+  streaming?: boolean;
 };
 
 export type QueueItem = {

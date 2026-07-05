@@ -10,6 +10,10 @@ import {
 import { toQueueItem, type QueueRow } from "./queueRows";
 import { migrationSql } from "./schema";
 
+export type StreamToolCallDelta = Partial<
+  Record<"args" | "id" | "name", string> & { index: number }
+>;
+
 export class AgentDatabase {
   readonly db: Database;
 
@@ -174,11 +178,22 @@ export class AgentDatabase {
   }
 
   streamToken(sessionId: string, queueId: number, text: string) {
-    this.event(sessionId, "info", "stream", "token", { queueId, text });
+    this.event(sessionId, "info", "stream", "token", {
+      kind: "assistant_text_delta",
+      queueId,
+      text,
+    });
+  }
+
+  streamToolCall(sessionId: string, queueId: number, call: StreamToolCallDelta) {
+    this.event(sessionId, "info", "stream", "tool_call", {
+      kind: "tool_call_delta",
+      queueId,
+      call,
+    });
   }
 
   private requireSession(sessionId: string) {
-    if (!this.hasSession(sessionId))
-      throw new Error(`会话不存在：${sessionId}`);
+    if (!this.hasSession(sessionId)) throw new Error(`会话不存在：${sessionId}`);
   }
 }

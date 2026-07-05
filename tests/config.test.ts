@@ -43,18 +43,21 @@ test("settings yaml resolves AppData data directory", () => {
 test("prompt files expand current working directory placeholder", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
   const settingsDir = join(root, "settings");
+  const workspace = join(root, "workspace");
   dirs.push(root);
   mkdirSync(settingsDir);
+  mkdirSync(workspace);
   writeFileSync(
     join(settingsDir, "main.yaml"),
     "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\ntoolOutput:\n  maxTokens: 8192\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
   );
   writePrompts(settingsDir, "workspace: ${cwd}", "skills from ${cwd}");
 
-  const settings = loadSettings(root);
+  const settings = loadSettings(root, { cwd: workspace });
 
-  expect(settings.agent.systemPrompt).toBe(`workspace: ${root}`);
-  expect(settings.skills.usagePrompt).toBe(`skills from ${root}`);
+  expect(settings.paths.dataDir).toBe(resolve(root, "data"));
+  expect(settings.agent.systemPrompt).toBe(`workspace: ${workspace}`);
+  expect(settings.skills.usagePrompt).toBe(`skills from ${workspace}`);
 });
 
 function writePrompts(

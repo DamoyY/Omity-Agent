@@ -1,3 +1,4 @@
+import { AIMessageChunk } from "@langchain/core/messages";
 import type { HostContext } from "./context";
 import { contentToText } from "./content";
 
@@ -29,6 +30,7 @@ export function handleStreamEvent(
   const [mode, payload] = event;
   if (mode === "messages") {
     const chunk = Array.isArray(payload) ? payload[0] : undefined;
+    if (!isAiChunk(chunk)) return;
     const text = contentToText(chunk?.content);
     if (text && ctx.settings.logging.streamTokens) {
       ctx.logger.token(text);
@@ -36,6 +38,9 @@ export function handleStreamEvent(
     if (text && queueId !== undefined) {
       ctx.db.streamToken(ctx.sessionId, queueId, text);
       ctx.observer?.token(ctx.sessionId, queueId, text);
+    }
+    for (const call of toolCallDeltas(chunk)) {
+      if (queueId !== undefined) ctx.db.streamToolCall(ctx.sessionId, queueId, call);
     }
     return;
   }
@@ -112,4 +117,21 @@ function stableValue(value: unknown): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isAiChunk(value: unknown) {
+  if (AIMessageChunk.isInstance(value)) return true;
+  return isRecord(value) && value["type"] === "ai";
+}
+
+function toolCallDeltas(chunk: unknown) {
+  if (!isRecord(chunk) || !Array.isArray(chunk["tool_call_chunks"])) {
+    return [];
+  }
+  return chunk["tool_call_chunks"].filter(isRecord).map((call) => ({
+    ...(typeof call["args"] === "string" ? { args: call["args"] } : {}),
+    ...(typeof call["id"] === "string" ? { id: call["id"] } : {}),
+    ...(typeof call["index"] === "number" ? { index: call["index"] } : {}),
+    ...(typeof call["name"] === "string" ? { name: call["name"] } : {}),
+  }));
 }

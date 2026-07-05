@@ -12,6 +12,7 @@
   "assistant": "模型",
   "tool": "工具",
   "toolCall": "工具调用",
+  "streaming": "生成中",
   "input": "输入",
   "output": "输出",
   "running": "运行中",
