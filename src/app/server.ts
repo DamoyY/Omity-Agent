@@ -16,7 +16,8 @@ export type AppServerOptions = {
 export async function startAppServer(options: AppServerOptions) {
   const controller = new AppController(options.root);
   const vite = await createViteServer({
-    server: { middlewareMode: true },
+    logLevel: "silent",
+    server: { hmr: false, middlewareMode: true },
     appType: "spa",
   });
   const server = createServer(async (req, res) => {
@@ -36,11 +37,6 @@ export async function startAppServer(options: AppServerOptions) {
     server.once("error", reject);
     server.listen(options.port, options.host, resolve);
   });
-  const address = server.address();
-  const port =
-    typeof address === "object" && address ? address.port : options.port;
-  const url = `http://${options.host}:${port}`;
-  console.log(`WebUI 已启动：${url}`);
   await waitForShutdown(controller, vite, server);
 }
 
@@ -58,14 +54,22 @@ async function handleApi(
     sendJson(res, { sessions: controller.sessions() });
     return;
   }
+  if (req.method === "POST" && route.pathname === "/api/workspace-picker") {
+    sendJson(res, { workspace: await controller.pickWorkspace() });
+    return;
+  }
   if (req.method === "POST" && route.pathname === "/api/sessions") {
     const body = await readJson<{ workspace: string }>(req);
     sendJson(res, { session: controller.createSession(body.workspace) });
     return;
   }
-  const sessionMatch = route.pathname.match(
-    /^\/api\/sessions\/([^/]+)\/(.+)$/,
-  );
+  const deleteMatch = route.pathname.match(/^\/api\/sessions\/([^/]+)$/);
+  if (req.method === "DELETE" && deleteMatch) {
+    const sessionId = decodeURIComponent(deleteMatch[1] ?? "");
+    sendJson(res, await controller.deleteSession(sessionId));
+    return;
+  }
+  const sessionMatch = route.pathname.match(/^\/api\/sessions\/([^/]+)\/(.+)$/);
   if (!sessionMatch) throw new Error(`未知 API：${route.pathname}`);
   const sessionId = decodeURIComponent(sessionMatch[1] ?? "");
   const action = sessionMatch[2];
@@ -104,7 +108,6 @@ function sendJson(res: ServerResponse, body: unknown) {
 }
 
 function sendError(res: ServerResponse, error: unknown) {
-  console.error(error instanceof Error ? error.message : String(error));
   res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
   res.end(
     JSON.stringify({

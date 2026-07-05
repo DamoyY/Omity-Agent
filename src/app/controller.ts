@@ -2,21 +2,24 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { runClient } from "../client";
-import { runHostSession } from "../host";
+import { deleteHostSession, runHostSession } from "../host";
 import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
 import { AgentDatabase } from "../infrastructure/database";
 import type { Control } from "../types";
 import { AppRegistry } from "./registry";
 import { loadTranscript } from "./transcript";
+import { pickWorkspaceDirectory } from "./workspacePicker";
 
 type RunningHost = {
   root: string;
   signal: { stopping: boolean };
+  done: Promise<void>;
 };
 
 export class AppController {
   private readonly registry: AppRegistry;
   private readonly hosts = new Map<string, RunningHost>();
+  private readonly hostErrors = new Map<string, string>();
 
   constructor(private readonly appRoot: string) {
     this.registry = new AppRegistry(appRoot);
@@ -38,7 +41,12 @@ export class AppController {
     return this.registry.list().map((session) => ({
       ...session,
       running: this.hosts.has(session.id),
+      error: this.hostErrors.get(session.id) ?? null,
     }));
+  }
+
+  pickWorkspace() {
+    return pickWorkspaceDirectory();
   }
 
   createSession(workspace: string) {
@@ -47,6 +55,7 @@ export class AppController {
     const id = `web-${randomUUID()}`;
     const session = this.registry.add(id, root);
     this.startHost(id, root, "new");
+    this.hostErrors.delete(id);
     return { ...session, running: true };
   }
 
@@ -54,6 +63,7 @@ export class AppController {
     const session = this.registry.require(sessionId);
     this.ensureHost(session.id, session.workspace);
     const result = runClient({ sessionId, append: content }, session.workspace);
+    this.hostErrors.delete(sessionId);
     this.registry.touch(sessionId);
     return result;
   }
@@ -63,6 +73,19 @@ export class AppController {
     const result = runClient({ sessionId, control }, session.workspace);
     this.registry.touch(sessionId);
     return result;
+  }
+
+  async deleteSession(sessionId: string) {
+    const session = this.registry.require(sessionId);
+    const running = this.hosts.get(sessionId);
+    if (running) {
+      running.signal.stopping = true;
+      await running.done;
+    }
+    deleteHostSession(sessionId, session.workspace);
+    this.hostErrors.delete(sessionId);
+    this.registry.remove(sessionId);
+    return { deleted: sessionId };
   }
 
   transcript(sessionId: string) {
@@ -89,18 +112,22 @@ export class AppController {
     kind: "new" | "load" | "overwrite",
   ) {
     const signal = { stopping: false };
-    this.hosts.set(sessionId, { root, signal });
-    void runHostSession({ kind, sessionId }, root, {
+    const done = runHostSession({ kind, sessionId }, root, {
+      quiet: true,
       signal,
       observer: {
         token: () => {},
       },
     })
       .catch((error) => {
-        console.error(error instanceof Error ? error.message : String(error));
+        this.hostErrors.set(
+          sessionId,
+          error instanceof Error ? error.message : String(error),
+        );
       })
       .finally(() => {
         this.hosts.delete(sessionId);
       });
+    this.hosts.set(sessionId, { root, signal, done });
   }
 }

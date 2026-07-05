@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import {
   bootstrap,
   createSession,
+  deleteSession,
   loadTranscript,
+  pickWorkspace,
   sendMessage,
   setControl,
   type Message,
@@ -20,13 +22,18 @@ type Transcript = {
   events: StreamEvent[];
 };
 
+type LocalSession = SessionInfo & {
+  draft?: boolean;
+};
+
 const emptyTranscript: Transcript = { messages: [], queue: [], events: [] };
 
 export function App() {
   const [cwd, setCwd] = useState("");
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [sessions, setSessions] = useState<LocalSession[]>([]);
   const [activeId, setActiveId] = useState<string>();
   const [transcript, setTranscript] = useState<Transcript>(emptyTranscript);
+  const activeSession = sessions.find((session) => session.id === activeId);
 
   useEffect(() => {
     void bootstrap().then((data) => {
@@ -37,7 +44,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!activeId) return;
+    if (!activeId || activeSession?.draft) {
+      setTranscript(emptyTranscript);
+      return;
+    }
     let stopped = false;
     const refresh = async () => {
       const data = await loadTranscript(activeId);
@@ -49,7 +59,7 @@ export function App() {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [activeId]);
+  }, [activeId, activeSession?.draft]);
 
   return (
     <div className={layout}>
@@ -57,11 +67,33 @@ export function App() {
         <Sidebar
           activeId={activeId}
           cwd={cwd}
-          sessions={sessions}
+          sessions={sessions.filter((session) => !session.draft)}
           onCreate={async (workspace) => {
-            const { session } = await createSession(workspace);
+            const now = Math.floor(Date.now() / 1000);
+            const session = {
+              id: `draft-${crypto.randomUUID()}`,
+              workspace,
+              createdAt: now,
+              updatedAt: now,
+              running: false,
+              draft: true,
+            };
             setSessions((current) => [session, ...current]);
             setActiveId(session.id);
+          }}
+          onDelete={async (id) => {
+            const target = sessions.find((session) => session.id === id);
+            if (!target?.draft) await deleteSession(id);
+            const next = sessions.filter((session) => session.id !== id);
+            setSessions(next);
+            if (activeId === id) {
+              setActiveId(next[0]?.id);
+              setTranscript(emptyTranscript);
+            }
+          }}
+          onPickWorkspace={async () => {
+            const result = await pickWorkspace();
+            return result.workspace;
           }}
           onSelect={setActiveId}
         />
@@ -69,16 +101,28 @@ export function App() {
       <main className={main}>
         <ChatPage
           activeId={activeId}
+          canControl={activeSession !== undefined && !activeSession.draft}
           events={transcript.events}
           messages={transcript.messages}
           queue={transcript.queue}
           onControl={async (control) => {
-            if (!activeId) return;
-            await setControl(activeId, control);
+            if (!activeSession || activeSession.draft) return;
+            await setControl(activeSession.id, control);
           }}
           onSend={async (content) => {
-            if (!activeId) return;
-            await sendMessage(activeId, content);
+            if (!activeSession) return;
+            if (activeSession.draft) {
+              const { session } = await createSession(activeSession.workspace);
+              setSessions((current) =>
+                current.map((item) =>
+                  item.id === activeSession.id ? session : item,
+                ),
+              );
+              setActiveId(session.id);
+              await sendMessage(session.id, content);
+              return;
+            }
+            await sendMessage(activeSession.id, content);
           }}
         />
       </main>

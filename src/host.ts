@@ -18,6 +18,7 @@ export type HostMode = {
 
 export type HostRunOptions = {
   observer?: HostObserver;
+  quiet?: boolean;
   signal?: StopSignal;
   wireSigint?: boolean;
 };
@@ -40,8 +41,14 @@ export async function runHostSession(
   root = process.cwd(),
   options: HostRunOptions = {},
 ) {
-  const settings = loadSettings(root);
-  const logger = new Logger(settings.logging.level);
+  const loadedSettings = loadSettings(root);
+  const settings = options.quiet
+    ? {
+        ...loadedSettings,
+        logging: { ...loadedSettings.logging, streamTokens: false },
+      }
+    : loadedSettings;
+  const logger = new Logger(settings.logging.level, options.quiet ?? false);
   const paths =
     mode.kind === "load"
       ? resolveSessionPaths(settings, mode.sessionId)

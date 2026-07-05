@@ -46,6 +46,21 @@ export async function createSession(workspace: string) {
   });
 }
 
+export async function deleteSession(sessionId: string) {
+  return request<{ deleted: string }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}`,
+    {
+      method: "DELETE",
+    },
+  );
+}
+
+export async function pickWorkspace() {
+  return request<{ workspace: string | null }>("/api/workspace-picker", {
+    method: "POST",
+  });
+}
+
 export async function loadTranscript(sessionId: string) {
   return request<{
     messages: Message[];

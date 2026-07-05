@@ -13,6 +13,11 @@ const form = css({
   p: "4",
 });
 
+const messageBox = css({
+  minH: "5rem",
+  resize: "vertical",
+});
+
 export function Composer({
   disabled,
   onSend,
@@ -31,12 +36,18 @@ export function Composer({
         void onSend(content).then(() => setContent(""));
       }}
     >
-      <input
-        className={textInput}
+      <textarea
+        className={`${textInput} ${messageBox}`}
         disabled={disabled}
         placeholder={t("messagePlaceholder")}
         value={content}
         onChange={(event) => setContent(event.currentTarget.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || !event.ctrlKey) return;
+          if (event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          event.currentTarget.form?.requestSubmit();
+        }}
       />
       <button className={button()} disabled={disabled} type="submit">
         <Send size={14} /> {t("send")}

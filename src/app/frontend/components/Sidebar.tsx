@@ -1,9 +1,13 @@
-import { Plus } from "lucide-react";
-import { useState } from "react";
+import { FolderOpen, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { SessionInfo } from "../services/client";
 import { button, panel, stack, textInput } from "../design";
+
+type SessionView = SessionInfo & {
+  draft?: boolean;
+};
 
 const title = css({
   fontSize: "md",
@@ -25,21 +29,51 @@ const itemMeta = css({
   whiteSpace: "nowrap",
 });
 
+const sessionRow = css({
+  display: "grid",
+  gap: "2",
+  gridTemplateColumns: "1fr auto",
+});
+
+const pickerRow = css({
+  display: "grid",
+  gap: "2",
+  gridTemplateColumns: "1fr auto",
+});
+
+const deleteButton = css({
+  alignItems: "center",
+  bg: "canvas",
+  borderWidth: "1px",
+  borderColor: "line",
+  color: "muted",
+  cursor: "pointer",
+  display: "flex",
+  px: "3",
+  _hover: { borderColor: "muted", color: "text" },
+});
+
 export function Sidebar({
   cwd,
   sessions,
   activeId,
   onCreate,
+  onDelete,
+  onPickWorkspace,
   onSelect,
 }: {
   cwd: string;
-  sessions: SessionInfo[];
+  sessions: SessionView[];
   activeId?: string;
   onCreate(workspace: string): Promise<void>;
+  onDelete(id: string): Promise<void>;
+  onPickWorkspace(): Promise<string | null>;
   onSelect(id: string): void;
 }) {
   const { t } = useTranslation();
   const [workspace, setWorkspace] = useState(cwd);
+  const [picking, setPicking] = useState(false);
+  useEffect(() => setWorkspace(cwd), [cwd]);
   return (
     <>
       <section className={panel}>
@@ -55,11 +89,25 @@ export function Sidebar({
         >
           <label>
             <span className={itemMeta}>{t("workspace")}</span>
-            <input
-              className={textInput}
-              value={workspace}
-              onChange={(event) => setWorkspace(event.currentTarget.value)}
-            />
+            <span className={pickerRow}>
+              <input className={textInput} readOnly value={workspace} />
+              <button
+                className={button()}
+                disabled={picking}
+                onClick={async () => {
+                  setPicking(true);
+                  try {
+                    const selected = await onPickWorkspace();
+                    if (selected) setWorkspace(selected);
+                  } finally {
+                    setPicking(false);
+                  }
+                }}
+                type="button"
+              >
+                <FolderOpen size={14} /> {t("chooseFolder")}
+              </button>
+            </span>
           </label>
           <button className={button()} type="submit">
             <Plus size={14} /> {t("newSession")}
@@ -68,15 +116,24 @@ export function Sidebar({
       </section>
       <nav className={list}>
         {sessions.map((session) => (
-          <button
-            className={button({ active: session.id === activeId })}
-            key={session.id}
-            onClick={() => onSelect(session.id)}
-            type="button"
-          >
-            <div>{session.id}</div>
-            <div className={itemMeta}>{session.workspace}</div>
-          </button>
+          <div className={sessionRow} key={session.id}>
+            <button
+              className={button({ active: session.id === activeId })}
+              onClick={() => onSelect(session.id)}
+              type="button"
+            >
+              <div>{session.draft ? t("newSession") : session.id}</div>
+              <div className={itemMeta}>{session.workspace}</div>
+            </button>
+            <button
+              aria-label={t("delete")}
+              className={deleteButton}
+              onClick={() => void onDelete(session.id)}
+              type="button"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         ))}
       </nav>
     </>

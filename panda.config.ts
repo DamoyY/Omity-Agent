@@ -28,7 +28,9 @@ export default defineConfig({
           muted: { value: "#9a9a9a" },
         },
         fonts: {
-          body: { value: "ui-sans-serif, system-ui, sans-serif" },
+          body: {
+            value: "ui-monospace, SFMono-Regular, Consolas, monospace",
+          },
           mono: { value: "ui-monospace, SFMono-Regular, Consolas, monospace" },
         },
       },

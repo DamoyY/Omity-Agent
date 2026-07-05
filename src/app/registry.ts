@@ -73,6 +73,14 @@ export class AppRegistry {
       .query("UPDATE app_sessions SET updated_at = unixepoch() WHERE id = ?")
       .run(id);
   }
+
+  remove(id: string) {
+    this.require(id);
+    const result = this.db
+      .query("DELETE FROM app_sessions WHERE id = ?")
+      .run(id);
+    if (result.changes !== 1) throw new Error(`无法删除会话：${id}`);
+  }
 }
 
 function toSession(row: SessionRow): RegisteredSession {

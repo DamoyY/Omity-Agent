@@ -31,6 +31,7 @@ const label = css({
 
 export function ChatPage({
   activeId,
+  canControl,
   messages,
   queue,
   events,
@@ -38,6 +39,7 @@ export function ChatPage({
   onControl,
 }: {
   activeId?: string;
+  canControl: boolean;
   messages: Message[];
   queue: QueueItem[];
   events: StreamEvent[];
@@ -52,17 +54,22 @@ export function ChatPage({
   if (!activeId) return <div className={empty}>{t("empty")}</div>;
   return (
     <>
-      <header className={header}>
-        <button className={button()} onClick={() => void onControl("pause")}>
-          <Pause size={14} /> {t("pause")}
-        </button>
-        <button className={button()} onClick={() => void onControl("running")}>
-          <Play size={14} /> {t("resume")}
-        </button>
-        <button className={button()} onClick={() => void onControl("cancel")}>
-          <Square size={14} /> {t("cancel")}
-        </button>
-      </header>
+      {canControl ? (
+        <header className={header}>
+          <button className={button()} onClick={() => void onControl("pause")}>
+            <Pause size={14} /> {t("pause")}
+          </button>
+          <button
+            className={button()}
+            onClick={() => void onControl("running")}
+          >
+            <Play size={14} /> {t("resume")}
+          </button>
+          <button className={button()} onClick={() => void onControl("cancel")}>
+            <Square size={14} /> {t("cancel")}
+          </button>
+        </header>
+      ) : null}
       <section className={scroll}>
         {view.length === 0 ? (
           <div className={empty}>{t("noMessages")}</div>

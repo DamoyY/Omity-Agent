@@ -29,7 +29,10 @@ const levelMeta: Record<
 export class Logger {
   private indent = 0;
 
-  constructor(private readonly level: LogLevel) {}
+  constructor(
+    private readonly level: LogLevel,
+    private readonly silent = false,
+  ) {}
 
   child(title: string) {
     this.info(`┌─ ${title}`);
@@ -57,10 +60,12 @@ export class Logger {
   }
 
   token(text: string) {
+    if (this.silent) return;
     process.stdout.write(text);
   }
 
   private write(level: LogLevel, message: string, data?: unknown) {
+    if (this.silent) return;
     if (priority[level] < priority[this.level]) {
       return;
     }

@@ -15,6 +15,7 @@ export const sidebar = css({
   borderRightColor: "line",
   display: "grid",
   gridTemplateRows: "auto auto 1fr",
+  minH: 0,
   minW: 0,
 });
 
@@ -31,11 +32,14 @@ export const stack = css({
 
 export const main = css({
   display: "grid",
-  gridTemplateRows: "1fr auto",
+  gridTemplateRows: "auto minmax(0, 1fr) auto",
+  minH: 0,
   minW: 0,
+  overflow: "hidden",
 });
 
 export const scroll = css({
+  minH: 0,
   overflowY: "auto",
   p: "6",
 });

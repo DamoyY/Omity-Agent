@@ -2,8 +2,9 @@
   "brand": "Omity",
   "newSession": "新建会话",
   "workspace": "工作目录",
+  "chooseFolder": "选择文件夹",
   "create": "创建",
-  "messagePlaceholder": "输入消息",
+  "messagePlaceholder": "输入消息，Ctrl + Enter 发送",
   "send": "发送",
   "empty": "选择或新建会话",
   "noMessages": "没有消息",
@@ -18,5 +19,6 @@
   "pause": "暂停",
   "resume": "继续",
   "cancel": "取消",
+  "delete": "删除",
   "error": "请求失败"
 }
