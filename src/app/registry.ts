@@ -51,18 +51,20 @@ export class AppRegistry {
 
   list() {
     return this.db
-      .query<SessionRow, []>(
-        "SELECT id, workspace, created_at, updated_at FROM app_sessions ORDER BY updated_at DESC, created_at DESC",
-      )
+      .query<
+        SessionRow,
+        []
+      >("SELECT id, workspace, created_at, updated_at FROM app_sessions ORDER BY updated_at DESC, created_at DESC")
       .all()
       .map(toSession);
   }
 
   require(id: string) {
     const row = this.db
-      .query<SessionRow, [string]>(
-        "SELECT id, workspace, created_at, updated_at FROM app_sessions WHERE id = ?",
-      )
+      .query<
+        SessionRow,
+        [string]
+      >("SELECT id, workspace, created_at, updated_at FROM app_sessions WHERE id = ?")
       .get(id);
     if (!row) throw new Error(`会话不存在：${id}`);
     return toSession(row);

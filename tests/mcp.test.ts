@@ -3,6 +3,7 @@ import {
   expandEnvPlaceholders,
   normalizeMcpServers,
 } from "../src/infrastructure/mcp";
+import { mcpErrorResultAsOutput } from "../src/infrastructure/mcpSupport/toolErrorOutput";
 
 const savedEnv = new Map<string, string | undefined>();
 
@@ -94,4 +95,33 @@ test("mcp stdio config allows omitted or blank args", () => {
       args: [],
     },
   });
+});
+
+test("mcp error result is converted to normal tool output", () => {
+  expect(
+    mcpErrorResultAsOutput(
+      {
+        isError: true,
+        content: [{ type: "text", text: "bad request" }],
+      },
+      "web",
+      "search",
+    ),
+  ).toEqual({
+    isError: false,
+    content: [
+      {
+        type: "text",
+        text: "MCP tool 'search' on server 'web' returned an error: bad request",
+      },
+    ],
+  });
+});
+
+test("mcp successful result is not changed", () => {
+  const result = {
+    content: [{ type: "text", text: "ok" }],
+  };
+
+  expect(mcpErrorResultAsOutput(result, "web", "search")).toBe(result);
 });

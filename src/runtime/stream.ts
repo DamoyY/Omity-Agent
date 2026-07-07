@@ -40,7 +40,8 @@ export function handleStreamEvent(
       ctx.observer?.token(ctx.sessionId, queueId, text);
     }
     for (const call of toolCallDeltas(chunk)) {
-      if (queueId !== undefined) ctx.db.streamToolCall(ctx.sessionId, queueId, call);
+      if (queueId !== undefined)
+        ctx.db.streamToolCall(ctx.sessionId, queueId, call);
     }
     return;
   }

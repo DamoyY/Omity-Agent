@@ -26,7 +26,7 @@
   "scripts": {
     "omity": "bun src/cli.ts",
     "test": "bun test",
-    "check": "tsc --noEmit && eslint"
+    "check": "prettier -w . && tsc --noEmit && eslint"
   },
   "devDependencies": {
     "@babel/core": "8.0.1",

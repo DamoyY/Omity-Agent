@@ -56,7 +56,10 @@ test("stream messages persist only assistant text chunks", () => {
     stream.ctx,
     [
       "messages",
-      [new ToolMessageChunk({ content: "tool output", tool_call_id: "call" }), {}],
+      [
+        new ToolMessageChunk({ content: "tool output", tool_call_id: "call" }),
+        {},
+      ],
     ],
     createStreamLogState(),
     1,

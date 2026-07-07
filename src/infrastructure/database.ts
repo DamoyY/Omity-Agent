@@ -59,9 +59,10 @@ export class AgentDatabase {
 
   hasSession(sessionId: string) {
     const row = this.db
-      .query<{ value: number }, [string]>(
-        "SELECT 1 AS value FROM sessions WHERE id = ?",
-      )
+      .query<
+        { value: number },
+        [string]
+      >("SELECT 1 AS value FROM sessions WHERE id = ?")
       .get(sessionId);
     return row !== null && row !== undefined;
   }
@@ -81,18 +82,20 @@ export class AgentDatabase {
 
   pendingAppends(sessionId: string): QueueItem[] {
     return this.db
-      .query<QueueRow, [string]>(
-        "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status = 'pending' ORDER BY id",
-      )
+      .query<
+        QueueRow,
+        [string]
+      >("SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status = 'pending' ORDER BY id")
       .all(sessionId)
       .map(toQueueItem);
   }
 
   nextQueue(sessionId: string): QueueItem | null {
     const row = this.db
-      .query<QueueRow, [string]>(
-        "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
-      )
+      .query<
+        QueueRow,
+        [string]
+      >("SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1")
       .get(sessionId);
     return row ? toQueueItem(row) : null;
   }
@@ -145,9 +148,10 @@ export class AgentDatabase {
   control(sessionId: string): Control {
     this.requireSession(sessionId);
     const row = this.db
-      .query<{ control: Control }, [string]>(
-        "SELECT control FROM sessions WHERE id = ?",
-      )
+      .query<
+        { control: Control },
+        [string]
+      >("SELECT control FROM sessions WHERE id = ?")
       .get(sessionId);
     if (!row) throw new Error(`会话不存在：${sessionId}`);
     return row.control;
@@ -185,7 +189,11 @@ export class AgentDatabase {
     });
   }
 
-  streamToolCall(sessionId: string, queueId: number, call: StreamToolCallDelta) {
+  streamToolCall(
+    sessionId: string,
+    queueId: number,
+    call: StreamToolCallDelta,
+  ) {
     this.event(sessionId, "info", "stream", "tool_call", {
       kind: "tool_call_delta",
       queueId,
@@ -194,6 +202,7 @@ export class AgentDatabase {
   }
 
   private requireSession(sessionId: string) {
-    if (!this.hasSession(sessionId)) throw new Error(`会话不存在：${sessionId}`);
+    if (!this.hasSession(sessionId))
+      throw new Error(`会话不存在：${sessionId}`);
   }
 }

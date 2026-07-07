@@ -67,7 +67,9 @@ function streamMessage(
   outputs: Map<string, Message>,
   visibleToolCalls: Message["toolCalls"],
 ): ViewMessage {
-  const streamEvents = events.filter((event) => eventQueueId(event) === item.id);
+  const streamEvents = events.filter(
+    (event) => eventQueueId(event) === item.id,
+  );
   const content = streamEvents
     .map((event) => eventText(event, item.id))
     .filter((text) => text.length > 0)
