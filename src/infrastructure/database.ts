@@ -131,7 +131,7 @@ export class AgentDatabase {
 
   replaceHistory(sessionId: string, messages: BaseMessage[]) {
     this.requireSession(sessionId);
-    replaceMessages(this.db, sessionId, messages);
+    replaceMessages(this.db, sessionId, messages, { clearStreamEvents: true });
   }
 
   history(sessionId: string): BaseMessage[] {

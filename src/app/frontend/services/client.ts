@@ -1,40 +1,11 @@
+import type { DisplayQueue, TimelineMessage } from "../../timeline";
+
 export type SessionInfo = {
   id: string;
   workspace: string;
   createdAt: number;
   updatedAt: number;
   running: boolean;
-};
-
-export type Message = {
-  id: number;
-  role: "user" | "assistant" | "tool";
-  content: string;
-  queueId: number | null;
-  toolCalls: ToolCall[];
-  toolCallId?: string;
-  createdAt: number;
-};
-
-export type ToolCall = {
-  id: string;
-  inputText?: string;
-  name: string;
-  input: unknown;
-  streaming?: boolean;
-};
-
-export type QueueItem = {
-  id: number;
-  content: string;
-  status: string;
-  error: string | null;
-};
-
-export type StreamEvent = {
-  id: number;
-  message: string;
-  payload: unknown;
 };
 
 export async function bootstrap() {
@@ -65,9 +36,8 @@ export async function pickWorkspace() {
 
 export async function loadTranscript(sessionId: string) {
   return request<{
-    messages: Message[];
-    queue: QueueItem[];
-    events: StreamEvent[];
+    queue: DisplayQueue[];
+    view: TimelineMessage[];
   }>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`);
 }
 

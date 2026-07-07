@@ -1,10 +1,8 @@
 import { Pause, Play } from "lucide-react";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { css, cx } from "styled-system/css";
-import type { Message, QueueItem, StreamEvent } from "../services/client";
+import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import { scroll } from "../design";
-import { buildView } from "./chatView";
 import { Composer } from "./Composer";
 import { MarkdownView } from "./MarkdownView";
 import { Button } from "./ParkUI";
@@ -53,25 +51,19 @@ const roleLabel = css({
 export function ChatPage({
   activeId,
   canControl,
-  messages,
   queue,
-  events,
+  view,
   onSend,
   onControl,
 }: {
   activeId?: string;
   canControl: boolean;
-  messages: Message[];
-  queue: QueueItem[];
-  events: StreamEvent[];
+  queue: DisplayQueue[];
+  view: TimelineMessage[];
   onSend(content: string): Promise<void>;
   onControl(control: string): Promise<void>;
 }) {
   const { t } = useTranslation();
-  const view = useMemo(
-    () => buildView(messages, queue, events),
-    [messages, queue, events],
-  );
   const paused = queue.some((item) => item.status === "paused");
   if (!activeId) return <div className={empty}>{t("empty")}</div>;
   return (
@@ -104,7 +96,7 @@ export function ChatPage({
                 <ToolCall
                   call={part.call}
                   key={part.call.id}
-                  output={item.outputs.get(part.call.id)}
+                  output={part.output}
                 />
               ),
             )}

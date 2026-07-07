@@ -74,6 +74,22 @@ test("transcript preserves full LangChain message structure", () => {
   db.close();
 });
 
+test("replace history clears redundant stream events", () => {
+  const db = makeDb();
+  db.resetSession("123", workspace);
+  db.streamToken("123", 1, "答案");
+  db.streamToolCall("123", 1, { id: "call-1", name: "tool" });
+  db.event("123", "info", "client", "append", { queueId: 1 });
+
+  db.replaceHistory("123", [new HumanMessage("问题"), new AIMessage("答案")]);
+
+  const rows = db.db
+    .query<{ category: string }, []>("SELECT category FROM events ORDER BY id")
+    .all();
+  expect(rows.map((row) => row.category)).toEqual(["client"]);
+  db.close();
+});
+
 test("control is stored in sql", () => {
   const db = makeDb();
   db.ensureSession("123", workspace);

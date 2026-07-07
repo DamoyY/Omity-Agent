@@ -8,26 +8,23 @@ import {
   pickWorkspace,
   sendMessage,
   setControl,
-  type Message,
-  type QueueItem,
   type SessionInfo,
-  type StreamEvent,
 } from "./services/client";
+import type { DisplayQueue, TimelineMessage } from "../timeline";
 import { ChatPage } from "./components/ChatPage";
 import { Sidebar } from "./components/Sidebar";
 import { layout, main, sidebar } from "./design";
 
 type Transcript = {
-  messages: Message[];
-  queue: QueueItem[];
-  events: StreamEvent[];
+  queue: DisplayQueue[];
+  view: TimelineMessage[];
 };
 
 type LocalSession = SessionInfo & {
   draft?: boolean;
 };
 
-const emptyTranscript: Transcript = { messages: [], queue: [], events: [] };
+const emptyTranscript: Transcript = { queue: [], view: [] };
 
 export function App() {
   const [cwd, setCwd] = useState("");
@@ -103,9 +100,8 @@ export function App() {
         <ChatPage
           activeId={activeId}
           canControl={activeSession !== undefined && !activeSession.draft}
-          events={transcript.events}
-          messages={transcript.messages}
           queue={transcript.queue}
+          view={transcript.view}
           onControl={async (control) => {
             if (!activeSession || activeSession.draft) return;
             await setControl(activeSession.id, control);

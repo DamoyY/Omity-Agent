@@ -1,26 +1,28 @@
 import { expect, test } from "bun:test";
-import { buildView } from "../src/app/frontend/components/chatView";
 import type {
-  Message,
-  QueueItem,
-  StreamEvent,
-} from "../src/app/frontend/services/client";
+  DisplayEvent,
+  DisplayMessage,
+  DisplayQueue,
+} from "../src/app/timeline";
+import { buildTimeline } from "../src/app/timeline";
 
 test("streaming tool call is hidden after the final tool call is visible", () => {
-  const messages: Message[] = [
+  const messages: DisplayMessage[] = [
     {
       id: 1,
       role: "assistant",
       content: "",
       queueId: null,
-      toolCalls: [{ id: "call-1", name: "terminal_new_tab", input: {} }],
+      toolCalls: [
+        { id: "call-1", index: 0, name: "terminal_new_tab", input: {} },
+      ],
       createdAt: 1,
     },
   ];
-  const queue: QueueItem[] = [
+  const queue: DisplayQueue[] = [
     { id: 1, content: "run", status: "running", error: null },
   ];
-  const events: StreamEvent[] = [
+  const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_call",
@@ -32,18 +34,18 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
     },
   ];
 
-  const view = buildView(messages, queue, events);
+  const view = buildTimeline(messages, queue, events);
 
   expect(view).toHaveLength(1);
-  expect(view[0]?.toolCalls).toHaveLength(1);
-  expect(view[0]?.toolCalls[0]?.streaming).toBeUndefined();
+  expect(toolCalls(view[0])).toHaveLength(1);
+  expect(toolCalls(view[0])[0]?.streaming).toBeUndefined();
 });
 
 test("streaming tool call is visible before the final tool call is persisted", () => {
-  const queue: QueueItem[] = [
+  const queue: DisplayQueue[] = [
     { id: 1, content: "run", status: "running", error: null },
   ];
-  const events: StreamEvent[] = [
+  const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_call",
@@ -55,12 +57,13 @@ test("streaming tool call is visible before the final tool call is persisted", (
     },
   ];
 
-  const view = buildView([], queue, events);
+  const view = buildTimeline([], queue, events);
 
   expect(view).toHaveLength(1);
-  expect(view[0]?.toolCalls).toEqual([
+  expect(toolCalls(view[0])).toEqual([
     {
       id: "call-1",
+      index: 0,
       input: {},
       inputText: '{"cwd":',
       name: "tool",
@@ -70,20 +73,22 @@ test("streaming tool call is visible before the final tool call is persisted", (
 });
 
 test("streaming tool call is grouped with previous assistant message", () => {
-  const messages: Message[] = [
+  const messages: DisplayMessage[] = [
     {
       id: 1,
       role: "assistant",
       content: "",
       queueId: null,
-      toolCalls: [{ id: "call-1", name: "terminal_new_tab", input: {} }],
+      toolCalls: [
+        { id: "call-1", index: 0, name: "terminal_new_tab", input: {} },
+      ],
       createdAt: 1,
     },
   ];
-  const queue: QueueItem[] = [
+  const queue: DisplayQueue[] = [
     { id: 1, content: "run", status: "running", error: null },
   ];
-  const events: StreamEvent[] = [
+  const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_call",
@@ -95,20 +100,49 @@ test("streaming tool call is grouped with previous assistant message", () => {
     },
   ];
 
-  const view = buildView(messages, queue, events);
+  const view = buildTimeline(messages, queue, events);
 
   expect(view).toHaveLength(1);
-  expect(view[0]?.toolCalls.map((call) => call.id)).toEqual([
+  expect(toolCalls(view[0]).map((call) => call.id)).toEqual([
     "call-1",
     "call-2",
   ]);
 });
 
-test("old streaming tool call is hidden after answer text starts", () => {
-  const queue: QueueItem[] = [
+test("persisted assistant text is not repeated by stale stream events", () => {
+  const messages: DisplayMessage[] = [
+    {
+      id: 1,
+      role: "assistant",
+      content: "完成",
+      queueId: null,
+      toolCalls: [],
+      createdAt: 1,
+    },
+  ];
+  const queue: DisplayQueue[] = [
     { id: 1, content: "run", status: "running", error: null },
   ];
-  const events: StreamEvent[] = [
+  const events: DisplayEvent[] = [
+    {
+      id: 1,
+      message: "token",
+      payload: { kind: "assistant_text_delta", queueId: 1, text: "完成" },
+    },
+  ];
+
+  const view = buildTimeline(messages, queue, events);
+
+  expect(view).toHaveLength(1);
+  expect(view[0]?.content).toBe("完成");
+  expect(view[0]?.parts).toEqual([{ type: "content", content: "完成" }]);
+});
+
+test("old streaming tool call is hidden after answer text starts", () => {
+  const queue: DisplayQueue[] = [
+    { id: 1, content: "run", status: "running", error: null },
+  ];
+  const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_call",
@@ -125,28 +159,30 @@ test("old streaming tool call is hidden after answer text starts", () => {
     },
   ];
 
-  const view = buildView([], queue, events);
+  const view = buildTimeline([], queue, events);
 
   expect(view).toHaveLength(1);
   expect(view[0]?.content).toBe("done");
-  expect(view[0]?.toolCalls).toEqual([]);
+  expect(toolCalls(view[0])).toEqual([]);
 });
 
 test("incomplete old streaming tool call is hidden after final tool is visible", () => {
-  const messages: Message[] = [
+  const messages: DisplayMessage[] = [
     {
       id: 1,
       role: "assistant",
       content: "",
       queueId: null,
-      toolCalls: [{ id: "call-1", name: "terminal_new_tab", input: {} }],
+      toolCalls: [
+        { id: "call-1", index: 0, name: "terminal_new_tab", input: {} },
+      ],
       createdAt: 1,
     },
   ];
-  const queue: QueueItem[] = [
+  const queue: DisplayQueue[] = [
     { id: 1, content: "run", status: "running", error: null },
   ];
-  const events: StreamEvent[] = [
+  const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_call",
@@ -158,9 +194,61 @@ test("incomplete old streaming tool call is hidden after final tool is visible",
     },
   ];
 
-  const view = buildView(messages, queue, events);
+  const view = buildTimeline(messages, queue, events);
 
   expect(view).toHaveLength(1);
-  expect(view[0]?.toolCalls).toHaveLength(1);
-  expect(view[0]?.toolCalls[0]?.id).toBe("call-1");
+  expect(toolCalls(view[0])).toHaveLength(1);
+  expect(toolCalls(view[0])[0]?.id).toBe("call-1");
 });
+
+test("streaming tool call without final id is hidden by matching input", () => {
+  const messages: DisplayMessage[] = [
+    {
+      id: 1,
+      role: "assistant",
+      content: "",
+      queueId: null,
+      toolCalls: [
+        {
+          id: "call-1",
+          index: 0,
+          name: "terminal_send_command",
+          input: { command: "pwd" },
+        },
+      ],
+      createdAt: 1,
+    },
+  ];
+  const queue: DisplayQueue[] = [
+    { id: 1, content: "run", status: "running", error: null },
+  ];
+  const events: DisplayEvent[] = [
+    {
+      id: 1,
+      message: "tool_call",
+      payload: {
+        kind: "tool_call_delta",
+        queueId: 1,
+        call: {
+          args: '{"command":"pwd"}',
+          index: 0,
+          name: "terminal_send_command",
+        },
+      },
+    },
+  ];
+
+  const view = buildTimeline(messages, queue, events);
+
+  expect(toolCalls(view[0]).map((call) => call.id)).toEqual(["call-1"]);
+});
+
+function toolCalls(
+  message: ReturnType<typeof buildTimeline>[number] | undefined,
+) {
+  return (
+    message?.parts.flatMap((part) =>
+      part.type === "tool" ? [part.call] : [],
+    ) ?? []
+  );
+}

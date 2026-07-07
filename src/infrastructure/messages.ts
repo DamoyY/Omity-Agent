@@ -17,6 +17,10 @@ export type MessageInsert = {
   queueId?: number;
 };
 
+export type ReplaceMessagesOptions = {
+  clearStreamEvents?: boolean;
+};
+
 export function messageInsert(
   message: BaseMessage,
   queueId?: number,
@@ -53,6 +57,7 @@ export function replaceMessages(
   db: Database,
   sessionId: string,
   messages: BaseMessage[],
+  options: ReplaceMessagesOptions = {},
 ) {
   const items = messages.map((message) => messageInsert(message));
   const insert = db.query(
@@ -62,6 +67,11 @@ export function replaceMessages(
     db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
     for (const item of persisted) {
       insert.run(sessionId, item.messageJson);
+    }
+    if (options.clearStreamEvents) {
+      db.query(
+        "DELETE FROM events WHERE session_id = ? AND category = 'stream'",
+      ).run(sessionId);
     }
   });
   tx(items);

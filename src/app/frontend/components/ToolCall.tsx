@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
-import type { Message, ToolCall as ToolCallData } from "../services/client";
+import type { DisplayMessage, DisplayToolCall } from "../../timeline";
 import { Badge, Code } from "./ParkUI";
 
 const details = css({
@@ -39,8 +39,8 @@ export function ToolCall({
   call,
   output,
 }: {
-  call: ToolCallData;
-  output?: Message;
+  call: DisplayToolCall;
+  output?: DisplayMessage;
 }) {
   const { t } = useTranslation();
   const input = call.inputText ?? JSON.stringify(call.input, null, 2);

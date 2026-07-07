@@ -5,35 +5,12 @@ import {
 } from "@langchain/core/messages";
 import { AgentDatabase } from "../infrastructure/database";
 import { contentToText } from "../runtime/content";
-
-export type DisplayMessage = {
-  id: number;
-  role: "user" | "assistant" | "tool";
-  content: string;
-  queueId: number | null;
-  toolCalls: DisplayToolCall[];
-  toolCallId?: string;
-  createdAt: number;
-};
-
-export type DisplayToolCall = {
-  id: string;
-  name: string;
-  input: unknown;
-};
-
-export type DisplayQueue = {
-  id: number;
-  content: string;
-  status: string;
-  error: string | null;
-};
-
-export type DisplayEvent = {
-  id: number;
-  message: string;
-  payload: unknown;
-};
+import {
+  buildTimeline,
+  type DisplayEvent,
+  type DisplayMessage,
+  type DisplayToolCall,
+} from "./timeline";
 
 type MessageRow = {
   id: number;
@@ -76,7 +53,7 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
     >("SELECT id, message, payload_json FROM events WHERE session_id = ? AND category = 'stream' ORDER BY id")
     .all(sessionId)
     .map(toDisplayEvent);
-  return { messages, queue, events };
+  return { queue, view: buildTimeline(messages, queue, events) };
 }
 
 function toDisplayMessage(row: MessageRow): DisplayMessage {
@@ -120,6 +97,7 @@ function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
   const calls = readRecordArray(message, "tool_calls");
   return calls.map((call, index) => ({
     id: stringField(call, "id") ?? `tool-${index}`,
+    index,
     name: stringField(call, "name") ?? "tool",
     input: call["args"] ?? call["input"] ?? call,
   }));
