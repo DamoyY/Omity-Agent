@@ -1,7 +1,10 @@
+import type { Database } from "bun:sqlite";
+
 export const migrationSql = [
   `
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
+      workspace TEXT NOT NULL,
       control TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at INTEGER NOT NULL,
@@ -44,3 +47,28 @@ export const migrationSql = [
     )
   `,
 ] as const;
+
+export function applySchema(db: Database) {
+  for (const sql of migrationSql) db.run(sql);
+  assertColumns(db, "sessions", [
+    "id",
+    "workspace",
+    "control",
+    "status",
+    "created_at",
+    "updated_at",
+  ]);
+}
+
+function assertColumns(db: Database, table: string, columns: string[]) {
+  const existing = new Set(
+    db
+      .query<{ name: string }, []>(`PRAGMA table_info(${table})`)
+      .all()
+      .map((row) => row.name),
+  );
+  const missing = columns.filter((column) => !existing.has(column));
+  if (missing.length > 0) {
+    throw new Error(`数据库结构错误：${table} 表缺少列：${missing.join(", ")}`);
+  }
+}

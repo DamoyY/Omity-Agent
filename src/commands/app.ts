@@ -1,4 +1,5 @@
 import { Command, Flags } from "@oclif/core";
+import { openBrowser } from "../app/launch";
 import { startAppServer } from "../app/server";
 
 export default class App extends Command {
@@ -29,6 +30,10 @@ export default class App extends Command {
       root: process.cwd(),
       host: flags.host,
       port: flags.port,
+      onReady: (url) => {
+        this.log(`WebUI 已启动：${url}`);
+        openBrowser(url);
+      },
     });
   }
 }

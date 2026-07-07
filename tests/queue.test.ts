@@ -15,6 +15,7 @@ import type { Settings } from "../src/types";
 const dirs: string[] = [];
 const logs: string[] = [];
 const originalLog = console.log;
+const workspace = "F:\\workspace\\test";
 
 afterEach(() => {
   console.log = originalLog;
@@ -26,7 +27,7 @@ afterEach(() => {
 
 test("append is consumed at a LangGraph boundary", async () => {
   const db = makeDb();
-  db.resetSession("123");
+  db.resetSession("123", workspace);
   db.appendUser("123", "第一条");
   db.appendUser("123", "第二条");
   const item = db.nextQueue("123");
@@ -56,7 +57,7 @@ test("append is consumed at a LangGraph boundary", async () => {
 
 test("unexpected errors pause the queue", async () => {
   const db = makeDb();
-  db.resetSession("123");
+  db.resetSession("123", workspace);
   db.appendUser("123", "会失败的输入");
   const item = db.nextQueue("123");
   const graph = {
@@ -74,7 +75,7 @@ test("unexpected errors pause the queue", async () => {
 
 test("cancel while paused stops host without ending pause", async () => {
   const db = makeDb();
-  db.resetSession("123");
+  db.resetSession("123", workspace);
   db.appendUser("123", "暂停中的输入");
   db.setControl("123", "pause_cancel");
   const item = db.nextQueue("123");
@@ -88,7 +89,7 @@ test("cancel while paused stops host without ending pause", async () => {
 
 test("ctrl-c while paused stops host without ending pause", async () => {
   const db = makeDb();
-  db.resetSession("123");
+  db.resetSession("123", workspace);
   db.appendUser("123", "暂停中的输入");
   db.setControl("123", "pause");
   const item = db.nextQueue("123");
@@ -108,7 +109,7 @@ test("pause wait message is logged once per pause", async () => {
   };
 
   const db = makeDb();
-  db.resetSession("123");
+  db.resetSession("123", workspace);
   db.appendUser("123", "暂停中的输入");
   db.setControl("123", "pause");
   const item = db.nextQueue("123");

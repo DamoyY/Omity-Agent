@@ -1,4 +1,5 @@
 import { existsSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { buildGraph } from "./agent";
 import {
   loadSettings,
@@ -42,6 +43,7 @@ export async function runHostSession(
   root = process.cwd(),
   options: HostRunOptions = {},
 ) {
+  const workspace = resolve(options.cwd ?? root);
   const loadedSettings = loadSettings(root, { cwd: options.cwd });
   const settings = options.quiet
     ? {
@@ -54,7 +56,7 @@ export async function runHostSession(
     mode.kind === "load"
       ? resolveSessionPaths(settings, mode.sessionId)
       : prepareWritableSession(settings, mode);
-  const db = openHostDatabase(paths.appDb, mode);
+  const db = openHostDatabase(paths.appDb, mode, workspace);
   if (mode.kind === "new") {
     logger.info("已创建新会话", { sessionId: mode.sessionId, db: paths.appDb });
   } else if (mode.kind === "load") {
@@ -120,7 +122,7 @@ function prepareWritableSession(
   return sessionPaths(settings, mode.sessionId);
 }
 
-function openHostDatabase(path: string, mode: HostMode) {
+function openHostDatabase(path: string, mode: HostMode, workspace: string) {
   if (mode.kind === "load" && !existsSync(path)) {
     throw new Error(`会话不存在：${mode.sessionId}`);
   }
@@ -132,6 +134,6 @@ function openHostDatabase(path: string, mode: HostMode) {
     }
     return db;
   }
-  db.createSession(mode.sessionId);
+  db.createSession(mode.sessionId, workspace);
   return db;
 }

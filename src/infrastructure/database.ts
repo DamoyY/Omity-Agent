@@ -8,7 +8,16 @@ import {
   replaceMessages,
 } from "./messages";
 import { toQueueItem, type QueueRow } from "./queueRows";
-import { migrationSql } from "./schema";
+import { applySchema } from "./schema";
+import {
+  createSessionRecord,
+  ensureSessionRecord,
+  hasSessionRecord,
+  readControlRecord,
+  requireSessionRecord,
+  touchSessionRecord,
+  writeControlRecord,
+} from "./sessionRecords";
 
 export type StreamToolCallDelta = Partial<
   Record<"args" | "id" | "name", string> & { index: number }
@@ -21,50 +30,34 @@ export class AgentDatabase {
     this.db = new Database(path, { create: true, strict: true });
     this.db.run("PRAGMA journal_mode = WAL");
     this.db.run("PRAGMA foreign_keys = ON");
-    for (const sql of migrationSql) this.db.run(sql);
+    applySchema(this.db);
   }
 
   close() {
     this.db.close();
   }
 
-  resetSession(sessionId: string) {
+  resetSession(sessionId: string, workspace: string) {
     const tx = this.db.transaction(() => {
       this.db.query("DELETE FROM queue WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM sessions WHERE id = ?").run(sessionId);
-      this.createSession(sessionId);
+      this.createSession(sessionId, workspace);
     });
     tx();
   }
 
-  createSession(sessionId: string) {
-    if (this.hasSession(sessionId)) throw new Error(`会话已存在：${sessionId}`);
-    const result = this.db
-      .query(
-        "INSERT INTO sessions (id, control, status, created_at, updated_at) VALUES (?, 'running', 'idle', unixepoch(), unixepoch())",
-      )
-      .run(sessionId);
-    if (result.changes !== 1) throw new Error(`会话已存在：${sessionId}`);
+  createSession(sessionId: string, workspace: string) {
+    createSessionRecord(this.db, sessionId, workspace);
   }
 
-  ensureSession(sessionId: string) {
-    this.db
-      .query(
-        "INSERT OR IGNORE INTO sessions (id, control, status, created_at, updated_at) VALUES (?, 'running', 'idle', unixepoch(), unixepoch())",
-      )
-      .run(sessionId);
+  ensureSession(sessionId: string, workspace: string) {
+    ensureSessionRecord(this.db, sessionId, workspace);
   }
 
   hasSession(sessionId: string) {
-    const row = this.db
-      .query<
-        { value: number },
-        [string]
-      >("SELECT 1 AS value FROM sessions WHERE id = ?")
-      .get(sessionId);
-    return row !== null && row !== undefined;
+    return hasSessionRecord(this.db, sessionId);
   }
 
   appendUser(sessionId: string, content: string) {
@@ -74,6 +67,7 @@ export class AgentDatabase {
         "INSERT INTO queue (session_id, content, status, created_at) VALUES (?, ?, 'pending', unixepoch())",
       )
       .run(sessionId, content);
+    touchSessionRecord(this.db, sessionId);
     this.event(sessionId, "info", "client", "append", {
       queueId: Number(result.lastInsertRowid),
     });
@@ -146,25 +140,16 @@ export class AgentDatabase {
   }
 
   control(sessionId: string): Control {
-    this.requireSession(sessionId);
-    const row = this.db
-      .query<
-        { control: Control },
-        [string]
-      >("SELECT control FROM sessions WHERE id = ?")
-      .get(sessionId);
-    if (!row) throw new Error(`会话不存在：${sessionId}`);
-    return row.control;
+    return readControlRecord(this.db, sessionId);
   }
 
   setControl(sessionId: string, control: Control) {
-    this.requireSession(sessionId);
-    this.db
-      .query(
-        "UPDATE sessions SET control = ?, updated_at = unixepoch() WHERE id = ?",
-      )
-      .run(control, sessionId);
+    writeControlRecord(this.db, sessionId, control);
     this.event(sessionId, "info", "client", "control", { control });
+  }
+
+  touchSession(sessionId: string) {
+    touchSessionRecord(this.db, sessionId);
   }
 
   event(
@@ -202,7 +187,6 @@ export class AgentDatabase {
   }
 
   private requireSession(sessionId: string) {
-    if (!this.hasSession(sessionId))
-      throw new Error(`会话不存在：${sessionId}`);
+    requireSessionRecord(this.db, sessionId);
   }
 }

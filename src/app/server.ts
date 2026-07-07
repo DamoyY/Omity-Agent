@@ -3,14 +3,17 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import type { AddressInfo } from "node:net";
 import { createServer as createViteServer, type ViteDevServer } from "vite";
 import type { Control } from "../types";
 import { AppController } from "./controller";
+import { appUrl } from "./launch";
 
 export type AppServerOptions = {
   root: string;
   host: string;
   port: number;
+  onReady?: (url: string) => void;
 };
 
 export async function startAppServer(options: AppServerOptions) {
@@ -37,7 +40,16 @@ export async function startAppServer(options: AppServerOptions) {
     server.once("error", reject);
     server.listen(options.port, options.host, resolve);
   });
+  const url = appUrl(options.host, listeningPort(server.address()));
+  options.onReady?.(url);
   await waitForShutdown(controller, vite, server);
+}
+
+function listeningPort(address: string | AddressInfo | null) {
+  if (!address || typeof address === "string") {
+    throw new Error("无法获取 WebUI 监听端口");
+  }
+  return address.port;
 }
 
 async function handleApi(

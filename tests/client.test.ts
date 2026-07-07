@@ -50,7 +50,7 @@ function makeSession(sessionId: string) {
   writePrompts(settingsDir);
   const paths = sessionPaths(loadSettings(root), sessionId);
   const db = new AgentDatabase(paths.appDb);
-  db.createSession(sessionId);
+  db.createSession(sessionId, root);
   db.close();
   return { dbPath: paths.appDb, root };
 }

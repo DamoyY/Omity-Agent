@@ -1,7 +1,8 @@
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { Database } from "bun:sqlite";
-import { loadSettings } from "../infrastructure/config";
+import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
+import { applySchema } from "../infrastructure/schema";
 
 export type RegisteredSession = {
   id: string;
@@ -18,70 +19,82 @@ type SessionRow = {
 };
 
 export class AppRegistry {
-  private readonly db: Database;
+  private readonly sessionsDir: string;
 
-  constructor(appRoot: string) {
+  constructor(private readonly appRoot: string) {
     const settings = loadSettings(appRoot);
-    const path = resolve(settings.paths.dataDir, "app.sqlite");
-    mkdirSync(dirname(path), { recursive: true });
-    this.db = new Database(path, { create: true, strict: true });
-    this.db.run("PRAGMA journal_mode = WAL");
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS app_sessions (
-        id TEXT PRIMARY KEY,
-        workspace TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    `);
+    this.sessionsDir = resolve(settings.paths.dataDir, "sessions");
   }
 
-  close() {
-    this.db.close();
-  }
-
-  add(id: string, workspace: string) {
-    this.db
-      .query(
-        "INSERT INTO app_sessions (id, workspace, created_at, updated_at) VALUES (?, ?, unixepoch(), unixepoch())",
-      )
-      .run(id, resolve(workspace));
-    return this.require(id);
-  }
+  close() {}
 
   list() {
-    return this.db
-      .query<
-        SessionRow,
-        []
-      >("SELECT id, workspace, created_at, updated_at FROM app_sessions ORDER BY updated_at DESC, created_at DESC")
-      .all()
-      .map(toSession);
+    if (!existsSync(this.sessionsDir)) return [];
+    return readdirSync(this.sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => readSession(join(this.sessionsDir, entry.name)))
+      .sort(
+        (left, right) =>
+          right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
+      );
   }
 
   require(id: string) {
-    const row = this.db
-      .query<
-        SessionRow,
-        [string]
-      >("SELECT id, workspace, created_at, updated_at FROM app_sessions WHERE id = ?")
-      .get(id);
-    if (!row) throw new Error(`会话不存在：${id}`);
-    return toSession(row);
+    const settings = loadSettings(this.appRoot);
+    const paths = resolveSessionPaths(settings, id);
+    return readSession(paths.dir, id);
   }
 
   touch(id: string) {
-    this.db
-      .query("UPDATE app_sessions SET updated_at = unixepoch() WHERE id = ?")
-      .run(id);
-  }
-
-  remove(id: string) {
     this.require(id);
-    const result = this.db
-      .query("DELETE FROM app_sessions WHERE id = ?")
-      .run(id);
-    if (result.changes !== 1) throw new Error(`无法删除会话：${id}`);
+    const settings = loadSettings(this.appRoot);
+    const paths = resolveSessionPaths(settings, id);
+    const db = new Database(paths.appDb, {
+      create: false,
+      strict: true,
+    });
+    try {
+      db.query("UPDATE sessions SET updated_at = unixepoch() WHERE id = ?").run(
+        id,
+      );
+    } finally {
+      db.close();
+    }
+  }
+}
+
+function readSession(dir: string, id?: string) {
+  const dbPath = resolve(dir, "agent.sqlite");
+  if (!existsSync(dbPath)) throw new Error(`会话数据库不存在：${dbPath}`);
+  const db = new Database(dbPath, { create: false, strict: true });
+  try {
+    try {
+      applySchema(db);
+    } catch (error) {
+      console.error(
+        `无法读取会话数据库 ${dbPath}：${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
+    const row = id
+      ? db
+          .query<
+            SessionRow,
+            [string]
+          >("SELECT id, workspace, created_at, updated_at FROM sessions WHERE id = ?")
+          .get(id)
+      : db
+          .query<
+            SessionRow,
+            []
+          >("SELECT id, workspace, created_at, updated_at FROM sessions LIMIT 1")
+          .get();
+    if (!row) throw new Error(`会话不存在：${id ?? dir}`);
+    return toSession(row);
+  } finally {
+    db.close();
   }
 }
 

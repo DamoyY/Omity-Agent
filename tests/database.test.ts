@@ -19,9 +19,11 @@ function makeDb() {
   return new AgentDatabase(join(dir, "app.sqlite"));
 }
 
+const workspace = "F:\\workspace\\test";
+
 test("queue append and transcript lifecycle", () => {
   const db = makeDb();
-  db.resetSession("123");
+  db.resetSession("123", workspace);
   const queueId = db.appendUser("123", "你好");
   const item = db.nextQueue("123");
   expect(item?.id).toBe(queueId);
@@ -35,7 +37,7 @@ test("queue append and transcript lifecycle", () => {
 
 test("transcript preserves full LangChain message structure", () => {
   const db = makeDb();
-  db.resetSession("123");
+  db.resetSession("123", workspace);
   const reasoning = {
     id: "rs_1",
     type: "reasoning",
@@ -74,7 +76,7 @@ test("transcript preserves full LangChain message structure", () => {
 
 test("control is stored in sql", () => {
   const db = makeDb();
-  db.ensureSession("123");
+  db.ensureSession("123", workspace);
   db.setControl("123", "pause");
   expect(db.control("123")).toBe("pause");
   db.setControl("123", "running");
@@ -85,9 +87,9 @@ test("control is stored in sql", () => {
 test("existing sessions are explicit", () => {
   const db = makeDb();
   expect(db.hasSession("123")).toBe(false);
-  db.createSession("123");
+  db.createSession("123", workspace);
   expect(db.hasSession("123")).toBe(true);
-  expect(() => db.createSession("123")).toThrow("会话已存在：123");
+  expect(() => db.createSession("123", workspace)).toThrow("会话已存在：123");
   db.close();
 });
 

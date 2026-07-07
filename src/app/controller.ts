@@ -53,10 +53,16 @@ export class AppController {
     const root = resolve(workspace);
     loadSettings(this.appRoot, { cwd: root });
     const id = `web-${randomUUID()}`;
-    const session = this.registry.add(id, root);
     this.startHost(id, root, "new");
     this.hostErrors.delete(id);
-    return { ...session, running: true };
+    const now = Math.floor(Date.now() / 1000);
+    return {
+      id,
+      workspace: root,
+      createdAt: now,
+      updatedAt: now,
+      running: true,
+    };
   }
 
   sendMessage(sessionId: string, content: string) {
@@ -84,7 +90,6 @@ export class AppController {
     }
     deleteHostSession(sessionId, this.appRoot);
     this.hostErrors.delete(sessionId);
-    this.registry.remove(sessionId);
     return { deleted: sessionId };
   }
 
