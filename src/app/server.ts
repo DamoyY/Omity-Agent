@@ -89,6 +89,10 @@ async function handleApi(
     sendJson(res, controller.transcript(sessionId));
     return;
   }
+  if (req.method === "GET" && action === "events") {
+    controller.events.stream(sessionId, res);
+    return;
+  }
   if (req.method === "POST" && action === "messages") {
     const body = await readJson<{ content: string }>(req);
     sendJson(res, controller.sendMessage(sessionId, body.content));

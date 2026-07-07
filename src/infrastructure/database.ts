@@ -25,6 +25,7 @@ export type StreamToolCallDelta = Partial<
 
 export class AgentDatabase {
   readonly db: Database;
+  private notify?: () => void;
 
   constructor(path: string) {
     this.db = new Database(path, { create: true, strict: true });
@@ -35,6 +36,10 @@ export class AgentDatabase {
 
   close() {
     this.db.close();
+  }
+
+  onChange(notify: () => void) {
+    this.notify = notify;
   }
 
   resetSession(sessionId: string, workspace: string) {
@@ -164,6 +169,7 @@ export class AgentDatabase {
         "INSERT INTO events (session_id, level, category, message, payload_json, created_at) VALUES (?, ?, ?, ?, ?, unixepoch())",
       )
       .run(sessionId, level, category, message, JSON.stringify(payload));
+    this.notify?.();
   }
 
   streamToken(sessionId: string, queueId: number, text: string) {

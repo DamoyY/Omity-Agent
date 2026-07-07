@@ -40,4 +40,5 @@ export function setRunStatus(
   error?: string,
 ) {
   for (const item of run.items) ctx.db.setQueueStatus(item.id, status, error);
+  ctx.observer?.changed?.(ctx.sessionId);
 }

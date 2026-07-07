@@ -1,5 +1,4 @@
-import { setTimeout as sleep } from "node:timers/promises";
-import type { HostContext } from "./context";
+import { waitForWake, type HostContext } from "./context";
 import { processQueue } from "./queue";
 
 export async function hostLoop(ctx: HostContext) {
@@ -26,7 +25,7 @@ export async function hostLoop(ctx: HostContext) {
         ctx.logger.debug("等待 Client 输入", { sessionId: ctx.sessionId });
         lastIdle = now;
       }
-      await sleep(ctx.settings.host.pollMs);
+      await waitForWake(ctx, ctx.settings.host.pollMs);
       continue;
     }
     await processQueue(ctx, item);

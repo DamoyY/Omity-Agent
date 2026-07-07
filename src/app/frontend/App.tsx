@@ -6,6 +6,7 @@ import {
   deleteSession,
   loadTranscript,
   pickWorkspace,
+  sessionEvents,
   sendMessage,
   setControl,
   type SessionInfo,
@@ -53,10 +54,11 @@ export function App() {
       if (!stopped) setTranscript(data);
     };
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 800);
+    const events = sessionEvents(activeId);
+    events.addEventListener("changed", () => void refresh());
     return () => {
       stopped = true;
-      window.clearInterval(timer);
+      events.close();
     };
   }, [activeId, activeSession?.draft]);
 

@@ -6,6 +6,7 @@ import { deleteHostSession, runHostSession } from "../host";
 import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
 import { AgentDatabase } from "../infrastructure/database";
 import type { Control } from "../types";
+import { AppEvents } from "./events";
 import { AppRegistry } from "./registry";
 import { loadTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
@@ -17,6 +18,7 @@ type RunningHost = {
 };
 
 export class AppController {
+  readonly events = new AppEvents();
   private readonly registry: AppRegistry;
   private readonly hosts = new Map<string, RunningHost>();
   private readonly hostErrors = new Map<string, string>();
@@ -69,6 +71,7 @@ export class AppController {
     const session = this.registry.require(sessionId);
     this.ensureHost(session.id, session.workspace);
     const result = runClient({ sessionId, append: content }, this.appRoot);
+    this.events.notify(sessionId);
     this.hostErrors.delete(sessionId);
     this.registry.touch(sessionId);
     return result;
@@ -77,6 +80,7 @@ export class AppController {
   control(sessionId: string, control: Control) {
     this.registry.require(sessionId);
     const result = runClient({ sessionId, control }, this.appRoot);
+    this.events.notify(sessionId);
     this.registry.touch(sessionId);
     return result;
   }
@@ -121,7 +125,9 @@ export class AppController {
       cwd: root,
       quiet: true,
       signal,
+      wake: (delayMs) => this.events.wait(sessionId, delayMs),
       observer: {
+        changed: (changedSessionId) => this.events.notify(changedSessionId),
         token: () => {},
       },
     })

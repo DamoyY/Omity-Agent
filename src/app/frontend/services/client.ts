@@ -41,6 +41,12 @@ export async function loadTranscript(sessionId: string) {
   }>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`);
 }
 
+export function sessionEvents(sessionId: string) {
+  return new EventSource(
+    `/api/sessions/${encodeURIComponent(sessionId)}/events`,
+  );
+}
+
 export async function sendMessage(sessionId: string, content: string) {
   return request(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
     method: "POST",

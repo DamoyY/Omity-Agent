@@ -22,6 +22,7 @@ export type HostRunOptions = {
   observer?: HostObserver;
   quiet?: boolean;
   signal?: StopSignal;
+  wake?: (delayMs: number) => Promise<void>;
   wireSigint?: boolean;
 };
 
@@ -57,6 +58,7 @@ export async function runHostSession(
       ? resolveSessionPaths(settings, mode.sessionId)
       : prepareWritableSession(settings, mode);
   const db = openHostDatabase(paths.appDb, mode, workspace);
+  db.onChange(() => options.observer?.changed?.(mode.sessionId));
   if (mode.kind === "new") {
     logger.info("已创建新会话", { sessionId: mode.sessionId, db: paths.appDb });
   } else if (mode.kind === "load") {
@@ -86,6 +88,7 @@ export async function runHostSession(
       checkpointer,
       sessionId: mode.sessionId,
       signal,
+      wake: options.wake,
       observer: options.observer,
     });
   } finally {

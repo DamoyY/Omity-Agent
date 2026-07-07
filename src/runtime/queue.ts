@@ -1,8 +1,7 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { Command } from "@langchain/langgraph";
 import { HumanMessage } from "@langchain/core/messages";
 import type { QueueItem } from "../types";
-import type { HostContext } from "./context";
+import { waitForWake, type HostContext } from "./context";
 import { isModelNetworkError } from "./network";
 import { waitBeforeModelNetworkRetry } from "./retry";
 import {
@@ -22,6 +21,7 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
   };
   try {
     ctx.db.startQueue(ctx.sessionId, item);
+    ctx.observer?.changed?.(ctx.sessionId);
     if (!(await waitIfPaused(ctx, run))) return;
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
@@ -29,6 +29,7 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
     const message = error instanceof Error ? error.message : String(error);
     setRunStatus(ctx, run, "paused", message);
     ctx.db.setControl(ctx.sessionId, "pause");
+    ctx.observer?.changed?.(ctx.sessionId);
     ctx.logger.error("队列异常，已暂停", { queueId: item.id, error: message });
   } finally {
     end();
@@ -100,6 +101,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     });
     if (control === "pause" || control === "pause_cancel") {
       setRunStatus(ctx, run, "paused");
+      ctx.observer?.changed?.(ctx.sessionId);
       ctx.logger.warn("已在节点边界暂停", {
         queueId: item.id,
         next: state.next,
@@ -174,6 +176,6 @@ async function waitIfPaused(ctx: HostContext, run: QueueRun) {
       });
       pauseLogged = true;
     }
-    await sleep(ctx.settings.host.pausePollMs);
+    await waitForWake(ctx, ctx.settings.host.pausePollMs);
   }
 }
