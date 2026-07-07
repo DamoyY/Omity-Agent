@@ -11,6 +11,10 @@
 #       - "@modelcontextprotocol/server-brave-search"
 #     env:
 #       BRAVE_API_KEY: ${BRAVE_API_KEY}
+#
+# 可选：自定义 MCP 工具名，键是原始的自动生成工具名，值是对 Agent 暴露的工具名。
+# toolNameOverrides:
+#   brave__brave_web_search: web_search
 
 mcpServers:
   web:
@@ -31,3 +35,6 @@ mcpServers:
     transport: stdio
     command: F:/workspace/apply-patch-mcp/target/release/apply-patch-mcp.exe
     args: []
+
+toolNameOverrides:
+  diff__apply_patch: apply_patch

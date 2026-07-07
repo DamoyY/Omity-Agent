@@ -4,6 +4,10 @@ import { loadMcpTools, MultiServerMCPClient } from "@langchain/mcp-adapters";
 import YAML from "yaml";
 import type { Logger } from "./logger";
 import { collectReadableZodIssues } from "./mcpSupport/schemaIssueText";
+import {
+  normalizeMcpToolNameOverrides,
+  renameMcpTools,
+} from "./mcpSupport/toolNameOverrides";
 import { createMcpErrorOutputClient } from "./mcpSupport/toolErrorOutput";
 
 const envPlaceholder = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
@@ -73,12 +77,19 @@ export async function loadMcp(root: string, logger: Logger) {
   ) as {
     mcpServers?: Record<string, unknown>;
     servers?: Record<string, unknown>;
+    toolNameOverrides?: unknown;
   };
   const mcpServers = normalizeMcpServers(
     parsed.mcpServers ?? parsed.servers ?? {},
   );
+  const toolNameOverrides = normalizeMcpToolNameOverrides(
+    parsed.toolNameOverrides,
+  );
   const names = Object.keys(mcpServers);
   if (names.length === 0) {
+    if (Object.keys(toolNameOverrides).length > 0) {
+      throw new Error("MCP 工具重命名配置需要至少配置一个 MCP 服务器");
+    }
     logger.info("MCP 未配置服务器，Agent 将不带工具运行");
     return { tools: [], close: async () => {} };
   }
@@ -90,22 +101,25 @@ export async function loadMcp(root: string, logger: Logger) {
       throwOnLoadError: false,
       prefixToolNameWithServerName: true,
     } as never);
-    const tools = (
-      await Promise.all(
-        names.map(async (name) => {
-          const serverClient = await client?.getClient(name);
-          if (serverClient === undefined) return [];
-          return loadMcpTools(
-            name,
-            createMcpErrorOutputClient(serverClient, name),
-            {
-              throwOnLoadError: false,
-              prefixToolNameWithServerName: true,
-            },
-          );
-        }),
-      )
-    ).flat();
+    const tools = renameMcpTools(
+      (
+        await Promise.all(
+          names.map(async (name) => {
+            const serverClient = await client?.getClient(name);
+            if (serverClient === undefined) return [];
+            return loadMcpTools(
+              name,
+              createMcpErrorOutputClient(serverClient, name),
+              {
+                throwOnLoadError: false,
+                prefixToolNameWithServerName: true,
+              },
+            );
+          }),
+        )
+      ).flat(),
+      toolNameOverrides,
+    );
     logger.info("已加载 MCP 工具", {
       servers: names,
       tools: tools.map((tool) => tool.name),

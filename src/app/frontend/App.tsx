@@ -31,6 +31,7 @@ export function App() {
   const [sessions, setSessions] = useState<LocalSession[]>([]);
   const [activeId, setActiveId] = useState<string>();
   const [transcript, setTranscript] = useState<Transcript>(emptyTranscript);
+  const [pausingSessionId, setPausingSessionId] = useState<string>();
   const activeSession = sessions.find((session) => session.id === activeId);
 
   useEffect(() => {
@@ -58,6 +59,13 @@ export function App() {
       window.clearInterval(timer);
     };
   }, [activeId, activeSession?.draft]);
+
+  useEffect(() => {
+    if (pausingSessionId !== activeId) return;
+    const running = transcript.queue.some((item) => item.status === "running");
+    const paused = transcript.queue.some((item) => item.status === "paused");
+    if (paused || !running) setPausingSessionId(undefined);
+  }, [activeId, pausingSessionId, transcript.queue]);
 
   return (
     <div className={cx("dark", layout)}>
@@ -100,11 +108,24 @@ export function App() {
         <ChatPage
           activeId={activeId}
           canControl={activeSession !== undefined && !activeSession.draft}
+          pausing={pausingSessionId === activeId}
           queue={transcript.queue}
           view={transcript.view}
           onControl={async (control) => {
             if (!activeSession || activeSession.draft) return;
-            await setControl(activeSession.id, control);
+            const running = transcript.queue.some(
+              (item) => item.status === "running",
+            );
+            if (control === "pause" && running) {
+              setPausingSessionId(activeSession.id);
+            }
+            try {
+              await setControl(activeSession.id, control);
+            } catch (error) {
+              if (control === "pause") setPausingSessionId(undefined);
+              throw error;
+            }
+            if (control !== "pause") setPausingSessionId(undefined);
           }}
           onSend={async (content) => {
             if (!activeSession) return;

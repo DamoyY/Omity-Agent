@@ -18,6 +18,7 @@
   "running": "运行中",
   "idle": "空闲",
   "pause": "暂停",
+  "pausing": "正在暂停",
   "resume": "继续",
   "cancel": "取消",
   "delete": "删除",

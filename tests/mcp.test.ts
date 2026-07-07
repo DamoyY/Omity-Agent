@@ -3,6 +3,10 @@ import {
   expandEnvPlaceholders,
   normalizeMcpServers,
 } from "../src/infrastructure/mcp";
+import {
+  normalizeMcpToolNameOverrides,
+  renameMcpTools,
+} from "../src/infrastructure/mcpSupport/toolNameOverrides";
 import { mcpErrorResultAsOutput } from "../src/infrastructure/mcpSupport/toolErrorOutput";
 
 const savedEnv = new Map<string, string | undefined>();
@@ -97,6 +101,44 @@ test("mcp stdio config allows omitted or blank args", () => {
   });
 });
 
+test("mcp config normalizes tool name overrides", () => {
+  expect(
+    normalizeMcpToolNameOverrides({
+      web__search: "search",
+      web__crawl: "crawl",
+    }),
+  ).toEqual({
+    web__search: "search",
+    web__crawl: "crawl",
+  });
+});
+
+test("mcp tool name overrides rename loaded tools", () => {
+  const tools = toolNames(["web__search", "web__crawl"]);
+
+  expect(
+    renameMcpTools(tools, {
+      web__search: "search",
+    }).map((tool) => tool.name),
+  ).toEqual(["search", "web__crawl"]);
+});
+
+test("mcp tool name overrides report missing source tools", () => {
+  expect(() =>
+    renameMcpTools(toolNames(["web__search"]), {
+      web__missing: "missing",
+    }),
+  ).toThrow("MCP 工具重命名配置引用了不存在的工具：web__missing");
+});
+
+test("mcp tool name overrides report renamed conflicts", () => {
+  expect(() =>
+    renameMcpTools(toolNames(["web__search", "web__crawl"]), {
+      web__search: "web__crawl",
+    }),
+  ).toThrow("MCP 工具重命名后名称冲突：web__crawl");
+});
+
 test("mcp error result is converted to normal tool output", () => {
   expect(
     mcpErrorResultAsOutput(
@@ -125,3 +167,7 @@ test("mcp successful result is not changed", () => {
 
   expect(mcpErrorResultAsOutput(result, "web", "search")).toBe(result);
 });
+
+function toolNames(names: string[]) {
+  return names.map((name) => ({ name })) as never;
+}

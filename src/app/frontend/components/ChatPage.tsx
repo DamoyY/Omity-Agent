@@ -51,6 +51,7 @@ const roleLabel = css({
 export function ChatPage({
   activeId,
   canControl,
+  pausing,
   queue,
   view,
   onSend,
@@ -58,6 +59,7 @@ export function ChatPage({
 }: {
   activeId?: string;
   canControl: boolean;
+  pausing: boolean;
   queue: DisplayQueue[];
   view: TimelineMessage[];
   onSend(content: string): Promise<void>;
@@ -65,6 +67,7 @@ export function ChatPage({
 }) {
   const { t } = useTranslation();
   const paused = queue.some((item) => item.status === "paused");
+  const waitingForPause = pausing && !paused;
   if (!activeId) return <div className={empty}>{t("empty")}</div>;
   return (
     <>
@@ -72,10 +75,11 @@ export function ChatPage({
         <header className={header}>
           <Button
             onClick={() => void onControl(paused ? "running" : "pause")}
+            disabled={waitingForPause}
             variant="outline"
           >
             {paused ? <Play size={14} /> : <Pause size={14} />}
-            {paused ? t("resume") : t("pause")}
+            {waitingForPause ? t("pausing") : paused ? t("resume") : t("pause")}
           </Button>
         </header>
       ) : null}
