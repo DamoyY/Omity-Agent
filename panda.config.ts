@@ -22,10 +22,17 @@ export default defineConfig({
       tokens: {
         colors: {
           canvas: { value: "#000000" },
-          panel: { value: "#050505" },
-          line: { value: "#262626" },
+          sidebar: { value: "#030303" },
+          surface: { value: "#070707" },
+          surfaceRaised: { value: "#0b0b0b" },
+          surfaceInset: { value: "#020202" },
+          control: { value: "#101010" },
+          controlHover: { value: "#171717" },
+          line: { value: "#1b1b1b" },
+          lineStrong: { value: "#303030" },
           text: { value: "#f2f2f2" },
-          muted: { value: "#9a9a9a" },
+          muted: { value: "#8a8a8a" },
+          mutedStrong: { value: "#b8b8b8" },
         },
         fonts: {
           body: {
@@ -44,6 +51,8 @@ export default defineConfig({
       margin: "0",
     },
     body: {
+      color: "text",
+      colorScheme: "dark",
       overflow: "hidden",
     },
     "*": {

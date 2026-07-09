@@ -79,9 +79,10 @@ export function replaceMessages(
 
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   const rows = db
-    .query<MessageRow, [string]>(
-      "SELECT message_json FROM messages WHERE session_id = ? ORDER BY id",
-    )
+    .query<
+      MessageRow,
+      [string]
+    >("SELECT message_json FROM messages WHERE session_id = ? ORDER BY id")
     .all(sessionId);
   return messageRowsToChatMessages(rows);
 }

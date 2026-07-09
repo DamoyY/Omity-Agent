@@ -4,6 +4,7 @@ import type { DisplayMessage, DisplayToolCall } from "../../timeline";
 import { Badge, Code } from "./ParkUI";
 
 const details = css({
+  bg: "surfaceInset",
   borderWidth: "1px",
   borderColor: "line",
   color: "muted",

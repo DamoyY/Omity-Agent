@@ -5,6 +5,7 @@ import { css } from "styled-system/css";
 import { Button, Textarea } from "./ParkUI";
 
 const form = css({
+  bg: "surface",
   borderTopWidth: "1px",
   borderTopColor: "line",
   display: "grid",
@@ -16,6 +17,8 @@ const form = css({
 });
 
 const messageBox = css({
+  bg: "surfaceInset",
+  borderColor: "lineStrong",
   h: "9rem",
   minW: 0,
   resize: "none",

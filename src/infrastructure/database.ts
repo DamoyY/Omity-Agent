@@ -81,18 +81,20 @@ export class AgentDatabase {
 
   pendingAppends(sessionId: string): QueueItem[] {
     return this.db
-      .query<QueueRow, [string]>(
-        "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status = 'pending' ORDER BY id",
-      )
+      .query<
+        QueueRow,
+        [string]
+      >("SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status = 'pending' ORDER BY id")
       .all(sessionId)
       .map(toQueueItem);
   }
 
   nextQueue(sessionId: string): QueueItem | null {
     const row = this.db
-      .query<QueueRow, [string]>(
-        "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
-      )
+      .query<
+        QueueRow,
+        [string]
+      >("SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1")
       .get(sessionId);
     return row ? toQueueItem(row) : null;
   }

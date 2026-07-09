@@ -10,6 +10,7 @@ const markdown = css({
   minW: 0,
   "& p": { mb: "3" },
   "& pre": {
+    bg: "surfaceInset",
     borderWidth: "1px",
     borderColor: "line",
     maxW: "full",

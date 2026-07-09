@@ -9,6 +9,7 @@ import { Button } from "./ParkUI";
 import { ToolCall } from "./ToolCall";
 
 const header = css({
+  bg: "surface",
   borderBottomWidth: "1px",
   borderBottomColor: "line",
   display: "flex",
@@ -25,7 +26,7 @@ const empty = css({
 });
 
 const messageRoot = css({
-  bg: "panel",
+  bg: "surface",
   borderWidth: "1px",
   borderColor: "line",
   display: "grid",
@@ -39,6 +40,8 @@ const messageRoot = css({
 });
 
 const userMessage = css({
+  bg: "surfaceRaised",
+  borderColor: "lineStrong",
   ml: "auto",
   textAlign: "right",
 });

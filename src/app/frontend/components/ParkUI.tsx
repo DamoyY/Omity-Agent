@@ -17,14 +17,34 @@ import {
 const fieldClasses = fieldRecipe();
 
 const compactControl = css({
+  bg: "control",
+  borderColor: "lineStrong",
   borderRadius: "0",
+  color: "text",
   fontFamily: "body",
   fontWeight: "normal",
   minW: 0,
+  _disabled: {
+    bg: "surface",
+    borderColor: "line",
+    color: "muted",
+  },
+  _focusVisible: {
+    outlineColor: "mutedStrong",
+    outlineOffset: "2px",
+    outlineStyle: "solid",
+    outlineWidth: "1px",
+  },
+  _hover: {
+    bg: "controlHover",
+  },
 });
 
 const compactBadge = css({
+  bg: "surfaceRaised",
+  borderColor: "lineStrong",
   borderRadius: "0",
+  color: "mutedStrong",
   display: "inline-flex",
   fontFamily: "body",
   fontWeight: "normal",

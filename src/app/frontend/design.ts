@@ -11,6 +11,7 @@ export const layout = css({
 });
 
 export const sidebar = css({
+  bg: "sidebar",
   borderRightWidth: "1px",
   borderRightColor: "line",
   display: "grid",
@@ -21,6 +22,7 @@ export const sidebar = css({
 });
 
 export const main = css({
+  bg: "surfaceInset",
   display: "grid",
   gridTemplateRows: "auto minmax(0, 1fr) auto",
   minH: 0,

@@ -13,9 +13,11 @@ const title = css({
   fontSize: "md",
   fontWeight: "normal",
   m: 0,
+  color: "mutedStrong",
 });
 
 const panel = css({
+  bg: "sidebar",
   borderBottomWidth: "1px",
   borderBottomColor: "line",
   p: "3",
@@ -23,6 +25,7 @@ const panel = css({
 
 const list = css({
   alignContent: "start",
+  bg: "sidebar",
   display: "grid",
   gap: "2",
   gridAutoRows: "max-content",
@@ -62,6 +65,8 @@ const pickerRow = css({
 
 const sessionButton = css({
   alignItems: "stretch",
+  bg: "surface",
+  borderColor: "line",
   flexDirection: "column",
   h: "auto",
   justifyContent: "flex-start",
@@ -72,9 +77,11 @@ const sessionButton = css({
 });
 
 const activeSession = css({
+  bg: "surfaceRaised",
+  borderColor: "lineStrong",
   outlineWidth: "1px",
   outlineStyle: "solid",
-  outlineColor: "text",
+  outlineColor: "lineStrong",
 });
 
 const stack = css({
