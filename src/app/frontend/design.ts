@@ -23,8 +23,7 @@ export const sidebar = css({
 
 export const main = css({
   bg: "surfaceInset",
-  display: "grid",
-  gridTemplateRows: "auto minmax(0, 1fr) auto",
+  h: "full",
   minH: 0,
   minW: 0,
   overflow: "hidden",

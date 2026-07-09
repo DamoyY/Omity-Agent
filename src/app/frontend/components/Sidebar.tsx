@@ -1,9 +1,8 @@
-import { FolderOpen, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css, cx } from "styled-system/css";
 import type { SessionInfo } from "../services/client";
-import { Button, Field, IconButton, Input } from "./ParkUI";
+import { Button, IconButton } from "./ParkUI";
 
 type SessionView = SessionInfo & {
   draft?: boolean;
@@ -56,13 +55,6 @@ const sessionRow = css({
   minW: 0,
 });
 
-const pickerRow = css({
-  display: "grid",
-  gap: "2",
-  gridTemplateColumns: "1fr",
-  minW: 0,
-});
-
 const sessionButton = css({
   alignItems: "stretch",
   bg: "surface",
@@ -94,76 +86,36 @@ const fullButton = css({
   w: "full",
 });
 
-const pathInput = css({
-  minW: 0,
-  textOverflow: "ellipsis",
-});
-
 export function Sidebar({
-  cwd,
   sessions,
   activeId,
   onCreate,
   onDelete,
-  onPickWorkspace,
   onSelect,
 }: {
-  cwd: string;
   sessions: SessionView[];
   activeId?: string;
-  onCreate(workspace: string): Promise<void>;
+  onCreate(): Promise<void>;
   onDelete(id: string): Promise<void>;
-  onPickWorkspace(): Promise<string | null>;
   onSelect(id: string): void;
 }) {
   const { t } = useTranslation();
-  const [workspace, setWorkspace] = useState(cwd);
-  const [picking, setPicking] = useState(false);
-  useEffect(() => setWorkspace(cwd), [cwd]);
   return (
     <>
       <section className={panel}>
         <h1 className={title}>{t("brand")}</h1>
       </section>
       <section className={panel}>
-        <form
-          className={stack}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void onCreate(workspace);
-          }}
-        >
-          <Field.Root>
-            <Field.Label>{t("workspace")}</Field.Label>
-            <span className={pickerRow}>
-              <Input
-                className={pathInput}
-                value={workspace}
-                onChange={(event) => setWorkspace(event.currentTarget.value)}
-              />
-              <Button
-                className={fullButton}
-                disabled={picking}
-                onClick={async () => {
-                  setPicking(true);
-                  try {
-                    const selected = await onPickWorkspace();
-                    if (selected) setWorkspace(selected);
-                  } finally {
-                    setPicking(false);
-                  }
-                }}
-                type="button"
-              >
-                <FolderOpen size={14} /> {t("chooseFolder")}
-              </Button>
-            </span>
-          </Field.Root>
-          <Button className={fullButton} type="submit">
+        <div className={stack}>
+          <Button
+            className={fullButton}
+            onClick={() => void onCreate()}
+            type="button"
+          >
             <Plus size={14} />
             {t("newSession")}
           </Button>
-        </form>
+        </div>
       </section>
       <nav className={list}>
         {sessions.map((session) => (

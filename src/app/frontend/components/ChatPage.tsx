@@ -5,6 +5,7 @@ import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import { scroll } from "../design";
 import { Composer } from "./Composer";
 import { MarkdownView } from "./MarkdownView";
+import { NewSessionPage } from "./NewSessionPage";
 import { Button } from "./ParkUI";
 import { ToolCall } from "./ToolCall";
 
@@ -16,6 +17,15 @@ const header = css({
   gap: "2",
   justifyContent: "flex-end",
   p: "3",
+});
+
+const page = css({
+  display: "grid",
+  gridTemplateRows: "auto minmax(0, 1fr) auto",
+  h: "full",
+  minH: 0,
+  minW: 0,
+  overflow: "hidden",
 });
 
 const empty = css({
@@ -54,26 +64,53 @@ const roleLabel = css({
 export function ChatPage({
   activeId,
   canControl,
+  draft,
   pausing,
   queue,
   view,
+  workspace,
   onSend,
   onControl,
+  onPickWorkspace,
+  onWorkspaceChange,
 }: {
   activeId?: string;
   canControl: boolean;
+  draft: boolean;
   pausing: boolean;
   queue: DisplayQueue[];
   view: TimelineMessage[];
+  workspace?: string;
   onSend(content: string): Promise<void>;
   onControl(control: string): Promise<void>;
+  onPickWorkspace(): Promise<string | null>;
+  onWorkspaceChange(workspace: string): void;
 }) {
   const { t } = useTranslation();
   const paused = queue.some((item) => item.status === "paused");
   const waitingForPause = pausing && !paused;
-  if (!activeId) return <div className={empty}>{t("empty")}</div>;
+  if (!activeId) {
+    return (
+      <div className={page}>
+        <div />
+        <div className={empty}>{t("empty")}</div>
+      </div>
+    );
+  }
+  if (draft) {
+    if (workspace === undefined) throw new Error("新建会话缺少工作目录");
+    return (
+      <NewSessionPage
+        pageClassName={page}
+        workspace={workspace}
+        onPickWorkspace={onPickWorkspace}
+        onSend={onSend}
+        onWorkspaceChange={onWorkspaceChange}
+      />
+    );
+  }
   return (
-    <>
+    <div className={page}>
       {canControl ? (
         <header className={header}>
           <Button
@@ -85,7 +122,9 @@ export function ChatPage({
             {waitingForPause ? t("pausing") : paused ? t("resume") : t("pause")}
           </Button>
         </header>
-      ) : null}
+      ) : (
+        <div />
+      )}
       <section className={scroll}>
         {view.length === 0 ? (
           <div className={empty}>{t("noMessages")}</div>
@@ -111,6 +150,6 @@ export function ChatPage({
         ))}
       </section>
       <Composer disabled={!activeId} onSend={onSend} />
-    </>
+    </div>
   );
 }

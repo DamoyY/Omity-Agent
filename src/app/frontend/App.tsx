@@ -74,19 +74,21 @@ export function App() {
       <aside className={sidebar}>
         <Sidebar
           activeId={activeId}
-          cwd={cwd}
           sessions={sessions.filter((session) => !session.draft)}
-          onCreate={async (workspace) => {
+          onCreate={async () => {
             const now = Math.floor(Date.now() / 1000);
             const session = {
               id: `draft-${crypto.randomUUID()}`,
-              workspace,
+              workspace: cwd,
               createdAt: now,
               updatedAt: now,
               running: false,
               draft: true,
             };
-            setSessions((current) => [session, ...current]);
+            setSessions((current) => [
+              session,
+              ...current.filter((item) => !item.draft),
+            ]);
             setActiveId(session.id);
           }}
           onDelete={async (id) => {
@@ -99,10 +101,6 @@ export function App() {
               setTranscript(emptyTranscript);
             }
           }}
-          onPickWorkspace={async () => {
-            const result = await pickWorkspace();
-            return result.workspace;
-          }}
           onSelect={setActiveId}
         />
       </aside>
@@ -110,9 +108,11 @@ export function App() {
         <ChatPage
           activeId={activeId}
           canControl={activeSession !== undefined && !activeSession.draft}
+          draft={activeSession?.draft ?? false}
           pausing={pausingSessionId === activeId}
           queue={transcript.queue}
           view={transcript.view}
+          workspace={activeSession?.workspace}
           onControl={async (control) => {
             if (!activeSession || activeSession.draft) return;
             const running = transcript.queue.some(
@@ -129,6 +129,10 @@ export function App() {
             }
             if (control !== "pause") setPausingSessionId(undefined);
           }}
+          onPickWorkspace={async () => {
+            const result = await pickWorkspace();
+            return result.workspace;
+          }}
           onSend={async (content) => {
             if (!activeSession) return;
             if (activeSession.draft) {
@@ -143,6 +147,14 @@ export function App() {
               return;
             }
             await sendMessage(activeSession.id, content);
+          }}
+          onWorkspaceChange={(workspace) => {
+            if (!activeId) return;
+            setSessions((current) =>
+              current.map((session) =>
+                session.id === activeId ? { ...session, workspace } : session,
+              ),
+            );
           }}
         />
       </main>
