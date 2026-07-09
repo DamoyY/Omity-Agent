@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 import type { Settings } from "../types";
+import { normalizeWorkspacePath } from "./workspacePath";
 
 const reasoningEffortSchema = z.enum([
   "none",
@@ -58,7 +59,7 @@ export function loadSettings(
   options: LoadSettingsOptions = {},
 ): Settings {
   const configRoot = resolve(root);
-  const cwd = resolve(options.cwd ?? configRoot);
+  const cwd = normalizeWorkspacePath(options.cwd ?? configRoot, configRoot);
   const settingsDir = resolve(configRoot, "settings");
   const main = mainSchema.parse(readYaml(resolve(settingsDir, "main.yaml")));
   const promptsDir = resolve(settingsDir, "prompts");

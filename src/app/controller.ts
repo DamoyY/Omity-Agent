@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 import { runClient } from "../client";
 import { deleteHostSession, runHostSession } from "../host";
 import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
 import { AgentDatabase } from "../infrastructure/database";
+import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
 import type { Control } from "../types";
 import { AppEvents } from "./events";
 import { AppRegistry } from "./registry";
@@ -52,7 +52,7 @@ export class AppController {
   }
 
   createSession(workspace: string) {
-    const root = resolve(workspace);
+    const root = normalizeWorkspacePath(workspace, this.appRoot);
     loadSettings(this.appRoot, { cwd: root });
     const id = `web-${randomUUID()}`;
     this.startHost(id, root, "new");

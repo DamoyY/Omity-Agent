@@ -1,5 +1,4 @@
 import { existsSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
 import { buildGraph } from "./agent";
 import {
   loadSettings,
@@ -9,6 +8,7 @@ import {
 import { AgentDatabase } from "./infrastructure/database";
 import { Logger } from "./infrastructure/logger";
 import { loadMcp } from "./infrastructure/mcp";
+import { normalizeWorkspacePath } from "./infrastructure/workspacePath";
 import { hostLoop } from "./runtime/loop";
 import type { HostObserver, StopSignal } from "./runtime/context";
 
@@ -44,8 +44,8 @@ export async function runHostSession(
   root = process.cwd(),
   options: HostRunOptions = {},
 ) {
-  const workspace = resolve(options.cwd ?? root);
-  const loadedSettings = loadSettings(root, { cwd: options.cwd });
+  const workspace = normalizeWorkspacePath(options.cwd ?? root, root);
+  const loadedSettings = loadSettings(root, { cwd: workspace });
   const settings = options.quiet
     ? {
         ...loadedSettings,
