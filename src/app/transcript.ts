@@ -24,6 +24,8 @@ type QueueRow = {
   content: string;
   status: string;
   error: string | null;
+  user_message_id: number | null;
+  root_queue_id: number | null;
 };
 
 type EventRow = {
@@ -34,20 +36,34 @@ type EventRow = {
 
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const messages = db.db
-    .query<MessageRow, [string]>(
-      "SELECT id, message_json, queue_id, created_at FROM messages WHERE session_id = ? ORDER BY id",
-    )
+    .query<
+      MessageRow,
+      [string]
+    >("SELECT id, message_json, queue_id, created_at FROM messages WHERE session_id = ? ORDER BY id")
     .all(sessionId)
     .map(toDisplayMessage);
   const queue = db.db
     .query<QueueRow, [string]>(
-      "SELECT id, content, status, error FROM queue WHERE session_id = ? ORDER BY id",
+      `SELECT q.id, q.content, q.status, q.error, q.user_message_id,
+        r.root_queue_id
+       FROM queue q
+       LEFT JOIN runs r ON r.id = q.run_id
+       WHERE q.session_id = ? ORDER BY q.id`,
     )
-    .all(sessionId);
+    .all(sessionId)
+    .map((row) => ({
+      id: row.id,
+      content: row.content,
+      status: row.status,
+      error: row.error,
+      userMessageId: row.user_message_id,
+      root: row.root_queue_id === row.id,
+    }));
   const events = db.db
-    .query<EventRow, [string]>(
-      "SELECT id, message, payload_json FROM events WHERE session_id = ? AND category = 'stream' ORDER BY id",
-    )
+    .query<
+      EventRow,
+      [string]
+    >("SELECT id, message, payload_json FROM events WHERE session_id = ? AND category = 'stream' ORDER BY id")
     .all(sessionId)
     .map(toDisplayEvent);
   return { queue, view: buildTimeline(messages, queue, events) };

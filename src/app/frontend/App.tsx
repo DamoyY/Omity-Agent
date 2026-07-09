@@ -36,6 +36,7 @@ export function App() {
     page.kind === "session"
       ? sessions.find((session) => session.id === page.id)
       : undefined;
+  const forkDraft = transcript.queue.find((item) => item.status === "draft");
 
   const navigate = (nextPage: Page, replace = false) => {
     writePage(nextPage, replace);
@@ -160,6 +161,10 @@ export function App() {
             return result.workspace;
           }}
           onSend={async (content) => {
+            if (forkDraft && activeSession) {
+              await sendMessage(activeSession.id, content);
+              return;
+            }
             if (page.kind === "new") {
               const { session } = await createSession(newWorkspace);
               setSessions((current) => [session, ...current]);

@@ -1,5 +1,5 @@
 import { Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { Button, Textarea } from "./ParkUI";
@@ -30,13 +30,16 @@ const sendButton = css({
 
 export function Composer({
   disabled,
+  draft,
   onSend,
 }: {
   disabled: boolean;
+  draft?: string;
   onSend(content: string): Promise<void>;
 }) {
   const { t } = useTranslation();
   const [content, setContent] = useState("");
+  useEffect(() => setContent(draft ?? ""), [draft]);
   return (
     <form
       className={form}

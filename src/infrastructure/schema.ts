@@ -15,6 +15,7 @@ export const migrationSql = [
     CREATE TABLE IF NOT EXISTS queue (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL,
+      run_id INTEGER,
       content TEXT NOT NULL,
       status TEXT NOT NULL,
       user_message_id INTEGER,
@@ -23,6 +24,18 @@ export const migrationSql = [
       started_at INTEGER,
       updated_at INTEGER,
       FOREIGN KEY (session_id) REFERENCES sessions(id)
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      root_queue_id INTEGER NOT NULL UNIQUE,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER,
+      FOREIGN KEY (session_id) REFERENCES sessions(id),
+      FOREIGN KEY (root_queue_id) REFERENCES queue(id)
     )
   `,
   `
@@ -54,6 +67,26 @@ export function applySchema(db: Database) {
     "id",
     "workspace",
     "control",
+    "status",
+    "created_at",
+    "updated_at",
+  ]);
+  assertColumns(db, "queue", [
+    "id",
+    "session_id",
+    "run_id",
+    "content",
+    "status",
+    "user_message_id",
+    "error",
+    "created_at",
+    "started_at",
+    "updated_at",
+  ]);
+  assertColumns(db, "runs", [
+    "id",
+    "session_id",
+    "root_queue_id",
     "status",
     "created_at",
     "updated_at",

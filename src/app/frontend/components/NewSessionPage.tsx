@@ -90,7 +90,7 @@ export function NewSessionPage({
           </Field.Root>
         </div>
       </section>
-      <Composer disabled={false} onSend={onSend} />
+      <Composer disabled={false} draft="" onSend={onSend} />
     </div>
   );
 }

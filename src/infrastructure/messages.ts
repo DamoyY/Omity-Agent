@@ -19,6 +19,7 @@ export type MessageInsert = {
 
 export type ReplaceMessagesOptions = {
   clearStreamEvents?: boolean;
+  queueIds?: number[];
 };
 
 export function messageInsert(
@@ -59,14 +60,19 @@ export function replaceMessages(
   messages: BaseMessage[],
   options: ReplaceMessagesOptions = {},
 ) {
-  const items = messages.map((message) => messageInsert(message));
+  let humanIndex = 0;
+  const items = messages.map((message) => {
+    const queueId =
+      message.type === "human" ? options.queueIds?.[humanIndex++] : undefined;
+    return messageInsert(message, queueId);
+  });
   const insert = db.query(
-    "INSERT INTO messages (session_id, message_json, created_at) VALUES (?, ?, unixepoch())",
+    "INSERT INTO messages (session_id, message_json, queue_id, created_at) VALUES (?, ?, ?, unixepoch())",
   );
   const tx = db.transaction((persisted: MessageInsert[]) => {
     db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
     for (const item of persisted) {
-      insert.run(sessionId, item.messageJson);
+      insert.run(sessionId, item.messageJson, item.queueId ?? null);
     }
     if (options.clearStreamEvents) {
       db.query(
@@ -79,9 +85,10 @@ export function replaceMessages(
 
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   const rows = db
-    .query<MessageRow, [string]>(
-      "SELECT message_json FROM messages WHERE session_id = ? ORDER BY id",
-    )
+    .query<
+      MessageRow,
+      [string]
+    >("SELECT message_json FROM messages WHERE session_id = ? ORDER BY id")
     .all(sessionId);
   return messageRowsToChatMessages(rows);
 }

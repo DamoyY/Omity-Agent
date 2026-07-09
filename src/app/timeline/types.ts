@@ -24,6 +24,8 @@ export type DisplayQueue = {
   content: string;
   status: string;
   error: string | null;
+  userMessageId?: number | null;
+  root?: boolean;
 };
 
 export type DisplayEvent = {

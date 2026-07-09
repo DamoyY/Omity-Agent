@@ -83,8 +83,9 @@ export class AppController {
   }
 
   control(sessionId: string, control: Control) {
-    this.registry.require(sessionId);
+    const session = this.registry.require(sessionId);
     const result = runClient({ sessionId, control }, this.appRoot);
+    if (control === "running") this.ensureHost(session.id, session.workspace);
     this.events.notify(sessionId);
     this.registry.touch(sessionId);
     return result;

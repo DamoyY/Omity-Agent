@@ -44,6 +44,7 @@ export function buildTimeline(
     .map((item) => synthetic("user", item.content, `queue-${item.id}`));
   const live = queue
     .filter((item) => item.status === "running" || item.status === "paused")
+    .filter((item) => item.userMessageId !== null)
     .map((item) => streamMessage(item, events, outputs, visibleToolCalls))
     .filter((item) => item.parts.length > 0);
   return groupAssistantMessages([...visible, ...pending, ...live]);

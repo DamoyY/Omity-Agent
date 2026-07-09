@@ -1,26 +1,8 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { forkDatabaseBeforeMessage } from "../src/app/fork";
-import { AgentDatabase } from "../src/infrastructure/database";
+import { cleanupDatabaseDirs, makeDb, workspace } from "./support/database";
 
-const dirs: string[] = [];
-
-afterEach(() => {
-  for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-function makeDb() {
-  const dir = mkdtempSync(join(tmpdir(), "agent-db-"));
-  dirs.push(dir);
-  return new AgentDatabase(join(dir, "app.sqlite"));
-}
-
-const workspace = "F:\\workspace\\test";
+afterEach(cleanupDatabaseDirs);
 
 test("queue append and transcript lifecycle", () => {
   const db = makeDb();
@@ -117,82 +99,4 @@ test("client operations reject missing sessions", () => {
     "会话不存在：missing",
   );
   db.close();
-});
-
-test("fork copies messages before selected user message", () => {
-  const source = makeDb();
-  const target = makeDb();
-  source.resetSession("source", workspace);
-  const first = source.appendUser("source", "第一条");
-  source.startQueue("source", source.nextQueue("source")!);
-  source.appendAssistant("source", first, "第一条回复");
-  source.setQueueStatus(first, "done");
-  const forkPoint = source.appendUser("source", "不要复制");
-  source.startQueue("source", source.nextQueue("source")!);
-  source.appendAssistant("source", forkPoint, "也不要复制");
-
-  forkDatabaseBeforeMessage({
-    source,
-    target,
-    sourceSessionId: "source",
-    targetSessionId: "target",
-    workspace,
-    beforeMessageId: forkPoint,
-  });
-
-  expect(target.history("target").map((message) => message.text)).toEqual([
-    "第一条",
-    "第一条回复",
-  ]);
-  expect(target.nextQueue("target")).toBeNull();
-  source.close();
-  target.close();
-});
-
-test("first user message cannot fork", () => {
-  const source = makeDb();
-  const target = makeDb();
-  source.resetSession("source", workspace);
-  const first = source.appendUser("source", "第一条");
-  source.startQueue("source", source.nextQueue("source")!);
-
-  expect(() =>
-    forkDatabaseBeforeMessage({
-      source,
-      target,
-      sourceSessionId: "source",
-      targetSessionId: "target",
-      workspace,
-      beforeMessageId: first,
-    }),
-  ).toThrow("每个 session 的第一条用户消息不能 Fork");
-  source.close();
-  target.close();
-});
-
-test("fork point must be a user message", () => {
-  const source = makeDb();
-  const target = makeDb();
-  source.resetSession("source", workspace);
-  const queueId = source.appendUser("source", "问题");
-  source.startQueue("source", source.nextQueue("source")!);
-  source.appendAssistant("source", queueId, "回答");
-  const assistantRow = source.db
-    .query<{ id: number }, []>(
-      "SELECT id FROM messages WHERE session_id = 'source' ORDER BY id DESC LIMIT 1",
-    )
-    .get();
-
-  expect(() =>
-    forkDatabaseBeforeMessage({
-      source,
-      target,
-      sourceSessionId: "source",
-      targetSessionId: "target",
-      workspace,
-      beforeMessageId: assistantRow!.id,
-    }),
-  ).toThrow("只能从用户消息创建 Fork");
-  source.close();
-  target.close();
 });

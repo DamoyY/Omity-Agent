@@ -8,6 +8,7 @@ import {
   CanceledRun,
   cancelRun,
   finishRun,
+  persistedRunQueueIds,
   setRunStatus,
   type QueueRun,
 } from "./run";
@@ -39,7 +40,7 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
 async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
   const [item] = run.items;
   let input: unknown =
-    item.status === "pending"
+    item.status === "pending" || item.userMessageId === null
       ? { messages: ctx.db.history(ctx.sessionId) }
       : null;
   const config = {
@@ -92,7 +93,11 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     const state = await ctx.graph.getState(config);
     const messages = state.values?.messages ?? [];
     if (messages.length > 0) {
-      ctx.db.replaceHistory(ctx.sessionId, messages);
+      ctx.db.replaceHistory(
+        ctx.sessionId,
+        messages,
+        persistedRunQueueIds(ctx, run),
+      );
       ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
     }
     ctx.logger.debug("LangGraph 边界", {

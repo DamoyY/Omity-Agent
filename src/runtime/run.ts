@@ -10,6 +10,14 @@ export type QueueRun = {
   threadId: string;
 };
 
+export function runQueueIds(run: QueueRun) {
+  return run.items.map((item) => item.id);
+}
+
+export function persistedRunQueueIds(ctx: HostContext, run: QueueRun) {
+  return ctx.db.runRootQueueIds(runQueueIds(run));
+}
+
 export function finishRun(
   ctx: HostContext,
   run: QueueRun,

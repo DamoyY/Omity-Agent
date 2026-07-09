@@ -2,12 +2,26 @@ import { Database } from "bun:sqlite";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Control, QueueItem, QueueStatus } from "../types";
 import {
+  insertEvent,
+  insertStreamToken,
+  insertStreamToolCall,
+  type StreamToolCallDelta,
+} from "./eventRecords";
+import {
   appendAssistantMessage,
-  insertUserMessage,
   loadMessages,
   replaceMessages,
 } from "./messages";
-import { toQueueItem, type QueueRow } from "./queueRows";
+import {
+  appendDraftQueue,
+  appendForkPauseQueue,
+  appendUserQueue,
+  nextQueueRow,
+  pendingAppendRows,
+  runRootQueueIds as readRunRootQueueIds,
+  setQueueStatusRecord,
+  startQueueRecord,
+} from "./queueRecords";
 import { applySchema } from "./schema";
 import {
   createSessionRecord,
@@ -18,10 +32,6 @@ import {
   touchSessionRecord,
   writeControlRecord,
 } from "./sessionRecords";
-
-export type StreamToolCallDelta = Partial<
-  Record<"args" | "id" | "name", string> & { index: number }
->;
 
 export class AgentDatabase {
   readonly db: Database;
@@ -44,6 +54,7 @@ export class AgentDatabase {
 
   resetSession(sessionId: string, workspace: string) {
     const tx = this.db.transaction(() => {
+      this.db.query("DELETE FROM runs WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM queue WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);
@@ -67,64 +78,55 @@ export class AgentDatabase {
 
   appendUser(sessionId: string, content: string) {
     this.requireSession(sessionId);
-    const result = this.db
-      .query(
-        "INSERT INTO queue (session_id, content, status, created_at) VALUES (?, ?, 'pending', unixepoch())",
-      )
-      .run(sessionId, content);
+    const queueId = this.db.transaction(() =>
+      appendUserQueue(this.db, sessionId, content),
+    )();
     touchSessionRecord(this.db, sessionId);
     this.event(sessionId, "info", "client", "append", {
-      queueId: Number(result.lastInsertRowid),
+      queueId,
     });
-    return Number(result.lastInsertRowid);
+    return queueId;
   }
 
-  pendingAppends(sessionId: string): QueueItem[] {
-    return this.db
-      .query<QueueRow, [string]>(
-        "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status = 'pending' ORDER BY id",
-      )
-      .all(sessionId)
-      .map(toQueueItem);
-  }
-
-  nextQueue(sessionId: string): QueueItem | null {
-    const row = this.db
-      .query<QueueRow, [string]>(
-        "SELECT id, content, status, user_message_id FROM queue WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
-      )
-      .get(sessionId);
-    return row ? toQueueItem(row) : null;
-  }
-
-  startQueue(sessionId: string, item: QueueItem) {
-    if (item.userMessageId !== null) {
-      this.setQueueStatus(item.id, "running");
-      return item.userMessageId;
-    }
+  appendDraft(sessionId: string, content: string) {
+    this.requireSession(sessionId);
     const tx = this.db.transaction(() => {
-      const messageId = insertUserMessage(
-        this.db,
-        sessionId,
-        item.content,
-        item.id,
-      );
-      this.db
-        .query(
-          "UPDATE queue SET status = 'running', started_at = unixepoch(), user_message_id = ? WHERE id = ?",
-        )
-        .run(messageId, item.id);
-      return messageId;
+      const queueId = appendDraftQueue(this.db, sessionId, content);
+      touchSessionRecord(this.db, sessionId);
+      return queueId;
     });
     return tx();
   }
 
+  appendForkPause(sessionId: string, content: string) {
+    this.requireSession(sessionId);
+    return this.db.transaction(() =>
+      appendForkPauseQueue(this.db, sessionId, content),
+    )();
+  }
+
+  pendingAppends(sessionId: string): QueueItem[] {
+    return pendingAppendRows(this.db, sessionId);
+  }
+
+  nextQueue(sessionId: string): QueueItem | null {
+    return nextQueueRow(this.db, sessionId);
+  }
+
+  startQueue(sessionId: string, item: QueueItem) {
+    return this.db.transaction(() =>
+      startQueueRecord(this.db, sessionId, item),
+    )();
+  }
+
   setQueueStatus(queueId: number, status: QueueStatus, error?: string) {
-    this.db
-      .query(
-        "UPDATE queue SET status = ?, error = ?, updated_at = unixepoch() WHERE id = ?",
-      )
-      .run(status, error ?? null, queueId);
+    this.db.transaction(() =>
+      setQueueStatusRecord(this.db, queueId, status, error),
+    )();
+  }
+
+  runRootQueueIds(queueIds: number[]) {
+    return readRunRootQueueIds(this.db, queueIds);
   }
 
   appendAssistant(sessionId: string, queueId: number, content: string) {
@@ -132,9 +134,16 @@ export class AgentDatabase {
     appendAssistantMessage(this.db, sessionId, queueId, content);
   }
 
-  replaceHistory(sessionId: string, messages: BaseMessage[]) {
+  replaceHistory(
+    sessionId: string,
+    messages: BaseMessage[],
+    queueIds?: number[],
+  ) {
     this.requireSession(sessionId);
-    replaceMessages(this.db, sessionId, messages, { clearStreamEvents: true });
+    replaceMessages(this.db, sessionId, messages, {
+      clearStreamEvents: true,
+      queueIds,
+    });
   }
 
   history(sessionId: string): BaseMessage[] {
@@ -162,20 +171,13 @@ export class AgentDatabase {
     message: string,
     payload: unknown,
   ) {
-    this.db
-      .query(
-        "INSERT INTO events (session_id, level, category, message, payload_json, created_at) VALUES (?, ?, ?, ?, ?, unixepoch())",
-      )
-      .run(sessionId, level, category, message, JSON.stringify(payload));
+    insertEvent(this.db, sessionId, level, category, message, payload);
     this.notify?.();
   }
 
   streamToken(sessionId: string, queueId: number, text: string) {
-    this.event(sessionId, "info", "stream", "token", {
-      kind: "assistant_text_delta",
-      queueId,
-      text,
-    });
+    insertStreamToken(this.db, sessionId, queueId, text);
+    this.notify?.();
   }
 
   streamToolCall(
@@ -183,11 +185,8 @@ export class AgentDatabase {
     queueId: number,
     call: StreamToolCallDelta,
   ) {
-    this.event(sessionId, "info", "stream", "tool_call", {
-      kind: "tool_call_delta",
-      queueId,
-      call,
-    });
+    insertStreamToolCall(this.db, sessionId, queueId, call);
+    this.notify?.();
   }
 
   private requireSession(sessionId: string) {

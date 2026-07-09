@@ -98,6 +98,11 @@ export function ChatPage({
   const paused = queue.some((item) => item.status === "paused");
   const waitingForPause = pausing && !paused;
   const firstUserMessageId = view.find((item) => item.role === "user")?.id;
+  const forkDraft = queue.find(
+    (item) =>
+      (item.status === "draft" || item.status === "paused") &&
+      item.userMessageId === null,
+  )?.content;
   if (!activeId) {
     if (newSession) {
       return (
@@ -167,7 +172,7 @@ export function ChatPage({
           </article>
         ))}
       </section>
-      <Composer disabled={!activeId} onSend={onSend} />
+      <Composer disabled={!activeId} draft={forkDraft} onSend={onSend} />
     </div>
   );
 }
