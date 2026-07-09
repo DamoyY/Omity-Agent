@@ -103,6 +103,13 @@ async function handleApi(
     sendJson(res, controller.control(sessionId, body.control));
     return;
   }
+  if (req.method === "POST" && action === "fork") {
+    const body = await readJson<{ beforeMessageId: number }>(req);
+    sendJson(res, {
+      session: await controller.forkSession(sessionId, body.beforeMessageId),
+    });
+    return;
+  }
   throw new Error(`未知 API：${route.pathname}`);
 }
 

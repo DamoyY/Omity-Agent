@@ -21,7 +21,7 @@ host:
   idleLogMs: 25000
   recursionLimit: 25
 
-# 控制台日志层级；debug 会打印最详细的图执行事件。
+# 控制台日志层级。
 logging:
   level: debug
   streamTokens: true

@@ -1,7 +1,5 @@
 export type Page =
-  | { kind: "empty" }
-  | { kind: "new" }
-  | { kind: "session"; id: string };
+  { kind: "empty" } | { kind: "new" } | { kind: "session"; id: string };
 
 const sessionPrefix = "/sessions/";
 

@@ -61,6 +61,16 @@ export async function setControl(sessionId: string, control: string) {
   });
 }
 
+export async function forkSession(sessionId: string, beforeMessageId: number) {
+  return request<{ session: SessionInfo }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/fork`,
+    {
+      method: "POST",
+      body: JSON.stringify({ beforeMessageId }),
+    },
+  );
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     headers: { "content-type": "application/json" },

@@ -9,6 +9,7 @@ import {
   bootstrap,
   createSession,
   deleteSession,
+  forkSession,
   loadTranscript,
   pickWorkspace,
   sendMessage,
@@ -146,6 +147,13 @@ export function App() {
               throw error;
             }
             if (control !== "pause") setPausingSessionId(undefined);
+          }}
+          onFork={async (messageId) => {
+            if (!activeSession) return;
+            const { session } = await forkSession(activeSession.id, messageId);
+            setPausingSessionId(undefined);
+            setSessions((current) => [session, ...current]);
+            navigate(sessionPage(session.id));
           }}
           onPickWorkspace={async () => {
             const result = await pickWorkspace();

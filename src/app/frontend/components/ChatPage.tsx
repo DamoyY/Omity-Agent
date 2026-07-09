@@ -1,4 +1,4 @@
-import { Pause, Play } from "lucide-react";
+import { GitFork, Pause, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css, cx } from "styled-system/css";
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
@@ -61,6 +61,12 @@ const roleLabel = css({
   fontSize: "xs",
 });
 
+const messageActions = css({
+  display: "flex",
+  justifyContent: "flex-end",
+  w: "full",
+});
+
 export function ChatPage({
   activeId,
   canControl,
@@ -71,6 +77,7 @@ export function ChatPage({
   workspace,
   onSend,
   onControl,
+  onFork,
   onPickWorkspace,
   onWorkspaceChange,
 }: {
@@ -83,12 +90,14 @@ export function ChatPage({
   workspace?: string;
   onSend(content: string): Promise<void>;
   onControl(control: string): Promise<void>;
+  onFork(messageId: number): Promise<void>;
   onPickWorkspace(): Promise<string | null>;
   onWorkspaceChange(workspace: string): void;
 }) {
   const { t } = useTranslation();
   const paused = queue.some((item) => item.status === "paused");
   const waitingForPause = pausing && !paused;
+  const firstUserMessageId = view.find((item) => item.role === "user")?.id;
   if (!activeId) {
     if (newSession) {
       return (
@@ -145,6 +154,16 @@ export function ChatPage({
                 />
               ),
             )}
+            {item.role === "user" &&
+            item.id > 0 &&
+            item.id !== firstUserMessageId ? (
+              <div className={messageActions}>
+                <Button onClick={() => void onFork(item.id)} type="button">
+                  <GitFork size={14} />
+                  {t("fork")}
+                </Button>
+              </div>
+            ) : null}
           </article>
         ))}
       </section>

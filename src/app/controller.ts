@@ -1,12 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { runClient } from "../client";
 import { deleteHostSession, runHostSession } from "../host";
-import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
+import {
+  loadSettings,
+  resolveSessionPaths,
+  sessionPaths,
+} from "../infrastructure/config";
 import { AgentDatabase } from "../infrastructure/database";
 import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
 import type { Control } from "../types";
 import { AppEvents } from "./events";
+import { forkDatabaseBeforeMessage } from "./fork";
 import { AppRegistry } from "./registry";
 import { loadTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
@@ -85,13 +90,44 @@ export class AppController {
     return result;
   }
 
+  async forkSession(sessionId: string, beforeMessageId: number) {
+    const session = this.registry.require(sessionId);
+    const id = `web-${randomUUID()}`;
+    const settings = loadSettings(this.appRoot);
+    const sourcePaths = resolveSessionPaths(settings, sessionId);
+    const targetPaths = sessionPaths(settings, id);
+    let created = false;
+    try {
+      const source = new AgentDatabase(sourcePaths.appDb);
+      const target = new AgentDatabase(targetPaths.appDb);
+      try {
+        forkDatabaseBeforeMessage({
+          source,
+          target,
+          sourceSessionId: sessionId,
+          targetSessionId: id,
+          workspace: session.workspace,
+          beforeMessageId,
+        });
+        this.control(sessionId, "pause");
+        created = true;
+      } finally {
+        target.close();
+        source.close();
+      }
+    } finally {
+      if (!created) {
+        rmSync(targetPaths.dir, { recursive: true, force: true });
+      }
+    }
+    this.hostErrors.delete(id);
+    this.events.notify(sessionId);
+    return this.registry.require(id);
+  }
+
   async deleteSession(sessionId: string) {
     this.registry.require(sessionId);
-    const running = this.hosts.get(sessionId);
-    if (running) {
-      running.signal.stopping = true;
-      await running.done;
-    }
+    await this.stopHost(sessionId);
     deleteHostSession(sessionId, this.appRoot);
     this.hostErrors.delete(sessionId);
     return { deleted: sessionId };
@@ -113,6 +149,14 @@ export class AppController {
   private ensureHost(sessionId: string, root: string) {
     if (this.hosts.has(sessionId)) return;
     this.startHost(sessionId, root, "load");
+  }
+
+  private async stopHost(sessionId: string) {
+    const running = this.hosts.get(sessionId);
+    if (!running) return;
+    running.signal.stopping = true;
+    this.events.notify(sessionId);
+    await running.done;
   }
 
   private startHost(
