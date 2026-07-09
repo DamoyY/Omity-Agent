@@ -2,12 +2,12 @@ import { GitFork, Pause, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css, cx } from "styled-system/css";
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
-import { scroll } from "../design";
 import { Composer } from "./Composer";
 import { MarkdownView } from "./MarkdownView";
 import { NewSessionPage } from "./NewSessionPage";
 import { Button } from "./ParkUI";
 import { ToolCall } from "./ToolCall";
+import { TranscriptScroll } from "./TranscriptScroll";
 
 const header = css({
   bg: "surface",
@@ -103,6 +103,7 @@ export function ChatPage({
       (item.status === "draft" || item.status === "paused") &&
       item.userMessageId === null,
   )?.content;
+
   if (!activeId) {
     if (newSession) {
       return (
@@ -138,7 +139,7 @@ export function ChatPage({
       ) : (
         <div />
       )}
-      <section className={scroll}>
+      <TranscriptScroll activeId={activeId} queue={queue} view={view}>
         {view.length === 0 ? (
           <div className={empty}>{t("noMessages")}</div>
         ) : null}
@@ -171,7 +172,7 @@ export function ChatPage({
             ) : null}
           </article>
         ))}
-      </section>
+      </TranscriptScroll>
       <Composer disabled={!activeId} draft={forkDraft} onSend={onSend} />
     </div>
   );
