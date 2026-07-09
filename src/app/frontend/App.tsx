@@ -1,120 +1,138 @@
 import { useEffect, useState } from "react";
 import { cx } from "styled-system/css";
+import type { DisplayQueue, TimelineMessage } from "../timeline";
+import { ChatPage } from "./components/ChatPage";
+import { Sidebar } from "./components/Sidebar";
+import { layout, main, sidebar } from "./design";
+import { readPage, writePage, type Page } from "./route";
 import {
   bootstrap,
   createSession,
   deleteSession,
   loadTranscript,
   pickWorkspace,
-  sessionEvents,
   sendMessage,
+  sessionEvents,
   setControl,
   type SessionInfo,
 } from "./services/client";
-import type { DisplayQueue, TimelineMessage } from "../timeline";
-import { ChatPage } from "./components/ChatPage";
-import { Sidebar } from "./components/Sidebar";
-import { layout, main, sidebar } from "./design";
 
 type Transcript = {
   queue: DisplayQueue[];
   view: TimelineMessage[];
 };
 
-type LocalSession = SessionInfo & {
-  draft?: boolean;
-};
-
 const emptyTranscript: Transcript = { queue: [], view: [] };
 
 export function App() {
   const [cwd, setCwd] = useState("");
-  const [sessions, setSessions] = useState<LocalSession[]>([]);
-  const [activeId, setActiveId] = useState<string>();
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [page, setPage] = useState(readPage);
+  const [newWorkspace, setNewWorkspace] = useState("");
   const [transcript, setTranscript] = useState<Transcript>(emptyTranscript);
   const [pausingSessionId, setPausingSessionId] = useState<string>();
-  const activeSession = sessions.find((session) => session.id === activeId);
+  const activeSession =
+    page.kind === "session"
+      ? sessions.find((session) => session.id === page.id)
+      : undefined;
+
+  const navigate = (nextPage: Page, replace = false) => {
+    writePage(nextPage, replace);
+    setPage(nextPage);
+  };
+
+  useEffect(() => {
+    const syncPage = () => setPage(readPage());
+    window.addEventListener("popstate", syncPage);
+    return () => window.removeEventListener("popstate", syncPage);
+  }, []);
 
   useEffect(() => {
     void bootstrap().then((data) => {
       setCwd(data.cwd);
+      setNewWorkspace(data.cwd);
       setSessions(data.sessions);
-      setActiveId(data.sessions[0]?.id);
+      const currentPage = readPage();
+      const firstSession = data.sessions[0];
+      const routeSessionExists =
+        currentPage.kind === "session" &&
+        data.sessions.some((session) => session.id === currentPage.id);
+      if (currentPage.kind === "empty") {
+        navigate(
+          firstSession ? sessionPage(firstSession.id) : { kind: "new" },
+          true,
+        );
+      } else if (currentPage.kind === "session" && !routeSessionExists) {
+        navigate(
+          firstSession ? sessionPage(firstSession.id) : { kind: "new" },
+          true,
+        );
+      }
     });
   }, []);
 
   useEffect(() => {
-    if (!activeId || activeSession?.draft) {
+    if (!activeSession) {
       setTranscript(emptyTranscript);
       return;
     }
     let stopped = false;
     const refresh = async () => {
-      const data = await loadTranscript(activeId);
+      const data = await loadTranscript(activeSession.id);
       if (!stopped) setTranscript(data);
     };
     void refresh();
-    const events = sessionEvents(activeId);
+    const events = sessionEvents(activeSession.id);
     events.addEventListener("changed", () => void refresh());
     return () => {
       stopped = true;
       events.close();
     };
-  }, [activeId, activeSession?.draft]);
+  }, [activeSession]);
 
   useEffect(() => {
-    if (pausingSessionId !== activeId) return;
+    if (pausingSessionId !== activeSession?.id) return;
     const running = transcript.queue.some((item) => item.status === "running");
     const paused = transcript.queue.some((item) => item.status === "paused");
     if (paused || !running) setPausingSessionId(undefined);
-  }, [activeId, pausingSessionId, transcript.queue]);
+  }, [activeSession?.id, pausingSessionId, transcript.queue]);
 
   return (
     <div className={cx("dark", layout)}>
       <aside className={sidebar}>
         <Sidebar
-          activeId={activeId}
-          sessions={sessions.filter((session) => !session.draft)}
+          activeId={activeSession?.id}
+          sessions={sessions}
           onCreate={async () => {
-            const now = Math.floor(Date.now() / 1000);
-            const session = {
-              id: `draft-${crypto.randomUUID()}`,
-              workspace: cwd,
-              createdAt: now,
-              updatedAt: now,
-              running: false,
-              draft: true,
-            };
-            setSessions((current) => [
-              session,
-              ...current.filter((item) => !item.draft),
-            ]);
-            setActiveId(session.id);
+            setNewWorkspace(cwd);
+            setTranscript(emptyTranscript);
+            navigate({ kind: "new" });
           }}
           onDelete={async (id) => {
-            const target = sessions.find((session) => session.id === id);
-            if (!target?.draft) await deleteSession(id);
+            await deleteSession(id);
             const next = sessions.filter((session) => session.id !== id);
             setSessions(next);
-            if (activeId === id) {
-              setActiveId(next[0]?.id);
-              setTranscript(emptyTranscript);
+            if (activeSession?.id === id) {
+              const firstSession = next[0];
+              navigate(
+                firstSession ? sessionPage(firstSession.id) : { kind: "new" },
+              );
             }
           }}
-          onSelect={setActiveId}
+          onSelect={(id) => navigate(sessionPage(id))}
         />
       </aside>
       <main className={main}>
         <ChatPage
-          activeId={activeId}
-          canControl={activeSession !== undefined && !activeSession.draft}
-          draft={activeSession?.draft ?? false}
-          pausing={pausingSessionId === activeId}
+          activeId={activeSession?.id}
+          canControl={activeSession !== undefined}
+          newSession={page.kind === "new"}
+          pausing={pausingSessionId === activeSession?.id}
           queue={transcript.queue}
           view={transcript.view}
-          workspace={activeSession?.workspace}
+          workspace={newWorkspace}
           onControl={async (control) => {
-            if (!activeSession || activeSession.draft) return;
+            if (!activeSession) return;
             const running = transcript.queue.some(
               (item) => item.status === "running",
             );
@@ -134,30 +152,23 @@ export function App() {
             return result.workspace;
           }}
           onSend={async (content) => {
-            if (!activeSession) return;
-            if (activeSession.draft) {
-              const { session } = await createSession(activeSession.workspace);
-              setSessions((current) =>
-                current.map((item) =>
-                  item.id === activeSession.id ? session : item,
-                ),
-              );
-              setActiveId(session.id);
+            if (page.kind === "new") {
+              const { session } = await createSession(newWorkspace);
+              setSessions((current) => [session, ...current]);
+              navigate(sessionPage(session.id));
               await sendMessage(session.id, content);
               return;
             }
+            if (!activeSession) return;
             await sendMessage(activeSession.id, content);
           }}
-          onWorkspaceChange={(workspace) => {
-            if (!activeId) return;
-            setSessions((current) =>
-              current.map((session) =>
-                session.id === activeId ? { ...session, workspace } : session,
-              ),
-            );
-          }}
+          onWorkspaceChange={setNewWorkspace}
         />
       </main>
     </div>
   );
+}
+
+function sessionPage(id: string): Page {
+  return { kind: "session", id };
 }

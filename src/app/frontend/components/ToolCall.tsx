@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
+import { stringify } from "yaml";
 import type { DisplayMessage, DisplayToolCall } from "../../timeline";
-import { Badge, Code } from "./ParkUI";
+import { HighlightedCode } from "./HighlightedCode";
 
 const details = css({
   bg: "surfaceInset",
@@ -13,25 +14,55 @@ const details = css({
   maxW: "full",
   mt: "2",
   minW: 0,
-  p: "3",
-  w: "fit-content",
+  p: 0,
+  w: "full",
   "& pre": {
     maxW: "full",
     m: 0,
-    overflowX: "auto",
   },
 });
 
 const summary = css({
+  alignItems: "center",
   cursor: "pointer",
+  display: "flex",
+  gap: "2",
+  h: "3rem",
   maxW: "full",
+  px: "3",
+});
+
+const summaryText = css({
+  color: "mutedStrong",
+  lineHeight: "1",
+});
+
+const ioGrid = css({
+  display: "grid",
+  gap: "3",
+  gridTemplateColumns: {
+    base: "minmax(0, 1fr)",
+    xl: "repeat(2, minmax(0, 1fr))",
+  },
+  m: "3",
+  mt: 0,
+  minW: 0,
+});
+
+const ioPanel = css({
+  display: "grid",
+  gap: "2",
+  minW: 0,
+});
+
+const panelTitle = css({
+  color: "mutedStrong",
+  fontSize: "xs",
+  m: 0,
 });
 
 const codeBlock = css({
-  display: "block",
-  maxW: "full",
-  overflowX: "auto",
-  p: "3",
+  h: "16rem",
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
 });
@@ -44,35 +75,44 @@ export function ToolCall({
   output?: DisplayMessage;
 }) {
   const { t } = useTranslation();
-  const input = call.inputText ?? JSON.stringify(call.input, null, 2);
+  const input = formatToolInput(call);
   return (
     <details className={details}>
       <summary className={summary}>
-        <Badge size="sm" variant="outline">
+        <span className={summaryText}>
           {t("toolCall")} · {call.name}
-        </Badge>
+        </span>
         {call.streaming ? (
-          <Badge size="sm" variant="outline">
-            {t("streaming")}
-          </Badge>
+          <span className={summaryText}>{t("streaming")}</span>
         ) : null}
       </summary>
-      <p>{t("input")}</p>
-      <pre>
-        <Code className={codeBlock} size="sm" variant="outline">
-          {input}
-        </Code>
-      </pre>
-      {output ? (
-        <>
-          <p>{t("output")}</p>
-          <pre>
-            <Code className={codeBlock} size="sm" variant="outline">
-              {output.content}
-            </Code>
-          </pre>
-        </>
-      ) : null}
+      <div className={ioGrid}>
+        <section className={ioPanel}>
+          <p className={panelTitle}>{t("input")}</p>
+          <HighlightedCode className={codeBlock} code={input} language="yaml" />
+        </section>
+        {output ? (
+          <section className={ioPanel}>
+            <p className={panelTitle}>{t("output")}</p>
+            <HighlightedCode className={codeBlock} code={output.content} />
+          </section>
+        ) : null}
+      </div>
     </details>
   );
+}
+
+function formatToolInput(call: DisplayToolCall) {
+  return stringify(parseInputText(call.inputText) ?? call.input, {
+    lineWidth: 0,
+  });
+}
+
+function parseInputText(text?: string) {
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
 }

@@ -52,6 +52,7 @@
     "@oclif/core": "latest",
     "@park-ui/panda-preset": "latest",
     "dompurify": "latest",
+    "highlight.js": "latest",
     "i18next": "latest",
     "i18next-browser-languagedetector": "latest",
     "js-tiktoken": "latest",

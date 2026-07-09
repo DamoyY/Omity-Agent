@@ -33,6 +33,15 @@ export default defineConfig({
           text: { value: "#f2f2f2" },
           muted: { value: "#8a8a8a" },
           mutedStrong: { value: "#b8b8b8" },
+          syntaxAddition: { value: "#9ece6a" },
+          syntaxComment: { value: "#565f89" },
+          syntaxDeletion: { value: "#f7768e" },
+          syntaxKeyword: { value: "#bb9af7" },
+          syntaxMeta: { value: "#7dcfff" },
+          syntaxNumber: { value: "#ff9e64" },
+          syntaxProperty: { value: "#7dcfff" },
+          syntaxString: { value: "#9ece6a" },
+          syntaxTitle: { value: "#2ac3de" },
         },
         fonts: {
           body: {

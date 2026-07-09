@@ -4,10 +4,6 @@ import { css, cx } from "styled-system/css";
 import type { SessionInfo } from "../services/client";
 import { Button, IconButton } from "./ParkUI";
 
-type SessionView = SessionInfo & {
-  draft?: boolean;
-};
-
 const title = css({
   fontSize: "md",
   fontWeight: "normal",
@@ -39,12 +35,25 @@ const itemTitle = css({
   whiteSpace: "nowrap",
 });
 
-const itemMeta = css({
+const workspaceGroup = css({
+  display: "grid",
+  gap: "2",
+  minW: 0,
+});
+
+const workspaceTitle = css({
   color: "muted",
   fontSize: "xs",
+  fontWeight: "normal",
+  m: 0,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
+});
+
+const workspaceSessions = css({
+  display: "grid",
+  gap: "2",
 });
 
 const sessionRow = css({
@@ -93,13 +102,14 @@ export function Sidebar({
   onDelete,
   onSelect,
 }: {
-  sessions: SessionView[];
+  sessions: SessionInfo[];
   activeId?: string;
   onCreate(): Promise<void>;
   onDelete(id: string): Promise<void>;
   onSelect(id: string): void;
 }) {
   const { t } = useTranslation();
+  const groups = groupSessions(sessions);
   return (
     <>
       <section className={panel}>
@@ -118,31 +128,50 @@ export function Sidebar({
         </div>
       </section>
       <nav className={list}>
-        {sessions.map((session) => (
-          <div className={sessionRow} key={session.id}>
-            <Button
-              className={cx(
-                sessionButton,
-                session.id === activeId && activeSession,
-              )}
-              onClick={() => onSelect(session.id)}
-              type="button"
-            >
-              <div className={itemTitle}>
-                {session.draft ? t("newSession") : session.id}
-              </div>
-              <div className={itemMeta}>{session.workspace}</div>
-            </Button>
-            <IconButton
-              aria-label={t("delete")}
-              onClick={() => void onDelete(session.id)}
-              type="button"
-            >
-              <Trash2 size={14} />
-            </IconButton>
-          </div>
+        {groups.map((group) => (
+          <section className={workspaceGroup} key={group.workspace}>
+            <h2 className={workspaceTitle} title={group.workspace}>
+              {group.workspace}
+            </h2>
+            <div className={workspaceSessions}>
+              {group.sessions.map((session) => (
+                <div className={sessionRow} key={session.id}>
+                  <Button
+                    className={cx(
+                      sessionButton,
+                      session.id === activeId && activeSession,
+                    )}
+                    onClick={() => onSelect(session.id)}
+                    type="button"
+                  >
+                    <div className={itemTitle}>{session.id}</div>
+                  </Button>
+                  <IconButton
+                    aria-label={t("delete")}
+                    onClick={() => void onDelete(session.id)}
+                    type="button"
+                  >
+                    <Trash2 size={14} />
+                  </IconButton>
+                </div>
+              ))}
+            </div>
+          </section>
         ))}
       </nav>
     </>
   );
+}
+
+function groupSessions(sessions: SessionInfo[]) {
+  const groups: { workspace: string; sessions: SessionInfo[] }[] = [];
+  for (const session of sessions) {
+    const group = groups.find((item) => item.workspace === session.workspace);
+    if (group) {
+      group.sessions.push(session);
+    } else {
+      groups.push({ workspace: session.workspace, sessions: [session] });
+    }
+  }
+  return groups;
 }

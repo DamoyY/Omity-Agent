@@ -64,7 +64,7 @@ const roleLabel = css({
 export function ChatPage({
   activeId,
   canControl,
-  draft,
+  newSession,
   pausing,
   queue,
   view,
@@ -76,7 +76,7 @@ export function ChatPage({
 }: {
   activeId?: string;
   canControl: boolean;
-  draft: boolean;
+  newSession: boolean;
   pausing: boolean;
   queue: DisplayQueue[];
   view: TimelineMessage[];
@@ -90,23 +90,22 @@ export function ChatPage({
   const paused = queue.some((item) => item.status === "paused");
   const waitingForPause = pausing && !paused;
   if (!activeId) {
+    if (newSession) {
+      return (
+        <NewSessionPage
+          pageClassName={page}
+          workspace={workspace ?? ""}
+          onPickWorkspace={onPickWorkspace}
+          onSend={onSend}
+          onWorkspaceChange={onWorkspaceChange}
+        />
+      );
+    }
     return (
       <div className={page}>
         <div />
         <div className={empty}>{t("empty")}</div>
       </div>
-    );
-  }
-  if (draft) {
-    if (workspace === undefined) throw new Error("新建会话缺少工作目录");
-    return (
-      <NewSessionPage
-        pageClassName={page}
-        workspace={workspace}
-        onPickWorkspace={onPickWorkspace}
-        onSend={onSend}
-        onWorkspaceChange={onWorkspaceChange}
-      />
     );
   }
   return (
