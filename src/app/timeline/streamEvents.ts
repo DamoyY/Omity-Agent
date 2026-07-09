@@ -1,5 +1,12 @@
 import type { DisplayEvent, DisplayToolCall } from "./types";
 
+type ToolCallAccumulator = {
+  id?: string;
+  index?: number;
+  inputText: string;
+  name: string;
+};
+
 export function eventText(event: DisplayEvent, queueId: number) {
   if (eventQueueId(event) !== queueId) return "";
   if (!isRecord(event.payload)) return "";
@@ -22,26 +29,59 @@ export function currentToolCallEvents(events: DisplayEvent[]) {
 }
 
 export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
-  const calls = new Map<string, DisplayToolCall>();
+  const calls: ToolCallAccumulator[] = [];
   for (const event of events) {
     const delta = toolCallDelta(event);
     if (!delta) continue;
-    const key = delta.id && delta.id.length > 0 ? delta.id : `i:${delta.index}`;
-    const current = calls.get(key);
-    calls.set(key, {
-      id: delta.id ?? current?.id ?? key,
-      index: delta.index ?? current?.index ?? 0,
-      input: current?.input ?? {},
-      inputText: appendDelta(current?.inputText ?? "", delta.args),
-      name:
-        appendDelta(
-          current?.name === "tool" ? "" : current?.name,
-          delta.name,
-        ) || "tool",
-      streaming: true,
-    });
+    const matches = calls.filter((call) => matchesDelta(call, delta));
+    let current = matches.shift();
+    if (!current) {
+      current = { inputText: "", name: "" };
+      calls.push(current);
+    }
+    for (const duplicate of matches) {
+      mergeCall(current, duplicate);
+      calls.splice(calls.indexOf(duplicate), 1);
+    }
+    mergeDelta(current, delta);
   }
-  return [...calls.values()];
+  return calls.map((call, order) => ({
+    id: call.id ?? `i:${call.index ?? order}`,
+    index: call.index ?? order,
+    input: {},
+    inputText: call.inputText,
+    name: call.name || "tool",
+    streaming: true,
+  }));
+}
+
+function matchesDelta(
+  call: ToolCallAccumulator,
+  delta: NonNullable<ReturnType<typeof toolCallDelta>>,
+) {
+  if (delta.id && call.id === delta.id) return true;
+  return (
+    delta.index !== undefined &&
+    call.index === delta.index &&
+    (!delta.id || !call.id || delta.id === call.id)
+  );
+}
+
+function mergeCall(target: ToolCallAccumulator, source: ToolCallAccumulator) {
+  target.id ??= source.id;
+  target.index ??= source.index;
+  target.inputText = appendArguments(target.inputText, source.inputText);
+  target.name += source.name;
+}
+
+function mergeDelta(
+  target: ToolCallAccumulator,
+  delta: NonNullable<ReturnType<typeof toolCallDelta>>,
+) {
+  target.id ??= delta.id;
+  target.index ??= delta.index;
+  target.inputText = appendArguments(target.inputText, delta.args);
+  target.name += delta.name ?? "";
 }
 
 function toolCallDelta(event: DisplayEvent) {
@@ -58,10 +98,10 @@ function toolCallDelta(event: DisplayEvent) {
   };
 }
 
-function appendDelta(current = "", delta?: string) {
+function appendArguments(current = "", delta?: string) {
   if (!delta) return current;
   if (current.length === 0 || delta.startsWith(current)) return delta;
-  return current.endsWith(delta) ? current : current + delta;
+  return current + delta;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
