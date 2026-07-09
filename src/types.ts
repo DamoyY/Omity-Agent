@@ -1,21 +1,12 @@
 export type Control = "running" | "pause" | "cancel" | "pause_cancel";
 
 export type QueueStatus =
-  | "pending"
-  | "running"
-  | "paused"
-  | "done"
-  | "canceled";
+  "pending" | "running" | "paused" | "done" | "canceled";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export type ReasoningEffort =
-  | "none"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh";
+  "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
 export type Settings = {
   paths: {
