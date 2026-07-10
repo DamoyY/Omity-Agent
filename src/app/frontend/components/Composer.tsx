@@ -19,7 +19,7 @@ const form = css({
 const messageBox = css({
   bg: "surfaceInset",
   borderColor: "lineStrong",
-  h: "9rem",
+  h: "12rem",
   minW: 0,
   resize: "none",
 });

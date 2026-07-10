@@ -29,9 +29,10 @@ export function ensureSessionRecord(
 
 export function hasSessionRecord(db: Database, sessionId: string) {
   const row = db
-    .query<{ value: number }, [string]>(
-      "SELECT 1 AS value FROM sessions WHERE id = ?",
-    )
+    .query<
+      { value: number },
+      [string]
+    >("SELECT 1 AS value FROM sessions WHERE id = ?")
     .get(sessionId);
   return row !== null && row !== undefined;
 }
@@ -52,9 +53,10 @@ export function touchSessionRecord(db: Database, sessionId: string) {
 export function readControlRecord(db: Database, sessionId: string): Control {
   requireSessionRecord(db, sessionId);
   const row = db
-    .query<{ control: Control }, [string]>(
-      "SELECT control FROM sessions WHERE id = ?",
-    )
+    .query<
+      { control: Control },
+      [string]
+    >("SELECT control FROM sessions WHERE id = ?")
     .get(sessionId);
   if (!row) throw new Error(`会话不存在：${sessionId}`);
   return row.control;

@@ -56,9 +56,10 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
     throw new Error(`Fork 消息 ID 无效：${messageId}`);
   }
   const row = db
-    .query<MessageRow, [string, number]>(
-      "SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id = ?",
-    )
+    .query<
+      MessageRow,
+      [string, number]
+    >("SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id = ?")
     .get(sessionId, messageId);
   if (!row) throw new Error(`Fork 消息不存在：${messageId}`);
   if (storedMessageType(row.message_json) !== "human") {
@@ -73,9 +74,10 @@ function forkMessages(
   beforeMessageId: number,
 ) {
   return db
-    .query<MessageRow, [string, number]>(
-      "SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id < ? ORDER BY id",
-    )
+    .query<
+      MessageRow,
+      [string, number]
+    >("SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id < ? ORDER BY id")
     .all(sessionId, beforeMessageId);
 }
 
