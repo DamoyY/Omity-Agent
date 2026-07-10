@@ -23,5 +23,6 @@
   "fork": "Fork",
   "cancel": "取消",
   "delete": "删除",
-  "error": "请求失败"
+  "error": "请求失败",
+  "runPausedError": "会话因运行错误而暂停"
 }

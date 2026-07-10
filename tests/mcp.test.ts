@@ -86,17 +86,31 @@ test("mcp stdio config allows omitted or blank args", () => {
         command: "server.exe",
         args: null,
       },
+      noisy: {
+        transport: "stdio",
+        command: "server.exe",
+        args: ["--serve"],
+        stderr: "inherit",
+      },
     }),
   ).toEqual({
     omitted: {
       transport: "stdio",
       command: "server.exe",
       args: [],
+      stderr: "ignore",
     },
     blank: {
       transport: "stdio",
       command: "server.exe",
       args: [],
+      stderr: "ignore",
+    },
+    noisy: {
+      transport: "stdio",
+      command: "server.exe",
+      args: ["--serve"],
+      stderr: "ignore",
     },
   });
 });

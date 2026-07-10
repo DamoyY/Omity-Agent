@@ -144,8 +144,10 @@ function normalizeMcpServer(server: unknown): unknown {
   if (!isRecord(server)) {
     return server;
   }
-  if (typeof server["command"] === "string" && server["args"] == null) {
-    return { ...server, args: [] };
-  }
-  return server;
+  if (typeof server["command"] !== "string") return server;
+  return {
+    ...server,
+    args: server["args"] ?? [],
+    stderr: "ignore",
+  };
 }

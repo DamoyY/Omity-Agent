@@ -68,10 +68,9 @@ test("fork point must be a user message", () => {
   source.startQueue("source", source.nextQueue("source")!);
   source.appendAssistant("source", queueId, "回答");
   const assistantRow = source.db
-    .query<
-      { id: number },
-      []
-    >("SELECT id FROM messages WHERE session_id = 'source' ORDER BY id DESC LIMIT 1")
+    .query<{ id: number }, []>(
+      "SELECT id FROM messages WHERE session_id = 'source' ORDER BY id DESC LIMIT 1",
+    )
     .get();
 
   expect(() =>

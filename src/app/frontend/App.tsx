@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cx } from "styled-system/css";
 import type { DisplayQueue, TimelineMessage } from "../timeline";
 import { ChatPage } from "./components/ChatPage";
@@ -17,6 +18,7 @@ import {
   setControl,
   type SessionInfo,
 } from "./services/client";
+import { reportPausedRunErrors } from "./services/runErrors";
 
 type Transcript = {
   queue: DisplayQueue[];
@@ -26,6 +28,7 @@ type Transcript = {
 const emptyTranscript: Transcript = { queue: [], view: [] };
 
 export function App() {
+  const { t } = useTranslation();
   const [cwd, setCwd] = useState("");
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [page, setPage] = useState(readPage);
@@ -79,9 +82,17 @@ export function App() {
       return;
     }
     let stopped = false;
+    const reportedErrors = new Set<string>();
     const refresh = async () => {
       const data = await loadTranscript(activeSession.id);
-      if (!stopped) setTranscript(data);
+      if (stopped) return;
+      setTranscript(data);
+      reportPausedRunErrors(
+        activeSession.id,
+        data.queue,
+        reportedErrors,
+        t("runPausedError"),
+      );
     };
     void refresh();
     const events = sessionEvents(activeSession.id);
@@ -90,7 +101,7 @@ export function App() {
       stopped = true;
       events.close();
     };
-  }, [activeSession]);
+  }, [activeSession, t]);
 
   useEffect(() => {
     if (pausingSessionId !== activeSession?.id) return;

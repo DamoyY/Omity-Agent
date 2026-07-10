@@ -22,10 +22,9 @@ test("replace history preserves consumed queue ids", () => {
   );
 
   const rows = db.db
-    .query<
-      { queue_id: number | null },
-      []
-    >("SELECT queue_id FROM messages ORDER BY id")
+    .query<{ queue_id: number | null }, []>(
+      "SELECT queue_id FROM messages ORDER BY id",
+    )
     .all();
   expect(rows.map((row) => row.queue_id)).toEqual([first, null, second, null]);
   db.close();

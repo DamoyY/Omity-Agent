@@ -19,10 +19,9 @@ export function appendUserQueue(
     sessionId,
   );
   const activeRun = db
-    .query<
-      { id: number },
-      [string]
-    >("SELECT id FROM runs WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1")
+    .query<{ id: number }, [string]>(
+      "SELECT id FROM runs WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
+    )
     .get(sessionId);
   if (activeRun) return appendToRun(db, sessionId, activeRun.id, content);
   const result = db
@@ -151,10 +150,9 @@ function appendToRun(
 
 function syncRunStatus(db: Database, queueId: number, status: QueueStatus) {
   const row = db
-    .query<
-      { run_id: number | null },
-      [number]
-    >("SELECT run_id FROM queue WHERE id = ?")
+    .query<{ run_id: number | null }, [number]>(
+      "SELECT run_id FROM queue WHERE id = ?",
+    )
     .get(queueId);
   if (row?.run_id === null || row?.run_id === undefined) return;
   db.query(
