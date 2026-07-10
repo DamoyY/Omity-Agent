@@ -1,0 +1,27 @@
+# Hook 按配置顺序执行；工具名使用重命名后的最终 MCP 工具名。
+# id 必须唯一；args 会原样作为 MCP 工具参数。
+#
+# hooks:
+#   - id: format-after-user
+#     on: user_message
+#     mode: silent
+#     tool: formatter
+#     args: { path: . }
+#   - id: notify-after-answer
+#     on: agent_end
+#     mode: silent
+#     tool: notify
+#     args: {}
+#   - id: check-before-write
+#     on: tool_before
+#     mode: takeover
+#     matchTool: write_file
+#     tool: validate
+#     args: {}
+#   - id: format-after-write
+#     on: tool_after
+#     mode: silent
+#     matchTool: write_file
+#     tool: formatter
+#     args: { path: . }
+hooks: []

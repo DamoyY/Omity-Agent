@@ -41,8 +41,15 @@ export function insertUserMessage(
   return insertMessage(
     db,
     sessionId,
-    messageInsert(new HumanMessage(content), queueId),
+    messageInsert(
+      new HumanMessage({ content, id: queueMessageId(sessionId, queueId) }),
+      queueId,
+    ),
   );
+}
+
+export function queueMessageId(sessionId: string, queueId: number) {
+  return `queue:${sessionId}:${queueId}`;
 }
 
 export function appendAssistantMessage(
@@ -84,12 +91,15 @@ export function replaceMessages(
 }
 
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
-  const rows = db
-    .query<
-      MessageRow,
-      [string]
-    >("SELECT message_json FROM messages WHERE session_id = ? ORDER BY id")
-    .all(sessionId);
+  const query = db.prepare<MessageRow, [string]>(
+    "SELECT message_json FROM messages WHERE session_id = ? ORDER BY id",
+  );
+  let rows: MessageRow[];
+  try {
+    rows = query.all(sessionId);
+  } finally {
+    query.finalize();
+  }
   return messageRowsToChatMessages(rows);
 }
 

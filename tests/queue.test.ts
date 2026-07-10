@@ -21,7 +21,12 @@ afterEach(() => {
   console.log = originalLog;
   logs.length = 0;
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 50,
+    });
   }
 });
 
@@ -155,6 +160,8 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     db,
     graph,
     checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
+    hooks: { runSilent: async () => {} } as never,
+    beforeModelNode: "model_request",
     sessionId: "123",
     signal: { stopping: false },
   };
@@ -186,6 +193,7 @@ function makeSettings(): Settings {
     toolOutput: {
       maxTokens: 8192,
     },
+    hooks: [],
     agent: {
       systemPrompt: "test",
     },

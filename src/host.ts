@@ -11,6 +11,9 @@ import { loadMcp } from "./infrastructure/mcp";
 import { normalizeWorkspacePath } from "./infrastructure/workspacePath";
 import { hostLoop } from "./runtime/loop";
 import type { HostObserver, StopSignal } from "./runtime/context";
+import { HookLedger } from "./hooks/ledger";
+import { HookRuntime } from "./hooks/runtime";
+import { hookBeforeModelNode } from "./hooks/middleware";
 
 export type HostMode = {
   kind: "new" | "load" | "overwrite";
@@ -66,34 +69,53 @@ export async function runHostSession(
   } else {
     logger.info("已覆盖会话", { sessionId: mode.sessionId, db: paths.appDb });
   }
-  const mcp = await loadMcp(root, logger);
-  const { graph, checkpointer } = buildGraph(
-    settings,
-    mcp.tools,
-    paths.checkpointDb,
-  );
-  const signal: StopSignal = options.signal ?? { stopping: false };
-  if (options.wireSigint ?? false) {
-    process.on("SIGINT", () => {
-      signal.stopping = true;
-      logger.warn("收到 Ctrl+C，Host 将在当前边界停止");
-    });
-  }
+  let mcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
   try {
-    await hostLoop({
-      settings,
-      logger,
-      db,
-      graph,
-      checkpointer,
-      sessionId: mode.sessionId,
-      signal,
-      wake: options.wake,
-      observer: options.observer,
-    });
+    mcp = await loadMcp(root, logger);
+    const hookLedger = new HookLedger(paths.hookDb);
+    try {
+      const hooks = new HookRuntime(
+        settings.hooks,
+        mcp.tools,
+        hookLedger,
+        logger,
+        mode.sessionId,
+      );
+      const { graph, checkpointer } = buildGraph(
+        settings,
+        mcp.tools,
+        paths.checkpointDb,
+        hooks,
+      );
+      try {
+        const signal: StopSignal = options.signal ?? { stopping: false };
+        if (options.wireSigint ?? false) {
+          process.on("SIGINT", () => {
+            signal.stopping = true;
+            logger.warn("收到 Ctrl+C，Host 将在当前边界停止");
+          });
+        }
+        await hostLoop({
+          settings,
+          logger,
+          db,
+          graph,
+          checkpointer,
+          hooks,
+          beforeModelNode: hookBeforeModelNode,
+          sessionId: mode.sessionId,
+          signal,
+          wake: options.wake,
+          observer: options.observer,
+        });
+      } finally {
+        checkpointer.close();
+      }
+    } finally {
+      hookLedger.close();
+    }
   } finally {
-    await mcp.close();
-    checkpointer.close();
+    await mcp?.close();
     db.close();
   }
 }

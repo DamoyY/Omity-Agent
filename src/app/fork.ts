@@ -55,12 +55,15 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   if (!Number.isSafeInteger(messageId) || messageId <= 0) {
     throw new Error(`Fork 消息 ID 无效：${messageId}`);
   }
-  const row = db
-    .query<
-      MessageRow,
-      [string, number]
-    >("SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id = ?")
-    .get(sessionId, messageId);
+  const query = db.prepare<MessageRow, [string, number]>(
+    "SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id = ?",
+  );
+  let row: MessageRow | null;
+  try {
+    row = query.get(sessionId, messageId);
+  } finally {
+    query.finalize();
+  }
   if (!row) throw new Error(`Fork 消息不存在：${messageId}`);
   if (storedMessageType(row.message_json) !== "human") {
     throw new Error("只能从用户消息创建 Fork");
@@ -73,12 +76,14 @@ function forkMessages(
   sessionId: string,
   beforeMessageId: number,
 ) {
-  return db
-    .query<
-      MessageRow,
-      [string, number]
-    >("SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id < ? ORDER BY id")
-    .all(sessionId, beforeMessageId);
+  const query = db.prepare<MessageRow, [string, number]>(
+    "SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id < ? ORDER BY id",
+  );
+  try {
+    return query.all(sessionId, beforeMessageId);
+  } finally {
+    query.finalize();
+  }
 }
 
 function insertMessages(
@@ -109,14 +114,21 @@ function messageContent(value: string) {
 }
 
 function forkKind(db: Database, messageId: number): ForkKind {
-  const row = db
-    .query<{ root_queue_id: number | null; queue_id: number | null }, [number]>(
-      `SELECT r.root_queue_id, m.queue_id FROM messages m
+  const query = db.prepare<
+    { root_queue_id: number | null; queue_id: number | null },
+    [number]
+  >(
+    `SELECT r.root_queue_id, m.queue_id FROM messages m
        LEFT JOIN queue q ON q.id = m.queue_id
        LEFT JOIN runs r ON r.id = q.run_id
        WHERE m.id = ?`,
-    )
-    .get(messageId);
+  );
+  let row: { root_queue_id: number | null; queue_id: number | null } | null;
+  try {
+    row = query.get(messageId);
+  } finally {
+    query.finalize();
+  }
   if (!row?.queue_id) return "draft";
   return row.root_queue_id === row.queue_id ? "draft" : "pause";
 }

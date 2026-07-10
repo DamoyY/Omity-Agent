@@ -1,12 +1,18 @@
-import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
+import { ChatOpenAICompletions } from "@langchain/openai";
 import { SystemMessage } from "@langchain/core/messages";
 import { createAgent, createMiddleware } from "langchain";
 import type { StructuredToolInterface } from "@langchain/core/tools";
-import type { OpenAI } from "openai";
 import { BunSqliteSaver } from "./checkpointer";
 import { createLargeToolOutputMiddleware } from "./runtime/largeOutput";
 import { buildSkillsMessage } from "./skills";
 import type { Settings } from "./types";
+import { createHookMiddleware } from "./hooks/middleware";
+import type { HookRuntime } from "./hooks/runtime";
+import { CompatibleChatOpenAIResponses } from "./infrastructure/responses";
+export {
+  normalizeResponsesPayload,
+  normalizeResponsesStreamEvent,
+} from "./infrastructure/responses";
 
 export function buildModel(settings: Settings, instructions?: string) {
   const apiKey = process.env[settings.model.apiKeyEnv];
@@ -42,6 +48,7 @@ export function buildGraph(
   settings: Settings,
   tools: StructuredToolInterface[],
   checkpointPath: string,
+  hooks: HookRuntime,
 ) {
   const checkpointer = new BunSqliteSaver(checkpointPath);
   const skillsMessage = buildSkillsMessage(settings);
@@ -51,6 +58,7 @@ export function buildGraph(
   );
   const usesResponsesInstructions = settings.model.api === "responses";
   const middleware = [
+    createHookMiddleware(hooks),
     createLargeToolOutputMiddleware(settings),
     ...(skillsMessage && !usesResponsesInstructions
       ? [createSkillsMiddleware(skillsMessage)]
@@ -67,6 +75,7 @@ export function buildGraph(
       : { systemPrompt: settings.agent.systemPrompt }),
     middleware,
     checkpointer,
+    version: "v1",
   });
   return { graph, checkpointer };
 }
@@ -87,112 +96,4 @@ export function createSkillsMiddleware(skillsMessage: string) {
         messages: [new SystemMessage(skillsMessage), ...request.messages],
       }),
   });
-}
-
-class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
-  override invocationParams(options?: this["ParsedCallOptions"]) {
-    const params = super.invocationParams(options);
-    return {
-      ...params,
-      include: mergeResponseIncludes(params.include, [
-        "reasoning.encrypted_content",
-      ]),
-    };
-  }
-
-  override completionWithRetry(
-    request: OpenAI.Responses.ResponseCreateParamsStreaming,
-    requestOptions?: OpenAI.RequestOptions,
-  ): Promise<AsyncIterable<OpenAI.Responses.ResponseStreamEvent>>;
-  override completionWithRetry(
-    request: OpenAI.Responses.ResponseCreateParamsNonStreaming,
-    requestOptions?: OpenAI.RequestOptions,
-  ): Promise<OpenAI.Responses.Response>;
-  override async completionWithRetry(
-    request:
-      | OpenAI.Responses.ResponseCreateParamsStreaming
-      | OpenAI.Responses.ResponseCreateParamsNonStreaming,
-    requestOptions?: OpenAI.RequestOptions,
-  ): Promise<
-    | AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
-    | OpenAI.Responses.Response
-  > {
-    if (request.stream) {
-      const stream = await super.completionWithRetry(request, requestOptions);
-      return normalizeResponsesStream(stream);
-    }
-    const response = await super.completionWithRetry(request, requestOptions);
-    return normalizeResponsesPayload(response);
-  }
-}
-
-export function normalizeResponsesStreamEvent(
-  event: OpenAI.Responses.ResponseStreamEvent,
-): OpenAI.Responses.ResponseStreamEvent {
-  if (!isRecord(event) || !("response" in event)) {
-    return event;
-  }
-  const response = event["response"] as OpenAI.Responses.Response;
-  const normalized = normalizeResponsesPayload(response);
-  if (normalized === response) {
-    return event;
-  }
-  return {
-    ...event,
-    response: normalized,
-  } as OpenAI.Responses.ResponseStreamEvent;
-}
-
-export function normalizeResponsesPayload<T>(payload: T): T {
-  if (!isRecord(payload) || !Array.isArray(payload["output"])) {
-    return payload;
-  }
-  let responseChanged = false;
-  const output = payload["output"].map((item) => {
-    if (!isRecord(item) || !Array.isArray(item["content"])) {
-      return item;
-    }
-    let itemChanged = false;
-    const content = item["content"].map((part) => {
-      if (!isRecord(part) || part["type"] !== "output_text") {
-        return part;
-      }
-      if (part["annotations"] === undefined) {
-        itemChanged = true;
-        return { ...part, annotations: [] };
-      }
-      if (!Array.isArray(part["annotations"])) {
-        throw new Error("Responses API output_text.annotations 必须为数组");
-      }
-      return part;
-    });
-    if (!itemChanged) {
-      return item;
-    }
-    responseChanged = true;
-    return { ...item, content };
-  });
-  if (!responseChanged) {
-    return payload;
-  }
-  return { ...payload, output } as T;
-}
-
-async function* normalizeResponsesStream(
-  stream: AsyncIterable<OpenAI.Responses.ResponseStreamEvent>,
-) {
-  for await (const event of stream) {
-    yield normalizeResponsesStreamEvent(event);
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function mergeResponseIncludes(
-  current: OpenAI.Responses.ResponseCreateParams["include"],
-  required: OpenAI.Responses.ResponseCreateParams["include"],
-) {
-  return Array.from(new Set([...(current ?? []), ...(required ?? [])]));
 }

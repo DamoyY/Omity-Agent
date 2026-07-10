@@ -30,6 +30,8 @@ logging:
 toolOutput:
   maxTokens: 8192
 
+# 自动工具调用规则位于 settings/hooks.yaml。
+
 # Skills 控制；directory 用于读取 Skill 子目录中的 SKILL.md。
 skills:
   enabled: true

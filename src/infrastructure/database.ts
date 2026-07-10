@@ -120,9 +120,7 @@ export class AgentDatabase {
   }
 
   setQueueStatus(queueId: number, status: QueueStatus, error?: string) {
-    this.db.transaction(() =>
-      setQueueStatusRecord(this.db, queueId, status, error),
-    )();
+    setQueueStatusRecord(this.db, queueId, status, error);
   }
 
   runRootQueueIds(queueIds: number[]) {

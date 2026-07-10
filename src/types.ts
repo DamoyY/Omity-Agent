@@ -18,6 +18,17 @@ export type ReasoningEffort =
   | "high"
   | "xhigh";
 
+export type HookMode = "silent" | "takeover";
+
+export type HookRule = {
+  id: string;
+  on: "user_message" | "agent_end" | "tool_before" | "tool_after";
+  mode: HookMode;
+  tool: string;
+  args: Record<string, unknown>;
+  matchTool?: string;
+};
+
 export type Settings = {
   paths: {
     dataDir: string;
@@ -46,6 +57,7 @@ export type Settings = {
   toolOutput: {
     maxTokens: number;
   };
+  hooks: HookRule[];
   agent: {
     systemPrompt: string;
   };

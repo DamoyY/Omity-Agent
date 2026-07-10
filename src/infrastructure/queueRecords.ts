@@ -71,26 +71,32 @@ export function pendingAppendRows(
   db: Database,
   sessionId: string,
 ): QueueItem[] {
-  return db
-    .query<QueueRow, [string]>(
-      `${queueSelect}
-      WHERE q.session_id = ? AND q.status = 'pending' ORDER BY q.id`,
-    )
-    .all(sessionId)
-    .map(toQueueItem);
+  const query = db.prepare<QueueRow, [string]>(
+    `${queueSelect}
+     WHERE q.session_id = ? AND q.status = 'pending' ORDER BY q.id`,
+  );
+  try {
+    return query.all(sessionId).map(toQueueItem);
+  } finally {
+    query.finalize();
+  }
 }
 
 export function nextQueueRow(
   db: Database,
   sessionId: string,
 ): QueueItem | null {
-  const row = db
-    .query<QueueRow, [string]>(
-      `${queueSelect}
-      WHERE q.session_id = ? AND q.status IN ('pending', 'running', 'paused')
-      ORDER BY q.id LIMIT 1`,
-    )
-    .get(sessionId);
+  const query = db.prepare<QueueRow, [string]>(
+    `${queueSelect}
+     WHERE q.session_id = ? AND q.status IN ('pending', 'running', 'paused')
+     ORDER BY q.id LIMIT 1`,
+  );
+  let row: QueueRow | null;
+  try {
+    row = query.get(sessionId);
+  } finally {
+    query.finalize();
+  }
   return row ? toQueueItem(row) : null;
 }
 
@@ -116,23 +122,26 @@ export function setQueueStatusRecord(
   status: QueueStatus,
   error?: string,
 ) {
-  db.query(
+  db.run(
     "UPDATE queue SET status = ?, error = ?, updated_at = unixepoch() WHERE id = ?",
-  ).run(status, error ?? null, queueId);
+    [status, error ?? null, queueId],
+  );
   syncRunStatus(db, queueId, status);
 }
 
 export function runRootQueueIds(db: Database, queueIds: number[]) {
   if (queueIds.length === 0) return [];
   const placeholders = queueIds.map(() => "?").join(", ");
-  return db
-    .query<{ root_queue_id: number }, number[]>(
-      `SELECT DISTINCT r.root_queue_id FROM queue q
-       JOIN runs r ON r.id = q.run_id
-       WHERE q.id IN (${placeholders}) ORDER BY r.root_queue_id`,
-    )
-    .all(...queueIds)
-    .map((row) => row.root_queue_id);
+  const query = db.prepare<{ root_queue_id: number }, number[]>(
+    `SELECT DISTINCT r.root_queue_id FROM queue q
+     JOIN runs r ON r.id = q.run_id
+     WHERE q.id IN (${placeholders}) ORDER BY r.root_queue_id`,
+  );
+  try {
+    return query.all(...queueIds).map((row) => row.root_queue_id);
+  } finally {
+    query.finalize();
+  }
 }
 
 function appendToRun(
@@ -150,14 +159,9 @@ function appendToRun(
 }
 
 function syncRunStatus(db: Database, queueId: number, status: QueueStatus) {
-  const row = db
-    .query<
-      { run_id: number | null },
-      [number]
-    >("SELECT run_id FROM queue WHERE id = ?")
-    .get(queueId);
-  if (row?.run_id === null || row?.run_id === undefined) return;
-  db.query(
-    "UPDATE runs SET status = ?, updated_at = unixepoch() WHERE id = ?",
-  ).run(status, row.run_id);
+  db.run(
+    `UPDATE runs SET status = ?, updated_at = unixepoch()
+     WHERE id = (SELECT run_id FROM queue WHERE id = ?)`,
+    [status, queueId],
+  );
 }

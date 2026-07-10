@@ -54,6 +54,7 @@ function makeSettings(api: Settings["model"]["api"]): Settings {
     toolOutput: {
       maxTokens: 8192,
     },
+    hooks: [],
     agent: {
       systemPrompt: "test",
     },

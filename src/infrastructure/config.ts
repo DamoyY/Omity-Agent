@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 import type { Settings } from "../types";
+import { loadHookRules } from "../hooks/config";
 import { normalizeWorkspacePath } from "./workspacePath";
 
 const reasoningEffortSchema = z.enum([
@@ -62,6 +63,7 @@ export function loadSettings(
   const cwd = normalizeWorkspacePath(options.cwd ?? configRoot, configRoot);
   const settingsDir = resolve(configRoot, "settings");
   const main = mainSchema.parse(readYaml(resolve(settingsDir, "main.yaml")));
+  const hooks = loadHookRules(resolve(settingsDir, "hooks.yaml"));
   const promptsDir = resolve(settingsDir, "prompts");
   const promptContext = { cwd };
   const dataDir = resolveConfigPath(configRoot, main.paths.dataDir);
@@ -69,6 +71,7 @@ export function loadSettings(
   mkdirSync(dataDir, { recursive: true });
   return {
     ...main,
+    hooks,
     agent: {
       systemPrompt: readPrompt(join(promptsDir, "system.md"), {
         context: promptContext,
@@ -97,7 +100,8 @@ export function resolveSessionPaths(settings: Settings, sessionId: string) {
   const dir = resolve(settings.paths.dataDir, "sessions", safeId(sessionId));
   const appDb = resolve(dir, "agent.sqlite");
   const checkpointDb = resolve(dir, "checkpoints.sqlite");
-  return { dir, appDb, checkpointDb };
+  const hookDb = resolve(dir, "hooks.sqlite");
+  return { dir, appDb, checkpointDb, hookDb };
 }
 
 export function safeId(value: string) {

@@ -15,6 +15,11 @@ export function makeDb() {
 
 export function cleanupDatabaseDirs() {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 50,
+    });
   }
 }

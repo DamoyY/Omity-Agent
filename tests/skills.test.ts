@@ -106,6 +106,7 @@ function makeSettings(
     toolOutput: {
       maxTokens: 8192,
     },
+    hooks: [],
     agent: {
       systemPrompt: "test",
     },

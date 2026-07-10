@@ -1,5 +1,3 @@
-import { Command } from "@langchain/langgraph";
-import { HumanMessage } from "@langchain/core/messages";
 import type { QueueItem } from "../types";
 import { waitForWake, type HostContext } from "./context";
 import { isModelNetworkError } from "./network";
@@ -13,6 +11,8 @@ import {
   type QueueRun,
 } from "./run";
 import { createStreamLogState, handleStreamEvent } from "./stream";
+import { queueMessageId } from "../infrastructure/messages";
+import { consumeBoundaryAppends } from "./appends";
 
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id}`);
@@ -21,9 +21,14 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
     threadId: `${ctx.sessionId}:${item.id}`,
   };
   try {
+    if (!(await waitIfPaused(ctx, run))) return;
     ctx.db.startQueue(ctx.sessionId, item);
     ctx.observer?.changed?.(ctx.sessionId);
-    if (!(await waitIfPaused(ctx, run))) return;
+    await ctx.hooks.runSilent(
+      "user_message",
+      queueMessageId(ctx.sessionId, item.id),
+      run.threadId,
+    );
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
     if (error instanceof CanceledRun) return;
@@ -39,10 +44,15 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
 
 async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
   const [item] = run.items;
-  let input: unknown =
-    item.status === "pending" || item.userMessageId === null
-      ? { messages: ctx.db.history(ctx.sessionId) }
-      : null;
+  const checkpoint = await ctx.checkpointer.getTuple({
+    configurable: { thread_id: run.threadId },
+  });
+  let input: unknown = checkpoint
+    ? null
+    : {
+        messages: ctx.db.history(ctx.sessionId),
+        hookPendingUserIds: [queueMessageId(ctx.sessionId, item.id)],
+      };
   const config = {
     configurable: { thread_id: run.threadId },
     context: { sessionId: ctx.sessionId },
@@ -113,40 +123,18 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       });
       await waitIfPaused(ctx, run);
     }
-    const appendInput = consumeBoundaryAppends(ctx, run, state);
+    const appendInput = await consumeBoundaryAppends(ctx, run, state);
     if (appendInput) {
       input = appendInput;
       continue;
     }
     if (!state.next || state.next.length === 0) {
+      await ctx.hooks.runSilent("agent_end", `queue:${item.id}`, run.threadId);
       finishRun(ctx, run, state.values?.messages ?? []);
       return;
     }
     input = null;
   }
-}
-
-function consumeBoundaryAppends(
-  ctx: HostContext,
-  run: QueueRun,
-  state: { next?: string[] },
-) {
-  if (state.next?.includes("tools")) return null;
-  const appends = ctx.db.pendingAppends(ctx.sessionId);
-  if (appends.length === 0) return null;
-  for (const item of appends) {
-    const userMessageId = ctx.db.startQueue(ctx.sessionId, item);
-    run.items.push({ ...item, status: "running", userMessageId });
-  }
-  ctx.logger.info("已在节点边界追加输入", {
-    queueIds: appends.map((item) => item.id),
-  });
-  return new Command({
-    update: {
-      messages: appends.map((item) => new HumanMessage(item.content)),
-    },
-    goto: "model_request",
-  });
 }
 
 async function waitIfPaused(ctx: HostContext, run: QueueRun) {

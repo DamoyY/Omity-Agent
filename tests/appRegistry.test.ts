@@ -90,6 +90,7 @@ function makeRoot() {
     "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\ntoolOutput:\n  maxTokens: 8192\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
   );
   const promptsDir = join(settingsDir, "prompts");
+  writeFileSync(join(settingsDir, "hooks.yaml"), "hooks: []\n");
   mkdirSync(promptsDir);
   writeFileSync(join(promptsDir, "system.md"), "test");
   writeFileSync(join(promptsDir, "skills.md"), "use skills");

@@ -3,6 +3,7 @@ import type { BunSqliteSaver } from "../checkpointer";
 import type { AgentDatabase } from "../infrastructure/database";
 import type { Logger } from "../infrastructure/logger";
 import type { Settings } from "../types";
+import type { HookRuntime } from "../hooks/runtime";
 
 export type StopSignal = {
   stopping: boolean;
@@ -19,6 +20,8 @@ export type HostContext = {
   db: AgentDatabase;
   graph: any;
   checkpointer: BunSqliteSaver;
+  hooks: HookRuntime;
+  beforeModelNode: string;
   sessionId: string;
   signal: StopSignal;
   wake?: (delayMs: number) => Promise<void>;

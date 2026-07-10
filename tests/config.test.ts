@@ -8,6 +8,7 @@ import {
   safeId,
   sessionPaths,
 } from "../src/infrastructure/config";
+import { loadHookRules } from "../src/hooks/config";
 
 const dirs: string[] = [];
 
@@ -28,6 +29,7 @@ test("settings yaml resolves AppData data directory", () => {
     "paths:\n  dataDir: ${appData}/omity-agent\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  reasoning_effort: medium\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\ntoolOutput:\n  maxTokens: 8192\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
   );
   writePrompts(settingsDir, "test", "use skills");
+  writeHooks(settingsDir);
   withAppDataRoot(appData, () => {
     const settings = loadSettings(root);
     mkdirSync(settings.paths.dataDir, { recursive: true });
@@ -52,12 +54,58 @@ test("prompt files expand current working directory placeholder", () => {
     "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\ntoolOutput:\n  maxTokens: 8192\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
   );
   writePrompts(settingsDir, "workspace: ${cwd}", "skills from ${cwd}");
+  writeHooks(settingsDir);
 
   const settings = loadSettings(root, { cwd: workspace });
 
   expect(settings.paths.dataDir).toBe(resolve(root, "data"));
   expect(settings.agent.systemPrompt).toBe(`workspace: ${workspace}`);
   expect(settings.skills.usagePrompt).toBe(`skills from ${workspace}`);
+});
+
+test("hook config parses all triggers and rejects agent takeover", () => {
+  const root = mkdtempSync(join(tmpdir(), "agent-hooks-config-"));
+  const path = join(root, "hooks.yaml");
+  dirs.push(root);
+  writeFileSync(
+    path,
+    `hooks:
+  - id: user
+    on: user_message
+    mode: takeover
+    tool: format
+    args: { path: . }
+  - id: end
+    on: agent_end
+    mode: silent
+    tool: notify
+    args: {}
+  - id: before
+    on: tool_before
+    mode: silent
+    tool: lint
+    args: {}
+    matchTool: write
+  - id: after
+    on: tool_after
+    mode: takeover
+    tool: verify
+    args: {}
+    matchTool: write
+`,
+  );
+
+  expect(loadHookRules(path).map((hook) => hook.on)).toEqual([
+    "user_message",
+    "agent_end",
+    "tool_before",
+    "tool_after",
+  ]);
+  writeFileSync(
+    path,
+    "hooks:\n  - id: invalid\n    on: agent_end\n    mode: takeover\n    tool: notify\n    args: {}\n",
+  );
+  expect(() => loadHookRules(path)).toThrow();
 });
 
 function writePrompts(
@@ -69,6 +117,10 @@ function writePrompts(
   mkdirSync(promptsDir);
   writeFileSync(join(promptsDir, "system.md"), systemPrompt);
   writeFileSync(join(promptsDir, "skills.md"), skillsPrompt);
+}
+
+function writeHooks(settingsDir: string) {
+  writeFileSync(join(settingsDir, "hooks.yaml"), "hooks: []\n");
 }
 
 function withAppDataRoot(path: string, callback: () => void) {
