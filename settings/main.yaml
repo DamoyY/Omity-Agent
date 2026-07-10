@@ -8,10 +8,10 @@ model:
   # 可选 responses 或 completions；OpenAI-compatible 网关通常使用 completions。
   api: responses
   model: gpt-5.6-sol
-  apiKeyEnv: CCTQ
-  baseURL: https://www.cctq.ai/v1
+  apiKeyEnv: COCKPIT_API_KEY
+  baseURL: http://localhost:40403/v1
   reasoning_effort: xhigh
-  maxRetries: 5
+  maxRetries: 1
   timeoutMs: 120000
 
 # Host 轮询、暂停与 LangGraph 运行边界。

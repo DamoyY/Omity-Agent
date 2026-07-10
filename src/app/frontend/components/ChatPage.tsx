@@ -53,7 +53,7 @@ const userMessage = css({
   bg: "surfaceRaised",
   borderColor: "lineStrong",
   ml: "auto",
-  textAlign: "right",
+  textAlign: "left",
 });
 
 const roleLabel = css({
