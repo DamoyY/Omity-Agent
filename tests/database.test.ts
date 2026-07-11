@@ -1,6 +1,11 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { cleanupDatabaseDirs, makeDb, workspace } from "./support/database";
+import {
+  cleanupDatabaseDirs,
+  makeDatabases,
+  makeDb,
+  workspace,
+} from "./support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -98,5 +103,62 @@ test("client operations reject missing sessions", () => {
   expect(() => db.setControl("missing", "pause")).toThrow(
     "会话不存在：missing",
   );
+  db.close();
+});
+
+test("host lease excludes concurrent owners and permits takeover after expiry", () => {
+  const [first, second] = makeDatabases(2);
+  first!.resetSession("123", workspace);
+
+  expect(
+    first!.acquireHostLease({
+      sessionId: "123",
+      ownerId: "host-a",
+      now: 1_000,
+      ttlMs: 100,
+    }),
+  ).toBe(true);
+  expect(
+    second!.acquireHostLease({
+      sessionId: "123",
+      ownerId: "host-b",
+      now: 1_050,
+      ttlMs: 100,
+    }),
+  ).toBe(false);
+  expect(
+    second!.renewHostLease({
+      sessionId: "123",
+      ownerId: "host-b",
+      now: 1_050,
+      ttlMs: 100,
+    }),
+  ).toBe(false);
+  expect(
+    second!.acquireHostLease({
+      sessionId: "123",
+      ownerId: "host-b",
+      now: 1_101,
+      ttlMs: 100,
+    }),
+  ).toBe(true);
+  expect(first!.releaseHostLease("123", "host-a")).toBe(false);
+  expect(second!.releaseHostLease("123", "host-b")).toBe(true);
+  first!.close();
+  second!.close();
+});
+
+test("queue start atomically rejects a stale claim", () => {
+  const db = makeDb();
+  db.resetSession("123", workspace);
+  db.appendUser("123", "只应写入一次");
+  const stale = db.nextQueue("123")!;
+
+  db.startQueue("123", stale);
+
+  expect(() => db.startQueue("123", stale)).toThrow("队列认领冲突");
+  expect(db.history("123").map((message) => message.text)).toEqual([
+    "只应写入一次",
+  ]);
   db.close();
 });

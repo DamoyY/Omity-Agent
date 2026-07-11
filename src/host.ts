@@ -10,7 +10,11 @@ import { Logger } from "./infrastructure/logger";
 import { loadMcp } from "./infrastructure/mcp";
 import { normalizeWorkspacePath } from "./infrastructure/workspacePath";
 import { hostLoop } from "./runtime/loop";
-import type { HostObserver, StopSignal } from "./runtime/context";
+import {
+  HostLease,
+  type HostObserver,
+  type StopSignal,
+} from "./runtime/context";
 import { HookLedger } from "./hooks/ledger";
 import { HookRuntime } from "./hooks/runtime";
 import { hookBeforeModelNode } from "./hooks/middleware";
@@ -61,6 +65,14 @@ export async function runHostSession(
       ? resolveSessionPaths(settings, mode.sessionId)
       : prepareWritableSession(settings, mode);
   const db = openHostDatabase(paths.appDb, mode, workspace);
+  const signal: StopSignal = options.signal ?? { stopping: false };
+  let lease: HostLease;
+  try {
+    lease = new HostLease(db, logger, mode.sessionId, signal);
+  } catch (error) {
+    db.close();
+    throw error;
+  }
   db.onChange(() => options.observer?.changed?.(mode.sessionId));
   if (mode.kind === "new") {
     logger.info("已创建新会话", { sessionId: mode.sessionId, db: paths.appDb });
@@ -89,7 +101,6 @@ export async function runHostSession(
         hooks,
       );
       try {
-        const signal: StopSignal = options.signal ?? { stopping: false };
         if (options.wireSigint ?? false) {
           process.on("SIGINT", () => {
             signal.stopping = true;
@@ -109,6 +120,7 @@ export async function runHostSession(
           wake: options.wake,
           observer: options.observer,
         });
+        lease.assertOwned();
       } finally {
         checkpointer.close();
       }
@@ -117,6 +129,7 @@ export async function runHostSession(
     }
   } finally {
     await mcp?.close();
+    lease.close();
     db.close();
   }
 }

@@ -59,6 +59,14 @@ export const migrationSql = [
       created_at INTEGER NOT NULL
     )
   `,
+  `
+    CREATE TABLE IF NOT EXISTS host_leases (
+      session_id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    )
+  `,
 ] as const;
 
 export function applySchema(db: Database) {
@@ -91,6 +99,7 @@ export function applySchema(db: Database) {
     "created_at",
     "updated_at",
   ]);
+  assertColumns(db, "host_leases", ["session_id", "owner_id", "expires_at"]);
 }
 
 function assertColumns(db: Database, table: string, columns: string[]) {

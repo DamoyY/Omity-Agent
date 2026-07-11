@@ -23,14 +23,18 @@ import {
 } from "./queueRecords";
 import { applySchema } from "./schema";
 import {
+  acquireHostLeaseRecord,
   createSessionRecord,
   ensureSessionRecord,
   hasSessionRecord,
   readControlRecord,
   readWorkspaceRecord,
+  releaseHostLeaseRecord,
+  renewHostLeaseRecord,
   requireSessionRecord,
   touchSessionRecord,
   writeControlRecord,
+  type HostLeaseClaim,
 } from "./sessionRecords";
 
 export class AgentDatabase {
@@ -153,8 +157,16 @@ export class AgentDatabase {
     this.event(sessionId, "info", "client", "control", { control });
   }
 
-  touchSession(sessionId: string) {
-    touchSessionRecord(this.db, sessionId);
+  acquireHostLease(claim: HostLeaseClaim) {
+    return acquireHostLeaseRecord(this.db, claim);
+  }
+
+  renewHostLease(claim: HostLeaseClaim) {
+    return renewHostLeaseRecord(this.db, claim);
+  }
+
+  releaseHostLease(sessionId: string, ownerId: string) {
+    return releaseHostLeaseRecord(this.db, sessionId, ownerId);
   }
 
   event(

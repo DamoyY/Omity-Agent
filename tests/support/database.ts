@@ -8,9 +8,14 @@ const dirs: string[] = [];
 export const workspace = "F:\\workspace\\test";
 
 export function makeDb() {
+  return makeDatabases(1)[0]!;
+}
+
+export function makeDatabases(count: number) {
   const dir = mkdtempSync(join(tmpdir(), "agent-db-"));
   dirs.push(dir);
-  return new AgentDatabase(join(dir, "app.sqlite"));
+  const path = join(dir, "app.sqlite");
+  return Array.from({ length: count }, () => new AgentDatabase(path));
 }
 
 export function cleanupDatabaseDirs() {

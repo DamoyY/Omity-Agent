@@ -105,13 +105,26 @@ export function startQueueRecord(
   item: QueueItem,
 ) {
   if (item.userMessageId !== null) {
-    setQueueStatusRecord(db, item.id, "running");
+    const result = db.run(
+      `UPDATE queue SET status = 'running', updated_at = unixepoch()
+       WHERE id = ? AND session_id = ? AND status = ? AND user_message_id = ?`,
+      [item.id, sessionId, item.status, item.userMessageId],
+    );
+    if (result.changes !== 1) throw new Error(`队列认领冲突：${item.id}`);
+    syncRunStatus(db, item.id, "running");
     return item.userMessageId;
   }
   const messageId = insertUserMessage(db, sessionId, item.content, item.id);
-  db.query(
-    "UPDATE queue SET status = 'running', started_at = unixepoch(), user_message_id = ? WHERE id = ?",
-  ).run(messageId, item.id);
+  const result = db.run(
+    `UPDATE queue SET status = 'running', started_at = unixepoch(),
+       updated_at = unixepoch(), user_message_id = ?
+     WHERE id = ? AND session_id = ?
+       AND status IN ('pending', 'running', 'paused')
+       AND user_message_id IS NULL`,
+    [messageId, item.id, sessionId],
+  );
+  if (result.changes !== 1) throw new Error(`队列认领冲突：${item.id}`);
+  syncRunStatus(db, item.id, "running");
   return messageId;
 }
 
