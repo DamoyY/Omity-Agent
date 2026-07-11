@@ -46,14 +46,16 @@ test("paused queue resumes one deterministic user hook chain", async () => {
       [
         {
           id: "user-first",
-          on: "user_message",
+          target: "agent",
+          when: "before",
           mode: "silent",
           tool: "hook",
           args: {},
         },
         {
           id: "user-second",
-          on: "user_message",
+          target: "agent",
+          when: "before",
           mode: "silent",
           tool: "hook",
           args: { previous: "${previousTool.output}" },

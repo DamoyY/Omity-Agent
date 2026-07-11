@@ -7,37 +7,41 @@
 #
 # hooks:
 #   - id: format-after-user
-#     on: user_message
+#     target: agent
+#     when: before
 #     mode: silent
 #     tool: formatter
 #     args: { path: "${cwd}" }
 #   - id: notify-after-answer
-#     on: agent_end
+#     target: agent
+#     when: after
 #     mode: silent
 #     tool: notify
 #     args: { result: "${previousTool.output}" }
 #   - id: check-before-write
-#     on: tool_before
+#     target: write_file
+#     when: before
 #     mode: takeover
-#     matchTool: write_file
 #     tool: validate
 #     args: {}
 #   - id: format-after-write
-#     on: tool_after
+#     target: write_file
+#     when: after
 #     mode: silent
-#     matchTool: write_file
 #     tool: formatter
 #     args: { path: . }
 hooks:
   - id: open-terminal
-    on: user_message
+    target: agent
+    when: before
     mode: takeover
     tool: terminal__new_tab
     args:
       starting_directory: "${cwd}"
       starting_shell: powershell
   - id: read-agents-md
-    on: user_message
+    target: agent
+    when: before
     mode: takeover
     tool: terminal__send_command
     args:

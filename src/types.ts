@@ -10,13 +10,17 @@ export type ReasoningEffort =
 
 export type HookMode = "silent" | "takeover";
 
+export type HookWhen = "before" | "after";
+
+export type HookTrigger = `${string}:${HookWhen}`;
+
 export type HookRule = {
   id: string;
-  on: "user_message" | "agent_end" | "tool_before" | "tool_after";
+  target: string;
+  when: HookWhen;
   mode: HookMode;
   tool: string;
   args: Record<string, unknown>;
-  matchTool?: string;
 };
 
 export type Settings = {

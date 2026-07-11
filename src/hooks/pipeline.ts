@@ -22,7 +22,7 @@ export async function advancePlan(
   while (plan.kind === "user") {
     const sourceId = plan.sources[plan.sourceIndex];
     if (!sourceId) return { hookPlan: null };
-    const rule = hooks.matching("user_message")[plan.hookIndex];
+    const rule = hooks.matching("agent", "before")[plan.hookIndex];
     if (!rule) {
       plan = { ...plan, sourceIndex: plan.sourceIndex + 1, hookIndex: 0 };
       continue;
@@ -30,7 +30,6 @@ export async function advancePlan(
     const result = await runHookStep(
       plan,
       rule,
-      "user_message",
       sourceId,
       hooks,
       threadId,
@@ -54,8 +53,7 @@ async function advanceTools(
     const call = original.tool_calls?.[plan.toolIndex];
     if (!call) return { hookPlan: null };
     if (plan.stage === "original") return emitOriginal(plan, original, call);
-    const trigger = plan.stage === "before" ? "tool_before" : "tool_after";
-    const rule = hooks.matching(trigger, call.name)[plan.hookIndex];
+    const rule = hooks.matching(call.name, plan.stage)[plan.hookIndex];
     if (!rule) {
       plan = nextStage(plan);
       continue;
@@ -63,7 +61,6 @@ async function advanceTools(
     const result = await runHookStep(
       plan,
       rule,
-      trigger,
       requireCallId(call),
       hooks,
       threadId,
@@ -77,17 +74,16 @@ async function advanceTools(
 async function runHookStep(
   plan: HookPlan,
   rule: HookRule,
-  trigger: HookRule["on"],
   sourceId: string,
   hooks: HookRuntime,
   threadId: string,
   signal?: AbortSignal,
 ) {
   if (rule.mode === "silent") {
-    await hooks.runSilent(rule, trigger, sourceId, threadId, signal);
+    await hooks.runSilent(rule, sourceId, threadId, signal);
     return null;
   }
-  const call = await hooks.resolvedCall(rule, trigger, sourceId, threadId);
+  const call = await hooks.resolvedCall(rule, sourceId, threadId);
   return emit(plan, call, { kind: "hook", callId: requireCallId(call) });
 }
 

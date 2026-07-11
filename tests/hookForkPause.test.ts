@@ -60,7 +60,8 @@ test("forked appended message runs its hook once after resume", async () => {
       [
         {
           id: "user",
-          on: "user_message",
+          target: "agent",
+          when: "before",
           mode: "silent",
           tool: "hook",
           args: { cwd: "${cwd}" },

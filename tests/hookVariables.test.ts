@@ -69,7 +69,7 @@ test("mixed hook modes resolve variables in config order", async () => {
       { messages: [{ role: "user", content: "run" }] },
       { configurable: { thread_id: "thread" } },
     );
-    await hooks.runSilentChain("agent_end", "answer", "thread");
+    await hooks.runSilentChain("agent", "after", "answer", "thread");
 
     expect(received).toEqual([
       { label: "before-silent", cwd: dir, nested: [`work:${dir}`] },
@@ -103,14 +103,16 @@ test("user takeover receives the preceding silent hook output", async () => {
     [
       {
         id: "silent-user",
-        on: "user_message",
+        target: "agent",
+        when: "before",
         mode: "silent",
         tool: "hook",
         args: {},
       },
       {
         id: "takeover-user",
-        on: "user_message",
+        target: "agent",
+        when: "before",
         mode: "takeover",
         tool: "hook",
         args: { previous: "${previousTool.output}" },
@@ -145,26 +147,27 @@ test("user takeover receives the preceding silent hook output", async () => {
 
 function rules(): HookRule[] {
   return [
-    hook("before-silent", "tool_before", "silent", {
+    hook("before-silent", "before", "silent", {
       label: "before-silent",
       cwd: "${cwd}",
       nested: ["work:${cwd}"],
     }),
-    hook("before-takeover", "tool_before", "takeover", {
+    hook("before-takeover", "before", "takeover", {
       label: "before-takeover",
       previous: "${previousTool.output}",
     }),
-    hook("after-silent", "tool_after", "silent", {
+    hook("after-silent", "after", "silent", {
       label: "after-silent",
       previous: "${previousTool.output}",
     }),
-    hook("after-takeover", "tool_after", "takeover", {
+    hook("after-takeover", "after", "takeover", {
       label: "after-takeover",
       previous: "${previousTool.output}",
     }),
     {
       id: "agent-end",
-      on: "agent_end",
+      target: "agent",
+      when: "after",
       mode: "silent",
       tool: "hook",
       args: {
@@ -177,9 +180,9 @@ function rules(): HookRule[] {
 
 function hook(
   id: string,
-  on: "tool_before" | "tool_after",
+  when: HookRule["when"],
   mode: "silent" | "takeover",
   args: Record<string, unknown>,
 ): HookRule {
-  return { id, on, mode, args, tool: "hook", matchTool: "original" };
+  return { id, target: "original", when, mode, args, tool: "hook" };
 }

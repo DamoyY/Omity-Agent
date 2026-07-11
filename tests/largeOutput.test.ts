@@ -56,7 +56,7 @@ test("normalizes MCP text content before size handling", async () => {
   expect(normalized.content).toBe(short);
   expect(readFileSync(outputPath, "utf8")).toBe(original);
   expect(redirected.content).toBe(
-    `输出过长（${countTokens(original)} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`,
+    `工具输出过长（${countTokens(original)} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`,
   );
   expect(redirected.name).toBe("demo_tool");
 });

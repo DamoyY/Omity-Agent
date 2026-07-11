@@ -127,6 +127,12 @@ test("mcp config normalizes tool name overrides", () => {
   });
 });
 
+test("mcp config rejects renaming a tool to agent", () => {
+  expect(() => normalizeMcpToolNameOverrides({ web__search: "agent" })).toThrow(
+    "MCP 工具重命名配置 settings/mcp.yaml.toolNameOverrides.web__search 不能命名为 agent",
+  );
+});
+
 test("mcp tool name overrides rename loaded tools", () => {
   const tools = toolNames(["web__search", "web__crawl"]);
 

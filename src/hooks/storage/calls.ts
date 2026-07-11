@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import type { Database } from "bun:sqlite";
-import type { HookRule } from "../../types";
+import type { HookTrigger, HookWhen } from "../../types";
 
 export type HookCallDetails = {
-  trigger: HookRule["on"];
+  trigger: HookTrigger;
   sourceId: string;
   hookId: string;
 };
@@ -15,6 +15,10 @@ type HookCallRow = HookCallDetails & {
 
 const hookCallPrefix = "omity-hook:";
 const hookCallPattern = /^omity-hook:[A-Za-z0-9_-]{43}$/;
+
+export function hookTrigger(target: string, when: HookWhen): HookTrigger {
+  return `${target}:${when}`;
+}
 
 export function applyHookCallSchema(db: Database) {
   db.run(`

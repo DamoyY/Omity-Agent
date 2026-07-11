@@ -41,9 +41,9 @@ test("takeover hooks bracket an agent tool without recursive hooks", async () =>
   const hookTool = makeTool("hook", () => calls.push("hook"));
   const originalTool = makeTool("original", () => calls.push("original"));
   const rules: HookRule[] = [
-    takeover("before", "tool_before", "original"),
-    takeover("after", "tool_after", "original"),
-    silent("must-not-run", "tool_before", "hook"),
+    takeover("before", "original", "before"),
+    takeover("after", "original", "after"),
+    silent("must-not-run", "hook", "before"),
   ];
   const hooks = makeRuntime(rules, [hookTool, originalTool]);
   const model = fakeModel()
@@ -91,13 +91,13 @@ test("takeover hooks bracket an agent tool without recursive hooks", async () =>
 test("silent hook is omitted from agent context and runs once", async () => {
   let hookCalls = 0;
   const hookTool = makeTool("hook", () => hookCalls++);
-  const hooks = makeRuntime([silent("user", "user_message")], [hookTool]);
-  await hooks.runSilentChain("user_message", "queue:1", "thread");
-  await hooks.runSilentChain("user_message", "queue:1", "thread");
+  const hooks = makeRuntime([silent("user", "agent", "before")], [hookTool]);
+  await hooks.runSilentChain("agent", "before", "queue:1", "thread");
+  await hooks.runSilentChain("agent", "before", "queue:1", "thread");
 
   expect(hookCalls).toBe(1);
   expect(invocations(hooks)).toEqual([
-    { status: "done", trigger: "user_message" },
+    { status: "done", trigger: "agent:before" },
   ]);
 });
 
@@ -133,14 +133,14 @@ function makeTool(name: string, record: () => void) {
 
 function takeover(
   id: string,
-  on: "tool_before" | "tool_after",
-  matchTool: string,
+  target: string,
+  when: HookRule["when"],
 ): HookRule {
-  return { id, on, mode: "takeover", tool: "hook", args: {}, matchTool };
+  return { id, target, when, mode: "takeover", tool: "hook", args: {} };
 }
 
-function silent(id: string, on: HookRule["on"], matchTool?: string): HookRule {
-  return { id, on, mode: "silent", tool: "hook", args: {}, matchTool };
+function silent(id: string, target: string, when: HookRule["when"]): HookRule {
+  return { id, target, when, mode: "silent", tool: "hook", args: {} };
 }
 
 function assertToolProtocol(messages: BaseMessage[]) {

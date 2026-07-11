@@ -17,6 +17,9 @@ export function normalizeMcpToolNameOverrides(
       if (typeof to !== "string" || to.length === 0) {
         throw new Error(`MCP 工具重命名配置 ${path}.${from} 必须是非空字符串`);
       }
+      if (to === "agent") {
+        throw new Error(`MCP 工具重命名配置 ${path}.${from} 不能命名为 agent`);
+      }
       return [from, to];
     }),
   );

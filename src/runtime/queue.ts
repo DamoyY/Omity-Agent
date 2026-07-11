@@ -125,7 +125,8 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     }
     if (!state.next || state.next.length === 0) {
       await ctx.hooks.runSilentChain(
-        "agent_end",
+        "agent",
+        "after",
         `queue:${item.id}`,
         run.threadId,
       );

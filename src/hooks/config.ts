@@ -6,42 +6,40 @@ import type { HookRule } from "../types";
 const argsSchema = z.record(z.string(), z.unknown());
 const callFields = {
   id: z.string().min(1),
+  target: z.string().min(1),
+  when: z.enum(["before", "after"]),
   tool: z.string().min(1),
   args: argsSchema,
 };
 
-const hookSchema = z.discriminatedUnion("on", [
-  z
-    .object({
-      ...callFields,
-      on: z.literal("user_message"),
-      mode: z.enum(["silent", "takeover"]),
-    })
-    .strict(),
-  z
-    .object({
-      ...callFields,
-      on: z.literal("agent_end"),
-      mode: z.literal("silent"),
-    })
-    .strict(),
-  z
-    .object({
-      ...callFields,
-      on: z.literal("tool_before"),
-      mode: z.enum(["silent", "takeover"]),
-      matchTool: z.string().min(1),
-    })
-    .strict(),
-  z
-    .object({
-      ...callFields,
-      on: z.literal("tool_after"),
-      mode: z.enum(["silent", "takeover"]),
-      matchTool: z.string().min(1),
-    })
-    .strict(),
-]);
+const hookSchema = z
+  .discriminatedUnion("mode", [
+    z
+      .object({
+        ...callFields,
+        mode: z.literal("silent"),
+      })
+      .strict(),
+    z
+      .object({
+        ...callFields,
+        mode: z.literal("takeover"),
+      })
+      .strict(),
+  ])
+  .superRefine((hook, context) => {
+    if (
+      hook.target === "agent" &&
+      hook.when === "after" &&
+      hook.mode === "takeover"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "agent after Hook 仅支持 silent 模式",
+        path: ["mode"],
+      });
+    }
+  });
 
 const hooksFileSchema = z
   .object({ hooks: z.array(hookSchema) })

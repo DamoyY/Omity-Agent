@@ -64,7 +64,7 @@ test("prompt files expand current working directory placeholder", () => {
   expect(settings.skills.usagePrompt).toBe(`skills from ${workspace}`);
 });
 
-test("hook config parses all triggers and rejects agent takeover", () => {
+test("hook config parses targets and timing and rejects agent after takeover", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-hooks-config-"));
   const path = join(root, "hooks.yaml");
   dirs.push(root);
@@ -72,40 +72,58 @@ test("hook config parses all triggers and rejects agent takeover", () => {
     path,
     `hooks:
   - id: user
-    on: user_message
+    target: agent
+    when: before
     mode: takeover
     tool: format
     args: { path: . }
   - id: end
-    on: agent_end
+    target: agent
+    when: after
     mode: silent
     tool: notify
     args: {}
   - id: before
-    on: tool_before
+    target: write
+    when: before
     mode: silent
     tool: lint
     args: {}
-    matchTool: write
   - id: after
-    on: tool_after
+    target: write
+    when: after
     mode: takeover
     tool: verify
     args: {}
-    matchTool: write
 `,
   );
 
-  expect(loadHookRules(path).map((hook) => hook.on)).toEqual([
-    "user_message",
-    "agent_end",
-    "tool_before",
-    "tool_after",
-  ]);
+  expect(loadHookRules(path).map(({ target, when }) => [target, when])).toEqual(
+    [
+      ["agent", "before"],
+      ["agent", "after"],
+      ["write", "before"],
+      ["write", "after"],
+    ],
+  );
   writeFileSync(
     path,
-    "hooks:\n  - id: invalid\n    on: agent_end\n    mode: takeover\n    tool: notify\n    args: {}\n",
+    "hooks:\n  - id: invalid\n    target: agent\n    when: after\n    mode: takeover\n    tool: notify\n    args: {}\n",
   );
+  expect(() => loadHookRules(path)).toThrow(
+    "agent after Hook 仅支持 silent 模式",
+  );
+});
+
+test("hook config rejects removed on and matchTool fields", () => {
+  const root = mkdtempSync(join(tmpdir(), "agent-hooks-config-"));
+  const path = join(root, "hooks.yaml");
+  dirs.push(root);
+  writeFileSync(
+    path,
+    "hooks:\n  - id: legacy\n    on: tool_before\n    target: write\n    when: before\n    mode: silent\n    tool: lint\n    args: {}\n    matchTool: write\n",
+  );
+
   expect(() => loadHookRules(path)).toThrow();
 });
 

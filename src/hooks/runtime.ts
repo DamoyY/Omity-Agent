@@ -1,12 +1,10 @@
 import { ToolMessage, type ToolCall } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Logger } from "../infrastructure/logger";
-import type { HookRule } from "../types";
+import type { HookRule, HookWhen } from "../types";
 import { HookLedger } from "./ledger";
-import { createHookCallId } from "./storage/calls";
+import { createHookCallId, hookTrigger } from "./storage/calls";
 import { resolveHookArgs } from "./variables";
-
-export type HookTrigger = HookRule["on"];
 
 export class HookRuntime {
   readonly rules: HookRule[];
@@ -26,39 +24,41 @@ export class HookRuntime {
       throw new Error("MCP 工具名称重复，无法编译 Hook");
     for (const rule of rules) {
       this.requireTool(rule.tool, `Hook ${rule.id}`);
-      if (rule.matchTool)
-        this.requireTool(rule.matchTool, `Hook ${rule.id} 匹配`);
+      if (rule.target !== "agent")
+        this.requireTool(rule.target, `Hook ${rule.id} 目标`);
     }
   }
 
-  matching(trigger: HookTrigger, matchTool?: string) {
+  matching(target: string, when: HookWhen) {
     return this.rules.filter(
-      (rule) =>
-        rule.on === trigger &&
-        (matchTool === undefined || rule.matchTool === matchTool),
+      (rule) => rule.target === target && rule.when === when,
     );
   }
 
   async runSilentChain(
-    trigger: HookTrigger,
+    target: string,
+    when: HookWhen,
     sourceId: string,
     threadId: string,
-    options: { matchTool?: string; signal?: AbortSignal } = {},
+    signal?: AbortSignal,
   ) {
-    for (const rule of this.matching(trigger, options.matchTool)) {
+    for (const rule of this.matching(target, when)) {
       if (rule.mode !== "silent")
-        throw new Error(`${trigger} 触发器不能在图外执行接管 Hook`);
-      await this.runSilent(rule, trigger, sourceId, threadId, options.signal);
+        throw new Error(`${hookTrigger(target, when)} 不能在图外执行接管 Hook`);
+      await this.runSilent(rule, sourceId, threadId, signal);
     }
   }
 
   async resolvedCall(
     rule: HookRule,
-    trigger: HookTrigger,
     sourceId: string,
     threadId: string,
   ): Promise<ToolCall> {
-    const details = { trigger, sourceId, hookId: rule.id };
+    const details = {
+      trigger: hookTrigger(rule.target, rule.when),
+      sourceId,
+      hookId: rule.id,
+    };
     const callId = createHookCallId(this.sessionId, threadId, details);
     if (rule.mode === "takeover")
       this.ledger.registerCall(callId, this.sessionId, threadId, details);
@@ -75,11 +75,11 @@ export class HookRuntime {
 
   async runSilent(
     rule: HookRule,
-    trigger: HookTrigger,
     sourceId: string,
     threadId: string,
     signal?: AbortSignal,
   ) {
+    const trigger = hookTrigger(rule.target, rule.when);
     const { key, existing } = this.claim(
       { trigger, sourceId, hookId: rule.id },
       threadId,
@@ -91,7 +91,7 @@ export class HookRuntime {
       sourceId,
     });
     try {
-      const call = await this.resolvedCall(rule, trigger, sourceId, threadId);
+      const call = await this.resolvedCall(rule, sourceId, threadId);
       const output = await this.requireTool(
         rule.tool,
         `Hook ${rule.id}`,

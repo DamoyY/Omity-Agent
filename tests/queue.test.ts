@@ -160,7 +160,7 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     db,
     graph,
     checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
-    hooks: { runSilent: async () => {} } as never,
+    hooks: { runSilentChain: async () => {} } as never,
     beforeModelNode: "model_request",
     sessionId: "123",
     signal: { stopping: false },
@@ -186,17 +186,10 @@ function makeSettings(): Settings {
       idleLogMs: 1,
       recursionLimit: 10,
     },
-    logging: {
-      level: "error",
-      streamTokens: false,
-    },
-    toolOutput: {
-      maxTokens: 8192,
-    },
+    logging: { level: "error", streamTokens: false },
+    toolOutput: { maxTokens: 8192 },
     hooks: [],
-    agent: {
-      systemPrompt: "test",
-    },
+    agent: { systemPrompt: "test" },
     skills: {
       enabled: false,
       directory: "~/.agents/skills",
