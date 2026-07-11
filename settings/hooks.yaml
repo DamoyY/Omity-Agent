@@ -1,7 +1,8 @@
 # Hook 按配置顺序执行；工具名使用重命名后的最终 MCP 工具名。
 # id 必须唯一；args 支持任意深度的变量：
 # - ${cwd}: 当前会话的用户工作目录
-# - ${previousTool.output}: 当前运行中确定性的前一个模型或 Hook 工具输出
+# - ${previousTool.output}: 前一个工具的 ToolMessage.content
+# - ${previousTool.structuredOutput}: 前一个 MCP 工具的结构化输出
 # 变量独占参数值时保留原始类型；嵌入字符串时只能使用标量输出。
 #
 # hooks:
@@ -27,4 +28,19 @@
 #     matchTool: write_file
 #     tool: formatter
 #     args: { path: . }
-hooks: []
+hooks:
+  - id: open-agents-reader
+    on: user_message
+    mode: takeover
+    tool: terminal__new_tab
+    args:
+      starting_directory: "${cwd}"
+      starting_shell: powershell
+  - id: read-workspace-agents
+    on: user_message
+    mode: takeover
+    tool: terminal__send_command
+    args:
+      tab_id: "${previousTool.structuredOutput.tab_id}"
+      command: Get-Content -LiteralPath .\AGENTS.md -Raw
+      waiting: 5

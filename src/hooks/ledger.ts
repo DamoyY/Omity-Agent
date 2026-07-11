@@ -13,7 +13,8 @@ type InvocationRow = {
 };
 
 type StoredOutput = {
-  value: unknown;
+  output: unknown;
+  structuredOutput?: unknown;
   message?: StoredMessage;
 };
 
@@ -67,7 +68,12 @@ export class HookLedger {
   complete(key: string, output: ToolMessage) {
     const [message] = mapChatMessagesToStoredMessages([output]);
     if (!message) throw new Error("无法序列化工具结果");
-    const stored: StoredOutput = { value: output.content, message };
+    const structuredOutput = extractStructuredOutput(output.artifact);
+    const stored: StoredOutput = {
+      output: output.content,
+      ...(structuredOutput === undefined ? {} : { structuredOutput }),
+      message,
+    };
     const outputJson = JSON.stringify(stored);
     if (outputJson === undefined) throw new Error("工具结果无法持久化");
     this.db
@@ -99,7 +105,14 @@ export class HookLedger {
         "SELECT output_json FROM invocations WHERE thread_id = ? AND status = 'done' AND output_json IS NOT NULL ORDER BY rowid DESC LIMIT 1",
       )
       .get(threadId);
-    return parseOutput(row?.output_json ?? null)?.value;
+    const stored = parseOutput(row?.output_json ?? null);
+    if (!stored) return undefined;
+    return {
+      output: stored.output,
+      ...(stored.structuredOutput === undefined
+        ? {}
+        : { structuredOutput: stored.structuredOutput }),
+    };
   }
 
   requireRunnable(row: InvocationRow, key: string) {
@@ -137,8 +150,28 @@ export type InvocationDetails = {
 function parseOutput(value: string | null): StoredOutput | undefined {
   if (value === null) return undefined;
   const parsed = JSON.parse(value) as unknown;
-  if (typeof parsed !== "object" || parsed === null || !("value" in parsed)) {
+  if (typeof parsed !== "object" || parsed === null || !("output" in parsed)) {
     throw new Error("Hook 工具结果记录无效");
   }
   return parsed as StoredOutput;
+}
+
+function extractStructuredOutput(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  const artifacts = value.filter(
+    (item) =>
+      typeof item === "object" &&
+      item !== null &&
+      "type" in item &&
+      item.type === "mcp_structured_content",
+  );
+  if (artifacts.length > 1) {
+    throw new Error("MCP 工具返回了多个结构化输出 artifact");
+  }
+  const artifact = artifacts[0];
+  if (!artifact) return undefined;
+  if (!("data" in artifact)) {
+    throw new Error("MCP 结构化输出 artifact 缺少 data");
+  }
+  return artifact.data;
 }

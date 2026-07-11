@@ -65,7 +65,7 @@ export class HookRuntime {
       name: rule.tool,
       args: resolveHookArgs(rule.args, {
         cwd: this.workspace,
-        previousToolOutput: this.ledger.latestOutput(threadId),
+        previousTool: this.ledger.latestOutput(threadId),
       }),
       id: encodeHookCallId({ trigger, sourceId, hookId: rule.id }),
       type: "tool_call",

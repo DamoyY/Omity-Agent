@@ -114,13 +114,13 @@ test("hook variables preserve exact values and reject ambiguous output", () => {
   expect(
     resolveHookArgs(
       { exact: "${previousTool.output}", cwd: "${cwd}/src" },
-      { cwd: "F:\\work", previousToolOutput: previous },
+      { cwd: "F:\\work", previousTool: { output: previous } },
     ),
   ).toEqual({ exact: previous, cwd: "F:\\work/src" });
   expect(() =>
     resolveHookArgs(
       { invalid: "result=${previousTool.output}" },
-      { cwd: "F:\\work", previousToolOutput: previous },
+      { cwd: "F:\\work", previousTool: { output: previous } },
     ),
   ).toThrow("不能将数组或对象嵌入字符串");
   expect(() =>

@@ -3,7 +3,10 @@ const embeddedVariable = /\$\{([^}]+)\}/g;
 
 export type HookVariables = {
   cwd: string;
-  previousToolOutput?: unknown;
+  previousTool?: {
+    output: unknown;
+    structuredOutput?: unknown;
+  };
 };
 
 export function resolveHookArgs(
@@ -41,15 +44,51 @@ function resolveString(value: string, variables: HookVariables) {
 
 function variableValue(name: string, variables: HookVariables) {
   if (name === "cwd") return variables.cwd;
-  if (name === "previousTool.output") {
-    if (variables.previousToolOutput === undefined) {
-      throw new Error(
-        "Hook 变量 ${previousTool.output} 没有可用的前序工具输出",
-      );
-    }
-    return variables.previousToolOutput;
-  }
+  const output = previousToolValue(name, "output", variables);
+  if (output.matched) return output.value;
+  const structured = previousToolValue(name, "structuredOutput", variables);
+  if (structured.matched) return structured.value;
   throw new Error(`未知 Hook 变量：\${${name}}`);
+}
+
+function previousToolValue(
+  name: string,
+  field: "output" | "structuredOutput",
+  variables: HookVariables,
+): { matched: boolean; value?: unknown } {
+  const variable = `previousTool.${field}`;
+  if (name !== variable && !name.startsWith(`${variable}.`)) {
+    return { matched: false };
+  }
+  const previous = variables.previousTool;
+  if (!previous) {
+    throw new Error(`Hook 变量 \${${variable}} 没有可用的前序工具输出`);
+  }
+  if (field === "structuredOutput" && !(field in previous)) {
+    throw new Error(`Hook 变量 \${${variable}} 没有可用的结构化输出`);
+  }
+  const path = name.slice(variable.length + 1);
+  const value = previous[field];
+  return {
+    matched: true,
+    value: path ? readPath(value, path.split("."), name) : value,
+  };
+}
+
+function readPath(value: unknown, path: string[], variable: string): unknown {
+  let current = value;
+  for (const segment of path) {
+    if (isRecord(current) && segment in current) {
+      current = current[segment];
+      continue;
+    }
+    if (Array.isArray(current) && /^\d+$/.test(segment)) {
+      current = current[Number(segment)];
+      continue;
+    }
+    throw new Error(`Hook 变量 \${${variable}} 的字段不存在：${segment}`);
+  }
+  return current;
 }
 
 function requireName(match: RegExpExecArray) {
