@@ -26,6 +26,11 @@ logging:
   level: debug
   streamTokens: true
 
+# Host 所有权与 Hook 调用的租约有效期；执行中会按三分之一周期续租。
+leases:
+  hostTtlMs: 30000
+  hookTtlMs: 30000
+
 # 工具输出超过该 token 数时写入文件，仅把文件路径发送回模型。
 toolOutput:
   maxTokens: 8192

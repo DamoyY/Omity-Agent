@@ -1,9 +1,10 @@
-import { ToolMessage, type ToolCall } from "@langchain/core/messages";
+import type { ToolCall } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Logger } from "../infrastructure/logger";
 import type { HookRule, HookWhen } from "../types";
 import { runSilentChain, type SilentChainOptions } from "./chain";
-import { HookLedger, type InvocationRow } from "./ledger";
+import { HookLedger } from "./ledger";
+import { executeRecorded, restoreInvocation } from "./execution";
 import { HookInvocationIdentity } from "./identity";
 import * as callStorage from "./storage/calls";
 import { resolveHookArgs } from "./variables";
@@ -101,13 +102,13 @@ export class HookRuntime {
       { trigger, sourceId, hookId: rule.id },
       rule.runLimit,
     );
-    if (existing) return this.restore(existing, key);
+    if (existing) return restoreInvocation(this.ledger, existing, key);
     this.logger.debug("执行静默 Hook", {
       hookId: rule.id,
       trigger,
       sourceId,
     });
-    try {
+    return executeRecorded(this.ledger, key, async () => {
       const call = this.resolvedCall(
         rule,
         sourceId,
@@ -123,14 +124,8 @@ export class HookRuntime {
         metadata: { hook: true, hookId: rule.id },
         signal,
       });
-      if (!ToolMessage.isInstance(output))
-        throw new Error("静默 Hook 工具没有返回 ToolMessage");
-      this.ledger.complete(key, output);
       return output;
-    } catch (error) {
-      this.ledger.fail(key, error);
-      throw error;
-    }
+    });
   }
 
   async runTakeover(
@@ -169,25 +164,8 @@ export class HookRuntime {
       details,
       runLimit,
     );
-    if (existing) return this.restore(existing, key);
-    try {
-      const output = await invoke();
-      if (!ToolMessage.isInstance(output))
-        throw new Error("工具没有返回 ToolMessage");
-      this.ledger.complete(key, output);
-      return output;
-    } catch (error) {
-      this.ledger.fail(key, error);
-      throw error;
-    }
-  }
-
-  private restore(existing: InvocationRow | null, key: string) {
-    if (!existing) throw new Error(`工具调用记录缺失：${key}`);
-    this.ledger.requireRunnable(existing, key);
-    const output = this.ledger.restoredOutput(existing);
-    if (!output) throw new Error(`工具调用结果缺失：${key}`);
-    return output;
+    if (existing) return restoreInvocation(this.ledger, existing, key);
+    return executeRecorded(this.ledger, key, invoke);
   }
 
   private requireTool(name: string, description: string) {

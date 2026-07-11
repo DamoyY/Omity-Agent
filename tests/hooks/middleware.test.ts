@@ -20,6 +20,7 @@ import { AgentDatabase } from "../../src/infrastructure/database";
 import { Logger } from "../../src/infrastructure/logger";
 import type { HookRule } from "../../src/types";
 import { required } from "../support/database";
+import { testLeaseOptions } from "../support/leases";
 
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
@@ -131,7 +132,7 @@ function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   databases.push(db);
   db.createSession("session", dir);
-  const ledger = new HookLedger(join(dir, "hooks.sqlite"));
+  const ledger = new HookLedger(join(dir, "hooks.sqlite"), testLeaseOptions);
   ledgers.push(ledger);
   const runtime = new HookRuntime(
     rules,

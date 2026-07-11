@@ -103,6 +103,7 @@ function makeSettings(
       level: "error",
       streamTokens: false,
     },
+    leases: { hostTtlMs: 30_000, hookTtlMs: 30_000 },
     toolOutput: {
       maxTokens: 8192,
     },

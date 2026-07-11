@@ -131,6 +131,21 @@ export function reclaimInvocation(
   return result.changes === 1;
 }
 
+export function renewInvocation(
+  db: Database,
+  key: string,
+  ownerId: string,
+  now: number,
+  leaseMs: number,
+) {
+  const result = db.run(
+    `UPDATE invocations SET lease_expires_at = ?, updated_at = unixepoch()
+     WHERE invocation_key = ? AND status = 'running' AND owner_id = ?`,
+    [now + leaseMs, key, ownerId],
+  );
+  return result.changes === 1;
+}
+
 export function readInvocation(db: Database, key: string) {
   return db
     .query<InvocationRow, [string]>(

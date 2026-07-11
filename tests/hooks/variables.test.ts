@@ -13,10 +13,11 @@ import { createHookMiddleware } from "../../src/hooks/middleware";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { Logger } from "../../src/infrastructure/logger";
 import type { HookRule } from "../../src/types";
+import { testLeaseOptions } from "../support/leases";
 
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
-  const ledger = new HookLedger(join(dir, "hooks.sqlite"));
+  const ledger = new HookLedger(join(dir, "hooks.sqlite"), testLeaseOptions);
   const received: Record<string, unknown>[] = [];
   const hookTool = tool(
     (args) => {
@@ -86,7 +87,7 @@ test("mixed hook modes resolve variables in config order", async () => {
 
 test("user takeover receives the preceding silent hook output", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-user-hook-"));
-  const ledger = new HookLedger(join(dir, "hooks.sqlite"));
+  const ledger = new HookLedger(join(dir, "hooks.sqlite"), testLeaseOptions);
   const received: unknown[] = [];
   const hookTool = tool(
     ({ previous }) => {

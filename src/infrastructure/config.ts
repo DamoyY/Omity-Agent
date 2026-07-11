@@ -41,6 +41,10 @@ const mainSchema = z.object({
     level: z.enum(["debug", "info", "warn", "error"]),
     streamTokens: z.boolean(),
   }),
+  leases: z.object({
+    hostTtlMs: z.number().int().positive(),
+    hookTtlMs: z.number().int().positive(),
+  }),
   toolOutput: z.object({
     maxTokens: z.number().int().positive(),
   }),

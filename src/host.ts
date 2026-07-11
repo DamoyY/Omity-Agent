@@ -63,7 +63,13 @@ export async function runHostSession(
   const controller = options.controller ?? new AbortController();
   let lease: HostLease;
   try {
-    lease = new HostLease(db, logger, mode.sessionId, controller);
+    lease = new HostLease(
+      db,
+      logger,
+      mode.sessionId,
+      controller,
+      settings.leases.hostTtlMs,
+    );
   } catch (error) {
     db.close();
     throw error;
@@ -79,7 +85,9 @@ export async function runHostSession(
   let mcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
   try {
     mcp = await loadMcp(root, logger);
-    const hookLedger = new HookLedger(paths.hookDb);
+    const hookLedger = new HookLedger(paths.hookDb, {
+      leaseMs: settings.leases.hookTtlMs,
+    });
     try {
       const hooks = new HookRuntime(
         settings.hooks,

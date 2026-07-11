@@ -14,6 +14,7 @@ import {
   insertInvocation,
   readInvocation,
   reclaimInvocation,
+  renewInvocation,
   type InvocationRow,
   type InvocationDetails,
 } from "./storage/invocations";
@@ -22,6 +23,7 @@ import {
   restoreToolOutput,
   serializeToolOutput,
 } from "./storage/outputs";
+import { maintainInvocationLease } from "./lease";
 
 export class HookLedger {
   private readonly db: Database;
@@ -29,15 +31,12 @@ export class HookLedger {
   private readonly leaseMs: number;
   private readonly now: () => number;
 
-  constructor(
-    path: string,
-    options: { leaseMs?: number; now?: () => number } = {},
-  ) {
+  constructor(path: string, options: { leaseMs: number; now?: () => number }) {
     this.db = new Database(path, { create: true, strict: true });
     this.db.run("PRAGMA journal_mode = WAL");
     applyHookCallSchema(this.db);
     applyInvocationSchema(this.db);
-    this.leaseMs = options.leaseMs ?? 30_000;
+    this.leaseMs = options.leaseMs;
     this.now = options.now ?? Date.now;
   }
 
@@ -112,6 +111,20 @@ export class HookLedger {
       [message, key, this.ownerId],
     );
     if (result.changes !== 1) throw new Error(`Hook Lease 已丢失：${key}`);
+  }
+
+  withLease<T>(key: string, operation: () => Promise<T>) {
+    return maintainInvocationLease(
+      this.leaseMs,
+      () => {
+        if (
+          !renewInvocation(this.db, key, this.ownerId, this.now(), this.leaseMs)
+        ) {
+          throw new Error(`Hook Lease 已丢失：${key}`);
+        }
+      },
+      operation,
+    );
   }
 
   restoredOutput(row: InvocationRow) {

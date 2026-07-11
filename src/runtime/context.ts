@@ -92,9 +92,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-const leaseTtlMs = 30_000;
-const leaseRenewMs = 10_000;
-
 export class HostLease {
   private readonly ownerId = randomUUID();
   private readonly timer: ReturnType<typeof setInterval>;
@@ -105,13 +102,14 @@ export class HostLease {
     private readonly logger: Logger,
     private readonly sessionId: string,
     private readonly controller: AbortController,
+    private readonly ttlMs: number,
   ) {
     if (
       !db.acquireHostLease({
         sessionId,
         ownerId: this.ownerId,
         now: Date.now(),
-        ttlMs: leaseTtlMs,
+        ttlMs: this.ttlMs,
       })
     ) {
       throw new DomainError(
@@ -119,9 +117,12 @@ export class HostLease {
         `会话已有 Host 正在运行：${sessionId}`,
       );
     }
-    this.timer = setInterval(() => {
-      this.renew();
-    }, leaseRenewMs);
+    this.timer = setInterval(
+      () => {
+        this.renew();
+      },
+      Math.max(1, Math.floor(this.ttlMs / 3)),
+    );
     this.timer.unref();
   }
 
@@ -141,7 +142,7 @@ export class HostLease {
           sessionId: this.sessionId,
           ownerId: this.ownerId,
           now: Date.now(),
-          ttlMs: leaseTtlMs,
+          ttlMs: this.ttlMs,
         })
       ) {
         throw new Error(`Host Lease 已丢失：${this.sessionId}`);

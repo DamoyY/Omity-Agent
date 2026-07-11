@@ -49,6 +49,10 @@ export interface Settings {
     level: LogLevel;
     streamTokens: boolean;
   };
+  leases: {
+    hostTtlMs: number;
+    hookTtlMs: number;
+  };
   toolOutput: {
     maxTokens: number;
   };

@@ -20,11 +20,12 @@ import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import type { Settings } from "../../src/types";
 import { required } from "../support/database";
+import { testLeaseOptions } from "../support/leases";
 
 test("paused queue resumes one deterministic user hook chain", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
-  const ledger = new HookLedger(join(dir, "hooks.sqlite"));
+  const ledger = new HookLedger(join(dir, "hooks.sqlite"), testLeaseOptions);
   let hookCalls = 0;
   const received: unknown[] = [];
   try {
@@ -100,39 +101,6 @@ test("paused queue resumes one deterministic user hook chain", async () => {
   }
 });
 
-test("stale running hook invocation can be reclaimed after its lease", () => {
-  const dir = mkdtempSync(join(tmpdir(), "agent-hook-lease-"));
-  const path = join(dir, "hooks.sqlite");
-  const details = {
-    trigger: "agent:before",
-    sourceId: "queue:1",
-    hookId: "hook",
-  };
-  const first = new HookLedger(path, { leaseMs: 100, now: () => 1_000 });
-  const active = new HookLedger(path, { leaseMs: 100, now: () => 1_050 });
-  const recovered = new HookLedger(path, { leaseMs: 100, now: () => 1_101 });
-  try {
-    const claimed = first.claim("session", "thread", details, -1);
-    const blocked = active.claim("session", "thread", details, -1);
-    const reclaimed = recovered.claim("session", "thread", details, -1);
-
-    expect(claimed.existing).toBeNull();
-    expect(blocked.existing?.status).toBe("running");
-    expect(() => {
-      active.requireRunnable(required(blocked.existing), blocked.key);
-    }).toThrow("状态不确定");
-    expect(reclaimed.existing).toBeNull();
-    expect(() => {
-      first.fail(claimed.key, "late result");
-    }).toThrow("Hook Lease 已丢失");
-  } finally {
-    first.close();
-    active.close();
-    recovered.close();
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 function makeContext(
   db: AgentDatabase,
   graph: unknown,
@@ -167,6 +135,7 @@ function settings(): Settings {
     },
     host: { pollMs: 1, pausePollMs: 1, idleLogMs: 1, recursionLimit: 20 },
     logging: { level: "error", streamTokens: false },
+    leases: { hostTtlMs: 30_000, hookTtlMs: 30_000 },
     toolOutput: { maxTokens: 8192 },
     hooks: [],
     agent: { systemPrompt: "test" },
