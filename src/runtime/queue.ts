@@ -119,13 +119,20 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       continue;
     }
     if (!state.next || state.next.length === 0) {
+      const finalMessages = state.values?.messages ?? [];
       await ctx.hooks.runSilentChain(
         "agent",
         "after",
         `queue:${item.id}`,
         run.threadId,
+        {
+          previousInvocationKey: ctx.hooks.identity.last(
+            finalMessages,
+            run.threadId,
+          ),
+        },
       );
-      finishRun(ctx, run, state.values?.messages ?? []);
+      finishRun(ctx, run, finalMessages);
       return;
     }
     input = null;

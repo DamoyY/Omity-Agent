@@ -127,15 +127,15 @@ test("pause wait message is logged once per pause", async () => {
   };
   const context = makeContext(db, graph);
   context.logger = new Logger("info");
-  context.settings.logging.level = "info";
-  context.settings.host.pausePollMs = 1;
 
   try {
     setTimeout(() => db.setControl("123", "running"), 10);
     await processQueue(context, item!);
 
     const pauseLogs = logs.filter((line) =>
-      stripAnsi(line).includes("暂停中，等待 resume 或 cancel"),
+      line
+        .replace(/\x1B\[[0-9;]*m/g, "")
+        .includes("暂停中，等待 resume 或 cancel"),
     );
     expect(pauseLogs).toHaveLength(1);
   } finally {
@@ -149,10 +149,6 @@ function makeDb() {
   return new AgentDatabase(join(dir, "app.sqlite"));
 }
 
-function stripAnsi(value: string) {
-  return value.replace(/\x1B\[[0-9;]*m/g, "");
-}
-
 function makeContext(db: AgentDatabase, graph: unknown): HostContext {
   return {
     settings: makeSettings(),
@@ -160,7 +156,10 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     db,
     graph,
     checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
-    hooks: { runSilentChain: async () => {} } as never,
+    hooks: {
+      identity: { last: () => undefined },
+      runSilentChain: async () => {},
+    } as never,
     beforeModelNode: "model_request",
     sessionId: "123",
     signal: { stopping: false },

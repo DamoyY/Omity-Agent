@@ -13,6 +13,7 @@ import { createHookMiddleware } from "../src/hooks/middleware";
 import { HookRuntime } from "../src/hooks/runtime";
 import { Logger } from "../src/infrastructure/logger";
 import type { HookRule } from "../src/types";
+import { hookRule } from "./support/hooks";
 
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
@@ -65,11 +66,13 @@ test("mixed hook modes resolve variables in config order", async () => {
       checkpointer: new MemorySaver(),
     });
 
-    await agent.invoke(
+    const result = await agent.invoke(
       { messages: [{ role: "user", content: "run" }] },
       { configurable: { thread_id: "thread" } },
     );
-    await hooks.runSilentChain("agent", "after", "answer", "thread");
+    await hooks.runSilentChain("agent", "after", "answer", "thread", {
+      previousInvocationKey: hooks.identity.last(result.messages, "thread"),
+    });
 
     expect(received).toEqual([
       { label: "before-silent", cwd: dir, nested: [`work:${dir}`] },
@@ -149,20 +152,20 @@ test("user takeover receives the preceding silent hook output", async () => {
 
 function rules(): HookRule[] {
   return [
-    hook("before-silent", "before", "silent", {
+    hookRule("before-silent", "before", "silent", {
       label: "before-silent",
       cwd: "${cwd}",
       nested: ["work:${cwd}"],
     }),
-    hook("before-takeover", "before", "takeover", {
+    hookRule("before-takeover", "before", "takeover", {
       label: "before-takeover",
       previous: "${previousTool.output}",
     }),
-    hook("after-silent", "after", "silent", {
+    hookRule("after-silent", "after", "silent", {
       label: "after-silent",
       previous: "${previousTool.output}",
     }),
-    hook("after-takeover", "after", "takeover", {
+    hookRule("after-takeover", "after", "takeover", {
       label: "after-takeover",
       previous: "${previousTool.output}",
     }),
@@ -179,21 +182,4 @@ function rules(): HookRule[] {
       },
     },
   ];
-}
-
-function hook(
-  id: string,
-  when: HookRule["when"],
-  mode: "silent" | "takeover",
-  args: Record<string, unknown>,
-): HookRule {
-  return {
-    id,
-    target: "original",
-    when,
-    runLimit: -1,
-    mode,
-    args,
-    tool: "hook",
-  };
 }

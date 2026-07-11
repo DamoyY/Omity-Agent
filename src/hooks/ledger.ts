@@ -118,13 +118,21 @@ export class HookLedger {
     return restoreToolOutput(row.output_json);
   }
 
-  latestOutput(threadId: string) {
+  output(key: string) {
     const row = this.db
       .query<{ output_json: string }, [string]>(
-        "SELECT output_json FROM invocations WHERE thread_id = ? AND status = 'done' AND output_json IS NOT NULL ORDER BY rowid DESC LIMIT 1",
+        "SELECT output_json FROM invocations WHERE invocation_key = ? AND status = 'done' AND output_json IS NOT NULL",
       )
-      .get(threadId);
+      .get(key);
     return readToolOutput(row?.output_json ?? null);
+  }
+
+  invocationKey(
+    sessionId: string,
+    threadId: string,
+    details: Omit<InvocationDetails, "key" | "sessionId" | "threadId">,
+  ) {
+    return bindInvocation(sessionId, threadId, details).key;
   }
 
   registerCall(

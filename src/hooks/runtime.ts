@@ -2,12 +2,15 @@ import { ToolMessage, type ToolCall } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Logger } from "../infrastructure/logger";
 import type { HookRule, HookWhen } from "../types";
+import { runSilentChain, type SilentChainOptions } from "./chain";
 import { HookLedger, type InvocationRow } from "./ledger";
+import { HookInvocationIdentity } from "./identity";
 import * as callStorage from "./storage/calls";
 import { resolveHookArgs } from "./variables";
 
 export class HookRuntime {
   readonly rules: HookRule[];
+  readonly identity: HookInvocationIdentity;
   private readonly tools: Map<string, StructuredToolInterface>;
 
   constructor(
@@ -19,6 +22,7 @@ export class HookRuntime {
     readonly workspace: string,
   ) {
     this.rules = rules;
+    this.identity = new HookInvocationIdentity(ledger, sessionId);
     this.tools = new Map(tools.map((tool) => [tool.name, tool]));
     if (this.tools.size !== tools.length)
       throw new Error("MCP 工具名称重复，无法编译 Hook");
@@ -51,22 +55,16 @@ export class HookRuntime {
     when: HookWhen,
     sourceId: string,
     threadId: string,
-    signal?: AbortSignal,
+    options: SilentChainOptions = {},
   ) {
-    for (const rule of this.matching(target, when)) {
-      if (!this.shouldRun(rule, sourceId, threadId)) continue;
-      if (rule.mode !== "silent")
-        throw new Error(
-          `${callStorage.hookTrigger(target, when)} 不能在图外执行接管 Hook`,
-        );
-      await this.runSilent(rule, sourceId, threadId, signal);
-    }
+    return runSilentChain(this, target, when, sourceId, threadId, options);
   }
 
   async resolvedCall(
     rule: HookRule,
     sourceId: string,
     threadId: string,
+    previousInvocationKey?: string,
   ): Promise<ToolCall> {
     const details = callStorage.hookCallDetails(rule, sourceId);
     const callId = callStorage.createHookCallId(
@@ -80,7 +78,9 @@ export class HookRuntime {
       name: rule.tool,
       args: resolveHookArgs(rule.args, {
         cwd: this.workspace,
-        previousTool: this.ledger.latestOutput(threadId),
+        previousTool: previousInvocationKey
+          ? this.ledger.output(previousInvocationKey)
+          : undefined,
       }),
       id: callId,
       type: "tool_call",
@@ -92,6 +92,7 @@ export class HookRuntime {
     sourceId: string,
     threadId: string,
     signal?: AbortSignal,
+    previousInvocationKey?: string,
   ) {
     const trigger = callStorage.hookTrigger(rule.target, rule.when);
     const { key, existing } = this.ledger.claim(
@@ -107,7 +108,12 @@ export class HookRuntime {
       sourceId,
     });
     try {
-      const call = await this.resolvedCall(rule, sourceId, threadId);
+      const call = await this.resolvedCall(
+        rule,
+        sourceId,
+        threadId,
+        previousInvocationKey,
+      );
       const output = await this.requireTool(
         rule.tool,
         `Hook ${rule.id}`,

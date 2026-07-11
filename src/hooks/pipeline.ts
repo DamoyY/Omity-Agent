@@ -1,7 +1,8 @@
 import { AIMessage, type ToolCall } from "@langchain/core/messages";
 import type { HookRule } from "../types";
 import {
-  isCompleted,
+  finishAwaited,
+  nextStage,
   requireCallId,
   restoreOriginal,
   type Awaiting,
@@ -52,7 +53,9 @@ async function advanceTools(
   while (true) {
     const call = original.tool_calls?.[plan.toolIndex];
     if (!call) return { hookPlan: null };
-    if (plan.stage === "original") return emitOriginal(plan, original, call);
+    if (plan.stage === "original") {
+      return emitOriginal(plan, original, call, hooks, threadId);
+    }
     const rule = hooks.matching(call.name, plan.stage)[plan.hookIndex];
     if (!rule) {
       plan = nextStage(plan);
@@ -81,23 +84,49 @@ async function runHookStep(
 ) {
   if (!hooks.shouldRun(rule, sourceId, threadId)) return null;
   if (rule.mode === "silent") {
-    await hooks.runSilent(rule, sourceId, threadId, signal);
+    await hooks.runSilent(
+      rule,
+      sourceId,
+      threadId,
+      signal,
+      plan.previousInvocationKey,
+    );
+    plan.previousInvocationKey = hooks.identity.hook(rule, sourceId, threadId);
     return null;
   }
-  const call = await hooks.resolvedCall(rule, sourceId, threadId);
-  return emit(plan, call, { kind: "hook", callId: requireCallId(call) });
+  const call = await hooks.resolvedCall(
+    rule,
+    sourceId,
+    threadId,
+    plan.previousInvocationKey,
+  );
+  return emit(plan, call, {
+    kind: "hook",
+    callId: requireCallId(call),
+    invocationKey: hooks.identity.hook(rule, sourceId, threadId),
+  });
 }
 
 function emitOriginal(
   plan: Extract<HookPlan, { kind: "tools" }>,
   original: AIMessage,
   call: ToolCall,
+  hooks: HookRuntime,
+  threadId: string,
 ) {
   const content = plan.contentEmitted ? "" : original.content;
   return emit(
     { ...plan, contentEmitted: true },
     call,
-    { kind: "original", callId: requireCallId(call) },
+    {
+      kind: "original",
+      callId: requireCallId(call),
+      invocationKey: hooks.identity.agentTool(
+        call.name,
+        requireCallId(call),
+        threadId,
+      ),
+    },
     content,
     original,
   );
@@ -128,32 +157,5 @@ function emit(
     ],
     hookPlan,
     jumpTo: "tools" as const,
-  };
-}
-
-function finishAwaited(plan: HookPlan, state: HookState): HookPlan {
-  if (!plan.awaiting || !isCompleted(state.messages, plan.awaiting.callId)) {
-    return plan;
-  }
-  if (plan.kind === "user") {
-    return { ...plan, awaiting: undefined, hookIndex: plan.hookIndex + 1 };
-  }
-  if (plan.awaiting.kind === "original") {
-    return { ...plan, awaiting: undefined, stage: "after", hookIndex: 0 };
-  }
-  return { ...plan, awaiting: undefined, hookIndex: plan.hookIndex + 1 };
-}
-
-function nextStage(
-  plan: Extract<HookPlan, { kind: "tools" }>,
-): Extract<HookPlan, { kind: "tools" }> {
-  if (plan.stage === "before") {
-    return { ...plan, stage: "original", hookIndex: 0 };
-  }
-  return {
-    ...plan,
-    toolIndex: plan.toolIndex + 1,
-    stage: "before",
-    hookIndex: 0,
   };
 }

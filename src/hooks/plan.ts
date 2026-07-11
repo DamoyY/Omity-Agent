@@ -8,7 +8,11 @@ import {
   type ToolCall,
 } from "@langchain/core/messages";
 
-export type Awaiting = { kind: "hook" | "original"; callId: string };
+export type Awaiting = {
+  kind: "hook" | "original";
+  callId: string;
+  invocationKey: string;
+};
 
 export type HookPlan =
   | {
@@ -16,6 +20,7 @@ export type HookPlan =
       sources: string[];
       sourceIndex: number;
       hookIndex: number;
+      previousInvocationKey?: string;
       awaiting?: Awaiting;
     }
   | {
@@ -24,6 +29,7 @@ export type HookPlan =
       toolIndex: number;
       stage: "before" | "original" | "after";
       hookIndex: number;
+      previousInvocationKey?: string;
       contentEmitted: boolean;
       replaceMessageId?: string;
       awaiting?: Awaiting;
@@ -62,6 +68,38 @@ export function isCompleted(messages: BaseMessage[], id: string) {
   return messages.some(
     (message) => ToolMessage.isInstance(message) && message.tool_call_id === id,
   );
+}
+
+export function finishAwaited(plan: HookPlan, state: HookState): HookPlan {
+  if (!plan.awaiting || !isCompleted(state.messages, plan.awaiting.callId)) {
+    return plan;
+  }
+  const completed = {
+    ...plan,
+    awaiting: undefined,
+    previousInvocationKey: plan.awaiting.invocationKey,
+  };
+  if (completed.kind === "user") {
+    return { ...completed, hookIndex: completed.hookIndex + 1 };
+  }
+  if (plan.awaiting.kind === "original") {
+    return { ...completed, stage: "after", hookIndex: 0 };
+  }
+  return { ...completed, hookIndex: completed.hookIndex + 1 };
+}
+
+export function nextStage(
+  plan: Extract<HookPlan, { kind: "tools" }>,
+): Extract<HookPlan, { kind: "tools" }> {
+  if (plan.stage === "before") {
+    return { ...plan, stage: "original", hookIndex: 0 };
+  }
+  return {
+    ...plan,
+    toolIndex: plan.toolIndex + 1,
+    stage: "before",
+    hookIndex: 0,
+  };
 }
 
 export function requireCallId(call: ToolCall) {
