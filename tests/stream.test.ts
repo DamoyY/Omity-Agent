@@ -76,6 +76,7 @@ test("stream messages persist assistant tool call chunks", () => {
       "messages",
       [
         new AIMessageChunk({
+          id: "message-1",
           content: "",
           tool_call_chunks: [
             {
@@ -101,13 +102,18 @@ test("stream messages persist assistant tool call chunks", () => {
         index: 0,
         name: "read_file",
       },
+      messageId: "message-1",
       queueId: 2,
     },
   ]);
 });
 
 function makeStreamRecorder() {
-  const tokens: Array<{ queueId: number; text: string }> = [];
+  const tokens: Array<{
+    messageId?: string;
+    queueId: number;
+    text: string;
+  }> = [];
   const toolCalls: Array<{
     call: {
       args?: string;
@@ -115,13 +121,19 @@ function makeStreamRecorder() {
       index?: number;
       name?: string;
     };
+    messageId?: string;
     queueId: number;
   }> = [];
   return {
     ctx: {
       db: {
-        streamToken: (_sessionId: string, queueId: number, text: string) =>
-          tokens.push({ queueId, text }),
+        streamToken: (
+          _sessionId: string,
+          queueId: number,
+          text: string,
+          messageId?: string,
+        ) =>
+          tokens.push({ queueId, text, ...(messageId ? { messageId } : {}) }),
         streamToolCall: (
           _sessionId: string,
           queueId: number,
@@ -131,7 +143,13 @@ function makeStreamRecorder() {
             index?: number;
             name?: string;
           },
-        ) => toolCalls.push({ call, queueId }),
+          messageId?: string,
+        ) =>
+          toolCalls.push({
+            call,
+            queueId,
+            ...(messageId ? { messageId } : {}),
+          }),
       },
       logger: { debug: () => {}, token: () => {} },
       observer: { token: () => {} },

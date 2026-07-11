@@ -4,6 +4,7 @@ type ToolCallAccumulator = {
   id?: string;
   index?: number;
   inputText: string;
+  messageId?: string;
   name: string;
 };
 
@@ -18,6 +19,13 @@ export function eventText(event: DisplayEvent, queueId: number) {
 export function eventQueueId(event: DisplayEvent) {
   return isRecord(event.payload) && typeof event.payload["queueId"] === "number"
     ? event.payload["queueId"]
+    : undefined;
+}
+
+export function eventMessageId(event: DisplayEvent) {
+  return isRecord(event.payload) &&
+    typeof event.payload["messageId"] === "string"
+    ? event.payload["messageId"]
     : undefined;
 }
 
@@ -50,6 +58,7 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
     index: call.index ?? order,
     input: {},
     inputText: call.inputText,
+    ...(call.messageId ? { messageId: call.messageId } : {}),
     name: call.name || "tool",
     streaming: true,
   }));
@@ -70,6 +79,7 @@ function matchesDelta(
 function mergeCall(target: ToolCallAccumulator, source: ToolCallAccumulator) {
   target.id ??= source.id;
   target.index ??= source.index;
+  target.messageId ??= source.messageId;
   target.inputText = appendArguments(target.inputText, source.inputText);
   target.name += source.name;
 }
@@ -80,6 +90,7 @@ function mergeDelta(
 ) {
   target.id ??= delta.id;
   target.index ??= delta.index;
+  target.messageId ??= delta.messageId;
   target.inputText = appendArguments(target.inputText, delta.args);
   target.name += delta.name ?? "";
 }
@@ -94,6 +105,7 @@ function toolCallDelta(event: DisplayEvent) {
     args: typeof call["args"] === "string" ? call["args"] : undefined,
     id: typeof call["id"] === "string" ? call["id"] : undefined,
     index: typeof call["index"] === "number" ? call["index"] : undefined,
+    messageId: eventMessageId(event),
     name: typeof call["name"] === "string" ? call["name"] : undefined,
   };
 }

@@ -180,8 +180,13 @@ export class AgentDatabase {
     this.notify?.();
   }
 
-  streamToken(sessionId: string, queueId: number, text: string) {
-    insertStreamToken(this.db, sessionId, queueId, text);
+  streamToken(
+    sessionId: string,
+    queueId: number,
+    text: string,
+    messageId?: string,
+  ) {
+    insertStreamToken(this.db, sessionId, queueId, text, messageId);
     this.notify?.();
   }
 
@@ -189,8 +194,9 @@ export class AgentDatabase {
     sessionId: string,
     queueId: number,
     call: StreamToolCallDelta,
+    messageId?: string,
   ) {
-    insertStreamToolCall(this.db, sessionId, queueId, call);
+    insertStreamToolCall(this.db, sessionId, queueId, call, messageId);
     this.notify?.();
   }
 

@@ -5,12 +5,14 @@ export type DisplayToolCall = {
   index: number;
   name: string;
   input: unknown;
+  messageId?: string;
   inputText?: string;
   streaming?: boolean;
 };
 
 export type DisplayMessage = {
   id: number;
+  sourceId?: string;
   role: DisplayRole;
   content: string;
   queueId: number | null;

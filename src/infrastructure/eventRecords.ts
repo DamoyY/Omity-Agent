@@ -22,11 +22,13 @@ export function insertStreamToken(
   sessionId: string,
   queueId: number,
   text: string,
+  messageId?: string,
 ) {
   insertEvent(db, sessionId, "info", "stream", "token", {
     kind: "assistant_text_delta",
     queueId,
     text,
+    ...(messageId ? { messageId } : {}),
   });
 }
 
@@ -35,10 +37,12 @@ export function insertStreamToolCall(
   sessionId: string,
   queueId: number,
   call: StreamToolCallDelta,
+  messageId?: string,
 ) {
   insertEvent(db, sessionId, "info", "stream", "tool_call", {
     kind: "tool_call_delta",
     queueId,
     call,
+    ...(messageId ? { messageId } : {}),
   });
 }

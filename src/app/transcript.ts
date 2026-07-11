@@ -73,6 +73,7 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
   if (!message) throw new Error("无法还原消息");
   return {
     id: row.id,
+    ...(message.id ? { sourceId: message.id } : {}),
     role: messageRole(message),
     content: contentToText(message.content),
     queueId: row.queue_id,
@@ -109,6 +110,7 @@ function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
   return calls.map((call, index) => ({
     id: stringField(call, "id") ?? `tool-${index}`,
     index,
+    ...(message.id ? { messageId: message.id } : {}),
     name: stringField(call, "name") ?? "tool",
     input: call["args"] ?? call["input"] ?? call,
   }));

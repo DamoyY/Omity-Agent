@@ -1,6 +1,7 @@
-import { hasContentSegment, sameToolCall } from "./identity";
+import { sameToolCall } from "./identity";
 import {
   currentToolCallEvents,
+  eventMessageId,
   eventQueueId,
   eventText,
   streamToolCalls,
@@ -38,6 +39,9 @@ export function buildTimeline(
     .filter((item) => item.role !== "tool")
     .map((item) => withParts(item, `message-${item.id}`, outputs));
   const visibleToolCalls = visible.flatMap((item) => toolParts(item));
+  const persistedSourceIds = new Set(
+    messages.map((item) => item.sourceId).filter((id) => id !== undefined),
+  );
   const knownQueue = new Set(messages.map((item) => item.queueId));
   const pending = queue
     .filter((item) => item.status === "pending" && !knownQueue.has(item.id))
@@ -45,7 +49,15 @@ export function buildTimeline(
   const live = queue
     .filter((item) => item.status === "running" || item.status === "paused")
     .filter((item) => item.userMessageId !== null)
-    .map((item) => streamMessage(item, events, outputs, visibleToolCalls))
+    .map((item) =>
+      streamMessage(
+        item,
+        events,
+        outputs,
+        visibleToolCalls,
+        persistedSourceIds,
+      ),
+    )
     .filter((item) => item.parts.length > 0);
   return groupAssistantMessages([...visible, ...pending, ...live]);
 }
@@ -71,13 +83,12 @@ function groupAssistantMessages(messages: TimelineMessage[]) {
 }
 
 function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
-  const duplicateContent = hasContentSegment(target.content, source.content);
-  target.content = [target.content, duplicateContent ? "" : source.content]
+  target.content = [target.content, source.content]
     .filter((content) => content.trim().length > 0)
     .join("\n\n");
   for (const part of source.parts) {
     if (part.type === "content") {
-      if (!duplicateContent) target.parts.push(part);
+      target.parts.push(part);
       continue;
     }
     if (toolParts(target).some((item) => sameToolCall(item.call, part.call))) {
@@ -92,10 +103,14 @@ function streamMessage(
   events: DisplayEvent[],
   outputs: Map<string, DisplayMessage>,
   visibleToolCalls: Extract<TimelinePart, { type: "tool" }>[],
+  persistedSourceIds: Set<string>,
 ) {
-  const streamEvents = events.filter(
-    (event) => eventQueueId(event) === item.id,
-  );
+  const streamEvents = events
+    .filter((event) => eventQueueId(event) === item.id)
+    .filter((event) => {
+      const messageId = eventMessageId(event);
+      return !messageId || !persistedSourceIds.has(messageId);
+    });
   const content = streamEvents
     .map((event) => eventText(event, item.id))
     .filter((text) => text.length > 0)

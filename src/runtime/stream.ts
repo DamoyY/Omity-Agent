@@ -31,17 +31,18 @@ export function handleStreamEvent(
   if (mode === "messages") {
     const chunk = Array.isArray(payload) ? payload[0] : undefined;
     if (!isAiChunk(chunk)) return;
+    const messageId = readMessageId(chunk);
     const text = contentToText(chunk?.content);
     if (text && ctx.settings.logging.streamTokens) {
       ctx.logger.token(text);
     }
     if (text && queueId !== undefined) {
-      ctx.db.streamToken(ctx.sessionId, queueId, text);
+      ctx.db.streamToken(ctx.sessionId, queueId, text, messageId);
       ctx.observer?.token(ctx.sessionId, queueId, text);
     }
     for (const call of toolCallDeltas(chunk)) {
       if (queueId !== undefined)
-        ctx.db.streamToolCall(ctx.sessionId, queueId, call);
+        ctx.db.streamToolCall(ctx.sessionId, queueId, call, messageId);
     }
     return;
   }
@@ -123,6 +124,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isAiChunk(value: unknown) {
   if (AIMessageChunk.isInstance(value)) return true;
   return isRecord(value) && value["type"] === "ai";
+}
+
+function readMessageId(value: unknown) {
+  return isRecord(value) && typeof value["id"] === "string"
+    ? value["id"]
+    : undefined;
 }
 
 function toolCallDeltas(chunk: unknown) {
