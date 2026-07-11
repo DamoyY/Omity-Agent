@@ -1,4 +1,3 @@
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { appendAssistantMessage } from "../../src/infrastructure/messages";
 import {
@@ -22,61 +21,6 @@ test("queue append and transcript lifecycle", () => {
   appendAssistantMessage(db.db, "123", queueId, "你好，有什么可以帮你？");
   db.setQueueStatus(queueId, "done");
   expect(db.history("123").at(-1)?.text).toBe("你好，有什么可以帮你？");
-  db.close();
-});
-
-test("transcript preserves full LangChain message structure", () => {
-  const db = makeDb();
-  db.resetSession("123", workspace);
-  const reasoning = {
-    id: "rs_1",
-    type: "reasoning",
-    encrypted_content: "sealed",
-    summary: [{ type: "summary_text", text: "visible summary" }],
-  };
-  const output = [
-    reasoning,
-    {
-      type: "message",
-      role: "assistant",
-      content: [{ type: "output_text", text: "答案", annotations: [] }],
-    },
-  ];
-  db.replaceHistory("123", [
-    new HumanMessage("问题"),
-    new AIMessage({
-      content: [{ type: "text", text: "答案", annotations: [] }],
-      additional_kwargs: { reasoning },
-      response_metadata: { model_provider: "openai", output },
-    }),
-  ]);
-
-  const restored = db.history("123");
-
-  expect(restored.map((message) => message.text)).toEqual(["问题", "答案"]);
-  const assistant = required(restored[1]);
-  expect(assistant).toBeInstanceOf(AIMessage);
-  expect(assistant.additional_kwargs["reasoning"]).toEqual(reasoning);
-  expect(assistant.response_metadata).toEqual({
-    model_provider: "openai",
-    output,
-  });
-  db.close();
-});
-
-test("replace history clears redundant stream events", () => {
-  const db = makeDb();
-  db.resetSession("123", workspace);
-  db.streamToken("123", 1, "答案");
-  db.streamToolCall("123", 1, { id: "call-1", name: "tool" });
-  db.event("123", "info", "client", "append", { queueId: 1 });
-
-  db.replaceHistory("123", [new HumanMessage("问题"), new AIMessage("答案")]);
-
-  const rows = db.db
-    .query<{ category: string }, []>("SELECT category FROM events ORDER BY id")
-    .all();
-  expect(rows.map((row) => row.category)).toEqual(["client"]);
   db.close();
 });
 

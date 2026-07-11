@@ -132,7 +132,7 @@ test("fork preserves completed takeover pairs in an editable draft", () => {
   source.resetSession("source", workspace);
   source.appendUser("source", "第一条");
   source.startQueue("source", required(source.nextQueue("source")));
-  source.replaceHistory("source", [
+  source.syncHistory("source", [
     ...source.history("source"),
     new AIMessage({
       content: "",

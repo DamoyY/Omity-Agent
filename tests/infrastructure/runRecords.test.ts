@@ -18,7 +18,7 @@ test("replace history restores queue ids from user message identity", () => {
   db.setQueueStatus(first, "done");
   const second = db.appendUser("123", "第二条");
 
-  db.replaceHistory("123", [
+  db.syncHistory("123", [
     new HumanMessage({
       content: "第一条",
       id: queueMessageId("123", first),
@@ -45,7 +45,7 @@ test("replace history rejects queue identities from another session", () => {
   db.resetSession("123", workspace);
 
   expect(() => {
-    db.replaceHistory("123", [
+    db.syncHistory("123", [
       new HumanMessage({ content: "错误消息", id: queueMessageId("456", 1) }),
     ]);
   }).toThrow("用户消息属于其他会话");

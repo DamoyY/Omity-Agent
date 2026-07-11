@@ -1,34 +1,23 @@
 import {
   AIMessage,
   HumanMessage,
-  mapChatMessagesToStoredMessages,
-  mapStoredMessagesToChatMessages,
   type BaseMessage,
-  type StoredMessage,
 } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
+import {
+  messageInsert,
+  messageRowsToChatMessages,
+  type MessageInsert,
+  type MessageRow,
+} from "./messageSerialization";
 
-export interface MessageRow {
-  message_json: string;
+interface PersistedMessageRow extends MessageRow {
+  id: number;
+  queue_id: number | null;
 }
 
-export interface MessageInsert {
-  messageJson: string;
-  queueId?: number;
-}
-
-export interface ReplaceMessagesOptions {
+export interface SyncMessagesOptions {
   clearStreamEvents?: boolean;
-}
-
-export function messageInsert(
-  message: BaseMessage,
-  queueId?: number,
-): MessageInsert {
-  return {
-    messageJson: JSON.stringify(firstStoredMessage(message)),
-    queueId,
-  };
 }
 
 export function insertUserMessage(
@@ -74,22 +63,53 @@ export function appendAssistantMessage(
   insertMessage(db, sessionId, messageInsert(new AIMessage(content), queueId));
 }
 
-export function replaceMessages(
+export function syncMessages(
   db: Database,
   sessionId: string,
   messages: BaseMessage[],
-  options: ReplaceMessagesOptions = {},
+  options: SyncMessagesOptions = {},
 ) {
   const items = messages.map((message) =>
     messageInsert(message, messageQueueId(sessionId, message)),
   );
-  const insert = db.query(
+  const insert = db.prepare(
     "INSERT INTO messages (session_id, message_json, queue_id, created_at) VALUES (?, ?, ?, unixepoch())",
   );
+  const select = db.prepare<PersistedMessageRow, [string]>(
+    "SELECT id, message_json, queue_id FROM messages WHERE session_id = ? ORDER BY id",
+  );
+  const updateQueue = db.prepare(
+    "UPDATE queue SET user_message_id = ? WHERE session_id = ? AND id = ?",
+  );
   const tx = db.transaction((persisted: MessageInsert[]) => {
-    db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
-    for (const item of persisted) {
-      insert.run(sessionId, item.messageJson, item.queueId ?? null);
+    const existing = select.all(sessionId);
+    const retained = commonPrefixLength(existing, persisted);
+    const firstRemoved = existing[retained];
+    if (firstRemoved) {
+      db.query(
+        `UPDATE queue SET user_message_id = NULL
+         WHERE session_id = ? AND user_message_id IN (
+           SELECT id FROM messages WHERE session_id = ? AND id >= ?
+         )`,
+      ).run(sessionId, sessionId, firstRemoved.id);
+      db.query("DELETE FROM messages WHERE session_id = ? AND id >= ?").run(
+        sessionId,
+        firstRemoved.id,
+      );
+    }
+    for (const item of persisted.slice(retained)) {
+      const result = insert.run(
+        sessionId,
+        item.messageJson,
+        item.queueId ?? null,
+      );
+      if (item.queueId !== undefined) {
+        updateQueue.run(
+          Number(result.lastInsertRowid),
+          sessionId,
+          item.queueId,
+        );
+      }
     }
     if (options.clearStreamEvents) {
       db.query(
@@ -97,7 +117,36 @@ export function replaceMessages(
       ).run(sessionId);
     }
   });
-  tx(items);
+  try {
+    tx(items);
+  } finally {
+    updateQueue.finalize();
+    select.finalize();
+    insert.finalize();
+  }
+}
+
+function commonPrefixLength(
+  existing: PersistedMessageRow[],
+  incoming: MessageInsert[],
+) {
+  const length = Math.min(existing.length, incoming.length);
+  let index = 0;
+  while (index < length) {
+    const row = existing[index];
+    const item = incoming[index];
+    if (row === undefined || item === undefined) {
+      throw new Error("消息公共前缀索引越界");
+    }
+    if (
+      row.message_json !== item.messageJson ||
+      row.queue_id !== (item.queueId ?? null)
+    ) {
+      break;
+    }
+    index++;
+  }
+  return index;
 }
 
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
@@ -113,10 +162,6 @@ export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   return messageRowsToChatMessages(rows);
 }
 
-export function messageRowsToChatMessages(rows: MessageRow[]): BaseMessage[] {
-  return mapStoredMessagesToChatMessages(rows.map(rowToStoredMessage));
-}
-
 function insertMessage(
   db: Database,
   sessionId: string,
@@ -128,27 +173,4 @@ function insertMessage(
     )
     .run(sessionId, message.messageJson, message.queueId ?? null);
   return Number(result.lastInsertRowid);
-}
-
-function rowToStoredMessage(row: MessageRow): StoredMessage {
-  const parsed = JSON.parse(row.message_json) as unknown;
-  if (!isStoredMessage(parsed)) {
-    throw new Error("messages.message_json 不是有效的 LangChain StoredMessage");
-  }
-  return parsed;
-}
-
-function firstStoredMessage(message: BaseMessage): StoredMessage {
-  const [stored] = mapChatMessagesToStoredMessages([message]);
-  if (!stored) throw new Error("无法序列化 LangChain 消息");
-  return stored;
-}
-
-function isStoredMessage(value: unknown): value is StoredMessage {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    "data" in value
-  );
 }

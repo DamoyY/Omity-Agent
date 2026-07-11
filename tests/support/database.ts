@@ -26,13 +26,24 @@ export function makeDatabases(count: number) {
   return Array.from({ length: count }, () => new AgentDatabase(path));
 }
 
-export function cleanupDatabaseDirs() {
+export async function cleanupDatabaseDirs() {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, {
-      recursive: true,
-      force: true,
-      maxRetries: 10,
-      retryDelay: 50,
-    });
+    await removeDatabaseDir(dir);
   }
+}
+
+async function removeDatabaseDir(dir: string) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!isBusy(error) || attempt === 9) throw error;
+      await Bun.sleep(50);
+    }
+  }
+}
+
+function isBusy(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && error.code === "EBUSY";
 }

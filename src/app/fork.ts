@@ -3,7 +3,7 @@ import { AgentDatabase } from "../infrastructure/database";
 import {
   messageInsert,
   messageRowsToChatMessages,
-} from "../infrastructure/messages";
+} from "../infrastructure/messageSerialization";
 import { contentToText } from "../runtime/content";
 
 interface MessageRow {

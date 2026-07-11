@@ -7,7 +7,7 @@ import {
   insertStreamToolCall,
   type StreamToolCallDelta,
 } from "./eventRecords";
-import { loadMessages, replaceMessages } from "./messages";
+import { loadMessages, syncMessages } from "./messages";
 import {
   appendDraftQueue,
   appendUserQueue,
@@ -114,9 +114,9 @@ export class AgentDatabase {
     setQueueStatusRecord(this.db, queueId, status, error);
   }
 
-  replaceHistory(sessionId: string, messages: BaseMessage[]) {
+  syncHistory(sessionId: string, messages: BaseMessage[]) {
     this.requireSession(sessionId);
-    replaceMessages(this.db, sessionId, messages, {
+    syncMessages(this.db, sessionId, messages, {
       clearStreamEvents: true,
     });
   }
