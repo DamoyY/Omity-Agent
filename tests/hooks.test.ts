@@ -15,6 +15,7 @@ import { afterEach, expect, test } from "bun:test";
 import { createHookMiddleware } from "../src/hooks/middleware";
 import { HookLedger } from "../src/hooks/ledger";
 import { HookRuntime } from "../src/hooks/runtime";
+import { isHookCallId } from "../src/hooks/storage/calls";
 import { AgentDatabase } from "../src/infrastructure/database";
 import { Logger } from "../src/infrastructure/logger";
 import type { HookRule } from "../src/types";
@@ -67,6 +68,13 @@ test("takeover hooks bracket an agent tool without recursive hooks", async () =>
   );
 
   expect(calls).toEqual(["hook", "original", "hook"]);
+  const hookCallIds = result.messages
+    .filter((message) => message instanceof AIMessage)
+    .flatMap((message) => message.tool_calls ?? [])
+    .map((call) => call.id)
+    .filter(isHookCallId);
+  expect(hookCallIds.length).toBe(2);
+  expect(hookCallIds.every((id) => id.length <= 64)).toBeTrue();
   expect(result.messages.map((message) => message.type)).toEqual([
     "human",
     "ai",

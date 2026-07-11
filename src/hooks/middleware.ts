@@ -1,10 +1,10 @@
 import { AIMessage } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
 import { z } from "zod";
-import { isHookCallId } from "./callId";
 import { toolPlan, userPlan, type HookState } from "./plan";
 import { advancePlan } from "./pipeline";
 import { HookRuntime } from "./runtime";
+import { isHookCallId } from "./storage/calls";
 
 export const hookBeforeModelNode = "hooks.before_model";
 

@@ -56,7 +56,7 @@ export async function redirectLargeToolOutput(
     options.sessionId,
     options.outputId,
   );
-  const content = `输出过长（${tokens} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`;
+  const content = `工具输出过长（${tokens} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`;
   return copyToolMessage(message, content, { path: outputPath, tokens });
 }
 

@@ -29,14 +29,14 @@
 #     tool: formatter
 #     args: { path: . }
 hooks:
-  - id: open-agents-reader
+  - id: open-terminal
     on: user_message
     mode: takeover
     tool: terminal__new_tab
     args:
       starting_directory: "${cwd}"
       starting_shell: powershell
-  - id: read-workspace-agents
+  - id: read-agents-md
     on: user_message
     mode: takeover
     tool: terminal__send_command

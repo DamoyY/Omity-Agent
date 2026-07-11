@@ -2,8 +2,8 @@ import { ToolMessage, type ToolCall } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Logger } from "../infrastructure/logger";
 import type { HookRule } from "../types";
-import { decodeHookCallId, encodeHookCallId } from "./callId";
 import { HookLedger } from "./ledger";
+import { createHookCallId } from "./storage/calls";
 import { resolveHookArgs } from "./variables";
 
 export type HookTrigger = HookRule["on"];
@@ -22,14 +22,12 @@ export class HookRuntime {
   ) {
     this.rules = rules;
     this.tools = new Map(tools.map((tool) => [tool.name, tool]));
-    if (this.tools.size !== tools.length) {
+    if (this.tools.size !== tools.length)
       throw new Error("MCP 工具名称重复，无法编译 Hook");
-    }
     for (const rule of rules) {
       this.requireTool(rule.tool, `Hook ${rule.id}`);
-      if (rule.matchTool) {
+      if (rule.matchTool)
         this.requireTool(rule.matchTool, `Hook ${rule.id} 匹配`);
-      }
     }
   }
 
@@ -48,9 +46,8 @@ export class HookRuntime {
     options: { matchTool?: string; signal?: AbortSignal } = {},
   ) {
     for (const rule of this.matching(trigger, options.matchTool)) {
-      if (rule.mode !== "silent") {
+      if (rule.mode !== "silent")
         throw new Error(`${trigger} 触发器不能在图外执行接管 Hook`);
-      }
       await this.runSilent(rule, trigger, sourceId, threadId, options.signal);
     }
   }
@@ -61,13 +58,17 @@ export class HookRuntime {
     sourceId: string,
     threadId: string,
   ): Promise<ToolCall> {
+    const details = { trigger, sourceId, hookId: rule.id };
+    const callId = createHookCallId(this.sessionId, threadId, details);
+    if (rule.mode === "takeover")
+      this.ledger.registerCall(callId, this.sessionId, threadId, details);
     return {
       name: rule.tool,
       args: resolveHookArgs(rule.args, {
         cwd: this.workspace,
         previousTool: this.ledger.latestOutput(threadId),
       }),
-      id: encodeHookCallId({ trigger, sourceId, hookId: rule.id }),
+      id: callId,
       type: "tool_call",
     };
   }
@@ -100,9 +101,8 @@ export class HookRuntime {
         metadata: { hook: true, hookId: rule.id },
         signal,
       });
-      if (!ToolMessage.isInstance(output)) {
+      if (!ToolMessage.isInstance(output))
         throw new Error("静默 Hook 工具没有返回 ToolMessage");
-      }
       this.ledger.complete(key, output);
       return output;
     } catch (error) {
@@ -116,7 +116,7 @@ export class HookRuntime {
     threadId: string,
     invoke: () => Promise<unknown>,
   ) {
-    const details = decodeHookCallId(callId);
+    const details = this.ledger.requireCall(callId, this.sessionId, threadId);
     return this.runRecorded(details, threadId, invoke);
   }
 
@@ -142,9 +142,8 @@ export class HookRuntime {
     if (existing) return this.restore(existing, key);
     try {
       const output = await invoke();
-      if (!ToolMessage.isInstance(output)) {
+      if (!ToolMessage.isInstance(output))
         throw new Error("工具没有返回 ToolMessage");
-      }
       this.ledger.complete(key, output);
       return output;
     } catch (error) {

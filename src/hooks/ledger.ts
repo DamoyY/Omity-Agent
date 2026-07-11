@@ -5,6 +5,12 @@ import {
   type StoredMessage,
   type ToolMessage,
 } from "@langchain/core/messages";
+import {
+  applyHookCallSchema,
+  registerHookCall,
+  requireHookCall,
+  type HookCallDetails,
+} from "./storage/calls";
 
 type InvocationRow = {
   status: string;
@@ -24,6 +30,7 @@ export class HookLedger {
   constructor(path: string) {
     this.db = new Database(path, { create: true, strict: true });
     this.db.run("PRAGMA journal_mode = WAL");
+    applyHookCallSchema(this.db);
     this.db.run(`
       CREATE TABLE IF NOT EXISTS invocations (
         invocation_key TEXT PRIMARY KEY,
@@ -113,6 +120,19 @@ export class HookLedger {
         ? {}
         : { structuredOutput: stored.structuredOutput }),
     };
+  }
+
+  registerCall(
+    callId: string,
+    sessionId: string,
+    threadId: string,
+    details: HookCallDetails,
+  ) {
+    registerHookCall(this.db, callId, sessionId, threadId, details);
+  }
+
+  requireCall(callId: string, sessionId: string, threadId: string) {
+    return requireHookCall(this.db, callId, sessionId, threadId);
   }
 
   requireRunnable(row: InvocationRow, key: string) {
