@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -189,7 +189,9 @@ async function writeLargeToolOutput(
 ) {
   const dir = resolve(dataDir, "sessions", safeId(sessionId), "large_output");
   mkdirSync(dir, { recursive: true });
-  const id = safeId(outputId ?? randomUUID());
+  const id = outputId
+    ? createHash("sha256").update(outputId).digest("hex")
+    : randomUUID();
   const path = join(dir, `${id}.txt`);
   await writeFile(path, content, "utf8");
   return path;

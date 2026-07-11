@@ -1,4 +1,5 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ToolMessage } from "@langchain/core/messages";
@@ -50,7 +51,7 @@ test("normalizes MCP text content before size handling", async () => {
     "sessions",
     "demo-session",
     "large_output",
-    "call-1.txt",
+    `${createHash("sha256").update("call-1").digest("hex")}.txt`,
   );
 
   expect(normalized.content).toBe(short);
@@ -59,6 +60,31 @@ test("normalizes MCP text content before size handling", async () => {
     `工具输出过长（${countTokens(original).toString()} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`,
   );
   expect(redirected.name).toBe("demo_tool");
+});
+
+test("accepts hook call IDs when writing large output", async () => {
+  const root = makeDir();
+  const outputId = "omity-hook:session/thread:tool";
+  const original = "long hook output";
+  const redirected = await redirectLargeToolOutput(
+    new ToolMessage({ content: original, tool_call_id: outputId }),
+    {
+      dataDir: root,
+      maxTokens: 1,
+      sessionId: "demo-session",
+      outputId,
+    },
+  );
+  const outputPath = join(
+    root,
+    "sessions",
+    "demo-session",
+    "large_output",
+    `${createHash("sha256").update(outputId).digest("hex")}.txt`,
+  );
+
+  expect(readFileSync(outputPath, "utf8")).toBe(original);
+  expect(redirected.content).toContain(outputPath);
 });
 
 test("keeps MCP image output and MCP error result unchanged", async () => {
