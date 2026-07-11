@@ -26,6 +26,10 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
     if (error instanceof CanceledRun) return;
+    if (ctx.controller.signal.aborted) {
+      setRunStatus(ctx, run, "paused");
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     setRunStatus(ctx, run, "paused", message);
     ctx.db.setControl(ctx.sessionId, "pause");
@@ -55,10 +59,11 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
   };
   let modelNetworkRetry = 0;
   const streamLogState = createStreamLogState();
-  while (!ctx.signal.stopping) {
+  while (!ctx.controller.signal.aborted) {
     try {
       const stream = await ctx.graph.stream(input, {
         ...config,
+        signal: ctx.controller.signal,
         streamMode: ["messages", "updates", "debug"],
       });
       for await (const event of stream)
@@ -144,7 +149,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
 async function waitIfPaused(ctx: HostContext, run: QueueRun) {
   let pauseLogged = false;
   for (;;) {
-    if (ctx.signal.stopping) {
+    if (ctx.controller.signal.aborted) {
       setRunStatus(ctx, run, "paused");
       return false;
     }
@@ -152,7 +157,7 @@ async function waitIfPaused(ctx: HostContext, run: QueueRun) {
     if (control === "pause_cancel") {
       setRunStatus(ctx, run, "paused");
       ctx.db.setControl(ctx.sessionId, "pause");
-      ctx.signal.stopping = true;
+      ctx.controller.abort(new CanceledRun("暂停状态收到 cancel"));
       ctx.logger.warn("暂停状态收到 cancel，Host 已关闭", {
         queueId: run.items[0].id,
       });

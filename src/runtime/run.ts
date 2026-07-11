@@ -29,7 +29,7 @@ export async function cancelRun(ctx: HostContext, run: QueueRun) {
   setRunStatus(ctx, run, "canceled");
   ctx.db.setControl(ctx.sessionId, "running");
   await ctx.checkpointer.deleteThread(run.threadId);
-  ctx.signal.stopping = true;
+  ctx.controller.abort(new CanceledRun("运行已取消"));
   ctx.logger.warn("队列已取消，Host 已关闭", { queueId: run.items[0].id });
 }
 

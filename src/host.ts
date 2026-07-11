@@ -11,11 +11,7 @@ import { Logger } from "./infrastructure/logger";
 import { loadMcp } from "./infrastructure/mcp";
 import { normalizeWorkspacePath } from "./infrastructure/workspacePath";
 import { hostLoop } from "./runtime/loop";
-import {
-  HostLease,
-  type HostObserver,
-  type StopSignal,
-} from "./runtime/context";
+import { HostLease, type HostObserver } from "./runtime/context";
 import { HookLedger } from "./hooks/ledger";
 import { HookRuntime } from "./hooks/runtime";
 import { hookBeforeModelNode } from "./hooks/middleware";
@@ -27,9 +23,9 @@ export interface HostMode {
 
 export interface HostRunOptions {
   cwd?: string;
+  controller?: AbortController;
   observer?: HostObserver;
   quiet?: boolean;
-  signal?: StopSignal;
   wake?: (delayMs: number) => Promise<void>;
   wireSigint?: boolean;
 }
@@ -39,10 +35,8 @@ export async function runHost(
   root = process.cwd(),
   options: HostRunOptions = {},
 ) {
-  const signal: StopSignal = options.signal ?? { stopping: false };
   await runHostSession(mode, root, {
     ...options,
-    signal,
     wireSigint: options.wireSigint ?? true,
   });
 }
@@ -66,10 +60,10 @@ export async function runHostSession(
       ? resolveSessionPaths(settings, mode.sessionId)
       : prepareWritableSession(settings, mode);
   const db = openHostDatabase(paths.appDb, mode, workspace);
-  const signal: StopSignal = options.signal ?? { stopping: false };
+  const controller = options.controller ?? new AbortController();
   let lease: HostLease;
   try {
-    lease = new HostLease(db, logger, mode.sessionId, signal);
+    lease = new HostLease(db, logger, mode.sessionId, controller);
   } catch (error) {
     db.close();
     throw error;
@@ -101,13 +95,12 @@ export async function runHostSession(
         paths.checkpointDb,
         hooks,
       );
+      const stopOnSigint = () => {
+        controller.abort(new Error("收到 Ctrl+C"));
+        logger.warn("收到 Ctrl+C，Host 正在停止");
+      };
       try {
-        if (options.wireSigint ?? false) {
-          process.on("SIGINT", () => {
-            signal.stopping = true;
-            logger.warn("收到 Ctrl+C，Host 将在当前边界停止");
-          });
-        }
+        if (options.wireSigint ?? false) process.once("SIGINT", stopOnSigint);
         await hostLoop({
           settings,
           logger,
@@ -117,12 +110,13 @@ export async function runHostSession(
           hooks,
           beforeModelNode: hookBeforeModelNode,
           sessionId: mode.sessionId,
-          signal,
+          controller,
           wake: options.wake,
           observer: options.observer,
         });
         lease.assertOwned();
       } finally {
+        process.removeListener("SIGINT", stopOnSigint);
         checkpointer.close();
       }
     } finally {

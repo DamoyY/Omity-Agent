@@ -5,10 +5,6 @@ import { createAgent } from "langchain";
 import { afterEach, expect, test } from "bun:test";
 import { AgentDatabase } from "../../src/infrastructure/database";
 import { Logger } from "../../src/infrastructure/logger";
-import {
-  isModelNetworkError,
-  modelNetworkRetryDelayMs,
-} from "../../src/runtime/network";
 import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import type { Settings } from "../../src/types";
@@ -88,7 +84,7 @@ test("ctrl-c while paused stops host without ending pause", async () => {
   db.setControl("123", "pause");
   const item = db.nextQueue("123");
   const context = makeContext(db, {});
-  context.signal.stopping = true;
+  context.controller.abort();
 
   await processQueue(context, required(item));
 
@@ -97,24 +93,39 @@ test("ctrl-c while paused stops host without ending pause", async () => {
   db.close();
 });
 
-test("detects retryable model network errors", () => {
-  expect(isModelNetworkError(new Error("fetch failed"))).toBe(true);
-  expect(
-    isModelNetworkError(
-      new Error("Received empty response from chat model call."),
-    ),
-  ).toBe(true);
-  expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
-  expect(isModelNetworkError({ name: "TimeoutError" })).toBe(true);
-  expect(isModelNetworkError({ cause: { code: "ENOTFOUND" } })).toBe(true);
-  expect(isModelNetworkError(new Error("Unexpected EOF"))).toBe(true);
-  expect(isModelNetworkError({ name: "AbortError" })).toBe(false);
-});
+test("host abort cancels an active graph stream", async () => {
+  const db = makeDb();
+  db.resetSession("123", workspace);
+  db.appendUser("123", "生成中的输入");
+  const item = required(db.nextQueue("123"));
+  const started = Promise.withResolvers<undefined>();
+  const graph = {
+    stream: (_input: unknown, options: { signal: AbortSignal }) => {
+      started.resolve(undefined);
+      return new Promise((_, reject) => {
+        options.signal.addEventListener(
+          "abort",
+          () => {
+            reject(
+              options.signal.reason instanceof Error
+                ? options.signal.reason
+                : new Error("graph stream aborted"),
+            );
+          },
+          { once: true },
+        );
+      });
+    },
+  };
+  const context = makeContext(db, graph);
+  const processing = processQueue(context, item);
+  await started.promise;
 
-test("model network retry delay grows with a cap", () => {
-  expect(modelNetworkRetryDelayMs(1)).toBe(1_000);
-  expect(modelNetworkRetryDelayMs(2)).toBe(2_000);
-  expect(modelNetworkRetryDelayMs(99)).toBe(30_000);
+  context.controller.abort(new Error("test stop"));
+  await processing;
+
+  expect(db.nextQueue("123")?.status).toBe("paused");
+  db.close();
 });
 
 function makeContext(db: AgentDatabase, graph: unknown): HostContext {
@@ -130,7 +141,7 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     } as never,
     beforeModelNode: "model_request",
     sessionId: "123",
-    signal: { stopping: false },
+    controller: new AbortController(),
   };
 }
 

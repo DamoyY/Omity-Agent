@@ -14,10 +14,6 @@ type HostGraph = Omit<AgentGraph, "getState"> & {
   getState: (...args: Parameters<AgentGraph["getState"]>) => Promise<unknown>;
 };
 
-export interface StopSignal {
-  stopping: boolean;
-}
-
 export interface HostObserver {
   changed?(sessionId: string): void;
   token(sessionId: string, queueId: number, text: string): void;
@@ -32,14 +28,22 @@ export interface HostContext {
   hooks: HookRuntime;
   beforeModelNode: string;
   sessionId: string;
-  signal: StopSignal;
+  controller: AbortController;
   wake?: (delayMs: number) => Promise<void>;
   observer?: HostObserver;
 }
 
 export function waitForWake(ctx: HostContext, delayMs: number) {
-  if (!ctx.wake) return sleep(delayMs);
+  if (!ctx.wake) return abortableSleep(delayMs, ctx.controller.signal);
   return ctx.wake(delayMs);
+}
+
+async function abortableSleep(delayMs: number, signal: AbortSignal) {
+  try {
+    await sleep(delayMs, undefined, { signal });
+  } catch (error) {
+    if (!signal.aborted) throw error;
+  }
 }
 
 interface RuntimeGraphState {
@@ -100,7 +104,7 @@ export class HostLease {
     private readonly db: AgentDatabase,
     private readonly logger: Logger,
     private readonly sessionId: string,
-    private readonly signal: StopSignal,
+    private readonly controller: AbortController,
   ) {
     if (
       !db.acquireHostLease({
@@ -144,7 +148,7 @@ export class HostLease {
       }
     } catch (error) {
       this.error = error instanceof Error ? error : new Error(String(error));
-      this.signal.stopping = true;
+      this.controller.abort(this.error);
       this.logger.error("Host Lease 续租失败", {
         sessionId: this.sessionId,
         error: this.error.message,

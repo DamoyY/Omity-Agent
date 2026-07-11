@@ -1,6 +1,5 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import type { QueueItem } from "../types";
-import type { HostContext } from "./context";
+import { waitForWake, type HostContext } from "./context";
 import { errorMessage, modelNetworkRetryDelayMs } from "./network";
 
 interface RetriedRun {
@@ -29,7 +28,7 @@ export async function waitBeforeModelNetworkRetry(
   });
   const deadline = Date.now() + delayMs;
   while (Date.now() < deadline) {
-    if (ctx.signal.stopping) {
+    if (ctx.controller.signal.aborted) {
       controls.stop();
       return false;
     }
@@ -41,7 +40,7 @@ export async function waitBeforeModelNetworkRetry(
     if (control === "pause" || control === "pause_cancel") {
       return controls.pause();
     }
-    await sleep(Math.min(250, deadline - Date.now()));
+    await waitForWake(ctx, Math.min(250, deadline - Date.now()));
   }
   return true;
 }

@@ -148,7 +148,7 @@ function makeContext(
     hooks,
     beforeModelNode: hookBeforeModelNode,
     sessionId: "session",
-    signal: { stopping: false },
+    controller: new AbortController(),
     wake: (delayMs) => Bun.sleep(delayMs),
   };
 }

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
 import { runClient } from "../client";
 import { sessionNotFound } from "../errors";
-import { deleteHostSession, runHostSession } from "../host";
+import { deleteHostSession } from "../host";
 import {
   loadSettings,
   resolveSessionPaths,
@@ -13,30 +13,25 @@ import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
 import type { Control, Settings } from "../types";
 import { AppEvents } from "./events";
 import { forkDatabaseBeforeMessage } from "./fork";
+import { AppHosts } from "./hosts";
 import { AppRegistry } from "./registry";
 import { loadTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
-
-interface RunningHost {
-  root: string;
-  signal: { stopping: boolean };
-  done: Promise<void>;
-}
 
 export class AppController {
   readonly events = new AppEvents();
   private readonly settings: Settings;
   private readonly registry: AppRegistry;
-  private readonly hosts = new Map<string, RunningHost>();
-  private readonly hostErrors = new Map<string, string>();
+  private readonly hosts: AppHosts;
 
   constructor(private readonly appRoot: string) {
     this.settings = loadSettings(appRoot);
     this.registry = new AppRegistry(this.settings);
+    this.hosts = new AppHosts(appRoot, this.events);
   }
 
   close() {
-    for (const host of this.hosts.values()) host.signal.stopping = true;
+    return this.hosts.close();
   }
 
   bootstrap() {
@@ -50,7 +45,7 @@ export class AppController {
     return this.registry.list().map((session) => ({
       ...session,
       running: this.hosts.has(session.id),
-      error: this.hostErrors.get(session.id) ?? null,
+      error: this.hosts.error(session.id),
     }));
   }
 
@@ -66,8 +61,8 @@ export class AppController {
     const root = normalizeWorkspacePath(workspace, this.appRoot);
     loadSettings(this.appRoot, { cwd: root });
     const id = `web-${randomUUID()}`;
-    this.startHost(id, root, "new");
-    this.hostErrors.delete(id);
+    this.hosts.start(id, root, "new");
+    this.hosts.clearError(id);
     const now = Math.floor(Date.now() / 1000);
     return {
       id,
@@ -80,17 +75,17 @@ export class AppController {
 
   sendMessage(sessionId: string, content: string) {
     const session = this.registry.require(sessionId);
-    this.ensureHost(session.id, session.workspace);
+    this.hosts.ensure(session.id, session.workspace);
     const result = runClient({ sessionId, append: content }, this.appRoot);
     this.events.notify(sessionId);
-    this.hostErrors.delete(sessionId);
+    this.hosts.clearError(sessionId);
     return result;
   }
 
   control(sessionId: string, control: Control) {
     const session = this.registry.require(sessionId);
     const result = runClient({ sessionId, control }, this.appRoot);
-    if (control === "running") this.ensureHost(session.id, session.workspace);
+    if (control === "running") this.hosts.ensure(session.id, session.workspace);
     this.events.notify(sessionId);
     return result;
   }
@@ -124,16 +119,16 @@ export class AppController {
         rmSync(targetPaths.dir, { recursive: true, force: true });
       }
     }
-    this.hostErrors.delete(id);
+    this.hosts.clearError(id);
     this.events.notify(sessionId);
     return this.registry.require(id);
   }
 
   async deleteSession(sessionId: string) {
     this.registry.require(sessionId);
-    await this.stopHost(sessionId);
+    await this.hosts.stop(sessionId);
     deleteHostSession(sessionId, this.appRoot);
-    this.hostErrors.delete(sessionId);
+    this.hosts.clearError(sessionId);
     return { deleted: sessionId };
   }
 
@@ -147,48 +142,5 @@ export class AppController {
     } finally {
       db.close();
     }
-  }
-
-  private ensureHost(sessionId: string, root: string) {
-    if (this.hosts.has(sessionId)) return;
-    this.startHost(sessionId, root, "load");
-  }
-
-  private async stopHost(sessionId: string) {
-    const running = this.hosts.get(sessionId);
-    if (!running) return;
-    running.signal.stopping = true;
-    this.events.notify(sessionId);
-    await running.done;
-  }
-
-  private startHost(
-    sessionId: string,
-    root: string,
-    kind: "new" | "load" | "overwrite",
-  ) {
-    const signal = { stopping: false };
-    const done = runHostSession({ kind, sessionId }, this.appRoot, {
-      cwd: root,
-      quiet: true,
-      signal,
-      wake: (delayMs) => this.events.wait(sessionId, delayMs),
-      observer: {
-        changed: (changedSessionId) => {
-          this.events.notify(changedSessionId);
-        },
-        token: () => undefined,
-      },
-    })
-      .catch((error: unknown) => {
-        this.hostErrors.set(
-          sessionId,
-          error instanceof Error ? error.message : String(error),
-        );
-      })
-      .finally(() => {
-        this.hosts.delete(sessionId);
-      });
-    this.hosts.set(sessionId, { root, signal, done });
   }
 }

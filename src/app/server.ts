@@ -67,7 +67,7 @@ async function waitForShutdown(
     process.once("SIGINT", resolve);
     process.once("SIGTERM", resolve);
   });
-  controller.close();
+  await controller.close();
   await new Promise<void>((resolve, reject) => {
     server.close((error) => {
       if (error) reject(error);

@@ -3,7 +3,7 @@ import { processQueue } from "./queue";
 
 export async function hostLoop(ctx: HostContext) {
   let lastIdle = 0;
-  while (!ctx.signal.stopping) {
+  while (!ctx.controller.signal.aborted) {
     const item = ctx.db.nextQueue(ctx.sessionId);
     if (!item) {
       if (ctx.db.control(ctx.sessionId) === "pause_cancel") {
