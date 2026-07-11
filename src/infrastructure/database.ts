@@ -18,7 +18,6 @@ import {
   appendUserQueue,
   nextQueueRow,
   pendingAppendRows,
-  runRootQueueIds as readRunRootQueueIds,
   setQueueStatusRecord,
   startQueueRecord,
 } from "./queueRecords";
@@ -128,24 +127,15 @@ export class AgentDatabase {
     setQueueStatusRecord(this.db, queueId, status, error);
   }
 
-  runRootQueueIds(queueIds: number[]) {
-    return readRunRootQueueIds(this.db, queueIds);
-  }
-
   appendAssistant(sessionId: string, queueId: number, content: string) {
     this.requireSession(sessionId);
     appendAssistantMessage(this.db, sessionId, queueId, content);
   }
 
-  replaceHistory(
-    sessionId: string,
-    messages: BaseMessage[],
-    queueIds?: number[],
-  ) {
+  replaceHistory(sessionId: string, messages: BaseMessage[]) {
     this.requireSession(sessionId);
     replaceMessages(this.db, sessionId, messages, {
       clearStreamEvents: true,
-      queueIds,
     });
   }
 

@@ -6,7 +6,6 @@ import {
   CanceledRun,
   cancelRun,
   finishRun,
-  persistedRunQueueIds,
   setRunStatus,
   type QueueRun,
 } from "./run";
@@ -98,11 +97,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     const state = await ctx.graph.getState(config);
     const messages = state.values?.messages ?? [];
     if (messages.length > 0) {
-      ctx.db.replaceHistory(
-        ctx.sessionId,
-        messages,
-        persistedRunQueueIds(ctx, run),
-      );
+      ctx.db.replaceHistory(ctx.sessionId, messages);
       ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
     }
     ctx.logger.debug("LangGraph 边界", {

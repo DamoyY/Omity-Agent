@@ -1,6 +1,9 @@
 import type { Database } from "bun:sqlite";
 import { AgentDatabase } from "../infrastructure/database";
-import { messageRowsToChatMessages } from "../infrastructure/messages";
+import {
+  messageInsert,
+  messageRowsToChatMessages,
+} from "../infrastructure/messages";
 import { contentToText } from "../runtime/content";
 
 type MessageRow = {
@@ -95,7 +98,14 @@ function insertMessages(
     "INSERT INTO messages (session_id, message_json, queue_id, created_at) VALUES (?, ?, NULL, ?)",
   );
   for (const message of messages) {
-    insert.run(sessionId, message.message_json, message.created_at);
+    const [chatMessage] = messageRowsToChatMessages([message]);
+    if (!chatMessage) throw new Error("无法还原 Fork 消息");
+    chatMessage.id = undefined;
+    insert.run(
+      sessionId,
+      messageInsert(chatMessage).messageJson,
+      message.created_at,
+    );
   }
 }
 

@@ -19,7 +19,6 @@ export type MessageInsert = {
 
 export type ReplaceMessagesOptions = {
   clearStreamEvents?: boolean;
-  queueIds?: number[];
 };
 
 export function messageInsert(
@@ -52,6 +51,20 @@ export function queueMessageId(sessionId: string, queueId: number) {
   return `queue:${sessionId}:${queueId}`;
 }
 
+export function messageQueueId(sessionId: string, message: BaseMessage) {
+  if (message.type !== "human" || !message.id) return undefined;
+  const prefix = `queue:${sessionId}:`;
+  if (!message.id.startsWith("queue:")) return undefined;
+  if (!message.id.startsWith(prefix)) {
+    throw new Error(`用户消息属于其他会话：${message.id}`);
+  }
+  const queueId = Number(message.id.slice(prefix.length));
+  if (!Number.isSafeInteger(queueId) || queueId <= 0) {
+    throw new Error(`用户消息 Queue ID 无效：${message.id}`);
+  }
+  return queueId;
+}
+
 export function appendAssistantMessage(
   db: Database,
   sessionId: string,
@@ -67,12 +80,9 @@ export function replaceMessages(
   messages: BaseMessage[],
   options: ReplaceMessagesOptions = {},
 ) {
-  let humanIndex = 0;
-  const items = messages.map((message) => {
-    const queueId =
-      message.type === "human" ? options.queueIds?.[humanIndex++] : undefined;
-    return messageInsert(message, queueId);
-  });
+  const items = messages.map((message) =>
+    messageInsert(message, messageQueueId(sessionId, message)),
+  );
   const insert = db.query(
     "INSERT INTO messages (session_id, message_json, queue_id, created_at) VALUES (?, ?, ?, unixepoch())",
   );

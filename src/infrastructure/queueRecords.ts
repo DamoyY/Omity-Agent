@@ -128,21 +128,6 @@ export function setQueueStatusRecord(
   syncRunStatus(db, queueId, status);
 }
 
-export function runRootQueueIds(db: Database, queueIds: number[]) {
-  if (queueIds.length === 0) return [];
-  const placeholders = queueIds.map(() => "?").join(", ");
-  const query = db.prepare<{ root_queue_id: number }, number[]>(
-    `SELECT DISTINCT r.root_queue_id FROM queue q
-     JOIN runs r ON r.id = q.run_id
-     WHERE q.id IN (${placeholders}) ORDER BY r.root_queue_id`,
-  );
-  try {
-    return query.all(...queueIds).map((row) => row.root_queue_id);
-  } finally {
-    query.finalize();
-  }
-}
-
 function appendToRun(
   db: Database,
   sessionId: string,
