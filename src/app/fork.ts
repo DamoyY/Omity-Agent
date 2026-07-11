@@ -21,8 +21,6 @@ type ForkOptions = {
   beforeMessageId: number;
 };
 
-type ForkKind = "draft" | "pause";
-
 export function forkDatabaseBeforeMessage(options: ForkOptions) {
   const forkPoint = assertForkPoint(
     options.source.db,
@@ -45,11 +43,7 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
     options.target.createSession(options.targetSessionId, options.workspace);
     insertMessages(options.target.db, options.targetSessionId, messages);
     const content = messageContent(forkPoint.message_json);
-    if (forkKind(options.source.db, forkPoint.id) === "pause") {
-      options.target.appendForkPause(options.targetSessionId, content);
-    } else {
-      options.target.appendDraft(options.targetSessionId, content);
-    }
+    options.target.appendDraft(options.targetSessionId, content);
   });
   tx();
 }
@@ -121,26 +115,6 @@ function messageContent(value: string) {
   const [message] = messageRowsToChatMessages([{ message_json: value }]);
   if (!message) throw new Error("无法还原 Fork 消息");
   return contentToText(message.content);
-}
-
-function forkKind(db: Database, messageId: number): ForkKind {
-  const query = db.prepare<
-    { root_queue_id: number | null; queue_id: number | null },
-    [number]
-  >(
-    `SELECT r.root_queue_id, m.queue_id FROM messages m
-       LEFT JOIN queue q ON q.id = m.queue_id
-       LEFT JOIN runs r ON r.id = q.run_id
-       WHERE m.id = ?`,
-  );
-  let row: { root_queue_id: number | null; queue_id: number | null } | null;
-  try {
-    row = query.get(messageId);
-  } finally {
-    query.finalize();
-  }
-  if (!row?.queue_id) return "draft";
-  return row.root_queue_id === row.queue_id ? "draft" : "pause";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

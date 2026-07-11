@@ -10,7 +10,6 @@ import {
 import { loadMessages, replaceMessages } from "./messages";
 import {
   appendDraftQueue,
-  appendForkPauseQueue,
   appendUserQueue,
   nextQueueRow,
   pendingAppendRows,
@@ -95,13 +94,6 @@ export class AgentDatabase {
       return queueId;
     });
     return tx();
-  }
-
-  appendForkPause(sessionId: string, content: string) {
-    this.requireSession(sessionId);
-    return this.db.transaction(() =>
-      appendForkPauseQueue(this.db, sessionId, content),
-    )();
   }
 
   pendingAppends(sessionId: string): QueueItem[] {

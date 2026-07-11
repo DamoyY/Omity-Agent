@@ -121,7 +121,7 @@ function latestMessageId(db: ReturnType<typeof makeDb>) {
   }
 }
 
-test("fork preserves completed takeover pairs before an appended user", () => {
+test("fork preserves completed takeover pairs in an editable draft", () => {
   const source = makeDb();
   const target = makeDb();
   source.resetSession("source", workspace);
@@ -160,11 +160,11 @@ test("fork preserves completed takeover pairs before an appended user", () => {
     "tool",
     "ai",
   ]);
-  expect(target.control("target")).toBe("pause");
-  expect(target.nextQueue("target")).toMatchObject({
+  expect(target.control("target")).toBe("running");
+  expect(readOnlyQueue(target)).toMatchObject({
     content: "第二条",
-    status: "paused",
-    userMessageId: null,
+    status: "draft",
+    user_message_id: null,
   });
   source.close();
   target.close();

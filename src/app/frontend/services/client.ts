@@ -1,4 +1,5 @@
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
+import type { Control } from "../../../types";
 
 export type SessionInfo = {
   id: string;
@@ -36,6 +37,7 @@ export async function pickWorkspace() {
 
 export async function loadTranscript(sessionId: string) {
   return request<{
+    control: Control;
     queue: DisplayQueue[];
     view: TimelineMessage[];
   }>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`);
@@ -54,7 +56,10 @@ export async function sendMessage(sessionId: string, content: string) {
   });
 }
 
-export async function setControl(sessionId: string, control: string) {
+export async function setControl(
+  sessionId: string,
+  control: Extract<Control, "running" | "pause" | "cancel">,
+) {
   return request(`/api/sessions/${encodeURIComponent(sessionId)}/control`, {
     method: "POST",
     body: JSON.stringify({ control }),

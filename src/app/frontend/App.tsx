@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cx } from "styled-system/css";
-import type { DisplayQueue, TimelineMessage } from "../timeline";
 import { ChatPage } from "./components/ChatPage";
 import { Sidebar } from "./components/Sidebar";
 import { layout, main, sidebar } from "./design";
@@ -20,12 +19,9 @@ import {
 } from "./services/client";
 import { reportPausedRunErrors } from "./services/runErrors";
 
-type Transcript = {
-  queue: DisplayQueue[];
-  view: TimelineMessage[];
-};
+type Transcript = Awaited<ReturnType<typeof loadTranscript>>;
 
-const emptyTranscript: Transcript = { queue: [], view: [] };
+const emptyTranscript: Transcript = { control: "running", queue: [], view: [] };
 
 export function App() {
   const { t } = useTranslation();
@@ -106,9 +102,10 @@ export function App() {
   useEffect(() => {
     if (pausingSessionId !== activeSession?.id) return;
     const running = transcript.queue.some((item) => item.status === "running");
-    const paused = transcript.queue.some((item) => item.status === "paused");
-    if (paused || !running) setPausingSessionId(undefined);
-  }, [activeSession?.id, pausingSessionId, transcript.queue]);
+    if (transcript.control !== "running" || !running) {
+      setPausingSessionId(undefined);
+    }
+  }, [activeSession?.id, pausingSessionId, transcript]);
 
   return (
     <div className={cx("dark", layout)}>
@@ -141,6 +138,7 @@ export function App() {
           canControl={activeSession !== undefined}
           newSession={page.kind === "new"}
           pausing={pausingSessionId === activeSession?.id}
+          control={transcript.control}
           queue={transcript.queue}
           view={transcript.view}
           workspace={newWorkspace}

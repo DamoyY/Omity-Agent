@@ -2,7 +2,6 @@ import type { Database } from "bun:sqlite";
 import type { QueueItem, QueueStatus } from "../types";
 import { insertUserMessage } from "./messages";
 import { toQueueItem, type QueueRow } from "./queueRows";
-import { writeControlRecord } from "./sessionRecords";
 
 const queueSelect = `
   SELECT q.id, q.run_id, q.content, q.status, q.user_message_id,
@@ -55,17 +54,6 @@ export function appendDraftQueue(
   return Number(result.lastInsertRowid);
 }
 
-export function appendForkPauseQueue(
-  db: Database,
-  sessionId: string,
-  content: string,
-) {
-  const queueId = appendUserQueue(db, sessionId, content);
-  setQueueStatusRecord(db, queueId, "paused");
-  writeControlRecord(db, sessionId, "pause");
-  return queueId;
-}
-
 export function pendingAppendRows(
   db: Database,
   sessionId: string,
@@ -111,7 +99,7 @@ export function startQueueRecord(
       [item.id, sessionId, item.status, item.userMessageId],
     );
     if (result.changes !== 1) throw new Error(`队列认领冲突：${item.id}`);
-    syncRunStatus(db, item.id, "running");
+    syncRunStatus(db, item.id);
     return item.userMessageId;
   }
   const messageId = insertUserMessage(db, sessionId, item.content, item.id);
@@ -124,7 +112,7 @@ export function startQueueRecord(
     [messageId, item.id, sessionId],
   );
   if (result.changes !== 1) throw new Error(`队列认领冲突：${item.id}`);
-  syncRunStatus(db, item.id, "running");
+  syncRunStatus(db, item.id);
   return messageId;
 }
 
@@ -138,7 +126,7 @@ export function setQueueStatusRecord(
     "UPDATE queue SET status = ?, error = ?, updated_at = unixepoch() WHERE id = ?",
     [status, error ?? null, queueId],
   );
-  syncRunStatus(db, queueId, status);
+  syncRunStatus(db, queueId);
 }
 
 function appendToRun(
@@ -155,10 +143,24 @@ function appendToRun(
   return Number(result.lastInsertRowid);
 }
 
-function syncRunStatus(db: Database, queueId: number, status: QueueStatus) {
+function syncRunStatus(db: Database, queueId: number) {
   db.run(
-    `UPDATE runs SET status = ?, updated_at = unixepoch()
+    `UPDATE runs SET status = CASE
+       WHEN EXISTS (
+         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'running'
+       ) THEN 'running'
+       WHEN EXISTS (
+         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'paused'
+       ) THEN 'paused'
+       WHEN EXISTS (
+         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'pending'
+       ) THEN 'pending'
+       WHEN EXISTS (
+         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'canceled'
+       ) THEN 'canceled'
+       ELSE 'done'
+     END, updated_at = unixepoch()
      WHERE id = (SELECT run_id FROM queue WHERE id = ?)`,
-    [status, queueId],
+    [queueId],
   );
 }

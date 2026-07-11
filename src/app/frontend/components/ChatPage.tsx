@@ -2,6 +2,7 @@ import { GitFork, Pause, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css, cx } from "styled-system/css";
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
+import type { Control } from "../../../types";
 import { Composer } from "./Composer";
 import { MarkdownView } from "./MarkdownView";
 import { NewSessionPage } from "./NewSessionPage";
@@ -70,6 +71,7 @@ const messageActions = css({
 export function ChatPage({
   activeId,
   canControl,
+  control,
   newSession,
   pausing,
   queue,
@@ -83,26 +85,23 @@ export function ChatPage({
 }: {
   activeId?: string;
   canControl: boolean;
+  control: Control;
   newSession: boolean;
   pausing: boolean;
   queue: DisplayQueue[];
   view: TimelineMessage[];
   workspace?: string;
   onSend(content: string): Promise<void>;
-  onControl(control: string): Promise<void>;
+  onControl(control: Extract<Control, "running" | "pause">): Promise<void>;
   onFork(messageId: number): Promise<void>;
   onPickWorkspace(): Promise<string | null>;
   onWorkspaceChange(workspace: string): void;
 }) {
   const { t } = useTranslation();
-  const paused = queue.some((item) => item.status === "paused");
+  const paused = control === "pause" || control === "pause_cancel";
   const waitingForPause = pausing && !paused;
   const firstUserMessageId = view.find((item) => item.role === "user")?.id;
-  const forkDraft = queue.find(
-    (item) =>
-      (item.status === "draft" || item.status === "paused") &&
-      item.userMessageId === null,
-  )?.content;
+  const forkDraft = queue.find((item) => item.status === "draft")?.content;
 
   if (!activeId) {
     if (newSession) {

@@ -65,3 +65,24 @@ test("append during active run belongs to that run", () => {
   ]);
   db.close();
 });
+
+test("run status reflects all queue items", () => {
+  const db = makeDb();
+  db.resetSession("123", workspace);
+  const first = db.appendUser("123", "第一条");
+  const second = db.appendUser("123", "第二条");
+
+  db.startQueue("123", db.nextQueue("123")!);
+  db.setQueueStatus(first, "done");
+  expect(runStatus(db)).toBe("pending");
+
+  db.startQueue("123", db.nextQueue("123")!);
+  db.setQueueStatus(second, "done");
+  expect(runStatus(db)).toBe("done");
+  db.close();
+});
+
+function runStatus(db: ReturnType<typeof makeDb>) {
+  return db.db.query<{ status: string }, []>("SELECT status FROM runs").get()!
+    .status;
+}

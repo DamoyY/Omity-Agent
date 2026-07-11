@@ -35,6 +35,7 @@ type EventRow = {
 };
 
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
+  const control = db.control(sessionId);
   const messages = db.db
     .query<MessageRow, [string]>(
       "SELECT id, message_json, queue_id, created_at FROM messages WHERE session_id = ? ORDER BY id",
@@ -64,7 +65,7 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
     )
     .all(sessionId)
     .map(toDisplayEvent);
-  return { queue, view: buildTimeline(messages, queue, events) };
+  return { control, queue, view: buildTimeline(messages, queue, events) };
 }
 
 function toDisplayMessage(row: MessageRow): DisplayMessage {
