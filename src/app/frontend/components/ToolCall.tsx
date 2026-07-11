@@ -67,6 +67,17 @@ const codeBlock = css({
   wordBreak: "break-word",
 });
 
+const imageList = css({
+  display: "grid",
+  gap: "2",
+});
+
+const outputImage = css({
+  display: "block",
+  h: "auto",
+  maxW: "full",
+});
+
 export function ToolCall({
   call,
   output,
@@ -94,7 +105,21 @@ export function ToolCall({
         {output ? (
           <section className={ioPanel}>
             <p className={panelTitle}>{t("output")}</p>
-            <HighlightedCode className={codeBlock} code={output.content} />
+            {output.content.trim() ? (
+              <HighlightedCode className={codeBlock} code={output.content} />
+            ) : null}
+            {output.images.length > 0 ? (
+              <div className={imageList}>
+                {output.images.map((image, index) => (
+                  <img
+                    alt=""
+                    className={outputImage}
+                    key={`${image.mimeType}-${index.toString()}`}
+                    src={image.src}
+                  />
+                ))}
+              </div>
+            ) : null}
           </section>
         ) : null}
       </div>

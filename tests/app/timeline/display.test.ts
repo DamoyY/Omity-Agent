@@ -13,6 +13,7 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
       sourceId: "message-1",
       role: "assistant",
       content: "",
+      images: [],
       queueId: null,
       toolCalls: [
         { id: "call-1", index: 0, name: "terminal_new_tab", input: {} },
@@ -49,6 +50,7 @@ test("streaming tool call is grouped with previous assistant message", () => {
       sourceId: "message-1",
       role: "assistant",
       content: "",
+      images: [],
       queueId: null,
       toolCalls: [
         { id: "call-1", index: 0, name: "terminal_new_tab", input: {} },
@@ -78,6 +80,39 @@ test("streaming tool call is grouped with previous assistant message", () => {
     "call-1",
     "call-2",
   ]);
+});
+
+test("tool output retains images", () => {
+  const image = {
+    src: "data:image/png;base64,iVBORw0KGgo=",
+    mimeType: "image/png",
+  };
+  const messages: DisplayMessage[] = [
+    {
+      id: 1,
+      role: "assistant",
+      content: "",
+      images: [],
+      queueId: null,
+      toolCalls: [{ id: "call-1", index: 0, name: "capture", input: {} }],
+      createdAt: 1,
+    },
+    {
+      id: 2,
+      role: "tool",
+      content: "",
+      images: [image],
+      queueId: null,
+      toolCalls: [],
+      toolCallId: "call-1",
+      createdAt: 2,
+    },
+  ];
+
+  const view = buildTimeline(messages, [], []);
+  const output = view[0]?.parts.find((part) => part.type === "tool")?.output;
+
+  expect(output?.images).toEqual([image]);
 });
 
 function toolCalls(

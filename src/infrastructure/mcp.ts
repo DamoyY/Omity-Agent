@@ -113,6 +113,7 @@ export async function loadMcp(root: string, logger: Logger) {
               {
                 throwOnLoadError: false,
                 prefixToolNameWithServerName: true,
+                useStandardContentBlocks: true,
               },
             );
           }),

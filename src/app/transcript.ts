@@ -5,6 +5,7 @@ import {
 } from "@langchain/core/messages";
 import { AgentDatabase } from "../infrastructure/database";
 import { contentToText } from "../runtime/content";
+import { extractToolImages } from "../runtime/modelImages";
 import {
   buildTimeline,
   type DisplayEvent,
@@ -77,6 +78,7 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
     ...(message.id ? { sourceId: message.id } : {}),
     role: messageRole(message),
     content: contentToText(message.content),
+    images: extractToolImages(message.content),
     queueId: row.queue_id,
     toolCalls: extractToolCalls(message),
     toolCallId: extractToolCallId(message),

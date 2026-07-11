@@ -17,6 +17,7 @@ import type {
 
 export type {
   DisplayEvent,
+  DisplayImage,
   DisplayMessage,
   DisplayQueue,
   DisplayRole,
@@ -127,6 +128,7 @@ function streamMessage(
       id: -1,
       role: "assistant",
       content,
+      images: [],
       queueId: null,
       toolCalls,
       createdAt: 0,

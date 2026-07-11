@@ -2,11 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { ToolMessage } from "@langchain/core/messages";
+import { ToolMessage, type MessageContent } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
 import { getEncoding } from "js-tiktoken";
 import { safeId } from "../infrastructure/config";
 import type { Settings } from "../types";
+import { inspectToolTextContent } from "./outputText";
 
 const tokenizer = getEncoding("o200k_base");
 
@@ -42,12 +43,14 @@ export async function redirectLargeToolOutput(
   options: LargeToolOutputOptions,
 ) {
   if (message.status === "error") return message;
-  const normalized = normalizeMcpTextResult(message.content);
+  const normalized = inspectToolTextContent(message.content);
   if (normalized === null || normalized.isError) return message;
   const original = normalized.text;
   const tokens = countTokens(original);
   const normalizedMessage =
-    original === message.content ? message : copyToolMessage(message, original);
+    normalized.normalized === message.content
+      ? message
+      : copyToolMessage(message, normalized.normalized);
   if (tokens <= options.maxTokens) return normalizedMessage;
 
   const outputPath = await writeLargeToolOutput(
@@ -57,7 +60,10 @@ export async function redirectLargeToolOutput(
     options.outputId,
   );
   const content = `工具输出过长（${tokens.toString()} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`;
-  return copyToolMessage(message, content, { path: outputPath, tokens });
+  return copyToolMessage(message, normalized.replaceText(content), {
+    path: outputPath,
+    tokens,
+  });
 }
 
 export function countTokens(text: string) {
@@ -66,7 +72,7 @@ export function countTokens(text: string) {
 
 function copyToolMessage(
   message: ToolMessage,
-  content: string,
+  content: MessageContent,
   largeOutput?: { path: string; tokens: number },
 ) {
   const artifact: unknown = message.artifact;
@@ -90,15 +96,6 @@ function getSessionId(context: unknown) {
   return context.sessionId;
 }
 
-function normalizeMcpTextResult(
-  content: unknown,
-): { text: string; isError: boolean } | null {
-  if (typeof content === "string") {
-    return normalizeStringContent(content);
-  }
-  return normalizeMcpValue(content, false);
-}
-
 function mergeMetadata(
   metadata: unknown,
   largeOutput: { path: string; tokens: number } | undefined,
@@ -113,36 +110,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function normalizeStringContent(content: string) {
-  try {
-    const parsed: unknown = JSON.parse(content);
-    return isMcpContentShape(parsed)
-      ? normalizeMcpValue(parsed, false)
-      : { text: content, isError: false };
-  } catch {
-    return { text: content, isError: false };
-  }
-}
-
-function normalizeMcpValue(
-  value: unknown,
-  isError: boolean,
-): { text: string; isError: boolean } | null {
-  if (Array.isArray(value)) return normalizeMcpContentBlocks(value, isError);
-  if (isMcpCallToolResult(value)) {
-    return normalizeMcpContentBlocks(value.content, value.isError === true);
-  }
-  if (isTextContent(value)) return { text: value.text, isError };
-  return null;
-}
-
-function normalizeMcpContentBlocks(blocks: unknown[], isError: boolean) {
-  const parts = blocks.map((block) => normalizeMcpValue(block, isError));
-  return parts.every((part) => part !== null)
-    ? { text: parts.map((part) => part.text).join(""), isError }
-    : null;
-}
-
 function isLargeOutputRuntimeContext(
   value: unknown,
 ): value is LargeOutputRuntimeContext {
@@ -152,32 +119,6 @@ function isLargeOutputRuntimeContext(
     "sessionId" in value &&
     typeof value.sessionId === "string" &&
     value.sessionId.length > 0
-  );
-}
-
-function isMcpCallToolResult(
-  value: unknown,
-): value is { content: unknown[]; isError?: boolean } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "content" in value &&
-    Array.isArray(value.content)
-  );
-}
-
-function isMcpContentShape(value: unknown) {
-  return (
-    Array.isArray(value) || isMcpCallToolResult(value) || isTextContent(value)
-  );
-}
-
-function isTextContent(value: unknown): value is { text: string } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "text" in value &&
-    typeof value.text === "string"
   );
 }
 

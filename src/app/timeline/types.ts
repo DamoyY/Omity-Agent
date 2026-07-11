@@ -1,5 +1,10 @@
 export type DisplayRole = "user" | "assistant" | "tool";
 
+export interface DisplayImage {
+  src: string;
+  mimeType: string;
+}
+
 export interface DisplayToolCall {
   id: string;
   index: number;
@@ -15,6 +20,7 @@ export interface DisplayMessage {
   sourceId?: string;
   role: DisplayRole;
   content: string;
+  images: DisplayImage[];
   queueId: number | null;
   toolCalls: DisplayToolCall[];
   toolCallId?: string;

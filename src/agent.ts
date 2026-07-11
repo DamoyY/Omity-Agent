@@ -4,6 +4,7 @@ import { createAgent, createMiddleware } from "langchain";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { BunSqliteSaver } from "./checkpointer";
 import { createLargeToolOutputMiddleware } from "./runtime/largeOutput";
+import { createModelImageMiddleware } from "./runtime/modelImages";
 import { buildSkillsMessage } from "./skills";
 import type { Settings } from "./types";
 import { createHookMiddleware } from "./hooks/middleware";
@@ -60,6 +61,7 @@ export function buildGraph(
   const middleware = [
     createHookMiddleware(hooks),
     createLargeToolOutputMiddleware(settings),
+    createModelImageMiddleware(settings.model.api),
     ...(skillsMessage && !usesResponsesInstructions
       ? [createSkillsMiddleware(skillsMessage)]
       : []),

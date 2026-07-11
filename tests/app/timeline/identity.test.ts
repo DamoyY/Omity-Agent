@@ -113,6 +113,7 @@ function assistant(options: {
     ...(options.sourceId ? { sourceId: options.sourceId } : {}),
     role: "assistant",
     content: options.content ?? "",
+    images: [],
     queueId: null,
     toolCalls: options.call ? [options.call] : [],
     createdAt: options.id,

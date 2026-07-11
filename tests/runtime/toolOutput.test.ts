@@ -87,11 +87,12 @@ test("accepts hook call IDs when writing large output", async () => {
   expect(redirected.content).toContain(outputPath);
 });
 
-test("keeps MCP image output and MCP error result unchanged", async () => {
+test("keeps MCP images outside the text size limit", async () => {
   const root = makeDir();
+  const imageData = "A".repeat(1024 * 1024);
   const imageMessage = new ToolMessage({
     content: JSON.stringify({
-      content: [{ type: "image", data: "AAAA", mimeType: "image/png" }],
+      content: [{ type: "image", data: imageData, mimeType: "image/png" }],
     }),
     tool_call_id: "call-2",
   });
@@ -116,8 +117,38 @@ test("keeps MCP image output and MCP error result unchanged", async () => {
     outputId: "call-3",
   });
 
-  expect(imageRedirected).toBe(imageMessage);
+  expect(imageRedirected.content).toEqual([
+    { type: "image", data: imageData, mimeType: "image/png" },
+  ]);
   expect(errorRedirected).toBe(errorMessage);
+});
+
+test("redirects mixed output text without removing its image", async () => {
+  const root = makeDir();
+  const text = "long text ".repeat(100);
+  const image = {
+    type: "image",
+    source_type: "base64",
+    data: "A".repeat(1024 * 1024),
+    mime_type: "image/png",
+  };
+  const redirected = await redirectLargeToolOutput(
+    new ToolMessage({
+      content: [{ type: "text", text }, image],
+      tool_call_id: "call-4",
+    }),
+    {
+      dataDir: root,
+      maxTokens: 1,
+      sessionId: "demo",
+      outputId: "call-4",
+    },
+  );
+
+  expect(redirected.content).toEqual([
+    { type: "text", text: expect.stringContaining("工具输出过长") },
+    image,
+  ]);
 });
 
 function makeDir() {
