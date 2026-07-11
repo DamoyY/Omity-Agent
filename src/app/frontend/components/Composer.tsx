@@ -1,5 +1,5 @@
 import { Send } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { Button, Textarea } from "./ParkUI";
@@ -39,20 +39,31 @@ export function Composer({
 }) {
   const { t } = useTranslation();
   const [content, setContent] = useState(draft ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const submit = async () => {
+    if (submittingRef.current || !content.trim()) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      await onSend(content);
+      setContent("");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  };
   return (
     <form
       className={form}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!content.trim()) return;
-        void onSend(content).then(() => {
-          setContent("");
-        });
+        void submit();
       }}
     >
       <Textarea
         className={messageBox}
-        disabled={disabled}
+        disabled={disabled || submitting}
         placeholder={t("messagePlaceholder")}
         size="md"
         value={content}
@@ -68,7 +79,7 @@ export function Composer({
       />
       <Button
         className={sendButton}
-        disabled={disabled}
+        disabled={disabled || submitting}
         type="submit"
         variant="outline"
       >

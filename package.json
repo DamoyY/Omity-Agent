@@ -53,6 +53,7 @@
     "@modelcontextprotocol/sdk": "latest",
     "@oclif/core": "latest",
     "@park-ui/panda-preset": "latest",
+    "@tanstack/react-query": "latest",
     "dompurify": "latest",
     "highlight.js": "latest",
     "i18next": "latest",

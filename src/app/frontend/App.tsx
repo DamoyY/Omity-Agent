@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cx } from "styled-system/css";
 import { ChatPage } from "./components/ChatPage";
@@ -6,48 +7,45 @@ import { Sidebar } from "./components/Sidebar";
 import { layout, main, sidebar } from "./design";
 import { readPage, writePage, type Page } from "./route";
 import {
-  bootstrap,
   createSession,
   deleteSession,
   forkSession,
-  loadTranscript,
   pickWorkspace,
   sendMessage,
-  sessionEvents,
   setControl,
-  type SessionInfo,
 } from "./services/client";
-import { reportPausedRunErrors } from "./services/runErrors";
-
-type Transcript = Awaited<ReturnType<typeof loadTranscript>>;
-
-const emptyTranscript: Transcript = { control: "running", queue: [], view: [] };
+import {
+  addSession,
+  removeSession,
+  transcriptKey,
+  useBootstrap,
+  useSessionTranscript,
+} from "./services/queries";
 
 export function App() {
   const { t } = useTranslation();
-  const [cwd, setCwd] = useState("");
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const queryClient = useQueryClient();
+  const bootstrap = useBootstrap();
   const [page, setPage] = useState(readPage);
-  const [newWorkspace, setNewWorkspace] = useState("");
-  const [loadedTranscript, setLoadedTranscript] = useState<{
-    sessionId: string;
-    data: Transcript;
-  }>();
+  const [newWorkspace, setNewWorkspace] = useState<string>();
   const [pausingSessionId, setPausingSessionId] = useState<string>();
+  const sessions = bootstrap.data?.sessions ?? [];
+  const cwd = bootstrap.data?.cwd ?? "";
+  const currentPage = resolvePage(page, sessions, bootstrap.data !== undefined);
   const activeSession =
-    page.kind === "session"
-      ? sessions.find((session) => session.id === page.id)
+    currentPage.kind === "session"
+      ? sessions.find((session) => session.id === currentPage.id)
       : undefined;
-  const transcript =
-    loadedTranscript && loadedTranscript.sessionId === activeSession?.id
-      ? loadedTranscript.data
-      : emptyTranscript;
+  const transcript = useSessionTranscript(
+    activeSession?.id,
+    t("runPausedError"),
+  );
   const forkDraft = transcript.queue.find((item) => item.status === "draft");
 
-  const navigate = (nextPage: Page, replace = false) => {
+  const navigate = useCallback((nextPage: Page, replace = false) => {
     writePage(nextPage, replace);
     setPage(nextPage);
-  };
+  }, []);
 
   useEffect(() => {
     const syncPage = () => {
@@ -60,52 +58,9 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void bootstrap().then((data) => {
-      setCwd(data.cwd);
-      setNewWorkspace(data.cwd);
-      setSessions(data.sessions);
-      const currentPage = readPage();
-      const firstSession = data.sessions[0];
-      const routeSessionExists =
-        currentPage.kind === "session" &&
-        data.sessions.some((session) => session.id === currentPage.id);
-      if (currentPage.kind === "empty") {
-        navigate(
-          firstSession ? sessionPage(firstSession.id) : { kind: "new" },
-          true,
-        );
-      } else if (currentPage.kind === "session" && !routeSessionExists) {
-        navigate(
-          firstSession ? sessionPage(firstSession.id) : { kind: "new" },
-          true,
-        );
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!activeSession) return;
-    let stopped = false;
-    const reportedErrors = new Set<string>();
-    const refresh = async () => {
-      const data = await loadTranscript(activeSession.id);
-      if (stopped) return;
-      setLoadedTranscript({ sessionId: activeSession.id, data });
-      reportPausedRunErrors(
-        activeSession.id,
-        data.queue,
-        reportedErrors,
-        t("runPausedError"),
-      );
-    };
-    void refresh();
-    const events = sessionEvents(activeSession.id);
-    events.addEventListener("changed", () => void refresh());
-    return () => {
-      stopped = true;
-      events.close();
-    };
-  }, [activeSession, t]);
+    if (samePage(page, currentPage)) return;
+    writePage(currentPage, true);
+  }, [currentPage, page]);
 
   const pausing =
     pausingSessionId === activeSession?.id &&
@@ -119,19 +74,15 @@ export function App() {
           activeId={activeSession?.id}
           sessions={sessions}
           onCreate={() => {
-            setNewWorkspace(cwd);
-            setLoadedTranscript(undefined);
+            setNewWorkspace(undefined);
             navigate({ kind: "new" });
           }}
           onDelete={async (id) => {
             await deleteSession(id);
-            const next = sessions.filter((session) => session.id !== id);
-            setSessions(next);
+            removeSession(queryClient, id);
             if (activeSession?.id === id) {
-              const firstSession = next[0];
-              navigate(
-                firstSession ? sessionPage(firstSession.id) : { kind: "new" },
-              );
+              const next = sessions.find((session) => session.id !== id);
+              navigate(next ? sessionPage(next.id) : { kind: "new" });
             }
           }}
           onSelect={(id) => {
@@ -143,12 +94,12 @@ export function App() {
         <ChatPage
           activeId={activeSession?.id}
           canControl={activeSession !== undefined}
-          newSession={page.kind === "new"}
+          newSession={currentPage.kind === "new"}
           pausing={pausing}
           control={transcript.control}
           queue={transcript.queue}
           view={transcript.view}
-          workspace={newWorkspace}
+          workspace={newWorkspace ?? cwd}
           onControl={async (control) => {
             if (!activeSession) return;
             const running = transcript.queue.some(
@@ -168,8 +119,8 @@ export function App() {
           onFork={async (messageId) => {
             if (!activeSession) return;
             const { session } = await forkSession(activeSession.id, messageId);
+            addSession(queryClient, session);
             setPausingSessionId(undefined);
-            setSessions((current) => [session, ...current]);
             navigate(sessionPage(session.id));
           }}
           onPickWorkspace={async () => {
@@ -181,15 +132,18 @@ export function App() {
               await sendMessage(activeSession.id, content);
               return;
             }
-            if (page.kind === "new") {
-              const { session } = await createSession(newWorkspace);
-              setSessions((current) => [session, ...current]);
+            if (currentPage.kind === "new") {
+              const { session } = await createSession(newWorkspace ?? cwd);
+              addSession(queryClient, session);
               navigate(sessionPage(session.id));
               await sendMessage(session.id, content);
               return;
             }
             if (!activeSession) return;
             await sendMessage(activeSession.id, content);
+            await queryClient.invalidateQueries({
+              queryKey: transcriptKey(activeSession.id),
+            });
           }}
           onWorkspaceChange={setNewWorkspace}
         />
@@ -200,4 +154,24 @@ export function App() {
 
 function sessionPage(id: string): Page {
   return { kind: "session", id };
+}
+
+function resolvePage(page: Page, sessions: { id: string }[], ready: boolean) {
+  if (!ready) return page;
+  if (
+    page.kind === "session" &&
+    sessions.some((session) => session.id === page.id)
+  ) {
+    return page;
+  }
+  if (page.kind === "new") return page;
+  const first = sessions[0];
+  return first ? sessionPage(first.id) : ({ kind: "new" } as const);
+}
+
+function samePage(left: Page, right: Page) {
+  if (left.kind !== right.kind) return false;
+  return left.kind !== "session" || right.kind !== "session"
+    ? true
+    : left.id === right.id;
 }

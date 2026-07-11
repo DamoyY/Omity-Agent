@@ -9,8 +9,10 @@ export interface SessionInfo {
   running: boolean;
 }
 
-export async function bootstrap() {
-  return request<{ cwd: string; sessions: SessionInfo[] }>("/api/bootstrap");
+export async function bootstrap(signal?: AbortSignal) {
+  return request<{ cwd: string; sessions: SessionInfo[] }>("/api/bootstrap", {
+    signal,
+  });
 }
 
 export async function createSession(workspace: string) {
@@ -35,12 +37,12 @@ export async function pickWorkspace() {
   });
 }
 
-export async function loadTranscript(sessionId: string) {
+export async function loadTranscript(sessionId: string, signal?: AbortSignal) {
   return request<{
     control: Control;
     queue: DisplayQueue[];
     view: TimelineMessage[];
-  }>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`);
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`, { signal });
 }
 
 export function sessionEvents(sessionId: string) {
