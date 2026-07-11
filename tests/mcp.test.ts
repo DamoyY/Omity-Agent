@@ -159,7 +159,7 @@ test("mcp tool name overrides report renamed conflicts", () => {
   ).toThrow("MCP 工具重命名后名称冲突：web__crawl");
 });
 
-test("mcp error result is converted to normal tool output", () => {
+test("mcp error result keeps its failure status with readable context", () => {
   expect(
     mcpErrorResultAsOutput(
       {
@@ -170,7 +170,7 @@ test("mcp error result is converted to normal tool output", () => {
       "search",
     ),
   ).toEqual({
-    isError: false,
+    isError: true,
     content: [
       {
         type: "text",

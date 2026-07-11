@@ -32,7 +32,6 @@ export function mcpErrorResultAsOutput(
   if (!isRecord(result) || result["isError"] !== true) return result;
   return {
     ...result,
-    isError: false,
     content: [
       {
         type: "text",

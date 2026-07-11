@@ -9,6 +9,12 @@ export type InvocationDetails = {
   sourceId: string;
 };
 
+export type InvocationRow = {
+  status: string;
+  output_json: string | null;
+  error: string | null;
+};
+
 export function applyInvocationSchema(db: Database) {
   db.run(`
     CREATE TABLE IF NOT EXISTS invocations (
@@ -19,6 +25,8 @@ export function applyInvocationSchema(db: Database) {
       trigger TEXT NOT NULL,
       source_id TEXT NOT NULL,
       status TEXT NOT NULL,
+      owner_id TEXT NOT NULL,
+      lease_expires_at INTEGER NOT NULL,
       output_json TEXT,
       error TEXT,
       created_at INTEGER NOT NULL,
@@ -74,12 +82,16 @@ export function insertInvocation(
   db: Database,
   details: InvocationDetails,
   runLimit: number,
+  ownerId: string,
+  now: number,
+  leaseMs: number,
 ) {
   const result = db
     .query(
       `INSERT OR IGNORE INTO invocations
-       (invocation_key, session_id, thread_id, hook_id, trigger, source_id, status, created_at, updated_at)
-       SELECT ?, ?, ?, ?, ?, ?, 'running', unixepoch(), unixepoch()
+       (invocation_key, session_id, thread_id, hook_id, trigger, source_id,
+        status, owner_id, lease_expires_at, created_at, updated_at)
+       SELECT ?, ?, ?, ?, ?, ?, 'running', ?, ?, unixepoch(), unixepoch()
        WHERE ? = -1 OR (
          SELECT COUNT(*) FROM invocations
          WHERE session_id = ? AND hook_id = ? AND trigger <> 'agent_tool'
@@ -92,10 +104,37 @@ export function insertInvocation(
       details.hookId,
       details.trigger,
       details.sourceId,
+      ownerId,
+      now + leaseMs,
       runLimit,
       details.sessionId,
       details.hookId,
       runLimit,
     );
   return result.changes === 1;
+}
+
+export function reclaimInvocation(
+  db: Database,
+  key: string,
+  ownerId: string,
+  now: number,
+  leaseMs: number,
+) {
+  const result = db.run(
+    `UPDATE invocations
+     SET owner_id = ?, lease_expires_at = ?, updated_at = unixepoch()
+     WHERE invocation_key = ? AND status = 'running'
+       AND lease_expires_at <= ?`,
+    [ownerId, now + leaseMs, key, now],
+  );
+  return result.changes === 1;
+}
+
+export function readInvocation(db: Database, key: string) {
+  return db
+    .query<InvocationRow, [string]>(
+      "SELECT status, output_json, error FROM invocations WHERE invocation_key = ?",
+    )
+    .get(key);
 }
