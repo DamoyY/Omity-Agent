@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import {
   mapChatMessagesToStoredMessages,
   mapStoredMessagesToChatMessages,
+  type StoredMessage,
   type ToolMessage,
 } from "@langchain/core/messages";
 
@@ -9,6 +10,11 @@ type InvocationRow = {
   status: string;
   output_json: string | null;
   error: string | null;
+};
+
+type StoredOutput = {
+  value: unknown;
+  message?: StoredMessage;
 };
 
 export class HookLedger {
@@ -58,8 +64,12 @@ export class HookLedger {
     return null;
   }
 
-  complete(key: string, output?: ToolMessage) {
-    const outputJson = output ? JSON.stringify(storedMessage(output)) : null;
+  complete(key: string, output: ToolMessage) {
+    const [message] = mapChatMessagesToStoredMessages([output]);
+    if (!message) throw new Error("无法序列化工具结果");
+    const stored: StoredOutput = { value: output.content, message };
+    const outputJson = JSON.stringify(stored);
+    if (outputJson === undefined) throw new Error("工具结果无法持久化");
     this.db
       .query(
         "UPDATE invocations SET status = 'done', output_json = ?, error = NULL, updated_at = unixepoch() WHERE invocation_key = ?",
@@ -77,11 +87,19 @@ export class HookLedger {
   }
 
   restoredOutput(row: InvocationRow) {
-    if (!row.output_json) return undefined;
-    const [message] = mapStoredMessagesToChatMessages([
-      JSON.parse(row.output_json),
-    ]);
+    const stored = parseOutput(row.output_json);
+    if (!stored?.message) return undefined;
+    const [message] = mapStoredMessagesToChatMessages([stored.message]);
     return message as ToolMessage | undefined;
+  }
+
+  latestOutput(threadId: string) {
+    const row = this.db
+      .query<{ output_json: string }, [string]>(
+        "SELECT output_json FROM invocations WHERE thread_id = ? AND status = 'done' AND output_json IS NOT NULL ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(threadId);
+    return parseOutput(row?.output_json ?? null)?.value;
   }
 
   requireRunnable(row: InvocationRow, key: string) {
@@ -92,19 +110,17 @@ export class HookLedger {
 
   rows() {
     return this.db
-      .query<
-        { status: string; trigger: string },
-        []
-      >("SELECT status, trigger FROM invocations ORDER BY created_at")
+      .query<{ status: string; trigger: string }, []>(
+        "SELECT status, trigger FROM invocations ORDER BY rowid",
+      )
       .all();
   }
 
   private read(key: string) {
     return this.db
-      .query<
-        InvocationRow,
-        [string]
-      >("SELECT status, output_json, error FROM invocations WHERE invocation_key = ?")
+      .query<InvocationRow, [string]>(
+        "SELECT status, output_json, error FROM invocations WHERE invocation_key = ?",
+      )
       .get(key);
   }
 }
@@ -118,8 +134,11 @@ export type InvocationDetails = {
   sourceId: string;
 };
 
-function storedMessage(message: ToolMessage) {
-  const [stored] = mapChatMessagesToStoredMessages([message]);
-  if (!stored) throw new Error("无法序列化 Hook 工具结果");
-  return stored;
+function parseOutput(value: string | null): StoredOutput | undefined {
+  if (value === null) return undefined;
+  const parsed = JSON.parse(value) as unknown;
+  if (typeof parsed !== "object" || parsed === null || !("value" in parsed)) {
+    throw new Error("Hook 工具结果记录无效");
+  }
+  return parsed as StoredOutput;
 }

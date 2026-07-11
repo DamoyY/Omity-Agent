@@ -1,9 +1,10 @@
-import { ToolMessage } from "@langchain/core/messages";
+import { ToolMessage, type ToolCall } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Logger } from "../infrastructure/logger";
 import type { HookRule } from "../types";
 import { decodeHookCallId, encodeHookCallId } from "./callId";
 import { HookLedger } from "./ledger";
+import { resolveHookArgs } from "./variables";
 
 export type HookTrigger = HookRule["on"];
 
@@ -17,6 +18,7 @@ export class HookRuntime {
     private readonly ledger: HookLedger,
     private readonly logger: Logger,
     readonly sessionId: string,
+    readonly workspace: string,
   ) {
     this.rules = rules;
     this.tools = new Map(tools.map((tool) => [tool.name, tool]));
@@ -25,39 +27,88 @@ export class HookRuntime {
     }
     for (const rule of rules) {
       this.requireTool(rule.tool, `Hook ${rule.id}`);
-      if (rule.matchTool)
+      if (rule.matchTool) {
         this.requireTool(rule.matchTool, `Hook ${rule.id} 匹配`);
+      }
     }
   }
 
-  matching(trigger: HookTrigger, matchTool?: string, mode?: HookRule["mode"]) {
+  matching(trigger: HookTrigger, matchTool?: string) {
     return this.rules.filter(
       (rule) =>
         rule.on === trigger &&
-        (matchTool === undefined || rule.matchTool === matchTool) &&
-        (mode === undefined || rule.mode === mode),
+        (matchTool === undefined || rule.matchTool === matchTool),
     );
   }
 
-  async runSilent(
+  async runSilentChain(
     trigger: HookTrigger,
     sourceId: string,
     threadId: string,
     options: { matchTool?: string; signal?: AbortSignal } = {},
   ) {
-    for (const rule of this.matching(trigger, options.matchTool, "silent")) {
-      await this.invokeSilent(rule, sourceId, threadId, options.signal);
+    for (const rule of this.matching(trigger, options.matchTool)) {
+      if (rule.mode !== "silent") {
+        throw new Error(`${trigger} 触发器不能在图外执行接管 Hook`);
+      }
+      await this.runSilent(rule, trigger, sourceId, threadId, options.signal);
     }
   }
 
-  createCall(rule: HookRule, trigger: HookTrigger, sourceId: string) {
-    const details = { trigger, sourceId, hookId: rule.id };
+  async resolvedCall(
+    rule: HookRule,
+    trigger: HookTrigger,
+    sourceId: string,
+    threadId: string,
+  ): Promise<ToolCall> {
     return {
       name: rule.tool,
-      args: rule.args,
-      id: encodeHookCallId(details),
-      type: "tool_call" as const,
+      args: resolveHookArgs(rule.args, {
+        cwd: this.workspace,
+        previousToolOutput: this.ledger.latestOutput(threadId),
+      }),
+      id: encodeHookCallId({ trigger, sourceId, hookId: rule.id }),
+      type: "tool_call",
     };
+  }
+
+  async runSilent(
+    rule: HookRule,
+    trigger: HookTrigger,
+    sourceId: string,
+    threadId: string,
+    signal?: AbortSignal,
+  ) {
+    const { key, existing } = this.claim(
+      { trigger, sourceId, hookId: rule.id },
+      threadId,
+    );
+    if (existing) return this.restore(existing, key);
+    this.logger.debug("执行静默 Hook", {
+      hookId: rule.id,
+      trigger,
+      sourceId,
+    });
+    try {
+      const call = await this.resolvedCall(rule, trigger, sourceId, threadId);
+      const output = await this.requireTool(
+        rule.tool,
+        `Hook ${rule.id}`,
+      ).invoke(call, {
+        callbacks: [],
+        tags: ["omity-hook"],
+        metadata: { hook: true, hookId: rule.id },
+        signal,
+      });
+      if (!ToolMessage.isInstance(output)) {
+        throw new Error("静默 Hook 工具没有返回 ToolMessage");
+      }
+      this.ledger.complete(key, output);
+      return output;
+    } catch (error) {
+      this.ledger.fail(key, error);
+      throw error;
+    }
   }
 
   async runTakeover(
@@ -66,32 +117,7 @@ export class HookRuntime {
     invoke: () => Promise<unknown>,
   ) {
     const details = decodeHookCallId(callId);
-    const key = this.invocationKey(details, threadId);
-    const existing = this.ledger.claim({
-      key,
-      sessionId: this.sessionId,
-      threadId,
-      hookId: details.hookId,
-      trigger: details.trigger,
-      sourceId: details.sourceId,
-    });
-    if (existing) {
-      this.ledger.requireRunnable(existing, key);
-      const output = this.ledger.restoredOutput(existing);
-      if (!output) throw new Error(`Hook 接管结果缺失：${key}`);
-      return output;
-    }
-    try {
-      const output = await invoke();
-      if (!ToolMessage.isInstance(output)) {
-        throw new Error("Hook 接管工具没有返回 ToolMessage");
-      }
-      this.ledger.complete(key, output);
-      return output;
-    } catch (error) {
-      this.ledger.fail(key, error);
-      throw error;
-    }
+    return this.runRecorded(details, threadId, invoke);
   }
 
   async runAgentTool(
@@ -100,30 +126,24 @@ export class HookRuntime {
     threadId: string,
     invoke: () => Promise<unknown>,
   ) {
-    const details = {
-      trigger: "agent_tool",
-      sourceId: callId,
-      hookId: toolName,
-    };
-    const key = this.invocationKey(details, threadId);
-    const existing = this.ledger.claim({
-      key,
-      sessionId: this.sessionId,
+    return this.runRecorded(
+      { trigger: "agent_tool", sourceId: callId, hookId: toolName },
       threadId,
-      hookId: toolName,
-      trigger: details.trigger,
-      sourceId: callId,
-    });
-    if (existing) {
-      this.ledger.requireRunnable(existing, key);
-      const output = this.ledger.restoredOutput(existing);
-      if (!output) throw new Error(`工具调用结果缺失：${key}`);
-      return output;
-    }
+      invoke,
+    );
+  }
+
+  private async runRecorded(
+    details: { trigger: string; sourceId: string; hookId: string },
+    threadId: string,
+    invoke: () => Promise<unknown>,
+  ) {
+    const { key, existing } = this.claim(details, threadId);
+    if (existing) return this.restore(existing, key);
     try {
       const output = await invoke();
       if (!ToolMessage.isInstance(output)) {
-        throw new Error("MCP 工具没有返回 ToolMessage");
+        throw new Error("工具没有返回 ToolMessage");
       }
       this.ledger.complete(key, output);
       return output;
@@ -133,43 +153,28 @@ export class HookRuntime {
     }
   }
 
-  private async invokeSilent(
-    rule: HookRule,
-    sourceId: string,
+  private claim(
+    details: { trigger: string; sourceId: string; hookId: string },
     threadId: string,
-    signal?: AbortSignal,
   ) {
-    const details = { trigger: rule.on, sourceId, hookId: rule.id };
     const key = this.invocationKey(details, threadId);
-    const existing = this.ledger.claim({
+    return {
       key,
-      sessionId: this.sessionId,
-      threadId,
-      hookId: rule.id,
-      trigger: rule.on,
-      sourceId,
-    });
-    if (existing) {
-      this.ledger.requireRunnable(existing, key);
-      return;
-    }
-    this.logger.debug("执行静默 Hook", {
-      hookId: rule.id,
-      trigger: rule.on,
-      sourceId,
-    });
-    try {
-      await this.requireTool(rule.tool, `Hook ${rule.id}`).invoke(rule.args, {
-        callbacks: [],
-        tags: ["omity-hook"],
-        metadata: { hook: true, hookId: rule.id },
-        signal,
-      });
-      this.ledger.complete(key);
-    } catch (error) {
-      this.ledger.fail(key, error);
-      throw error;
-    }
+      existing: this.ledger.claim({
+        key,
+        sessionId: this.sessionId,
+        threadId,
+        ...details,
+      }),
+    };
+  }
+
+  private restore(existing: ReturnType<HookLedger["claim"]>, key: string) {
+    if (!existing) throw new Error(`工具调用记录缺失：${key}`);
+    this.ledger.requireRunnable(existing, key);
+    const output = this.ledger.restoredOutput(existing);
+    if (!output) throw new Error(`工具调用结果缺失：${key}`);
+    return output;
   }
 
   private invocationKey(
@@ -187,8 +192,9 @@ export class HookRuntime {
 
   private requireTool(name: string, description: string) {
     const tool = this.tools.get(name);
-    if (!tool)
+    if (!tool) {
       throw new Error(`${description} 引用了不存在的 MCP 工具：${name}`);
+    }
     return tool;
   }
 }

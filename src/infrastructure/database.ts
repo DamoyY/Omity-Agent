@@ -28,6 +28,7 @@ import {
   ensureSessionRecord,
   hasSessionRecord,
   readControlRecord,
+  readWorkspaceRecord,
   requireSessionRecord,
   touchSessionRecord,
   writeControlRecord,
@@ -74,6 +75,10 @@ export class AgentDatabase {
 
   hasSession(sessionId: string) {
     return hasSessionRecord(this.db, sessionId);
+  }
+
+  workspace(sessionId: string) {
+    return readWorkspaceRecord(this.db, sessionId);
   }
 
   appendUser(sessionId: string, content: string) {

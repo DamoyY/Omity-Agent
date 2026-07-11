@@ -9,6 +9,7 @@ import {
   sessionPaths,
 } from "../src/infrastructure/config";
 import { loadHookRules } from "../src/hooks/config";
+import { resolveHookArgs } from "../src/hooks/variables";
 
 const dirs: string[] = [];
 
@@ -106,6 +107,25 @@ test("hook config parses all triggers and rejects agent takeover", () => {
     "hooks:\n  - id: invalid\n    on: agent_end\n    mode: takeover\n    tool: notify\n    args: {}\n",
   );
   expect(() => loadHookRules(path)).toThrow();
+});
+
+test("hook variables preserve exact values and reject ambiguous output", () => {
+  const previous = { files: ["a.ts", "b.ts"] };
+  expect(
+    resolveHookArgs(
+      { exact: "${previousTool.output}", cwd: "${cwd}/src" },
+      { cwd: "F:\\work", previousToolOutput: previous },
+    ),
+  ).toEqual({ exact: previous, cwd: "F:\\work/src" });
+  expect(() =>
+    resolveHookArgs(
+      { invalid: "result=${previousTool.output}" },
+      { cwd: "F:\\work", previousToolOutput: previous },
+    ),
+  ).toThrow("不能将数组或对象嵌入字符串");
+  expect(() =>
+    resolveHookArgs({ missing: "${previousTool.output}" }, { cwd: "F:\\work" }),
+  ).toThrow("没有可用的前序工具输出");
 });
 
 function writePrompts(

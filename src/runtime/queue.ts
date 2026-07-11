@@ -24,11 +24,6 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
     if (!(await waitIfPaused(ctx, run))) return;
     ctx.db.startQueue(ctx.sessionId, item);
     ctx.observer?.changed?.(ctx.sessionId);
-    await ctx.hooks.runSilent(
-      "user_message",
-      queueMessageId(ctx.sessionId, item.id),
-      run.threadId,
-    );
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
     if (error instanceof CanceledRun) return;
@@ -129,7 +124,11 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       continue;
     }
     if (!state.next || state.next.length === 0) {
-      await ctx.hooks.runSilent("agent_end", `queue:${item.id}`, run.threadId);
+      await ctx.hooks.runSilentChain(
+        "agent_end",
+        `queue:${item.id}`,
+        run.threadId,
+      );
       finishRun(ctx, run, state.values?.messages ?? []);
       return;
     }

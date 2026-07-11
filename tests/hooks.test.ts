@@ -84,8 +84,8 @@ test("silent hook is omitted from agent context and runs once", async () => {
   let hookCalls = 0;
   const hookTool = makeTool("hook", () => hookCalls++);
   const hooks = makeRuntime([silent("user", "user_message")], [hookTool]);
-  await hooks.runSilent("user_message", "queue:1", "thread");
-  await hooks.runSilent("user_message", "queue:1", "thread");
+  await hooks.runSilentChain("user_message", "queue:1", "thread");
+  await hooks.runSilentChain("user_message", "queue:1", "thread");
 
   expect(hookCalls).toBe(1);
   expect(invocations(hooks)).toEqual([
@@ -107,6 +107,7 @@ function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
     ledger,
     new Logger("error", true),
     "session",
+    dir,
   );
   Object.assign(runtime, { testLedger: ledger });
   return runtime;

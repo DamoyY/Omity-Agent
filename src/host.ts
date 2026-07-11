@@ -80,6 +80,7 @@ export async function runHostSession(
         hookLedger,
         logger,
         mode.sessionId,
+        db.workspace(mode.sessionId),
       );
       const { graph, checkpointer } = buildGraph(
         settings,

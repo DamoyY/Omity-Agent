@@ -15,11 +15,6 @@ export async function consumeBoundaryAppends(
   for (const item of appends) {
     const userMessageId = ctx.db.startQueue(ctx.sessionId, item);
     run.items.push({ ...item, status: "running", userMessageId });
-    await ctx.hooks.runSilent(
-      "user_message",
-      queueMessageId(ctx.sessionId, item.id),
-      run.threadId,
-    );
   }
   ctx.logger.info("已在节点边界追加输入", {
     queueIds: appends.map((item) => item.id),

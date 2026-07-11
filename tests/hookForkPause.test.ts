@@ -26,6 +26,7 @@ test("forked appended message runs its hook once after resume", async () => {
   const source = new AgentDatabase(join(dir, "source.sqlite"));
   const target = new AgentDatabase(join(dir, "target.sqlite"));
   const ledger = new HookLedger(join(dir, "hooks.sqlite"));
+  const targetWorkspace = join(dir, "target-workspace");
   try {
     source.createSession("source", dir);
     const rootQueue = source.appendUser("source", "first");
@@ -38,16 +39,22 @@ test("forked appended message runs its hook once after resume", async () => {
       target,
       sourceSessionId: "source",
       targetSessionId: "target",
-      workspace: dir,
+      workspace: targetWorkspace,
       beforeMessageId: messageId(source, appendedQueue),
     });
     let hookCalls = 0;
+    let hookWorkspace: string | undefined;
     const hookTool = tool(
-      async () => {
+      async ({ cwd }) => {
         hookCalls++;
+        hookWorkspace = cwd;
         return "hooked";
       },
-      { name: "hook", description: "hook", schema: z.object({}) },
+      {
+        name: "hook",
+        description: "hook",
+        schema: z.object({ cwd: z.string() }).strict(),
+      },
     );
     const hooks = new HookRuntime(
       [
@@ -56,30 +63,33 @@ test("forked appended message runs its hook once after resume", async () => {
           on: "user_message",
           mode: "silent",
           tool: "hook",
-          args: {},
+          args: { cwd: "${cwd}" },
         },
       ],
       [hookTool],
       ledger,
       new Logger("error", true),
       "target",
+      target.workspace("target"),
     );
+    const checkpointer = new MemorySaver();
     const graph = createAgent({
       model: fakeModel().respond(new AIMessage("fork reply")),
       tools: [hookTool],
       middleware: [createHookMiddleware(hooks)],
-      checkpointer: new MemorySaver(),
+      checkpointer,
       version: "v1",
     });
 
     expect(target.control("target")).toBe("pause");
     target.setControl("target", "running");
     await processQueue(
-      context(target, graph, hooks),
+      context(target, graph, hooks, checkpointer),
       target.nextQueue("target")!,
     );
 
     expect(hookCalls).toBe(1);
+    expect(hookWorkspace).toBe(targetWorkspace);
     expect(target.history("target").map((message) => message.text)).toEqual([
       "first",
       "first reply",
@@ -110,13 +120,14 @@ function context(
   db: AgentDatabase,
   graph: unknown,
   hooks: HookRuntime,
+  checkpointer: MemorySaver,
 ): HostContext {
   return {
     settings: settings(),
     logger: new Logger("error", true),
     db,
     graph,
-    checkpointer: new MemorySaver() as never,
+    checkpointer: checkpointer as never,
     hooks,
     beforeModelNode: hookBeforeModelNode,
     sessionId: "target",

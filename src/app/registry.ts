@@ -80,16 +80,14 @@ function readSession(dir: string, id?: string) {
     }
     const row = id
       ? db
-          .query<
-            SessionRow,
-            [string]
-          >("SELECT id, workspace, created_at, updated_at FROM sessions WHERE id = ?")
+          .query<SessionRow, [string]>(
+            "SELECT id, workspace, created_at, updated_at FROM sessions WHERE id = ?",
+          )
           .get(id)
       : db
-          .query<
-            SessionRow,
-            []
-          >("SELECT id, workspace, created_at, updated_at FROM sessions LIMIT 1")
+          .query<SessionRow, []>(
+            "SELECT id, workspace, created_at, updated_at FROM sessions LIMIT 1",
+          )
           .get();
     if (!row) throw new Error(`会话不存在：${id ?? dir}`);
     return toSession(row);

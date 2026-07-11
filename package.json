@@ -39,6 +39,7 @@
     "babel-plugin-react-compiler": "latest",
     "eslint": "latest",
     "postcss": "latest",
+    "prettier": "latest",
     "typescript-eslint": "latest",
     "vite": "latest"
   },

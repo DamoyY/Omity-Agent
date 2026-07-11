@@ -20,45 +20,60 @@ import { processQueue } from "../src/runtime/queue";
 import type { HostContext } from "../src/runtime/context";
 import type { Settings } from "../src/types";
 
-test("paused queue delays user hook until resume and runs it once", async () => {
+test("paused queue resumes one deterministic user hook chain", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   const ledger = new HookLedger(join(dir, "hooks.sqlite"));
   let hookCalls = 0;
+  const received: unknown[] = [];
   try {
     db.createSession("session", dir);
     db.setControl("session", "pause");
     db.appendUser("session", "hello");
     const hookTool = tool(
-      async () => {
+      async ({ previous }) => {
         hookCalls++;
+        received.push(previous);
         return "ok";
       },
-      { name: "hook", description: "hook", schema: z.object({}) },
+      {
+        name: "hook",
+        description: "hook",
+        schema: z.object({ previous: z.unknown().optional() }).strict(),
+      },
     );
     const hooks = new HookRuntime(
       [
         {
-          id: "user",
+          id: "user-first",
           on: "user_message",
           mode: "silent",
           tool: "hook",
           args: {},
+        },
+        {
+          id: "user-second",
+          on: "user_message",
+          mode: "silent",
+          tool: "hook",
+          args: { previous: "${previousTool.output}" },
         },
       ],
       [hookTool],
       ledger,
       new Logger("error", true),
       "session",
+      dir,
     );
+    const checkpointer = new MemorySaver();
     const graph = createAgent({
       model: fakeModel().respond(new AIMessage("done")),
       tools: [hookTool],
       middleware: [createHookMiddleware(hooks)],
-      checkpointer: new MemorySaver(),
+      checkpointer,
       version: "v1",
     });
-    const context = makeContext(db, graph, hooks);
+    const context = makeContext(db, graph, hooks, checkpointer);
     const processing = processQueue(context, db.nextQueue("session")!);
     await Bun.sleep(30);
     expect(hookCalls).toBe(0);
@@ -66,7 +81,8 @@ test("paused queue delays user hook until resume and runs it once", async () => 
     db.setControl("session", "running");
     await processing;
 
-    expect(hookCalls).toBe(1);
+    expect(hookCalls).toBe(2);
+    expect(received).toEqual([undefined, "ok"]);
     expect(db.nextQueue("session")).toBeNull();
     expect(db.history("session").map((message) => message.text)).toEqual([
       "hello",
@@ -83,13 +99,14 @@ function makeContext(
   db: AgentDatabase,
   graph: unknown,
   hooks: HookRuntime,
+  checkpointer: MemorySaver,
 ): HostContext {
   return {
     settings: settings(),
     logger: new Logger("error", true),
     db,
     graph,
-    checkpointer: new MemorySaver() as never,
+    checkpointer: checkpointer as never,
     hooks,
     beforeModelNode: hookBeforeModelNode,
     sessionId: "session",

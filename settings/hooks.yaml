@@ -1,17 +1,20 @@
 # Hook 按配置顺序执行；工具名使用重命名后的最终 MCP 工具名。
-# id 必须唯一；args 会原样作为 MCP 工具参数。
+# id 必须唯一；args 支持任意深度的变量：
+# - ${cwd}: 当前会话的用户工作目录
+# - ${previousTool.output}: 当前运行中确定性的前一个模型或 Hook 工具输出
+# 变量独占参数值时保留原始类型；嵌入字符串时只能使用标量输出。
 #
 # hooks:
 #   - id: format-after-user
 #     on: user_message
 #     mode: silent
 #     tool: formatter
-#     args: { path: . }
+#     args: { path: "${cwd}" }
 #   - id: notify-after-answer
 #     on: agent_end
 #     mode: silent
 #     tool: notify
-#     args: {}
+#     args: { result: "${previousTool.output}" }
 #   - id: check-before-write
 #     on: tool_before
 #     mode: takeover

@@ -46,6 +46,17 @@ export function requireSessionRecord(db: Database, sessionId: string) {
   }
 }
 
+export function readWorkspaceRecord(db: Database, sessionId: string) {
+  requireSessionRecord(db, sessionId);
+  const row = db
+    .query<{ workspace: string }, [string]>(
+      "SELECT workspace FROM sessions WHERE id = ?",
+    )
+    .get(sessionId);
+  if (!row) throw new Error(`会话不存在：${sessionId}`);
+  return row.workspace;
+}
+
 export function touchSessionRecord(db: Database, sessionId: string) {
   requireSessionRecord(db, sessionId);
   db.query("UPDATE sessions SET updated_at = unixepoch() WHERE id = ?").run(

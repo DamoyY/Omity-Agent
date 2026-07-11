@@ -19,10 +19,9 @@ export function appendUserQueue(
     sessionId,
   );
   const activeRun = db
-    .query<
-      { id: number },
-      [string]
-    >("SELECT id FROM runs WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1")
+    .query<{ id: number }, [string]>(
+      "SELECT id FROM runs WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
+    )
     .get(sessionId);
   if (activeRun) return appendToRun(db, sessionId, activeRun.id, content);
   const result = db
