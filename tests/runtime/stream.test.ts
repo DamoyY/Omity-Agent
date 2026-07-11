@@ -109,12 +109,12 @@ test("stream messages persist assistant tool call chunks", () => {
 });
 
 function makeStreamRecorder() {
-  const tokens: Array<{
+  const tokens: {
     messageId?: string;
     queueId: number;
     text: string;
-  }> = [];
-  const toolCalls: Array<{
+  }[] = [];
+  const toolCalls: {
     call: {
       args?: string;
       id?: string;
@@ -123,7 +123,7 @@ function makeStreamRecorder() {
     };
     messageId?: string;
     queueId: number;
-  }> = [];
+  }[] = [];
   return {
     ctx: {
       db: {
@@ -151,8 +151,8 @@ function makeStreamRecorder() {
             ...(messageId ? { messageId } : {}),
           }),
       },
-      logger: { debug: () => {}, token: () => {} },
-      observer: { token: () => {} },
+      logger: { debug: () => undefined, token: () => undefined },
+      observer: { token: () => undefined },
       sessionId: "session",
       settings: { logging: { streamTokens: false } },
     } as never,

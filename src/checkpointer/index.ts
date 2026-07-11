@@ -13,6 +13,8 @@ import {
   buildListQuery,
   selectCheckpoint,
   setupSql,
+  optionalConfigString,
+  requiredConfigString,
   type CheckpointRow,
   type SqlBinding,
 } from "./sql";
@@ -43,19 +45,24 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
 
   async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
     this.setup();
-    const {
-      thread_id,
-      checkpoint_ns = "",
-      checkpoint_id,
-    } = config.configurable ?? {};
+    const thread_id = requiredConfigString(
+      config.configurable?.["thread_id"],
+      "thread_id",
+    );
+    const checkpoint_ns =
+      optionalConfigString(
+        config.configurable?.["checkpoint_ns"],
+        "checkpoint_ns",
+      ) ?? "";
+    const checkpoint_id = optionalConfigString(
+      config.configurable?.["checkpoint_id"],
+      "checkpoint_id",
+    );
     const sql = selectCheckpoint(Boolean(checkpoint_id));
-    const row = this.db
-      .query<CheckpointRow, SqlBinding[]>(sql)
-      .get(
-        ...(checkpoint_id
-          ? [thread_id, checkpoint_ns, checkpoint_id]
-          : [thread_id, checkpoint_ns]),
-      );
+    const query = this.db.query<CheckpointRow, SqlBinding[]>(sql);
+    const row = checkpoint_id
+      ? query.get(thread_id, checkpoint_ns, checkpoint_id)
+      : query.get(thread_id, checkpoint_ns);
     if (!row) return undefined;
     const finalConfig = checkpoint_id
       ? config
@@ -106,7 +113,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     await putPendingWrites(this.db, this.serde, config, writes, taskId);
   }
 
-  async deleteThread(threadId: string): Promise<void> {
+  deleteThread(threadId: string): Promise<void> {
     this.setup();
     this.db.transaction(() => {
       this.db
@@ -114,6 +121,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
         .run(threadId);
       this.db.query("DELETE FROM writes WHERE thread_id = ?").run(threadId);
     })();
+    return Promise.resolve();
   }
 
   private decodeRow(

@@ -9,19 +9,21 @@ import {
 } from "@langchain/langgraph-checkpoint";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { CheckpointRow, WriteJson } from "./sql";
+import { deserialize } from "./serde";
 
-type TupleContext = {
+interface TupleContext {
   db: Database;
   serde: SerializerProtocol;
   nextVersion: () => number | string;
-};
+}
 
 export async function rowToTuple(
   row: CheckpointRow,
   config: RunnableConfig,
   ctx: TupleContext,
 ): Promise<CheckpointTuple> {
-  const checkpoint = await ctx.serde.loadsTyped(
+  const checkpoint = await deserialize<Checkpoint>(
+    ctx.serde,
     row.type ?? "json",
     row.checkpoint,
   );
@@ -31,7 +33,7 @@ export async function rowToTuple(
   return {
     config,
     checkpoint,
-    metadata: await ctx.serde.loadsTyped(row.type ?? "json", row.metadata),
+    metadata: await deserialize(ctx.serde, row.type ?? "json", row.metadata),
     parentConfig: row.parent_checkpoint_id
       ? {
           configurable: {
@@ -49,12 +51,13 @@ async function pendingWrites(
   row: CheckpointRow,
   serde: SerializerProtocol,
 ): Promise<CheckpointPendingWrite[]> {
+  const writes = parseWriteRows(row.pending_writes ?? "[]");
   return Promise.all(
-    JSON.parse(row.pending_writes ?? "[]").map((write: WriteJson) =>
-      serde
-        .loadsTyped(write.type ?? "json", write.value ?? "")
-        .then((value) => [write.task_id, write.channel, value]),
-    ),
+    writes.map(async (write): Promise<CheckpointPendingWrite> => [
+      write.task_id,
+      write.channel,
+      await deserialize(serde, write.type ?? "json", write.value ?? ""),
+    ]),
   );
 }
 
@@ -82,15 +85,57 @@ async function migratePendingSends(
       row.parent_checkpoint_id ?? "",
       TASKS,
     );
-  checkpoint.channel_values ??= {};
+  const sends = parsePendingSends(pending?.pending_sends ?? "[]");
   checkpoint.channel_values[TASKS] = await Promise.all(
-    JSON.parse(pending?.pending_sends ?? "[]").map(
-      ({ type, value }: { type: string; value: string }) =>
-        ctx.serde.loadsTyped(type, value),
-    ),
+    sends.map(({ type, value }) => deserialize(ctx.serde, type, value)),
   );
   checkpoint.channel_versions[TASKS] =
     Object.keys(checkpoint.channel_versions).length > 0
       ? maxChannelVersion(...Object.values(checkpoint.channel_versions))
       : ctx.nextVersion();
+}
+
+function parseWriteRows(value: string): WriteJson[] {
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed) || !parsed.every(isWriteRow)) {
+    throw new Error("checkpoint pending writes 记录无效");
+  }
+  return parsed;
+}
+
+function parsePendingSends(value: string) {
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed) || !parsed.every(isPendingSend)) {
+    throw new Error("checkpoint pending sends 记录无效");
+  }
+  return parsed;
+}
+
+function isWriteRow(value: unknown): value is WriteJson {
+  return (
+    isRecord(value) &&
+    typeof value["task_id"] === "string" &&
+    typeof value["idx"] === "number" &&
+    typeof value["channel"] === "string" &&
+    isOptionalString(value["type"]) &&
+    isOptionalString(value["value"])
+  );
+}
+
+function isPendingSend(
+  value: unknown,
+): value is { type: string; value: string } {
+  return (
+    isRecord(value) &&
+    typeof value["type"] === "string" &&
+    typeof value["value"] === "string"
+  );
+}
+
+function isOptionalString(value: unknown) {
+  return value === null || typeof value === "string";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

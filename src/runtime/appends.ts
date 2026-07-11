@@ -4,7 +4,7 @@ import { queueMessageId } from "../infrastructure/messages";
 import type { HostContext } from "./context";
 import type { QueueRun } from "./run";
 
-export async function consumeBoundaryAppends(
+export function consumeBoundaryAppends(
   ctx: HostContext,
   run: QueueRun,
   state: BoundaryState,
@@ -36,9 +36,9 @@ export async function consumeBoundaryAppends(
   });
 }
 
-type BoundaryState = {
+interface BoundaryState {
   values?: { messages?: unknown[]; hookPlan?: unknown };
-};
+}
 
 function hasPendingTools(state: BoundaryState) {
   const messages = state.values?.messages;

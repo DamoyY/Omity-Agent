@@ -2,10 +2,10 @@ import type { HookWhen } from "../types";
 import * as callStorage from "./storage/calls";
 import type { HookRuntime } from "./runtime";
 
-export type SilentChainOptions = {
+export interface SilentChainOptions {
   signal?: AbortSignal;
   previousInvocationKey?: string;
-};
+}
 
 export async function runSilentChain(
   runtime: HookRuntime,

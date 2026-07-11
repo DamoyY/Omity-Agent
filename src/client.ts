@@ -3,16 +3,16 @@ import { loadSettings, resolveSessionPaths } from "./infrastructure/config";
 import { AgentDatabase } from "./infrastructure/database";
 import type { Control } from "./types";
 
-export type ClientCommand = {
+export interface ClientCommand {
   sessionId: string;
   append?: string;
   control?: Control;
-};
+}
 
-export type ClientResult = {
+export interface ClientResult {
   queueId?: number;
   control?: Control;
-};
+}
 
 export function runClient(command: ClientCommand, root = process.cwd()) {
   if (

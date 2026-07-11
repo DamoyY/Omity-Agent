@@ -1,12 +1,12 @@
 import type { DisplayEvent, DisplayToolCall } from "./types";
 
-type ToolCallAccumulator = {
+interface ToolCallAccumulator {
   id?: string;
   index?: number;
   inputText: string;
   messageId?: string;
   name: string;
-};
+}
 
 export function eventText(event: DisplayEvent, queueId: number) {
   if (eventQueueId(event) !== queueId) return "";
@@ -54,7 +54,7 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
     mergeDelta(current, delta);
   }
   return calls.map((call, order) => ({
-    id: call.id ?? `i:${call.index ?? order}`,
+    id: call.id ?? `i:${(call.index ?? order).toString()}`,
     index: call.index ?? order,
     input: {},
     inputText: call.inputText,

@@ -8,18 +8,18 @@ import {
 } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 
-export type MessageRow = {
+export interface MessageRow {
   message_json: string;
-};
+}
 
-export type MessageInsert = {
+export interface MessageInsert {
   messageJson: string;
   queueId?: number;
-};
+}
 
-export type ReplaceMessagesOptions = {
+export interface ReplaceMessagesOptions {
   clearStreamEvents?: boolean;
-};
+}
 
 export function messageInsert(
   message: BaseMessage,
@@ -48,7 +48,7 @@ export function insertUserMessage(
 }
 
 export function queueMessageId(sessionId: string, queueId: number) {
-  return `queue:${sessionId}:${queueId}`;
+  return `queue:${sessionId}:${queueId.toString()}`;
 }
 
 export function messageQueueId(sessionId: string, message: BaseMessage) {

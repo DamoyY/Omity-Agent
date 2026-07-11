@@ -5,21 +5,28 @@ import type { AgentDatabase } from "../infrastructure/database";
 import type { Logger } from "../infrastructure/logger";
 import type { Settings } from "../types";
 import type { HookRuntime } from "../hooks/runtime";
+import type { buildGraph } from "../agent";
+import { BaseMessage } from "@langchain/core/messages";
 
-export type StopSignal = {
-  stopping: boolean;
+type AgentGraph = ReturnType<typeof buildGraph>["graph"];
+type HostGraph = Omit<AgentGraph, "getState"> & {
+  getState: (...args: Parameters<AgentGraph["getState"]>) => Promise<unknown>;
 };
 
-export type HostObserver = {
+export interface StopSignal {
+  stopping: boolean;
+}
+
+export interface HostObserver {
   changed?(sessionId: string): void;
   token(sessionId: string, queueId: number, text: string): void;
-};
+}
 
-export type HostContext = {
+export interface HostContext {
   settings: Settings;
   logger: Logger;
   db: AgentDatabase;
-  graph: any;
+  graph: HostGraph;
   checkpointer: BunSqliteSaver;
   hooks: HookRuntime;
   beforeModelNode: string;
@@ -27,11 +34,57 @@ export type HostContext = {
   signal: StopSignal;
   wake?: (delayMs: number) => Promise<void>;
   observer?: HostObserver;
-};
+}
 
 export function waitForWake(ctx: HostContext, delayMs: number) {
   if (!ctx.wake) return sleep(delayMs);
   return ctx.wake(delayMs);
+}
+
+interface RuntimeGraphState {
+  values: { messages: BaseMessage[]; hookPlan?: unknown };
+  next: string[];
+  tasks: { name: string }[];
+}
+
+export function readGraphState(value: unknown): RuntimeGraphState {
+  if (!isRecord(value)) throw new Error("LangGraph 状态无效");
+  const values = value["values"];
+  const rawMessages = isRecord(values) ? values["messages"] : undefined;
+  const messages = Array.isArray(rawMessages) ? rawMessages : [];
+  if (!messages.every((message) => BaseMessage.isInstance(message))) {
+    throw new Error("LangGraph 消息状态无效");
+  }
+  const rawNext = value["next"];
+  if (!Array.isArray(rawNext) || !rawNext.every(isString)) {
+    throw new Error("LangGraph next 状态无效");
+  }
+  const rawTasks = value["tasks"];
+  if (!Array.isArray(rawTasks) || !rawTasks.every(isTask)) {
+    throw new Error("LangGraph task 状态无效");
+  }
+  return {
+    values: {
+      messages,
+      ...(isRecord(values) && "hookPlan" in values
+        ? { hookPlan: values["hookPlan"] }
+        : {}),
+    },
+    next: rawNext,
+    tasks: rawTasks,
+  };
+}
+
+function isTask(value: unknown): value is { name: string } {
+  return isRecord(value) && typeof value["name"] === "string";
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 const leaseTtlMs = 30_000;
@@ -58,7 +111,9 @@ export class HostLease {
     ) {
       throw new Error(`会话已有 Host 正在运行：${sessionId}`);
     }
-    this.timer = setInterval(() => this.renew(), leaseRenewMs);
+    this.timer = setInterval(() => {
+      this.renew();
+    }, leaseRenewMs);
     this.timer.unref();
   }
 

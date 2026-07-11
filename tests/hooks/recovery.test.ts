@@ -19,6 +19,7 @@ import { Logger } from "../../src/infrastructure/logger";
 import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import type { Settings } from "../../src/types";
+import { required } from "../support/database";
 
 test("paused queue resumes one deterministic user hook chain", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
@@ -31,10 +32,10 @@ test("paused queue resumes one deterministic user hook chain", async () => {
     db.setControl("session", "pause");
     db.appendUser("session", "hello");
     const hookTool = tool(
-      async ({ previous }) => {
+      ({ previous }) => {
         hookCalls++;
         received.push(previous);
-        return "ok";
+        return Promise.resolve("ok");
       },
       {
         name: "hook",
@@ -78,7 +79,7 @@ test("paused queue resumes one deterministic user hook chain", async () => {
       version: "v1",
     });
     const context = makeContext(db, graph, hooks, checkpointer);
-    const processing = processQueue(context, db.nextQueue("session")!);
+    const processing = processQueue(context, required(db.nextQueue("session")));
     await Bun.sleep(30);
     expect(hookCalls).toBe(0);
     expect(db.nextQueue("session")?.userMessageId).toBeNull();
@@ -117,13 +118,13 @@ test("stale running hook invocation can be reclaimed after its lease", () => {
 
     expect(claimed.existing).toBeNull();
     expect(blocked.existing?.status).toBe("running");
-    expect(() =>
-      active.requireRunnable(blocked.existing!, blocked.key),
-    ).toThrow("状态不确定");
+    expect(() => {
+      active.requireRunnable(required(blocked.existing), blocked.key);
+    }).toThrow("状态不确定");
     expect(reclaimed.existing).toBeNull();
-    expect(() => first.fail(claimed.key, "late result")).toThrow(
-      "Hook Lease 已丢失",
-    );
+    expect(() => {
+      first.fail(claimed.key, "late result");
+    }).toThrow("Hook Lease 已丢失");
   } finally {
     first.close();
     active.close();
@@ -142,7 +143,7 @@ function makeContext(
     settings: settings(),
     logger: new Logger("error", true),
     db,
-    graph,
+    graph: graph as HostContext["graph"],
     checkpointer: checkpointer as never,
     hooks,
     beforeModelNode: hookBeforeModelNode,

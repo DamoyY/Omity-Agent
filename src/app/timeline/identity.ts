@@ -10,6 +10,6 @@ function toolCallIdentity(call: DisplayToolCall) {
     return `call:${call.id}`;
   }
   return call.messageId
-    ? `message:${call.messageId}:index:${call.index}`
+    ? `message:${call.messageId}:index:${call.index.toString()}`
     : undefined;
 }

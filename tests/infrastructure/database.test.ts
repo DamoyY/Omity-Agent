@@ -5,6 +5,7 @@ import {
   cleanupDatabaseDirs,
   makeDatabases,
   makeDb,
+  required,
   workspace,
 } from "../support/database";
 
@@ -16,7 +17,7 @@ test("queue append and transcript lifecycle", () => {
   const queueId = db.appendUser("123", "你好");
   const item = db.nextQueue("123");
   expect(item?.id).toBe(queueId);
-  db.startQueue("123", item!);
+  db.startQueue("123", required(item));
   expect(db.history("123").map((message) => message.text)).toEqual(["你好"]);
   appendAssistantMessage(db.db, "123", queueId, "你好，有什么可以帮你？");
   db.setQueueStatus(queueId, "done");
@@ -53,13 +54,13 @@ test("transcript preserves full LangChain message structure", () => {
   const restored = db.history("123");
 
   expect(restored.map((message) => message.text)).toEqual(["问题", "答案"]);
-  expect(restored[1]).toBeInstanceOf(AIMessage);
-  expect(restored[1]?.additional_kwargs["reasoning"]).toEqual(reasoning);
-  expect(
-    (restored[1]?.response_metadata as Record<string, unknown> | undefined)?.[
-      "output"
-    ],
-  ).toEqual(output);
+  const assistant = required(restored[1]);
+  expect(assistant).toBeInstanceOf(AIMessage);
+  expect(assistant.additional_kwargs["reasoning"]).toEqual(reasoning);
+  expect(assistant.response_metadata).toEqual({
+    model_provider: "openai",
+    output,
+  });
   db.close();
 });
 
@@ -84,25 +85,29 @@ test("existing sessions are explicit", () => {
   expect(db.hasSession("123")).toBe(false);
   db.createSession("123", workspace);
   expect(db.hasSession("123")).toBe(true);
-  expect(() => db.createSession("123", workspace)).toThrow("会话已存在：123");
+  expect(() => {
+    db.createSession("123", workspace);
+  }).toThrow("会话已存在：123");
   db.close();
 });
 
 test("client operations reject missing sessions", () => {
   const db = makeDb();
   expect(() => db.appendUser("missing", "你好")).toThrow("会话不存在：missing");
-  expect(() => db.setControl("missing", "pause")).toThrow(
-    "会话不存在：missing",
-  );
+  expect(() => {
+    db.setControl("missing", "pause");
+  }).toThrow("会话不存在：missing");
   db.close();
 });
 
 test("host lease excludes concurrent owners and permits takeover after expiry", () => {
-  const [first, second] = makeDatabases(2);
-  first!.resetSession("123", workspace);
+  const databases = makeDatabases(2);
+  const first = required(databases[0]);
+  const second = required(databases[1]);
+  first.resetSession("123", workspace);
 
   expect(
-    first!.acquireHostLease({
+    first.acquireHostLease({
       sessionId: "123",
       ownerId: "host-a",
       now: 1_000,
@@ -110,7 +115,7 @@ test("host lease excludes concurrent owners and permits takeover after expiry", 
     }),
   ).toBe(true);
   expect(
-    second!.acquireHostLease({
+    second.acquireHostLease({
       sessionId: "123",
       ownerId: "host-b",
       now: 1_050,
@@ -118,7 +123,7 @@ test("host lease excludes concurrent owners and permits takeover after expiry", 
     }),
   ).toBe(false);
   expect(
-    second!.renewHostLease({
+    second.renewHostLease({
       sessionId: "123",
       ownerId: "host-b",
       now: 1_050,
@@ -126,24 +131,24 @@ test("host lease excludes concurrent owners and permits takeover after expiry", 
     }),
   ).toBe(false);
   expect(
-    second!.acquireHostLease({
+    second.acquireHostLease({
       sessionId: "123",
       ownerId: "host-b",
       now: 1_101,
       ttlMs: 100,
     }),
   ).toBe(true);
-  expect(first!.releaseHostLease("123", "host-a")).toBe(false);
-  expect(second!.releaseHostLease("123", "host-b")).toBe(true);
-  first!.close();
-  second!.close();
+  expect(first.releaseHostLease("123", "host-a")).toBe(false);
+  expect(second.releaseHostLease("123", "host-b")).toBe(true);
+  first.close();
+  second.close();
 });
 
 test("queue start atomically rejects a stale claim", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   db.appendUser("123", "只应写入一次");
-  const stale = db.nextQueue("123")!;
+  const stale = required(db.nextQueue("123"));
 
   db.startQueue("123", stale);
 

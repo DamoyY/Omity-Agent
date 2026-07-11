@@ -3,15 +3,15 @@ import type { QueueItem } from "../types";
 import type { HostContext } from "./context";
 import { errorMessage, modelNetworkRetryDelayMs } from "./network";
 
-type RetriedRun = {
+interface RetriedRun {
   items: [QueueItem, ...QueueItem[]];
-};
+}
 
-type RetryControls = {
+interface RetryControls {
   pause: () => Promise<boolean>;
   stop: () => void;
   cancel: () => Promise<void>;
-};
+}
 
 export async function waitBeforeModelNetworkRetry(
   ctx: HostContext,

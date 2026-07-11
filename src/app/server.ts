@@ -6,12 +6,12 @@ import { sendError } from "./http/errors";
 import { handleApi } from "./http/handler";
 import { appUrl } from "./launch";
 
-export type AppServerOptions = {
+export interface AppServerOptions {
   root: string;
   host: string;
   port: number;
   onReady?: (url: string) => void;
-};
+}
 
 export async function startAppServer(options: AppServerOptions) {
   const controller = new AppController(options.root);
@@ -20,18 +20,8 @@ export async function startAppServer(options: AppServerOptions) {
     server: { hmr: false, middlewareMode: true },
     appType: "spa",
   });
-  const server = createServer(async (req, res) => {
-    try {
-      if (req.url?.startsWith("/api/")) {
-        await handleApi(controller, req, res);
-        return;
-      }
-      vite.middlewares(req, res, (error: unknown) => {
-        if (error) sendError(res, error);
-      });
-    } catch (error) {
-      sendError(res, error);
-    }
+  const server = createServer((req, res) => {
+    void dispatchRequest(controller, vite, req, res);
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -40,6 +30,25 @@ export async function startAppServer(options: AppServerOptions) {
   const url = appUrl(options.host, listeningPort(server.address()));
   options.onReady?.(url);
   await waitForShutdown(controller, vite, server);
+}
+
+async function dispatchRequest(
+  controller: AppController,
+  vite: ViteDevServer,
+  req: Parameters<typeof handleApi>[1],
+  res: Parameters<typeof handleApi>[2],
+) {
+  try {
+    if (req.url?.startsWith("/api/")) {
+      await handleApi(controller, req, res);
+      return;
+    }
+    vite.middlewares(req, res, (error: unknown) => {
+      if (error) sendError(res, error);
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
 }
 
 function listeningPort(address: string | AddressInfo | null) {
@@ -60,7 +69,10 @@ async function waitForShutdown(
   });
   controller.close();
   await new Promise<void>((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
   });
   await vite.close();
 }

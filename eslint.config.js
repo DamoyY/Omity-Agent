@@ -1,27 +1,24 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import js from "@eslint/js";
+import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 const tsconfigRootDir = dirname(fileURLToPath(import.meta.url));
 
-export default [
-  {
-    ignores: ["node_modules/**", "bun.lock"],
-  },
+export default tseslint.config(
+  { ignores: ["node_modules/**", "bun.lock"] },
   {
     files: ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.strictTypeChecked,
+      tseslint.configs.stylisticTypeChecked,
+      reactHooks.configs.flat.recommended,
+    ],
     languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir,
-      },
+      parserOptions: { projectService: true, tsconfigRootDir },
     },
-    plugins: {
-      "@typescript-eslint": tseslint.plugin,
-    },
-    rules: {
-      "@typescript-eslint/no-deprecated": "warn",
-    },
+    rules: { "@typescript-eslint/no-deprecated": "error" },
   },
-];
+);

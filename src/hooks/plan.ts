@@ -8,11 +8,11 @@ import {
   type ToolCall,
 } from "@langchain/core/messages";
 
-export type Awaiting = {
+export interface Awaiting {
   kind: "hook" | "original";
   callId: string;
   invocationKey: string;
-};
+}
 
 export type HookPlan =
   | {
@@ -35,11 +35,11 @@ export type HookPlan =
       awaiting?: Awaiting;
     };
 
-export type HookState = {
+export interface HookState {
   messages: BaseMessage[];
   hookPendingUserIds: string[];
   hookPlan: HookPlan | null;
-};
+}
 
 export function userPlan(sources: string[]): HookPlan {
   return { kind: "user", sources, sourceIndex: 0, hookIndex: 0 };
@@ -60,7 +60,7 @@ export function toolPlan(message: AIMessage): HookPlan {
 
 export function restoreOriginal(stored: StoredMessage) {
   const [message] = mapStoredMessagesToChatMessages([stored]);
-  if (!(message instanceof AIMessage)) throw new Error("Hook 工具计划无效");
+  if (!AIMessage.isInstance(message)) throw new Error("Hook 工具计划无效");
   return message;
 }
 

@@ -1,13 +1,13 @@
 const exactVariable = /^\$\{([^}]+)\}$/;
 const embeddedVariable = /\$\{([^}]+)\}/g;
 
-export type HookVariables = {
+export interface HookVariables {
   cwd: string;
   previousTool?: {
     output: unknown;
     structuredOutput?: unknown;
   };
-};
+}
 
 export function resolveHookArgs(
   args: Record<string, unknown>,

@@ -1,11 +1,11 @@
-type ZodIssueLike = {
+interface ZodIssueLike {
   code?: string;
   expected?: unknown;
   message?: string;
-  path?: Array<string | number>;
+  path?: (string | number)[];
   received?: unknown;
-  unionErrors?: Array<{ issues?: ZodIssueLike[] }>;
-};
+  unionErrors?: { issues?: ZodIssueLike[] }[];
+}
 
 export function collectReadableZodIssues(error: unknown): string[] {
   const issues = getZodIssues(error);
@@ -51,7 +51,7 @@ function formatZodIssue(issue: ZodIssueLike): string {
   return `${path} ${issue.message ?? "配置无效"}`;
 }
 
-function formatIssuePath(path: Array<string | number> | undefined): string {
+function formatIssuePath(path: (string | number)[] | undefined): string {
   if (path === undefined || path.length === 0) {
     return "settings/mcp.yaml";
   }

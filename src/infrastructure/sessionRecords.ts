@@ -1,12 +1,12 @@
 import type { Database } from "bun:sqlite";
 import type { Control } from "../types";
 
-export type HostLeaseClaim = {
+export interface HostLeaseClaim {
   sessionId: string;
   ownerId: string;
   now: number;
   ttlMs: number;
-};
+}
 
 export function createSessionRecord(
   db: Database,
@@ -44,7 +44,7 @@ export function hasSessionRecord(db: Database, sessionId: string) {
   } finally {
     query.finalize();
   }
-  return row !== null && row !== undefined;
+  return row !== null;
 }
 
 export function requireSessionRecord(db: Database, sessionId: string) {

@@ -98,7 +98,9 @@ export function startQueueRecord(
        WHERE id = ? AND session_id = ? AND status = ? AND user_message_id = ?`,
       [item.id, sessionId, item.status, item.userMessageId],
     );
-    if (result.changes !== 1) throw new Error(`队列认领冲突：${item.id}`);
+    if (result.changes !== 1) {
+      throw new Error(`队列认领冲突：${item.id.toString()}`);
+    }
     syncRunStatus(db, item.id);
     return item.userMessageId;
   }
@@ -111,7 +113,9 @@ export function startQueueRecord(
        AND user_message_id IS NULL`,
     [messageId, item.id, sessionId],
   );
-  if (result.changes !== 1) throw new Error(`队列认领冲突：${item.id}`);
+  if (result.changes !== 1) {
+    throw new Error(`队列认领冲突：${item.id.toString()}`);
+  }
   syncRunStatus(db, item.id);
   return messageId;
 }

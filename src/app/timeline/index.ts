@@ -31,13 +31,15 @@ export function buildTimeline(
   events: DisplayEvent[],
 ): TimelineMessage[] {
   const outputs = new Map(
-    messages
-      .filter((item) => item.role === "tool" && item.toolCallId)
-      .map((item) => [item.toolCallId!, item]),
+    messages.flatMap((item) =>
+      item.role === "tool" && item.toolCallId
+        ? [[item.toolCallId, item] as const]
+        : [],
+    ),
   );
   const visible = messages
     .filter((item) => item.role !== "tool")
-    .map((item) => withParts(item, `message-${item.id}`, outputs));
+    .map((item) => withParts(item, `message-${item.id.toString()}`, outputs));
   const visibleToolCalls = visible.flatMap((item) => toolParts(item));
   const persistedSourceIds = new Set(
     messages.map((item) => item.sourceId).filter((id) => id !== undefined),
@@ -45,7 +47,9 @@ export function buildTimeline(
   const knownQueue = new Set(messages.map((item) => item.queueId));
   const pending = queue
     .filter((item) => item.status === "pending" && !knownQueue.has(item.id))
-    .map((item) => synthetic("user", item.content, `queue-${item.id}`));
+    .map((item) =>
+      synthetic("user", item.content, `queue-${item.id.toString()}`),
+    );
   const live = queue
     .filter((item) => item.status === "running" || item.status === "paused")
     .filter((item) => item.userMessageId !== null)
@@ -127,7 +131,7 @@ function streamMessage(
       toolCalls,
       createdAt: 0,
     },
-    `stream-${item.id}`,
+    `stream-${item.id.toString()}`,
     outputs,
   );
 }

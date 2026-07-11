@@ -1,13 +1,13 @@
 import type { QueueItem, QueueStatus } from "../types";
 
-export type QueueRow = {
+export interface QueueRow {
   id: number;
   run_id: number | null;
   content: string;
   status: QueueStatus;
   user_message_id: number | null;
   root_queue_id: number | null;
-};
+}
 
 export function toQueueItem(row: QueueRow): QueueItem {
   return {

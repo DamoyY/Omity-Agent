@@ -28,7 +28,7 @@ test("normalizes MCP text content before size handling", async () => {
     content: JSON.stringify({
       content: [{ type: "text", text: original }],
       structuredContent: { ignored: true },
-    }) as ToolMessage["content"],
+    }),
     tool_call_id: "call-1",
     name: "demo_tool",
   });
@@ -56,7 +56,7 @@ test("normalizes MCP text content before size handling", async () => {
   expect(normalized.content).toBe(short);
   expect(readFileSync(outputPath, "utf8")).toBe(original);
   expect(redirected.content).toBe(
-    `工具输出过长（${countTokens(original)} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`,
+    `工具输出过长（${countTokens(original).toString()} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`,
   );
   expect(redirected.name).toBe("demo_tool");
 });
@@ -66,14 +66,14 @@ test("keeps MCP image output and MCP error result unchanged", async () => {
   const imageMessage = new ToolMessage({
     content: JSON.stringify({
       content: [{ type: "image", data: "AAAA", mimeType: "image/png" }],
-    }) as ToolMessage["content"],
+    }),
     tool_call_id: "call-2",
   });
   const errorMessage = new ToolMessage({
     content: JSON.stringify({
       isError: true,
       content: [{ type: "text", text: "MCP 工具报错".repeat(100) }],
-    }) as ToolMessage["content"],
+    }),
     tool_call_id: "call-3",
   });
 

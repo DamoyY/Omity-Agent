@@ -19,6 +19,7 @@ import { isHookCallId } from "../../src/hooks/storage/calls";
 import { AgentDatabase } from "../../src/infrastructure/database";
 import { Logger } from "../../src/infrastructure/logger";
 import type { HookRule } from "../../src/types";
+import { required } from "../support/database";
 
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
@@ -116,8 +117,8 @@ test("runLimit disables hooks and applies across session threads", async () => {
     await hooks.runSilentChain(
       "agent",
       "before",
-      `queue:${index}`,
-      `thread:${index}`,
+      `queue:${index.toString()}`,
+      `thread:${index.toString()}`,
     );
   }
 
@@ -146,9 +147,9 @@ function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
 
 function makeTool(name: string, record: () => void) {
   return tool(
-    async () => {
+    () => {
       record();
-      return `${name}-result`;
+      return Promise.resolve(`${name}-result`);
     },
     { name, description: name, schema: z.object({}) },
   );
@@ -186,7 +187,7 @@ function assertToolProtocol(messages: BaseMessage[]) {
     for (const call of message.tool_calls ?? []) {
       const next = messages[index + 1];
       expect(next).toBeInstanceOf(ToolMessage);
-      expect((next as ToolMessage).tool_call_id).toBe(call.id!);
+      expect((next as ToolMessage).tool_call_id).toBe(required(call.id));
     }
   }
 }

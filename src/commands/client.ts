@@ -29,7 +29,7 @@ export default class Client extends Command {
     },
   ];
 
-  async run() {
+  override run() {
     const [sessionId, ...tokens] = this.argv;
     if (!sessionId) {
       this.error("client 需要会话 ID", {
@@ -39,11 +39,14 @@ export default class Client extends Command {
     const intent = parseClientIntent(tokens);
     const result = runClient({ sessionId, ...intent });
     if (result.queueId !== undefined) {
-      this.log(`已发送到会话 ${sessionId}（queue=${result.queueId}）`);
+      this.log(
+        `已发送到会话 ${sessionId}（queue=${result.queueId.toString()}）`,
+      );
     }
     if (result.control !== undefined) {
       const label = result.control === "running" ? "resume" : result.control;
       this.log(`已发送控制指令 ${label} 到会话 ${sessionId}`);
     }
+    return Promise.resolve();
   }
 }

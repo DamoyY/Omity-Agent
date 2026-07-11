@@ -1,6 +1,6 @@
 export type DisplayRole = "user" | "assistant" | "tool";
 
-export type DisplayToolCall = {
+export interface DisplayToolCall {
   id: string;
   index: number;
   name: string;
@@ -8,9 +8,9 @@ export type DisplayToolCall = {
   messageId?: string;
   inputText?: string;
   streaming?: boolean;
-};
+}
 
-export type DisplayMessage = {
+export interface DisplayMessage {
   id: number;
   sourceId?: string;
   role: DisplayRole;
@@ -19,31 +19,31 @@ export type DisplayMessage = {
   toolCalls: DisplayToolCall[];
   toolCallId?: string;
   createdAt: number;
-};
+}
 
-export type DisplayQueue = {
+export interface DisplayQueue {
   id: number;
   content: string;
   status: string;
   error: string | null;
   userMessageId?: number | null;
   root?: boolean;
-};
+}
 
-export type DisplayEvent = {
+export interface DisplayEvent {
   id: number;
   message: string;
   payload: unknown;
-};
+}
 
-export type TimelineMessage = {
+export interface TimelineMessage {
   id: number;
   key: string;
   role: DisplayRole;
   content: string;
   createdAt: number;
   parts: TimelinePart[];
-};
+}
 
 export type TimelinePart =
   | { type: "content"; content: string }

@@ -100,7 +100,7 @@ test("legacy pending sends stay inside their checkpoint namespace", async () => 
 
   const loaded = await saver.getTuple(child);
 
-  expect(loaded?.checkpoint.channel_values?.[TASKS]).toEqual(["from-a"]);
+  expect(loaded?.checkpoint.channel_values[TASKS]).toEqual(["from-a"]);
   saver.close();
 });
 

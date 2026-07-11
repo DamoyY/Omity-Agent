@@ -1,19 +1,19 @@
 import type { Database } from "bun:sqlite";
 
-export type InvocationDetails = {
+export interface InvocationDetails {
   key: string;
   sessionId: string;
   threadId: string;
   hookId: string;
   trigger: string;
   sourceId: string;
-};
+}
 
-export type InvocationRow = {
+export interface InvocationRow {
   status: string;
   output_json: string | null;
   error: string | null;
-};
+}
 
 export function applyInvocationSchema(db: Database) {
   db.run(`

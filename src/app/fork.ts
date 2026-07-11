@@ -6,20 +6,20 @@ import {
 } from "../infrastructure/messages";
 import { contentToText } from "../runtime/content";
 
-type MessageRow = {
+interface MessageRow {
   id: number;
   message_json: string;
   created_at: number;
-};
+}
 
-type ForkOptions = {
+interface ForkOptions {
   source: AgentDatabase;
   target: AgentDatabase;
   sourceSessionId: string;
   targetSessionId: string;
   workspace: string;
   beforeMessageId: number;
-};
+}
 
 export function forkDatabaseBeforeMessage(options: ForkOptions) {
   const forkPoint = assertForkPoint(
@@ -50,7 +50,7 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
 
 function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   if (!Number.isSafeInteger(messageId) || messageId <= 0) {
-    throw new Error(`Fork 消息 ID 无效：${messageId}`);
+    throw new Error(`Fork 消息 ID 无效：${messageId.toString()}`);
   }
   const query = db.prepare<MessageRow, [string, number]>(
     "SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id = ?",
@@ -61,7 +61,7 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   } finally {
     query.finalize();
   }
-  if (!row) throw new Error(`Fork 消息不存在：${messageId}`);
+  if (!row) throw new Error(`Fork 消息不存在：${messageId.toString()}`);
   if (storedMessageType(row.message_json) !== "human") {
     throw new Error("只能从用户消息创建 Fork");
   }

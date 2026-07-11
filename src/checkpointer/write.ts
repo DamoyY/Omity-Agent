@@ -9,6 +9,8 @@ import {
 } from "@langchain/langgraph-checkpoint";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { SqlBinding } from "./sql";
+import { optionalConfigString, requiredConfigString } from "./sql";
+import { serialize } from "./serde";
 
 export async function putCheckpoint(
   db: Database,
@@ -17,18 +19,23 @@ export async function putCheckpoint(
   checkpoint: Checkpoint,
   metadata: CheckpointMetadata,
 ): Promise<RunnableConfig> {
-  const {
-    thread_id,
-    checkpoint_ns = "",
-    checkpoint_id,
-  } = config.configurable ?? {};
-  if (!thread_id) {
-    throw new Error("缺少 config.configurable.thread_id，无法保存 checkpoint");
-  }
+  const thread_id = requiredConfigString(
+    config.configurable?.["thread_id"],
+    "config.configurable.thread_id",
+  );
+  const checkpoint_ns =
+    optionalConfigString(
+      config.configurable?.["checkpoint_ns"],
+      "checkpoint_ns",
+    ) ?? "";
+  const checkpoint_id = optionalConfigString(
+    config.configurable?.["checkpoint_id"],
+    "checkpoint_id",
+  );
   const [[type1, serializedCheckpoint], [type2, serializedMetadata]] =
     await Promise.all([
-      serde.dumpsTyped(copyCheckpoint(checkpoint)),
-      serde.dumpsTyped(metadata),
+      serialize(serde, copyCheckpoint(checkpoint)),
+      serialize(serde, metadata),
     ]);
   if (type1 !== type2) {
     throw new Error("checkpoint 与 metadata 的序列化类型不一致");
@@ -56,14 +63,19 @@ export async function putPendingWrites(
   writes: PendingWrite[],
   taskId: string,
 ) {
-  const {
-    thread_id,
-    checkpoint_ns = "",
-    checkpoint_id,
-  } = config.configurable ?? {};
-  if (!thread_id || !checkpoint_id) {
-    throw new Error("缺少 thread_id 或 checkpoint_id，无法保存 pending writes");
-  }
+  const thread_id = requiredConfigString(
+    config.configurable?.["thread_id"],
+    "thread_id",
+  );
+  const checkpoint_ns =
+    optionalConfigString(
+      config.configurable?.["checkpoint_ns"],
+      "checkpoint_ns",
+    ) ?? "";
+  const checkpoint_id = requiredConfigString(
+    config.configurable?.["checkpoint_id"],
+    "checkpoint_id",
+  );
   const replace = db.prepare(
     `INSERT OR REPLACE INTO writes
      (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, value)
@@ -94,10 +106,10 @@ export async function putPendingWrites(
   }
 }
 
-type PendingWriteRow = {
+interface PendingWriteRow {
   replace: boolean;
   bindings: SqlBinding[];
-};
+}
 
 async function pendingWriteRows(
   serde: SerializerProtocol,
@@ -109,7 +121,7 @@ async function pendingWriteRows(
 ) {
   return Promise.all(
     writes.map(async ([channel, value], idx) => {
-      const [type, serialized] = await serde.dumpsTyped(value);
+      const [type, serialized] = await serialize(serde, value);
       return {
         replace: channel in WRITES_IDX_MAP,
         bindings: [

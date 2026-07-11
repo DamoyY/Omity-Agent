@@ -14,7 +14,7 @@ export type HookWhen = "before" | "after";
 
 export type HookTrigger = `${string}:${HookWhen}`;
 
-export type HookRule = {
+export interface HookRule {
   id: string;
   target: string;
   when: HookWhen;
@@ -22,9 +22,9 @@ export type HookRule = {
   mode: HookMode;
   tool: string;
   args: Record<string, unknown>;
-};
+}
 
-export type Settings = {
+export interface Settings {
   paths: {
     dataDir: string;
   };
@@ -62,19 +62,19 @@ export type Settings = {
     usagePrompt: string;
     skillEnabled: Record<string, boolean>;
   };
-};
+}
 
-export type SkillInfo = {
+export interface SkillInfo {
   name: string;
   description: string;
   source: string;
-};
+}
 
-export type QueueItem = {
+export interface QueueItem {
   id: number;
   runId: number | null;
   content: string;
   status: QueueStatus;
   userMessageId: number | null;
   root: boolean;
-};
+}

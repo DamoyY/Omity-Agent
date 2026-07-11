@@ -16,11 +16,11 @@ import { AppRegistry } from "./registry";
 import { loadTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
 
-type RunningHost = {
+interface RunningHost {
   root: string;
   signal: { stopping: boolean };
   done: Promise<void>;
-};
+}
 
 export class AppController {
   readonly events = new AppEvents();
@@ -34,7 +34,6 @@ export class AppController {
 
   close() {
     for (const host of this.hosts.values()) host.signal.stopping = true;
-    this.registry.close();
   }
 
   bootstrap() {
@@ -95,7 +94,7 @@ export class AppController {
     return result;
   }
 
-  async forkSession(sessionId: string, beforeMessageId: number) {
+  forkSession(sessionId: string, beforeMessageId: number) {
     const session = this.registry.require(sessionId);
     const id = `web-${randomUUID()}`;
     const settings = loadSettings(this.appRoot);
@@ -176,11 +175,13 @@ export class AppController {
       signal,
       wake: (delayMs) => this.events.wait(sessionId, delayMs),
       observer: {
-        changed: (changedSessionId) => this.events.notify(changedSessionId),
-        token: () => {},
+        changed: (changedSessionId) => {
+          this.events.notify(changedSessionId);
+        },
+        token: () => undefined,
       },
     })
-      .catch((error) => {
+      .catch((error: unknown) => {
         this.hostErrors.set(
           sessionId,
           error instanceof Error ? error.message : String(error),

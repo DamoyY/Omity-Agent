@@ -10,16 +10,16 @@ import type { Settings } from "../types";
 
 const tokenizer = getEncoding("o200k_base");
 
-type LargeOutputRuntimeContext = {
+interface LargeOutputRuntimeContext {
   sessionId: string;
-};
+}
 
-type LargeToolOutputOptions = {
+interface LargeToolOutputOptions {
   dataDir: string;
   maxTokens: number;
   sessionId: string;
   outputId?: string;
-};
+}
 
 export function createLargeToolOutputMiddleware(settings: Settings) {
   return createMiddleware({
@@ -56,7 +56,7 @@ export async function redirectLargeToolOutput(
     options.sessionId,
     options.outputId,
   );
-  const content = `工具输出过长（${tokens} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`;
+  const content = `工具输出过长（${tokens.toString()} tokens），无法直接查看。原始输出内容已保存于：${outputPath}`;
   return copyToolMessage(message, content, { path: outputPath, tokens });
 }
 
@@ -69,6 +69,7 @@ function copyToolMessage(
   content: string,
   largeOutput?: { path: string; tokens: number },
 ) {
+  const artifact: unknown = message.artifact;
   return new ToolMessage({
     content,
     tool_call_id: message.tool_call_id,
@@ -76,12 +77,9 @@ function copyToolMessage(
     id: message.id,
     additional_kwargs: message.additional_kwargs,
     response_metadata: message.response_metadata,
-    artifact: message.artifact,
+    artifact,
     status: message.status,
-    metadata: {
-      ...message.metadata,
-      ...(largeOutput ? { largeOutput } : {}),
-    },
+    metadata: mergeMetadata(message.metadata, largeOutput),
   });
 }
 
@@ -93,12 +91,26 @@ function getSessionId(context: unknown) {
 }
 
 function normalizeMcpTextResult(
-  content: ToolMessage["content"] | unknown,
+  content: unknown,
 ): { text: string; isError: boolean } | null {
   if (typeof content === "string") {
     return normalizeStringContent(content);
   }
   return normalizeMcpValue(content, false);
+}
+
+function mergeMetadata(
+  metadata: unknown,
+  largeOutput: { path: string; tokens: number } | undefined,
+) {
+  if (metadata !== undefined && !isRecord(metadata)) {
+    throw new Error("工具消息 metadata 必须是对象");
+  }
+  return { ...metadata, ...(largeOutput ? { largeOutput } : {}) };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function normalizeStringContent(content: string) {

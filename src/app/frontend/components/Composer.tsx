@@ -1,5 +1,5 @@
 import { Send } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { Button, Textarea } from "./ParkUI";
@@ -35,18 +35,19 @@ export function Composer({
 }: {
   disabled: boolean;
   draft?: string;
-  onSend(content: string): Promise<void>;
+  onSend: (content: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [content, setContent] = useState("");
-  useEffect(() => setContent(draft ?? ""), [draft]);
+  const [content, setContent] = useState(draft ?? "");
   return (
     <form
       className={form}
       onSubmit={(event) => {
         event.preventDefault();
         if (!content.trim()) return;
-        void onSend(content).then(() => setContent(""));
+        void onSend(content).then(() => {
+          setContent("");
+        });
       }}
     >
       <Textarea
@@ -55,7 +56,9 @@ export function Composer({
         placeholder={t("messagePlaceholder")}
         size="md"
         value={content}
-        onChange={(event) => setContent(event.currentTarget.value)}
+        onChange={(event) => {
+          setContent(event.currentTarget.value);
+        }}
         onKeyDown={(event) => {
           if (event.key !== "Enter" || !event.ctrlKey) return;
           if (event.nativeEvent.isComposing) return;

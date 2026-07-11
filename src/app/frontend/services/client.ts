@@ -1,13 +1,13 @@
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import type { Control } from "../../../types";
 
-export type SessionInfo = {
+export interface SessionInfo {
   id: string;
   workspace: string;
   createdAt: number;
   updatedAt: number;
   running: boolean;
-};
+}
 
 export async function bootstrap() {
   return request<{ cwd: string; sessions: SessionInfo[] }>("/api/bootstrap");

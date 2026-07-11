@@ -29,12 +29,19 @@ export function App() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [page, setPage] = useState(readPage);
   const [newWorkspace, setNewWorkspace] = useState("");
-  const [transcript, setTranscript] = useState<Transcript>(emptyTranscript);
+  const [loadedTranscript, setLoadedTranscript] = useState<{
+    sessionId: string;
+    data: Transcript;
+  }>();
   const [pausingSessionId, setPausingSessionId] = useState<string>();
   const activeSession =
     page.kind === "session"
       ? sessions.find((session) => session.id === page.id)
       : undefined;
+  const transcript =
+    loadedTranscript && loadedTranscript.sessionId === activeSession?.id
+      ? loadedTranscript.data
+      : emptyTranscript;
   const forkDraft = transcript.queue.find((item) => item.status === "draft");
 
   const navigate = (nextPage: Page, replace = false) => {
@@ -43,9 +50,13 @@ export function App() {
   };
 
   useEffect(() => {
-    const syncPage = () => setPage(readPage());
+    const syncPage = () => {
+      setPage(readPage());
+    };
     window.addEventListener("popstate", syncPage);
-    return () => window.removeEventListener("popstate", syncPage);
+    return () => {
+      window.removeEventListener("popstate", syncPage);
+    };
   }, []);
 
   useEffect(() => {
@@ -73,16 +84,13 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!activeSession) {
-      setTranscript(emptyTranscript);
-      return;
-    }
+    if (!activeSession) return;
     let stopped = false;
     const reportedErrors = new Set<string>();
     const refresh = async () => {
       const data = await loadTranscript(activeSession.id);
       if (stopped) return;
-      setTranscript(data);
+      setLoadedTranscript({ sessionId: activeSession.id, data });
       reportPausedRunErrors(
         activeSession.id,
         data.queue,
@@ -99,13 +107,10 @@ export function App() {
     };
   }, [activeSession, t]);
 
-  useEffect(() => {
-    if (pausingSessionId !== activeSession?.id) return;
-    const running = transcript.queue.some((item) => item.status === "running");
-    if (transcript.control !== "running" || !running) {
-      setPausingSessionId(undefined);
-    }
-  }, [activeSession?.id, pausingSessionId, transcript]);
+  const pausing =
+    pausingSessionId === activeSession?.id &&
+    transcript.control === "running" &&
+    transcript.queue.some((item) => item.status === "running");
 
   return (
     <div className={cx("dark", layout)}>
@@ -113,9 +118,9 @@ export function App() {
         <Sidebar
           activeId={activeSession?.id}
           sessions={sessions}
-          onCreate={async () => {
+          onCreate={() => {
             setNewWorkspace(cwd);
-            setTranscript(emptyTranscript);
+            setLoadedTranscript(undefined);
             navigate({ kind: "new" });
           }}
           onDelete={async (id) => {
@@ -129,7 +134,9 @@ export function App() {
               );
             }
           }}
-          onSelect={(id) => navigate(sessionPage(id))}
+          onSelect={(id) => {
+            navigate(sessionPage(id));
+          }}
         />
       </aside>
       <main className={main}>
@@ -137,7 +144,7 @@ export function App() {
           activeId={activeSession?.id}
           canControl={activeSession !== undefined}
           newSession={page.kind === "new"}
-          pausing={pausingSessionId === activeSession?.id}
+          pausing={pausing}
           control={transcript.control}
           queue={transcript.queue}
           view={transcript.view}

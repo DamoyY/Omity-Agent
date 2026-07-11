@@ -51,9 +51,9 @@ const mainSchema = z.object({
   }),
 });
 
-export type LoadSettingsOptions = {
+export interface LoadSettingsOptions {
   cwd?: string;
-};
+}
 
 export function loadSettings(
   root = process.cwd(),
@@ -117,8 +117,8 @@ export function safeId(value: string) {
   return value;
 }
 
-function readYaml(path: string) {
-  return YAML.parse(readFileSync(path, "utf8"));
+function readYaml(path: string): unknown {
+  return YAML.parse(readFileSync(path, "utf8")) as unknown;
 }
 
 function readPrompt(
@@ -135,9 +135,9 @@ function readPrompt(
   return content;
 }
 
-type PromptContext = {
+interface PromptContext {
   cwd: string;
-};
+}
 
 function expandPromptPlaceholders(content: string, context: PromptContext) {
   return content.replaceAll("${cwd}", context.cwd);

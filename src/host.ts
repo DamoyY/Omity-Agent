@@ -19,19 +19,19 @@ import { HookLedger } from "./hooks/ledger";
 import { HookRuntime } from "./hooks/runtime";
 import { hookBeforeModelNode } from "./hooks/middleware";
 
-export type HostMode = {
+export interface HostMode {
   kind: "new" | "load" | "overwrite";
   sessionId: string;
-};
+}
 
-export type HostRunOptions = {
+export interface HostRunOptions {
   cwd?: string;
   observer?: HostObserver;
   quiet?: boolean;
   signal?: StopSignal;
   wake?: (delayMs: number) => Promise<void>;
   wireSigint?: boolean;
-};
+}
 
 export async function runHost(
   mode: HostMode,

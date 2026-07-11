@@ -26,7 +26,7 @@
   "scripts": {
     "omity": "bun src/cli.ts",
     "test": "bun test",
-    "check": "prettier -w --log-level warn . && tsc --noEmit && eslint"
+    "check": "tsc --noEmit; eslint --fix; prettier -w --log-level warn ."
   },
   "devDependencies": {
     "@babel/core": "latest",
@@ -38,6 +38,7 @@
     "@vitejs/plugin-react": "latest",
     "babel-plugin-react-compiler": "latest",
     "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
     "postcss": "latest",
     "prettier": "latest",
     "typescript-eslint": "latest",

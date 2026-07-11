@@ -3,11 +3,12 @@ import type { HostContext } from "./context";
 import { contentToText } from "./content";
 
 const omitted = Symbol("omitted");
+type DiffResult = { value: unknown } | typeof omitted;
 
-export type StreamLogState = {
+export interface StreamLogState {
   seenFacts: Set<string>;
   seenStructures: Set<string>;
-};
+}
 
 export function createStreamLogState(): StreamLogState {
   return {
@@ -27,12 +28,13 @@ export function handleStreamEvent(
     if (delta !== undefined) ctx.logger.debug("LangGraph 事件增量", delta);
     return;
   }
-  const [mode, payload] = event;
+  const mode: unknown = event[0];
+  const payload: unknown = event[1];
   if (mode === "messages") {
-    const chunk = Array.isArray(payload) ? payload[0] : undefined;
-    if (!isAiChunk(chunk)) return;
+    const chunk: unknown = Array.isArray(payload) ? payload[0] : undefined;
+    if (!isRecord(chunk) || !isAiChunk(chunk)) return;
     const messageId = readMessageId(chunk);
-    const text = contentToText(chunk?.content);
+    const text = contentToText(chunk["content"]);
     if (text && ctx.settings.logging.streamTokens) {
       ctx.logger.token(text);
     }
@@ -58,25 +60,32 @@ export function handleStreamEvent(
 export function incrementalSummary(
   value: unknown,
   state: StreamLogState,
-): unknown | undefined {
+): unknown {
   const delta = diffSeen(value, state, "$");
-  return delta === omitted ? undefined : summarize(delta);
+  return delta === omitted ? undefined : summarize(delta.value);
 }
 
 function diffSeen(
   value: unknown,
   state: StreamLogState,
   key: string,
-): unknown | typeof omitted {
+): DiffResult {
   if (isRecord(value)) {
     const hash = stableStringify(value);
     if (state.seenStructures.has(hash)) return omitted;
     state.seenStructures.add(hash);
     const entries = Object.entries(value)
       .map(([name, child]) => [name, diffSeen(child, state, name)] as const)
-      .filter(([, child]) => child !== omitted);
+      .filter(
+        (entry): entry is readonly [string, { value: unknown }] =>
+          entry[1] !== omitted,
+      );
     if (entries.length === 0) return omitted;
-    return Object.fromEntries(entries);
+    return {
+      value: Object.fromEntries(
+        entries.map(([name, child]) => [name, child.value]),
+      ),
+    };
   }
   if (Array.isArray(value)) {
     const hash = stableStringify(value);
@@ -84,23 +93,29 @@ function diffSeen(
     state.seenStructures.add(hash);
     const items = value
       .map((child) => diffSeen(child, state, key))
-      .filter((child) => child !== omitted);
-    return items.length === 0 ? omitted : items;
+      .filter(isIncluded);
+    return items.length === 0
+      ? omitted
+      : { value: items.map((item) => item.value) };
   }
   const fact = `${key}:${stableStringify(value)}`;
   if (state.seenFacts.has(fact)) return omitted;
   state.seenFacts.add(fact);
-  return value;
+  return { value };
+}
+
+function isIncluded(value: DiffResult): value is { value: unknown } {
+  return value !== omitted;
 }
 
 function summarize(value: unknown) {
-  return JSON.parse(
-    JSON.stringify(value, (_key, current) =>
-      typeof current === "string" && current.length > 240
-        ? `${current.slice(0, 240)}…`
-        : current,
-    ),
+  if (value === undefined) return undefined;
+  const json = JSON.stringify(value, (_key, current: unknown) =>
+    typeof current === "string" && current.length > 240
+      ? `${current.slice(0, 240)}…`
+      : current,
   );
+  return JSON.parse(json) as unknown;
 }
 
 function stableStringify(value: unknown): string {
@@ -121,7 +136,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isAiChunk(value: unknown) {
+function isAiChunk(value: Record<string, unknown>) {
   if (AIMessageChunk.isInstance(value)) return true;
   return isRecord(value) && value["type"] === "ai";
 }

@@ -59,7 +59,7 @@ function readSkill(skillDir: string): SkillInfo {
 }
 
 function parseSkillMeta(content: string, source: string): SkillMeta {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
   if (!match) throw new Error(`Skill 缺少 YAML front matter：${source}`);
   const yaml = match[1];
   if (yaml === undefined) throw new Error(`Skill front matter 为空：${source}`);

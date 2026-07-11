@@ -91,11 +91,11 @@ export function ChatPage({
   queue: DisplayQueue[];
   view: TimelineMessage[];
   workspace?: string;
-  onSend(content: string): Promise<void>;
-  onControl(control: Extract<Control, "running" | "pause">): Promise<void>;
-  onFork(messageId: number): Promise<void>;
-  onPickWorkspace(): Promise<string | null>;
-  onWorkspaceChange(workspace: string): void;
+  onSend: (content: string) => Promise<void>;
+  onControl: (control: Extract<Control, "running" | "pause">) => Promise<void>;
+  onFork: (messageId: number) => Promise<void>;
+  onPickWorkspace: () => Promise<string | null>;
+  onWorkspaceChange: (workspace: string) => void;
 }) {
   const { t } = useTranslation();
   const paused = control === "pause" || control === "pause_cancel";
@@ -150,7 +150,10 @@ export function ChatPage({
             <div className={roleLabel}>{t(item.role)}</div>
             {item.parts.map((part, index) =>
               part.type === "content" ? (
-                <MarkdownView content={part.content} key={`content-${index}`} />
+                <MarkdownView
+                  content={part.content}
+                  key={`content-${index.toString()}`}
+                />
               ) : (
                 <ToolCall
                   call={part.call}
@@ -172,7 +175,12 @@ export function ChatPage({
           </article>
         ))}
       </TranscriptScroll>
-      <Composer disabled={!activeId} draft={forkDraft} onSend={onSend} />
+      <Composer
+        disabled={!activeId}
+        draft={forkDraft}
+        key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
+        onSend={onSend}
+      />
     </div>
   );
 }

@@ -88,7 +88,7 @@ export class HookLedger {
     const concurrent = this.read(details.key);
     if (concurrent) return { key: details.key, existing: concurrent };
     throw new Error(
-      `Hook ${details.hookId} 已达到 session 运行上限 ${runLimit}`,
+      `Hook ${details.hookId} 已达到 session 运行上限 ${runLimit.toString()}`,
     );
   }
 

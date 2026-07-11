@@ -63,7 +63,7 @@ export function buildGraph(
     ...(skillsMessage && !usesResponsesInstructions
       ? [createSkillsMiddleware(skillsMessage)]
       : []),
-  ];
+  ] as const;
   const graph = createAgent({
     model: buildModel(
       settings,

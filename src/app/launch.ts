@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { isIP } from "node:net";
 
 export function appUrl(host: string, port: number) {
-  return `http://${urlHost(host)}:${port}/`;
+  return `http://${urlHost(host)}:${port.toString()}/`;
 }
 
 export function openBrowser(url: string) {

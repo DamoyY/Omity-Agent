@@ -12,27 +12,27 @@ import {
   type DisplayToolCall,
 } from "./timeline";
 
-type MessageRow = {
+interface MessageRow {
   id: number;
   message_json: string;
   queue_id: number | null;
   created_at: number;
-};
+}
 
-type QueueRow = {
+interface QueueRow {
   id: number;
   content: string;
   status: string;
   error: string | null;
   user_message_id: number | null;
   root_queue_id: number | null;
-};
+}
 
-type EventRow = {
+interface EventRow {
   id: number;
   message: string;
   payload_json: string;
-};
+}
 
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const control = db.control(sessionId);
@@ -93,11 +93,11 @@ function toDisplayEvent(row: EventRow): DisplayEvent {
 }
 
 function parseStored(value: string): StoredMessage {
-  const parsed = JSON.parse(value) as StoredMessage;
-  if (!parsed || typeof parsed !== "object" || !("type" in parsed)) {
+  const parsed: unknown = JSON.parse(value);
+  if (!isRecord(parsed) || typeof parsed["type"] !== "string") {
     throw new Error("消息记录无效");
   }
-  return parsed;
+  return parsed as unknown as StoredMessage;
 }
 
 function messageRole(message: BaseMessage): DisplayMessage["role"] {
@@ -109,7 +109,7 @@ function messageRole(message: BaseMessage): DisplayMessage["role"] {
 function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
   const calls = readRecordArray(message, "tool_calls");
   return calls.map((call, index) => ({
-    id: stringField(call, "id") ?? `tool-${index}`,
+    id: stringField(call, "id") ?? `tool-${index.toString()}`,
     index,
     ...(message.id ? { messageId: message.id } : {}),
     name: stringField(call, "name") ?? "tool",

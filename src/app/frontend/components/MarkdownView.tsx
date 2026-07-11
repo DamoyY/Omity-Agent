@@ -1,4 +1,5 @@
 import type { Components } from "react-markdown";
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { css } from "styled-system/css";
@@ -22,7 +23,7 @@ const markdown = css({
 const components: Components = {
   pre: ({ children }) => <>{children}</>,
   code: ({ children, className }) => {
-    const raw = String(children);
+    const raw = codeText(children);
     const code = raw.replace(/\n$/, "");
     const language = className?.match(/(?:^|\s)language-([^\s]+)/)?.[1];
     if (className || raw.includes("\n")) {
@@ -35,6 +36,15 @@ const components: Components = {
     );
   },
 };
+
+function codeText(value: ReactNode): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "bigint") {
+    return value.toString();
+  }
+  if (Array.isArray(value)) return value.map(codeText).join("");
+  return "";
+}
 
 export function MarkdownView({ content }: { content: string }) {
   return (

@@ -1,7 +1,7 @@
 import { AIMessage } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
 import { z } from "zod";
-import { toolPlan, userPlan, type HookState } from "./plan";
+import { requireCallId, toolPlan, userPlan, type HookState } from "./plan";
 import { advancePlan } from "./pipeline";
 import { HookRuntime } from "./runtime";
 import { isHookCallId } from "./storage/calls";
@@ -44,7 +44,7 @@ export function createHookMiddleware(hooks: HookRuntime) {
       hook: async (rawState, runtime) => {
         const state = rawState as HookState;
         const original = state.messages.at(-1);
-        if (!(original instanceof AIMessage) || !original.tool_calls?.length) {
+        if (!AIMessage.isInstance(original) || !original.tool_calls?.length) {
           return;
         }
         const planned = { ...state, hookPlan: toolPlan(original) };
@@ -64,9 +64,11 @@ export function createHookMiddleware(hooks: HookRuntime) {
           Promise.resolve(handler(request)),
         );
       }
-      if (!callId) throw new Error(`工具调用缺少 ID：${request.toolCall.name}`);
-      return hooks.runAgentTool(request.toolCall.name, callId, threadId, () =>
-        Promise.resolve(handler(request)),
+      return hooks.runAgentTool(
+        request.toolCall.name,
+        requireCallId(request.toolCall),
+        threadId,
+        () => Promise.resolve(handler(request)),
       );
     },
   });

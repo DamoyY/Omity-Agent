@@ -7,13 +7,13 @@ export function createMcpErrorOutputClient(
   serverName: string,
 ): McpClient {
   return new Proxy(client, {
-    get(target, property, receiver) {
-      const value = Reflect.get(target, property, receiver);
-      if (property !== "callTool" || typeof value !== "function") {
+    get(target, property, receiver): unknown {
+      const value: unknown = Reflect.get(target, property, receiver);
+      if (property !== "callTool" || !isCallable(value)) {
         return value;
       }
       return async (...args: unknown[]) => {
-        const result = await Reflect.apply(value, target, args);
+        const result: unknown = await Reflect.apply(value, target, args);
         return mcpErrorResultAsOutput(
           result,
           serverName,
@@ -22,6 +22,12 @@ export function createMcpErrorOutputClient(
       };
     },
   });
+}
+
+function isCallable(
+  value: unknown,
+): value is (this: unknown, ...args: unknown[]) => unknown {
+  return typeof value === "function";
 }
 
 export function mcpErrorResultAsOutput(

@@ -24,10 +24,13 @@ export async function readJson<T>(
 ): Promise<T> {
   const declared = contentLength(req);
   if (declared > requestBodyLimit) bodyTooLarge();
-  const chunks: Buffer[] = [];
+  const chunks: Uint8Array[] = [];
   let total = 0;
   for await (const chunk of req) {
-    const buffer = Buffer.from(chunk);
+    if (!(chunk instanceof Uint8Array)) {
+      throw new HttpError(400, "请求体数据块无效");
+    }
+    const buffer: Uint8Array = chunk;
     total += buffer.byteLength;
     if (total > requestBodyLimit) bodyTooLarge();
     chunks.push(buffer);
@@ -79,5 +82,8 @@ function contentLength(req: IncomingMessage) {
 }
 
 function bodyTooLarge(): never {
-  throw new HttpError(413, `请求体不能超过 ${requestBodyLimit} 字节`);
+  throw new HttpError(
+    413,
+    `请求体不能超过 ${requestBodyLimit.toString()} 字节`,
+  );
 }

@@ -175,7 +175,7 @@ function withAppDataRoot(path: string, callback: () => void) {
 
 function restoreEnv(name: string, value: string | undefined) {
   if (value === undefined) {
-    delete process.env[name];
+    Reflect.deleteProperty(process.env, name);
     return;
   }
   process.env[name] = value;

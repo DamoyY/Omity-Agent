@@ -60,6 +60,6 @@ const hooksFileSchema = z
   });
 
 export function loadHookRules(path: string): HookRule[] {
-  const parsed = YAML.parse(readFileSync(path, "utf8"));
+  const parsed: unknown = YAML.parse(readFileSync(path, "utf8"));
   return hooksFileSchema.parse(parsed).hooks;
 }

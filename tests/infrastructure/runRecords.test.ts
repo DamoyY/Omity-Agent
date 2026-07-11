@@ -1,7 +1,12 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { queueMessageId } from "../../src/infrastructure/messages";
-import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
+import {
+  cleanupDatabaseDirs,
+  makeDb,
+  required,
+  workspace,
+} from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -9,7 +14,7 @@ test("replace history restores queue ids from user message identity", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   const first = db.appendUser("123", "第一条");
-  db.startQueue("123", db.nextQueue("123")!);
+  db.startQueue("123", required(db.nextQueue("123")));
   db.setQueueStatus(first, "done");
   const second = db.appendUser("123", "第二条");
 
@@ -39,11 +44,11 @@ test("replace history rejects queue identities from another session", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
 
-  expect(() =>
+  expect(() => {
     db.replaceHistory("123", [
       new HumanMessage({ content: "错误消息", id: queueMessageId("456", 1) }),
-    ]),
-  ).toThrow("用户消息属于其他会话");
+    ]);
+  }).toThrow("用户消息属于其他会话");
   db.close();
 });
 
@@ -72,17 +77,18 @@ test("run status reflects all queue items", () => {
   const first = db.appendUser("123", "第一条");
   const second = db.appendUser("123", "第二条");
 
-  db.startQueue("123", db.nextQueue("123")!);
+  db.startQueue("123", required(db.nextQueue("123")));
   db.setQueueStatus(first, "done");
   expect(runStatus(db)).toBe("pending");
 
-  db.startQueue("123", db.nextQueue("123")!);
+  db.startQueue("123", required(db.nextQueue("123")));
   db.setQueueStatus(second, "done");
   expect(runStatus(db)).toBe("done");
   db.close();
 });
 
 function runStatus(db: ReturnType<typeof makeDb>) {
-  return db.db.query<{ status: string }, []>("SELECT status FROM runs").get()!
-    .status;
+  return required(
+    db.db.query<{ status: string }, []>("SELECT status FROM runs").get(),
+  ).status;
 }

@@ -49,12 +49,21 @@ export function NewSessionPage({
 }: {
   pageClassName: string;
   workspace: string;
-  onPickWorkspace(): Promise<string | null>;
-  onSend(content: string): Promise<void>;
-  onWorkspaceChange(workspace: string): void;
+  onPickWorkspace: () => Promise<string | null>;
+  onSend: (content: string) => Promise<void>;
+  onWorkspaceChange: (workspace: string) => void;
 }) {
   const { t } = useTranslation();
   const [picking, setPicking] = useState(false);
+  const pickWorkspace = async () => {
+    setPicking(true);
+    try {
+      const selected = await onPickWorkspace();
+      if (selected) onWorkspaceChange(selected);
+    } finally {
+      setPicking(false);
+    }
+  };
   return (
     <div className={pageClassName}>
       <div />
@@ -67,20 +76,14 @@ export function NewSessionPage({
               <Input
                 className={pathInput}
                 value={workspace}
-                onChange={(event) =>
-                  onWorkspaceChange(event.currentTarget.value)
-                }
+                onChange={(event) => {
+                  onWorkspaceChange(event.currentTarget.value);
+                }}
               />
               <Button
                 disabled={picking}
-                onClick={async () => {
-                  setPicking(true);
-                  try {
-                    const selected = await onPickWorkspace();
-                    if (selected) onWorkspaceChange(selected);
-                  } finally {
-                    setPicking(false);
-                  }
+                onClick={() => {
+                  void pickWorkspace();
                 }}
                 type="button"
               >

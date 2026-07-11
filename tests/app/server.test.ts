@@ -20,6 +20,7 @@ import {
 import { AppRegistry } from "../../src/app/registry";
 import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
 import { AgentDatabase } from "../../src/infrastructure/database";
+import { required } from "../support/database";
 
 const dirs: string[] = [];
 
@@ -30,23 +31,16 @@ afterEach(() => {
 });
 
 test("API JSON validation rejects invalid controls and empty messages", async () => {
-  await expect(
+  await expectStatus(
     readJson(request({ control: "invalid" }), controlBody),
-  ).rejects.toMatchObject({
-    status: 400,
-  });
-  await expect(
-    readJson(request({ content: "   " }), messageBody),
-  ).rejects.toMatchObject({
-    status: 400,
-  });
+    400,
+  );
+  await expectStatus(readJson(request({ content: "   " }), messageBody), 400);
 });
 
 test("API JSON reader enforces the body size limit", async () => {
   const body = `"${"x".repeat(requestBodyLimit)}"`;
-  await expect(readJson(rawRequest(body), messageBody)).rejects.toMatchObject({
-    status: 413,
-  });
+  await expectStatus(readJson(rawRequest(body), messageBody), 413);
 });
 
 test("API validates encoded session IDs without path normalization", () => {
@@ -76,14 +70,13 @@ test("app registry scans session databases without creating a global db", () => 
   db.createSession("cli-session", workspace);
   db.close();
 
-  expect(new AppRegistry(root).list()).toEqual([
-    {
-      id: "cli-session",
-      workspace,
-      createdAt: expect.any(Number),
-      updatedAt: expect.any(Number),
-    },
-  ]);
+  const sessions = new AppRegistry(root).list();
+  expect(sessions).toHaveLength(1);
+  const session = required(sessions[0]);
+  expect(session.id).toBe("cli-session");
+  expect(session.workspace).toBe(workspace);
+  expect(typeof session.createdAt).toBe("number");
+  expect(typeof session.updatedAt).toBe("number");
   expect(existsSync(join(settings.paths.dataDir, "app.sqlite"))).toBe(false);
 });
 
@@ -91,8 +84,18 @@ function request(body: unknown) {
   return rawRequest(JSON.stringify(body));
 }
 
+async function expectStatus(promise: Promise<unknown>, status: number) {
+  try {
+    await promise;
+  } catch (error) {
+    expect(error).toMatchObject({ status });
+    return;
+  }
+  throw new Error(`请求应以状态 ${status.toString()} 失败`);
+}
+
 function rawRequest(body: string) {
-  return Object.assign(Readable.from([body]), {
+  return Object.assign(Readable.from([Buffer.from(body, "utf8")]), {
     headers: {},
   }) as never;
 }

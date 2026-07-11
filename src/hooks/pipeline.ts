@@ -50,7 +50,7 @@ async function advanceTools(
 ) {
   let plan = initial;
   const original = restoreOriginal(plan.original);
-  while (true) {
+  for (;;) {
     const call = original.tool_calls?.[plan.toolIndex];
     if (!call) return { hookPlan: null };
     if (plan.stage === "original") {
@@ -94,7 +94,7 @@ async function runHookStep(
     plan.previousInvocationKey = hooks.identity.hook(rule, sourceId, threadId);
     return null;
   }
-  const call = await hooks.resolvedCall(
+  const call = hooks.resolvedCall(
     rule,
     sourceId,
     threadId,

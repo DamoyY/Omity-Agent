@@ -4,19 +4,19 @@ import { Database } from "bun:sqlite";
 import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
 import { applySchema } from "../infrastructure/schema";
 
-export type RegisteredSession = {
+export interface RegisteredSession {
   id: string;
   workspace: string;
   createdAt: number;
   updatedAt: number;
-};
+}
 
-type SessionRow = {
+interface SessionRow {
   id: string;
   workspace: string;
   created_at: number;
   updated_at: number;
-};
+}
 
 export class AppRegistry {
   private readonly sessionsDir: string;
@@ -25,8 +25,6 @@ export class AppRegistry {
     const settings = loadSettings(appRoot);
     this.sessionsDir = resolve(settings.paths.dataDir, "sessions");
   }
-
-  close() {}
 
   list() {
     if (!existsSync(this.sessionsDir)) return [];

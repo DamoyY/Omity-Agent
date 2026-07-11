@@ -60,12 +60,12 @@ export class HookRuntime {
     return runSilentChain(this, target, when, sourceId, threadId, options);
   }
 
-  async resolvedCall(
+  resolvedCall(
     rule: HookRule,
     sourceId: string,
     threadId: string,
     previousInvocationKey?: string,
-  ): Promise<ToolCall> {
+  ): ToolCall {
     const details = callStorage.hookCallDetails(rule, sourceId);
     const callId = callStorage.createHookCallId(
       this.sessionId,
@@ -108,13 +108,13 @@ export class HookRuntime {
       sourceId,
     });
     try {
-      const call = await this.resolvedCall(
+      const call = this.resolvedCall(
         rule,
         sourceId,
         threadId,
         previousInvocationKey,
       );
-      const output = await this.requireTool(
+      const output: unknown = await this.requireTool(
         rule.tool,
         `Hook ${rule.id}`,
       ).invoke(call, {

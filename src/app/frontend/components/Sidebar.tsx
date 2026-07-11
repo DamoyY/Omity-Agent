@@ -104,9 +104,9 @@ export function Sidebar({
 }: {
   sessions: SessionInfo[];
   activeId?: string;
-  onCreate(): Promise<void>;
-  onDelete(id: string): Promise<void>;
-  onSelect(id: string): void;
+  onCreate: () => void;
+  onDelete: (id: string) => Promise<void>;
+  onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const groups = groupSessions(sessions);
@@ -117,11 +117,7 @@ export function Sidebar({
       </section>
       <section className={panel}>
         <div className={stack}>
-          <Button
-            className={fullButton}
-            onClick={() => void onCreate()}
-            type="button"
-          >
+          <Button className={fullButton} onClick={onCreate} type="button">
             <Plus size={14} />
             {t("newSession")}
           </Button>
@@ -141,7 +137,9 @@ export function Sidebar({
                       sessionButton,
                       session.id === activeId && activeSession,
                     )}
-                    onClick={() => onSelect(session.id)}
+                    onClick={() => {
+                      onSelect(session.id);
+                    }}
                     type="button"
                   >
                     <div className={itemTitle}>{session.id}</div>

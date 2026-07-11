@@ -29,7 +29,7 @@ export function expandEnvPlaceholders(
   }
   if (Array.isArray(value)) {
     return value.map((item, index) =>
-      expandEnvPlaceholders(item, `${path}[${index}]`),
+      expandEnvPlaceholders(item, `${path}[${index.toString()}]`),
     );
   }
   if (isRecord(value)) {
@@ -70,7 +70,7 @@ export async function loadMcp(root: string, logger: Logger) {
   const path = resolve(root, "settings", "mcp.yaml");
   if (!existsSync(path)) {
     logger.info("MCP 配置不存在，跳过工具加载", { path });
-    return { tools: [], close: async () => {} };
+    return { tools: [], close: () => Promise.resolve() };
   }
   const parsed = expandEnvPlaceholders(
     YAML.parse(readFileSync(path, "utf8")) ?? {},
@@ -91,7 +91,7 @@ export async function loadMcp(root: string, logger: Logger) {
       throw new Error("MCP 工具重命名配置需要至少配置一个 MCP 服务器");
     }
     logger.info("MCP 未配置服务器，Agent 将不带工具运行");
-    return { tools: [], close: async () => {} };
+    return { tools: [], close: () => Promise.resolve() };
   }
   const end = logger.child("MCP 工具加载");
   let client: MultiServerMCPClient | undefined;

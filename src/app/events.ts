@@ -2,9 +2,7 @@ import type { ServerResponse } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
 import mitt from "mitt";
 
-type Events = {
-  changed: string;
-};
+type Events = Record<"changed", string>;
 
 export class AppEvents {
   private readonly bus = mitt<Events>();
@@ -42,7 +40,9 @@ export class AppEvents {
       if (changedSessionId === sessionId) res.write(serialize("changed"));
     };
     this.bus.on("changed", handler);
-    res.once("close", () => this.bus.off("changed", handler));
+    res.once("close", () => {
+      this.bus.off("changed", handler);
+    });
   }
 }
 

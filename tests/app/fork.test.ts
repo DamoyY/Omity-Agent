@@ -2,7 +2,12 @@ import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { forkDatabaseBeforeMessage } from "../../src/app/fork";
 import { appendAssistantMessage } from "../../src/infrastructure/messages";
-import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
+import {
+  cleanupDatabaseDirs,
+  makeDb,
+  required,
+  workspace,
+} from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -11,11 +16,11 @@ test("fork copies messages before selected user message", () => {
   const target = makeDb();
   source.resetSession("source", workspace);
   const first = source.appendUser("source", "第一条");
-  source.startQueue("source", source.nextQueue("source")!);
+  source.startQueue("source", required(source.nextQueue("source")));
   appendAssistantMessage(source.db, "source", first, "第一条回复");
   source.setQueueStatus(first, "done");
   const forkPoint = source.appendUser("source", "不要复制");
-  source.startQueue("source", source.nextQueue("source")!);
+  source.startQueue("source", required(source.nextQueue("source")));
   appendAssistantMessage(source.db, "source", forkPoint, "也不要复制");
   const forkMessageId = userMessageId(source, forkPoint);
 
@@ -47,10 +52,10 @@ test("first user message cannot fork", () => {
   const target = makeDb();
   source.resetSession("source", workspace);
   const first = source.appendUser("source", "第一条");
-  source.startQueue("source", source.nextQueue("source")!);
+  source.startQueue("source", required(source.nextQueue("source")));
   const firstMessageId = userMessageId(source, first);
 
-  expect(() =>
+  expect(() => {
     forkDatabaseBeforeMessage({
       source,
       target,
@@ -58,8 +63,8 @@ test("first user message cannot fork", () => {
       targetSessionId: "target",
       workspace,
       beforeMessageId: firstMessageId,
-    }),
-  ).toThrow("每个 session 的第一条用户消息不能 Fork");
+    });
+  }).toThrow("每个 session 的第一条用户消息不能 Fork");
   source.close();
   target.close();
 });
@@ -69,7 +74,7 @@ function userMessageId(db: ReturnType<typeof makeDb>, queueId: number) {
     "SELECT id FROM messages WHERE queue_id = ?",
   );
   try {
-    return query.get(queueId)!.id;
+    return required(query.get(queueId)).id;
   } finally {
     query.finalize();
   }
@@ -92,11 +97,11 @@ test("fork point must be a user message", () => {
   const target = makeDb();
   source.resetSession("source", workspace);
   const queueId = source.appendUser("source", "问题");
-  source.startQueue("source", source.nextQueue("source")!);
+  source.startQueue("source", required(source.nextQueue("source")));
   appendAssistantMessage(source.db, "source", queueId, "回答");
   const assistantRow = latestMessageId(source);
 
-  expect(() =>
+  expect(() => {
     forkDatabaseBeforeMessage({
       source,
       target,
@@ -104,8 +109,8 @@ test("fork point must be a user message", () => {
       targetSessionId: "target",
       workspace,
       beforeMessageId: assistantRow,
-    }),
-  ).toThrow("只能从用户消息创建 Fork");
+    });
+  }).toThrow("只能从用户消息创建 Fork");
   source.close();
   target.close();
 });
@@ -115,7 +120,7 @@ function latestMessageId(db: ReturnType<typeof makeDb>) {
     "SELECT id FROM messages ORDER BY id DESC LIMIT 1",
   );
   try {
-    return query.get()!.id;
+    return required(query.get()).id;
   } finally {
     query.finalize();
   }
@@ -126,7 +131,7 @@ test("fork preserves completed takeover pairs in an editable draft", () => {
   const target = makeDb();
   source.resetSession("source", workspace);
   source.appendUser("source", "第一条");
-  source.startQueue("source", source.nextQueue("source")!);
+  source.startQueue("source", required(source.nextQueue("source")));
   source.replaceHistory("source", [
     ...source.history("source"),
     new AIMessage({
@@ -141,7 +146,7 @@ test("fork preserves completed takeover pairs in an editable draft", () => {
     new AIMessage("第一条回复"),
   ]);
   const appended = source.appendUser("source", "第二条");
-  const appendItem = source.pendingAppends("source")[0]!;
+  const appendItem = required(source.pendingAppends("source")[0]);
   source.startQueue("source", appendItem);
   const forkPoint = { id: userMessageId(source, appended) };
 

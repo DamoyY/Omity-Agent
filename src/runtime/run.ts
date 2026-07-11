@@ -5,10 +5,10 @@ import type { HostContext } from "./context";
 
 export class CanceledRun extends Error {}
 
-export type QueueRun = {
+export interface QueueRun {
   items: [QueueItem, ...QueueItem[]];
   threadId: string;
-};
+}
 
 export function finishRun(
   ctx: HostContext,

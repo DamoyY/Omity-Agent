@@ -4,7 +4,7 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 
 export type SqlBinding = SQLQueryBindings;
 
-export type CheckpointRow = {
+export interface CheckpointRow {
   thread_id: string;
   checkpoint_ns: string;
   checkpoint_id: string;
@@ -13,15 +13,15 @@ export type CheckpointRow = {
   checkpoint: Uint8Array | string;
   metadata: Uint8Array | string;
   pending_writes: string | null;
-};
+}
 
-export type WriteJson = {
+export interface WriteJson {
   task_id: string;
   idx: number;
   channel: string;
   type: string | null;
   value: string | null;
-};
+}
 
 export const setupSql = [
   `
@@ -94,6 +94,20 @@ export function filterBinding(value: unknown): SqlBinding {
   return JSON.stringify(value);
 }
 
+export function optionalConfigString(value: unknown, name: string) {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    throw new Error(`${name} 必须是字符串`);
+  }
+  return value;
+}
+
+export function requiredConfigString(value: unknown, name: string) {
+  const parsed = optionalConfigString(value, name);
+  if (!parsed) throw new Error(`缺少 ${name}`);
+  return parsed;
+}
+
 export function buildListQuery(
   config: RunnableConfig,
   options?: CheckpointListOptions,
@@ -101,21 +115,32 @@ export function buildListQuery(
   const { limit, before, filter } = options ?? {};
   const clauses: string[] = [];
   const args: SqlBinding[] = [];
-  const { thread_id, checkpoint_ns } = config.configurable ?? {};
+  const thread_id = optionalConfigString(
+    config.configurable?.["thread_id"],
+    "thread_id",
+  );
+  const checkpoint_ns = optionalConfigString(
+    config.configurable?.["checkpoint_ns"],
+    "checkpoint_ns",
+  );
   if (thread_id) {
     clauses.push("thread_id = ?");
     args.push(thread_id);
   }
-  if (checkpoint_ns !== undefined && checkpoint_ns !== null) {
+  if (checkpoint_ns !== undefined) {
     clauses.push("checkpoint_ns = ?");
     args.push(checkpoint_ns);
   }
-  const beforeId = before?.configurable?.["checkpoint_id"];
+  const beforeId = optionalConfigString(
+    before?.configurable?.["checkpoint_id"],
+    "checkpoint_id",
+  );
   if (beforeId !== undefined) {
     clauses.push("checkpoint_id < ?");
     args.push(beforeId);
   }
-  for (const [key, value] of Object.entries(filter ?? {})) {
+  const filterRecord = requireRecord(filter ?? {}, "checkpoint filter");
+  for (const [key, value] of Object.entries(filterRecord)) {
     if (value !== undefined) {
       clauses.push("json_extract(CAST(metadata AS TEXT), ?) = ?");
       args.push(`$.${key}`, filterBinding(value));
@@ -131,4 +156,11 @@ export function buildListQuery(
     args.push(limit);
   }
   return { sql, args };
+}
+
+function requireRecord(value: unknown, name: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${name} 必须是对象`);
+  }
+  return value as Record<string, unknown>;
 }

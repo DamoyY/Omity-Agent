@@ -48,13 +48,13 @@ export async function handleApi(
     sendJson(res, { session: controller.createSession(body.workspace) });
     return;
   }
-  const deleteMatch = route.pathname.match(/^\/api\/sessions\/([^/]+)$/);
+  const deleteMatch = /^\/api\/sessions\/([^/]+)$/.exec(route.pathname);
   if (req.method === "DELETE" && deleteMatch) {
     const sessionId = decodeSessionId(deleteMatch[1] ?? "");
     sendJson(res, await controller.deleteSession(sessionId));
     return;
   }
-  const sessionMatch = route.pathname.match(/^\/api\/sessions\/([^/]+)\/(.+)$/);
+  const sessionMatch = /^\/api\/sessions\/([^/]+)\/(.+)$/.exec(route.pathname);
   if (!sessionMatch) throw new HttpError(404, `未知 API：${route.pathname}`);
   const sessionId = decodeSessionId(sessionMatch[1] ?? "");
   const action = sessionMatch[2];
@@ -80,7 +80,7 @@ export async function handleApi(
   if (req.method === "POST" && action === "fork") {
     const body = await readJson(req, forkBody);
     sendJson(res, {
-      session: await controller.forkSession(sessionId, body.beforeMessageId),
+      session: controller.forkSession(sessionId, body.beforeMessageId),
     });
     return;
   }

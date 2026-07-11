@@ -4,14 +4,16 @@ export function contentToText(content: unknown): string {
   }
   if (Array.isArray(content)) {
     return content
-      .map((part) =>
-        typeof part === "string"
-          ? part
-          : typeof part?.text === "string"
-            ? part.text
-            : "",
-      )
+      .map((part: unknown) => {
+        if (typeof part === "string") return part;
+        if (!isRecord(part)) return "";
+        return typeof part["text"] === "string" ? part["text"] : "";
+      })
       .join("");
   }
   return "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

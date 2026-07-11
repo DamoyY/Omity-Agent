@@ -1,5 +1,5 @@
 import type { QueueItem } from "../types";
-import { waitForWake, type HostContext } from "./context";
+import { readGraphState, waitForWake, type HostContext } from "./context";
 import { isModelNetworkError } from "./network";
 import { waitBeforeModelNetworkRetry } from "./retry";
 import {
@@ -14,10 +14,10 @@ import { queueMessageId } from "../infrastructure/messages";
 import { consumeBoundaryAppends } from "./appends";
 
 export async function processQueue(ctx: HostContext, item: QueueItem) {
-  const end = ctx.logger.child(`队列 #${item.id}`);
+  const end = ctx.logger.child(`队列 #${item.id.toString()}`);
   const run: QueueRun = {
     items: [item],
-    threadId: `${ctx.sessionId}:${item.id}`,
+    threadId: `${ctx.sessionId}:${item.id.toString()}`,
   };
   try {
     if (!(await waitIfPaused(ctx, run))) return;
@@ -41,7 +41,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
   const checkpoint = await ctx.checkpointer.getTuple({
     configurable: { thread_id: run.threadId },
   });
-  let input: unknown = checkpoint
+  let input: Parameters<HostContext["graph"]["stream"]>[0] = checkpoint
     ? null
     : {
         messages: ctx.db.history(ctx.sessionId),
@@ -65,7 +65,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         handleStreamEvent(ctx, event, streamLogState, item.id);
       modelNetworkRetry = 0;
     } catch (error) {
-      if (!isModelNetworkError(error) || ctx.signal.stopping) {
+      if (!isModelNetworkError(error)) {
         throw error;
       }
       modelNetworkRetry += 1;
@@ -75,7 +75,9 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         error,
         modelNetworkRetry,
         {
-          stop: () => setRunStatus(ctx, run, "paused"),
+          stop: () => {
+            setRunStatus(ctx, run, "paused");
+          },
           pause: async () => {
             setRunStatus(ctx, run, "paused");
             return waitIfPaused(ctx, run);
@@ -94,15 +96,15 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       await cancelRun(ctx, run);
       return;
     }
-    const state = await ctx.graph.getState(config);
-    const messages = state.values?.messages ?? [];
+    const state = readGraphState(await ctx.graph.getState(config));
+    const messages = state.values.messages;
     if (messages.length > 0) {
       ctx.db.replaceHistory(ctx.sessionId, messages);
       ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
     }
     ctx.logger.debug("LangGraph 边界", {
       next: state.next,
-      tasks: state.tasks?.map((task: { name: string }) => task.name) ?? [],
+      tasks: state.tasks.map((task) => task.name),
     });
     if (control === "pause" || control === "pause_cancel") {
       setRunStatus(ctx, run, "paused");
@@ -113,17 +115,17 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       });
       await waitIfPaused(ctx, run);
     }
-    const appendInput = await consumeBoundaryAppends(ctx, run, state);
+    const appendInput = consumeBoundaryAppends(ctx, run, state);
     if (appendInput) {
       input = appendInput;
       continue;
     }
-    if (!state.next || state.next.length === 0) {
-      const finalMessages = state.values?.messages ?? [];
+    if (state.next.length === 0) {
+      const finalMessages = state.values.messages;
       await ctx.hooks.runSilentChain(
         "agent",
         "after",
-        `queue:${item.id}`,
+        `queue:${item.id.toString()}`,
         run.threadId,
         {
           previousInvocationKey: ctx.hooks.identity.last(
@@ -141,7 +143,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
 
 async function waitIfPaused(ctx: HostContext, run: QueueRun) {
   let pauseLogged = false;
-  while (true) {
+  for (;;) {
     if (ctx.signal.stopping) {
       setRunStatus(ctx, run, "paused");
       return false;

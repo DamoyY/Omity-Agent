@@ -19,9 +19,9 @@ test("mixed hook modes resolve variables in config order", async () => {
   const ledger = new HookLedger(join(dir, "hooks.sqlite"));
   const received: Record<string, unknown>[] = [];
   const hookTool = tool(
-    async (args) => {
+    (args) => {
       received.push(args);
-      return `${args.label}-result`;
+      return Promise.resolve(`${args.label}-result`);
     },
     {
       name: "hook",
@@ -34,7 +34,7 @@ test("mixed hook modes resolve variables in config order", async () => {
         .strict(),
     },
   );
-  const originalTool = tool(async () => "original-result", {
+  const originalTool = tool(() => Promise.resolve("original-result"), {
     name: "original",
     description: "original",
     schema: z.object({}),
@@ -89,9 +89,9 @@ test("user takeover receives the preceding silent hook output", async () => {
   const ledger = new HookLedger(join(dir, "hooks.sqlite"));
   const received: unknown[] = [];
   const hookTool = tool(
-    async ({ previous }) => {
+    ({ previous }) => {
       received.push(previous);
-      return "user-hook-result";
+      return Promise.resolve("user-hook-result");
     },
     {
       name: "hook",

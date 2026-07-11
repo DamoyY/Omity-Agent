@@ -12,7 +12,12 @@ import {
 import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import type { Settings } from "../../src/types";
-import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
+import {
+  cleanupDatabaseDirs,
+  makeDb,
+  required,
+  workspace,
+} from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -34,7 +39,7 @@ test("append is consumed at a LangGraph boundary", async () => {
     tools: [],
     checkpointer: new MemorySaver(),
   });
-  await processQueue(makeContext(db, graph), item!);
+  await processQueue(makeContext(db, graph), required(item));
   expect(model.callCount).toBe(2);
   expect(db.nextQueue("123")).toBeNull();
   expect(db.history("123").map((message) => message.text)).toEqual([
@@ -52,12 +57,10 @@ test("unexpected errors pause the queue", async () => {
   db.appendUser("123", "会失败的输入");
   const item = db.nextQueue("123");
   const graph = {
-    stream: async () => {
-      throw new Error("boom");
-    },
+    stream: () => Promise.reject(new Error("boom")),
   };
 
-  await processQueue(makeContext(db, graph), item!);
+  await processQueue(makeContext(db, graph), required(item));
 
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
@@ -71,7 +74,7 @@ test("cancel while paused stops host without ending pause", async () => {
   db.setControl("123", "pause_cancel");
   const item = db.nextQueue("123");
 
-  await processQueue(makeContext(db, {}), item!);
+  await processQueue(makeContext(db, {}), required(item));
 
   expect(db.control("123")).toBe("pause");
   expect(db.nextQueue("123")?.status).toBe("paused");
@@ -87,7 +90,7 @@ test("ctrl-c while paused stops host without ending pause", async () => {
   const context = makeContext(db, {});
   context.signal.stopping = true;
 
-  await processQueue(context, item!);
+  await processQueue(context, required(item));
 
   expect(db.control("123")).toBe("pause");
   expect(db.nextQueue("123")?.status).toBe("paused");
@@ -119,11 +122,11 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     settings: makeSettings(),
     logger: new Logger("error"),
     db,
-    graph,
+    graph: graph as HostContext["graph"],
     checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
     hooks: {
       identity: { last: () => undefined },
-      runSilentChain: async () => {},
+      runSilentChain: () => Promise.resolve(),
     } as never,
     beforeModelNode: "model_request",
     sessionId: "123",

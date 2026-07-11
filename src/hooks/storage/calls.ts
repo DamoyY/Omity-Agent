@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import type { Database } from "bun:sqlite";
 import type { HookRule, HookTrigger, HookWhen } from "../../types";
 
-export type HookCallDetails = {
+export interface HookCallDetails {
   trigger: HookTrigger;
   sourceId: string;
   hookId: string;
-};
+}
 
 type HookCallRow = HookCallDetails & {
   sessionId: string;
@@ -71,7 +71,9 @@ export function registerHookCall(
   threadId: string,
   details: HookCallDetails,
 ) {
-  if (!isHookCallId(callId)) throw new Error(`无效 Hook 调用 ID：${callId}`);
+  if (!hookCallPattern.test(callId)) {
+    throw new Error(`无效 Hook 调用 ID：${callId}`);
+  }
   db.query(
     `INSERT OR IGNORE INTO hook_calls
      (call_id, session_id, thread_id, trigger, source_id, hook_id)
@@ -96,7 +98,9 @@ export function requireHookCall(
   sessionId: string,
   threadId: string,
 ) {
-  if (!isHookCallId(callId)) throw new Error(`无效 Hook 调用 ID：${callId}`);
+  if (!hookCallPattern.test(callId)) {
+    throw new Error(`无效 Hook 调用 ID：${callId}`);
+  }
   const row = db
     .query<
       {
