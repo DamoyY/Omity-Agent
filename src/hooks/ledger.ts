@@ -2,15 +2,8 @@ import { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import type { ToolMessage } from "@langchain/core/messages";
 import {
-  applyHookCallSchema,
-  registerHookCall,
-  requireHookCall,
-  type HookCallDetails,
-} from "./storage/calls";
-import {
   applyInvocationSchema,
   bindInvocation,
-  canRunInvocation,
   insertInvocation,
   readInvocation,
   reclaimInvocation,
@@ -34,7 +27,6 @@ export class HookLedger {
   constructor(path: string, options: { leaseMs: number; now?: () => number }) {
     this.db = new Database(path, { create: true, strict: true });
     this.db.run("PRAGMA journal_mode = WAL");
-    applyHookCallSchema(this.db);
     applyInvocationSchema(this.db);
     this.leaseMs = options.leaseMs;
     this.now = options.now ?? Date.now;
@@ -42,19 +34,6 @@ export class HookLedger {
 
   close() {
     this.db.close();
-  }
-
-  canRun(
-    sessionId: string,
-    threadId: string,
-    details: Omit<InvocationDetails, "key" | "sessionId" | "threadId">,
-    runLimit: number,
-  ) {
-    return canRunInvocation(
-      this.db,
-      bindInvocation(sessionId, threadId, details),
-      runLimit,
-    );
   }
 
   claim(
@@ -70,9 +49,9 @@ export class HookLedger {
       row?.status === "running" &&
       reclaimInvocation(this.db, details.key, this.ownerId, now, this.leaseMs)
     ) {
-      return { key: details.key, existing: null };
+      return { kind: "execute", key: details.key } as const;
     }
-    if (row) return { key: details.key, existing: row };
+    if (row) return { kind: "restore", key: details.key, row } as const;
     if (
       insertInvocation(
         this.db,
@@ -83,12 +62,15 @@ export class HookLedger {
         this.leaseMs,
       )
     )
-      return { key: details.key, existing: null };
+      return { kind: "execute", key: details.key } as const;
     const concurrent = this.read(details.key);
-    if (concurrent) return { key: details.key, existing: concurrent };
-    throw new Error(
-      `Hook ${details.hookId} 已达到 session 运行上限 ${runLimit.toString()}`,
-    );
+    if (concurrent)
+      return {
+        kind: "restore",
+        key: details.key,
+        row: concurrent,
+      } as const;
+    return { kind: "skip" } as const;
   }
 
   complete(key: string, output: ToolMessage) {
@@ -146,19 +128,6 @@ export class HookLedger {
     details: Omit<InvocationDetails, "key" | "sessionId" | "threadId">,
   ) {
     return bindInvocation(sessionId, threadId, details).key;
-  }
-
-  registerCall(
-    callId: string,
-    sessionId: string,
-    threadId: string,
-    details: HookCallDetails,
-  ) {
-    registerHookCall(this.db, callId, sessionId, threadId, details);
-  }
-
-  requireCall(callId: string, sessionId: string, threadId: string) {
-    return requireHookCall(this.db, callId, sessionId, threadId);
   }
 
   requireRunnable(row: InvocationRow, key: string) {

@@ -11,6 +11,7 @@ import { loadMessages, syncMessages } from "./messages";
 import {
   appendDraftQueue,
   appendUserQueue,
+  consumedRunRows,
   nextQueueRow,
   pendingAppendRows,
   setQueueStatusRecord,
@@ -98,6 +99,10 @@ export class AgentDatabase {
 
   pendingAppends(sessionId: string): QueueItem[] {
     return pendingAppendRows(this.db, sessionId);
+  }
+
+  consumedRunItems(sessionId: string, runId: number | null): QueueItem[] {
+    return consumedRunRows(this.db, sessionId, runId);
   }
 
   nextQueue(sessionId: string): QueueItem | null {

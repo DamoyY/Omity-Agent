@@ -66,7 +66,7 @@ test("prompt files expand current working directory placeholder", () => {
   expect(settings.skills.usagePrompt).toBe(`skills from ${workspace}`);
 });
 
-test("hook config parses targets and timing and rejects agent after takeover", () => {
+test("hook config parses targets, timing, and modes", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-hooks-config-"));
   const path = join(root, "hooks.yaml");
   dirs.push(root);
@@ -84,7 +84,7 @@ test("hook config parses targets and timing and rejects agent after takeover", (
     target: agent
     when: after
     runLimit: 1
-    mode: silent
+    mode: takeover
     tool: notify
     args: {}
   - id: before
@@ -104,21 +104,14 @@ test("hook config parses targets and timing and rejects agent after takeover", (
 `,
   );
 
-  expect(loadHookRules(path).map(({ target, when }) => [target, when])).toEqual(
-    [
-      ["agent", "before"],
-      ["agent", "after"],
-      ["write", "before"],
-      ["write", "after"],
-    ],
-  );
-  writeFileSync(
-    path,
-    "hooks:\n  - id: invalid\n    target: agent\n    when: after\n    runLimit: -1\n    mode: takeover\n    tool: notify\n    args: {}\n",
-  );
-  expect(() => loadHookRules(path)).toThrow(
-    "agent after Hook 仅支持 silent 模式",
-  );
+  expect(
+    loadHookRules(path).map(({ target, when, mode }) => [target, when, mode]),
+  ).toEqual([
+    ["agent", "before", "takeover"],
+    ["agent", "after", "takeover"],
+    ["write", "before", "silent"],
+    ["write", "after", "takeover"],
+  ]);
 });
 
 test("hook variables preserve exact values and reject ambiguous output", () => {

@@ -14,8 +14,12 @@ export function finishRun(
   ctx: HostContext,
   run: QueueRun,
   messages: BaseMessage[],
+  hookPlan: unknown,
 ) {
-  const last = messages.findLast((message) => message.type === "ai");
+  const finalMessageId = requireFinalMessageId(hookPlan);
+  const last = messages.find(
+    (message) => message.type === "ai" && message.id === finalMessageId,
+  );
   const content = contentToText(last?.content);
   if (!content) throw new Error("模型没有生成可记录的最终文本");
   const lastItem = run.items.at(-1);
@@ -23,6 +27,20 @@ export function finishRun(
   setRunStatus(ctx, run, "done");
   ctx.logger.info("队列完成", { queueId: lastItem.id, chars: content.length });
   if (ctx.settings.logging.streamTokens) process.stdout.write("\n");
+}
+
+function requireFinalMessageId(plan: unknown) {
+  if (
+    typeof plan !== "object" ||
+    plan === null ||
+    !("kind" in plan) ||
+    plan.kind !== "done" ||
+    !("finalMessageId" in plan) ||
+    typeof plan.finalMessageId !== "string"
+  ) {
+    throw new Error("运行缺少最终消息边界");
+  }
+  return plan.finalMessageId;
 }
 
 export async function cancelRun(ctx: HostContext, run: QueueRun) {

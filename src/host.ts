@@ -1,5 +1,5 @@
 import { existsSync, rmSync } from "node:fs";
-import { buildGraph } from "./agent";
+import { buildGraph, hookNode } from "./agent";
 import { sessionConflict, sessionNotFound } from "./errors";
 import {
   loadSettings,
@@ -14,7 +14,6 @@ import { hostLoop } from "./runtime/loop";
 import { HostLease, type HostObserver } from "./runtime/context";
 import { HookLedger } from "./hooks/ledger";
 import { HookRuntime } from "./hooks/runtime";
-import { hookBeforeModelNode } from "./hooks/middleware";
 
 export interface HostMode {
   kind: "new" | "load" | "overwrite";
@@ -115,8 +114,7 @@ export async function runHostSession(
           db,
           graph,
           checkpointer,
-          hooks,
-          beforeModelNode: hookBeforeModelNode,
+          inputNode: hookNode,
           sessionId: mode.sessionId,
           controller,
           wake: options.wake,

@@ -14,33 +14,8 @@ const callFields = {
 };
 
 const hookSchema = z
-  .discriminatedUnion("mode", [
-    z
-      .object({
-        ...callFields,
-        mode: z.literal("silent"),
-      })
-      .strict(),
-    z
-      .object({
-        ...callFields,
-        mode: z.literal("takeover"),
-      })
-      .strict(),
-  ])
-  .superRefine((hook, context) => {
-    if (
-      hook.target === "agent" &&
-      hook.when === "after" &&
-      hook.mode === "takeover"
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "agent after Hook 仅支持 silent 模式",
-        path: ["mode"],
-      });
-    }
-  });
+  .object({ ...callFields, mode: z.enum(["silent", "takeover"]) })
+  .strict();
 
 const hooksFileSchema = z
   .object({ hooks: z.array(hookSchema) })

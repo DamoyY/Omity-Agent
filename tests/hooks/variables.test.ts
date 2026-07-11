@@ -5,15 +5,15 @@ import { AIMessage } from "@langchain/core/messages";
 import { fakeModel } from "@langchain/core/testing";
 import { tool } from "@langchain/core/tools";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
-import { createAgent } from "langchain";
 import { z } from "zod";
 import { expect, test } from "bun:test";
+import { createAgentGraph } from "../../src/agent";
 import { HookLedger } from "../../src/hooks/ledger";
-import { createHookMiddleware } from "../../src/hooks/middleware";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { Logger } from "../../src/infrastructure/logger";
 import type { HookRule } from "../../src/types";
 import { testLeaseOptions } from "../support/leases";
+import { testSettings } from "../support/settings";
 
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
@@ -49,7 +49,8 @@ test("mixed hook modes resolve variables in config order", async () => {
     dir,
   );
   try {
-    const agent = createAgent({
+    const agent = createAgentGraph({
+      settings: testSettings(dir),
       model: fakeModel()
         .respond(
           new AIMessage({
@@ -60,7 +61,7 @@ test("mixed hook modes resolve variables in config order", async () => {
         )
         .respond(new AIMessage("done")),
       tools: [hookTool, originalTool],
-      middleware: [createHookMiddleware(hooks)],
+      hooks,
       checkpointer: new MemorySaver(),
     });
 
@@ -68,16 +69,16 @@ test("mixed hook modes resolve variables in config order", async () => {
       { messages: [{ role: "user", content: "run" }] },
       { configurable: { thread_id: "thread" } },
     );
-    await hooks.runSilentChain("agent", "after", "answer", "thread", {
-      previousInvocationKey: hooks.identity.last(result.messages, "thread"),
-    });
-
     expect(received).toEqual([
       { label: "before-silent" },
       { label: "before-takeover", previous: "before-silent-result" },
       { label: "after-silent", previous: "original-result" },
       { label: "after-takeover", previous: "after-silent-result" },
       { label: "agent-end", previous: "after-takeover-result" },
+    ]);
+    expect(result.messages.slice(-2).map((message) => message.type)).toEqual([
+      "ai",
+      "tool",
     ]);
   } finally {
     ledger.close();
@@ -128,10 +129,11 @@ test("user takeover receives the preceding silent hook output", async () => {
     dir,
   );
   try {
-    const agent = createAgent({
+    const agent = createAgentGraph({
+      settings: testSettings(dir),
       model: fakeModel().respond(new AIMessage("done")),
       tools: [hookTool],
-      middleware: [createHookMiddleware(hooks)],
+      hooks,
       checkpointer: new MemorySaver(),
     });
     await agent.invoke(
@@ -170,7 +172,7 @@ function rules(): HookRule[] {
       target: "agent",
       when: "after",
       runLimit: -1,
-      mode: "silent",
+      mode: "takeover",
       tool: "hook",
       args: {
         label: "agent-end",

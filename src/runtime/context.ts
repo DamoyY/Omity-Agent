@@ -5,7 +5,6 @@ import type { BunSqliteSaver } from "../checkpointer";
 import type { AgentDatabase } from "../infrastructure/database";
 import type { Logger } from "../infrastructure/logger";
 import type { Settings } from "../types";
-import type { HookRuntime } from "../hooks/runtime";
 import type { buildGraph } from "../agent";
 import { BaseMessage } from "@langchain/core/messages";
 
@@ -25,8 +24,7 @@ export interface HostContext {
   db: AgentDatabase;
   graph: HostGraph;
   checkpointer: BunSqliteSaver;
-  hooks: HookRuntime;
-  beforeModelNode: string;
+  inputNode: "hooks" | "model_request";
   sessionId: string;
   controller: AbortController;
   wake?: (delayMs: number) => Promise<void>;
@@ -47,7 +45,11 @@ async function abortableSleep(delayMs: number, signal: AbortSignal) {
 }
 
 interface RuntimeGraphState {
-  values: { messages: BaseMessage[]; hookPlan?: unknown };
+  values: {
+    messages: BaseMessage[];
+    hookPlan?: unknown;
+    hookPendingUserIds?: string[];
+  };
   next: string[];
   tasks: { name: string }[];
 }
@@ -68,12 +70,22 @@ export function readGraphState(value: unknown): RuntimeGraphState {
   if (!Array.isArray(rawTasks) || !rawTasks.every(isTask)) {
     throw new Error("LangGraph task 状态无效");
   }
+  const rawPending = isRecord(values)
+    ? values["hookPendingUserIds"]
+    : undefined;
+  if (
+    rawPending !== undefined &&
+    (!Array.isArray(rawPending) || !rawPending.every(isString))
+  ) {
+    throw new Error("LangGraph Hook pending 状态无效");
+  }
   return {
     values: {
       messages,
       ...(isRecord(values) && "hookPlan" in values
         ? { hookPlan: values["hookPlan"] }
         : {}),
+      ...(rawPending ? { hookPendingUserIds: rawPending } : {}),
     },
     next: rawNext,
     tasks: rawTasks,

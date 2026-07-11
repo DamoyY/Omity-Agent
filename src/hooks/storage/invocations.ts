@@ -58,26 +58,6 @@ export function bindInvocation(
   return { key, sessionId, threadId, ...details };
 }
 
-export function canRunInvocation(
-  db: Database,
-  details: Pick<InvocationDetails, "key" | "sessionId" | "hookId">,
-  runLimit: number,
-) {
-  const existing = db
-    .query<{ found: number }, [string]>(
-      "SELECT 1 AS found FROM invocations WHERE invocation_key = ?",
-    )
-    .get(details.key);
-  if (existing || runLimit === -1) return true;
-  const row = db
-    .query<{ count: number }, [string, string]>(
-      "SELECT COUNT(*) AS count FROM invocations WHERE session_id = ? AND hook_id = ? AND trigger <> 'agent_tool'",
-    )
-    .get(details.sessionId, details.hookId);
-  if (!row) throw new Error("无法统计 Hook session 运行次数");
-  return row.count < runLimit;
-}
-
 export function insertInvocation(
   db: Database,
   details: InvocationDetails,

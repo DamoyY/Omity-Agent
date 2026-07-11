@@ -15,13 +15,18 @@ import { consumeBoundaryAppends } from "./appends";
 
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id.toString()}`);
+  const resumed = ctx.db.consumedRunItems(ctx.sessionId, item.runId);
+  const items = [item, ...resumed.filter(({ id }) => id !== item.id)].sort(
+    (left, right) => left.id - right.id,
+  ) as [QueueItem, ...QueueItem[]];
+  const root = items.find(({ root }) => root) ?? item;
   const run: QueueRun = {
-    items: [item],
-    threadId: `${ctx.sessionId}:${item.id.toString()}`,
+    items,
+    threadId: `${ctx.sessionId}:${root.id.toString()}`,
   };
   try {
     if (!(await waitIfPaused(ctx, run))) return;
-    ctx.db.startQueue(ctx.sessionId, item);
+    for (const runItem of run.items) ctx.db.startQueue(ctx.sessionId, runItem);
     ctx.observer?.changed?.(ctx.sessionId);
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
@@ -55,7 +60,11 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     configurable: { thread_id: run.threadId },
     context: { sessionId: ctx.sessionId },
     recursionLimit: ctx.settings.host.recursionLimit,
-    interruptAfter: ["model_request", "tools"],
+    interruptAfter: ["hooks", "model_request", "tools"] as [
+      "hooks",
+      "model_request",
+      "tools",
+    ],
   };
   let modelNetworkRetry = 0;
   const streamLogState = createStreamLogState();
@@ -118,7 +127,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         queueId: item.id,
         next: state.next,
       });
-      await waitIfPaused(ctx, run);
+      if (!(await waitIfPaused(ctx, run))) return;
     }
     const appendInput = consumeBoundaryAppends(ctx, run, state);
     if (appendInput) {
@@ -126,20 +135,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       continue;
     }
     if (state.next.length === 0) {
-      const finalMessages = state.values.messages;
-      await ctx.hooks.runSilentChain(
-        "agent",
-        "after",
-        `queue:${item.id.toString()}`,
-        run.threadId,
-        {
-          previousInvocationKey: ctx.hooks.identity.last(
-            finalMessages,
-            run.threadId,
-          ),
-        },
-      );
-      finishRun(ctx, run, finalMessages);
+      finishRun(ctx, run, state.values.messages, state.values.hookPlan);
       return;
     }
     input = null;

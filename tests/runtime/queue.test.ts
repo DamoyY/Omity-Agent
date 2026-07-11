@@ -1,7 +1,4 @@
-import { AIMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
-import { createAgent } from "langchain";
 import { afterEach, expect, test } from "bun:test";
 import { AgentDatabase } from "../../src/infrastructure/database";
 import { Logger } from "../../src/infrastructure/logger";
@@ -16,36 +13,6 @@ import {
 } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
-
-test("append is consumed at a LangGraph boundary", async () => {
-  const db = makeDb();
-  db.resetSession("123", workspace);
-  db.appendUser("123", "第一条");
-  db.appendUser("123", "第二条");
-  const item = db.nextQueue("123");
-  const model = fakeModel()
-    .respond(new AIMessage("中间响应"))
-    .respond((messages) => {
-      const contents = messages.map((message) => message.content);
-      expect(contents).toEqual(["第一条", "中间响应", "第二条"]);
-      return new AIMessage("最终响应");
-    });
-  const graph = createAgent({
-    model,
-    tools: [],
-    checkpointer: new MemorySaver(),
-  });
-  await processQueue(makeContext(db, graph), required(item));
-  expect(model.callCount).toBe(2);
-  expect(db.nextQueue("123")).toBeNull();
-  expect(db.history("123").map((message) => message.text)).toEqual([
-    "第一条",
-    "中间响应",
-    "第二条",
-    "最终响应",
-  ]);
-  db.close();
-});
 
 test("unexpected errors pause the queue", async () => {
   const db = makeDb();
@@ -135,11 +102,7 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     db,
     graph: graph as HostContext["graph"],
     checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
-    hooks: {
-      identity: { last: () => undefined },
-      runSilentChain: () => Promise.resolve(),
-    } as never,
-    beforeModelNode: "model_request",
+    inputNode: "model_request",
     sessionId: "123",
     controller: new AbortController(),
   };

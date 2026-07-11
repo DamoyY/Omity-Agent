@@ -7,45 +7,55 @@ import {
   type StoredMessage,
   type ToolCall,
 } from "@langchain/core/messages";
+import type { HookWhen } from "../types";
 
-export interface Awaiting {
-  kind: "hook" | "original";
-  callId: string;
-  invocationKey: string;
+export interface AgentHookPlan {
+  kind: "agent";
+  when: HookWhen;
+  sources: string[];
+  sourceIndex: number;
+  hookIndex: number;
+  previousInvocationKey?: string;
+}
+
+export interface ToolHookPlan {
+  kind: "tools";
+  original: StoredMessage;
+  toolIndex: number;
+  stage: "before" | "original" | "after";
+  hookIndex: number;
+  previousInvocationKey?: string;
+  contentEmitted: boolean;
+  replaceMessageId?: string;
+  awaiting?: { callId: string; invocationKey: string };
 }
 
 export type HookPlan =
-  | {
-      kind: "user";
-      sources: string[];
-      sourceIndex: number;
-      hookIndex: number;
-      previousInvocationKey?: string;
-      awaiting?: Awaiting;
-    }
-  | {
-      kind: "tools";
-      original: StoredMessage;
-      toolIndex: number;
-      stage: "before" | "original" | "after";
-      hookIndex: number;
-      previousInvocationKey?: string;
-      contentEmitted: boolean;
-      replaceMessageId?: string;
-      awaiting?: Awaiting;
-    };
+  AgentHookPlan | ToolHookPlan | { kind: "done"; finalMessageId: string };
 
 export interface HookState {
   messages: BaseMessage[];
   hookPendingUserIds: string[];
   hookPlan: HookPlan | null;
+  hookPreviousInvocationKey?: string;
 }
 
-export function userPlan(sources: string[]): HookPlan {
-  return { kind: "user", sources, sourceIndex: 0, hookIndex: 0 };
+export function agentPlan(
+  when: HookWhen,
+  sources: string[],
+  previousInvocationKey?: string,
+): AgentHookPlan {
+  return {
+    kind: "agent",
+    when,
+    sources,
+    sourceIndex: 0,
+    hookIndex: 0,
+    previousInvocationKey,
+  };
 }
 
-export function toolPlan(message: AIMessage): HookPlan {
+export function toolPlan(message: AIMessage): ToolHookPlan {
   if (!message.id) throw new Error("模型工具调用消息缺少 ID");
   return {
     kind: "tools",
@@ -64,33 +74,22 @@ export function restoreOriginal(stored: StoredMessage) {
   return message;
 }
 
-export function isCompleted(messages: BaseMessage[], id: string) {
-  return messages.some(
-    (message) => ToolMessage.isInstance(message) && message.tool_call_id === id,
-  );
-}
-
-export function finishAwaited(plan: HookPlan, state: HookState): HookPlan {
-  if (!plan.awaiting || !isCompleted(state.messages, plan.awaiting.callId)) {
+export function finishAwaited(
+  plan: ToolHookPlan,
+  messages: BaseMessage[],
+): ToolHookPlan {
+  if (!plan.awaiting || !isCompleted(messages, plan.awaiting.callId))
     return plan;
-  }
-  const completed = {
+  return {
     ...plan,
+    stage: "after",
+    hookIndex: 0,
     awaiting: undefined,
     previousInvocationKey: plan.awaiting.invocationKey,
   };
-  if (completed.kind === "user") {
-    return { ...completed, hookIndex: completed.hookIndex + 1 };
-  }
-  if (plan.awaiting.kind === "original") {
-    return { ...completed, stage: "after", hookIndex: 0 };
-  }
-  return { ...completed, hookIndex: completed.hookIndex + 1 };
 }
 
-export function nextStage(
-  plan: Extract<HookPlan, { kind: "tools" }>,
-): Extract<HookPlan, { kind: "tools" }> {
+export function nextToolStage(plan: ToolHookPlan): ToolHookPlan {
   if (plan.stage === "before") {
     return { ...plan, stage: "original", hookIndex: 0 };
   }
@@ -105,6 +104,12 @@ export function nextStage(
 export function requireCallId(call: ToolCall) {
   if (!call.id) throw new Error(`工具调用缺少 ID：${call.name}`);
   return call.id;
+}
+
+function isCompleted(messages: BaseMessage[], id: string) {
+  return messages.some(
+    (message) => ToolMessage.isInstance(message) && message.tool_call_id === id,
+  );
 }
 
 function storeMessage(message: BaseMessage) {

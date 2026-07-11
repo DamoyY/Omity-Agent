@@ -1,11 +1,9 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AIMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { createAgent } from "langchain";
+import { HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { createSkillsMiddleware } from "../../src/agent";
+import { modelMessages } from "../../src/agent";
 import { buildSkillsMessage, loadSkills } from "../../src/skills";
 import type { Settings } from "../../src/types";
 
@@ -35,26 +33,16 @@ test("loads enabled skills from SKILL.md front matter", () => {
   expect(buildSkillsMessage(settings)).not.toContain("- web: 联网查询");
 });
 
-test("puts skills message after the configured system prompt", async () => {
+test("puts skills message after the configured system prompt", () => {
   const skillsMessage = "Skills usage\n\n## Skills 列表\n- code: 代码任务";
-  const model = fakeModel().respond((messages) => {
-    expect(messages.map((message) => message.text)).toEqual([
-      "system prompt",
-      skillsMessage,
-      "hello",
-    ]);
-    return new AIMessage("done");
-  });
-  const agent = createAgent({
-    model,
-    tools: [],
-    systemPrompt: "system prompt",
-    middleware: [createSkillsMiddleware(skillsMessage)],
-  });
+  const settings = makeSettings("unused", {});
+  settings.agent.systemPrompt = "system prompt";
 
-  await agent.invoke({ messages: [{ role: "user", content: "hello" }] });
-
-  expect(model.callCount).toBe(1);
+  expect(
+    modelMessages(settings, skillsMessage, [new HumanMessage("hello")]).map(
+      (message) => message.text,
+    ),
+  ).toEqual(["system prompt", skillsMessage, "hello"]);
 });
 
 function makeSkillsDir() {

@@ -70,6 +70,26 @@ export function pendingAppendRows(
   }
 }
 
+export function consumedRunRows(
+  db: Database,
+  sessionId: string,
+  runId: number | null,
+): QueueItem[] {
+  if (runId === null) return [];
+  const query = db.prepare<QueueRow, [string, number]>(
+    `${queueSelect}
+     WHERE q.session_id = ? AND q.run_id = ?
+       AND q.user_message_id IS NOT NULL
+       AND q.status IN ('pending', 'running', 'paused')
+     ORDER BY q.id`,
+  );
+  try {
+    return query.all(sessionId, runId).map(toQueueItem);
+  } finally {
+    query.finalize();
+  }
+}
+
 export function nextQueueRow(
   db: Database,
   sessionId: string,
@@ -96,8 +116,9 @@ export function startQueueRecord(
   if (item.userMessageId !== null) {
     const result = db.run(
       `UPDATE queue SET status = 'running', updated_at = unixepoch()
-       WHERE id = ? AND session_id = ? AND status = ? AND user_message_id = ?`,
-      [item.id, sessionId, item.status, item.userMessageId],
+       WHERE id = ? AND session_id = ? AND user_message_id = ?
+         AND status IN ('pending', 'running', 'paused')`,
+      [item.id, sessionId, item.userMessageId],
     );
     if (result.changes !== 1) {
       throw queueClaimConflict(item.id);

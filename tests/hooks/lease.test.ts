@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "bun:test";
 import { HookLedger } from "../../src/hooks/ledger";
-import { required } from "../support/database";
 
 const details = {
   trigger: "agent:before",
@@ -21,12 +20,16 @@ test("stale running invocation can be reclaimed after its lease", () => {
     const blocked = active.claim("session", "thread", details, -1);
     const reclaimed = recovered.claim("session", "thread", details, -1);
 
-    expect(claimed.existing).toBeNull();
-    expect(blocked.existing?.status).toBe("running");
+    expect(claimed.kind).toBe("execute");
+    expect(blocked.kind).toBe("restore");
+    if (claimed.kind !== "execute" || blocked.kind !== "restore") {
+      throw new Error("Hook claim 状态无效");
+    }
+    expect(blocked.row.status).toBe("running");
     expect(() => {
-      active.requireRunnable(required(blocked.existing), blocked.key);
+      active.requireRunnable(blocked.row, blocked.key);
     }).toThrow("状态不确定");
-    expect(reclaimed.existing).toBeNull();
+    expect(reclaimed.kind).toBe("execute");
     expect(() => {
       first.fail(claimed.key, "late result");
     }).toThrow("Hook Lease 已丢失");
@@ -45,12 +48,15 @@ test("active invocation renews its lease until the operation completes", async (
   const release = Promise.withResolvers<undefined>();
   try {
     const claimed = first.claim("session", "thread", details, -1);
+    if (claimed.kind !== "execute") throw new Error("Hook claim 状态无效");
     const maintained = first.withLease(claimed.key, () => release.promise);
     await Bun.sleep(100);
 
     const blocked = contender.claim("session", "thread", details, -1);
 
-    expect(blocked.existing?.status).toBe("running");
+    expect(blocked.kind).toBe("restore");
+    if (blocked.kind !== "restore") throw new Error("Hook claim 状态无效");
+    expect(blocked.row.status).toBe("running");
     release.resolve(undefined);
     await maintained;
     first.fail(claimed.key, "test complete");

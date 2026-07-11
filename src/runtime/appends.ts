@@ -9,7 +9,8 @@ export function consumeBoundaryAppends(
   run: QueueRun,
   state: BoundaryState,
 ) {
-  if (hasPendingTools(state) || state.values?.hookPlan) return null;
+  if (hasPendingTools(state) || blocksAppend(state.values?.hookPlan))
+    return null;
   const appends = ctx.db.pendingAppends(ctx.sessionId);
   if (appends.length === 0) return null;
   for (const item of appends) {
@@ -28,16 +29,36 @@ export function consumeBoundaryAppends(
             id: queueMessageId(ctx.sessionId, item.id),
           }),
       ),
-      hookPendingUserIds: appends.map((item) =>
-        queueMessageId(ctx.sessionId, item.id),
-      ),
+      hookPendingUserIds: [
+        ...pendingUserIds(state),
+        ...appends.map((item) => queueMessageId(ctx.sessionId, item.id)),
+      ],
     },
-    goto: ctx.beforeModelNode,
+    goto: ctx.inputNode,
   });
 }
 
 interface BoundaryState {
-  values?: { messages?: unknown[]; hookPlan?: unknown };
+  values?: {
+    messages?: unknown[];
+    hookPlan?: unknown;
+    hookPendingUserIds?: unknown;
+  };
+}
+
+function blocksAppend(plan: unknown) {
+  return (
+    plan !== null &&
+    plan !== undefined &&
+    (!isRecord(plan) || plan["kind"] !== "agent" || plan["when"] !== "after")
+  );
+}
+
+function pendingUserIds(state: BoundaryState) {
+  const value = state.values?.hookPendingUserIds;
+  return Array.isArray(value) && value.every((id) => typeof id === "string")
+    ? value
+    : [];
 }
 
 function hasPendingTools(state: BoundaryState) {
