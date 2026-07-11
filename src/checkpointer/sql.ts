@@ -17,6 +17,7 @@ export type CheckpointRow = {
 
 export type WriteJson = {
   task_id: string;
+  idx: number;
   channel: string;
   type: string | null;
   value: string | null;
@@ -57,14 +58,19 @@ export function checkpointSelectColumns() {
       (
         SELECT json_group_array(json_object(
           'task_id', pw.task_id,
+          'idx', pw.idx,
           'channel', pw.channel,
           'type', pw.type,
           'value', CAST(pw.value AS TEXT)
         ))
-        FROM writes as pw
-        WHERE pw.thread_id = checkpoints.thread_id
-          AND pw.checkpoint_ns = checkpoints.checkpoint_ns
-          AND pw.checkpoint_id = checkpoints.checkpoint_id
+        FROM (
+          SELECT task_id, idx, channel, type, value
+          FROM writes
+          WHERE thread_id = checkpoints.thread_id
+            AND checkpoint_ns = checkpoints.checkpoint_ns
+            AND checkpoint_id = checkpoints.checkpoint_id
+          ORDER BY task_id, idx
+        ) as pw
       ) as pending_writes`;
 }
 

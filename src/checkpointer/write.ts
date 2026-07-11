@@ -64,9 +64,13 @@ export async function putPendingWrites(
   if (!thread_id || !checkpoint_id) {
     throw new Error("缺少 thread_id 或 checkpoint_id，无法保存 pending writes");
   }
-  const allSpecial = writes.every(([channel]) => channel in WRITES_IDX_MAP);
-  const stmt = db.query(
-    `INSERT ${allSpecial ? "OR REPLACE" : "OR IGNORE"} INTO writes
+  const replace = db.prepare(
+    `INSERT OR REPLACE INTO writes
+     (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, value)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const ignore = db.prepare(
+    `INSERT OR IGNORE INTO writes
      (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, value)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
@@ -78,12 +82,22 @@ export async function putPendingWrites(
     checkpoint_id,
     taskId,
   );
-  db.transaction((items: SqlBinding[][]) => {
-    for (const row of items) {
-      stmt.run(...row);
-    }
-  })(rows);
+  try {
+    db.transaction((items: PendingWriteRow[]) => {
+      for (const item of items) {
+        (item.replace ? replace : ignore).run(...item.bindings);
+      }
+    })(rows);
+  } finally {
+    replace.finalize();
+    ignore.finalize();
+  }
 }
+
+type PendingWriteRow = {
+  replace: boolean;
+  bindings: SqlBinding[];
+};
 
 async function pendingWriteRows(
   serde: SerializerProtocol,
@@ -96,16 +110,19 @@ async function pendingWriteRows(
   return Promise.all(
     writes.map(async ([channel, value], idx) => {
       const [type, serialized] = await serde.dumpsTyped(value);
-      return [
-        threadId,
-        checkpointNs,
-        checkpointId,
-        taskId,
-        WRITES_IDX_MAP[channel] ?? idx,
-        channel,
-        type,
-        serialized,
-      ];
+      return {
+        replace: channel in WRITES_IDX_MAP,
+        bindings: [
+          threadId,
+          checkpointNs,
+          checkpointId,
+          taskId,
+          WRITES_IDX_MAP[channel] ?? idx,
+          channel,
+          type,
+          serialized,
+        ],
+      };
     }),
   );
 }

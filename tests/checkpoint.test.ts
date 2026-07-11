@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
+import { TASKS } from "@langchain/langgraph-checkpoint";
 import { BunSqliteSaver } from "../src/checkpointer";
 
 const dirs: string[] = [];
@@ -49,3 +50,84 @@ test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   ).toBeUndefined();
   reopened.close();
 });
+
+test("pending writes keep deterministic order and per-channel conflicts", async () => {
+  const saver = new BunSqliteSaver(makePath());
+  const saved = await putCheckpoint(saver, "thread", "", checkpointId(1));
+  await saver.putWrites(
+    saved,
+    [
+      ["__error__", "old error"],
+      ["messages", "old message"],
+    ],
+    "task-b",
+  );
+  await saver.putWrites(
+    saved,
+    [
+      ["__error__", "new error"],
+      ["messages", "new message"],
+    ],
+    "task-b",
+  );
+  await saver.putWrites(saved, [["messages", "first task"]], "task-a");
+
+  const loaded = await saver.getTuple(saved);
+
+  expect(loaded?.pendingWrites).toEqual([
+    ["task-a", "messages", "first task"],
+    ["task-b", "__error__", "new error"],
+    ["task-b", "messages", "old message"],
+  ]);
+  saver.close();
+});
+
+test("legacy pending sends stay inside their checkpoint namespace", async () => {
+  const saver = new BunSqliteSaver(makePath());
+  const parentId = checkpointId(1);
+  const parentA = await putCheckpoint(saver, "thread", "a", parentId);
+  const parentB = await putCheckpoint(saver, "thread", "b", parentId);
+  await saver.putWrites(parentA, [[TASKS, "from-a"]], "task");
+  await saver.putWrites(parentB, [[TASKS, "from-b"]], "task");
+  const child = await saver.put(
+    parentA,
+    {
+      ...checkpoint(checkpointId(2)),
+      v: 3,
+    },
+    { source: "loop", step: 0, parents: {} },
+  );
+
+  const loaded = await saver.getTuple(child);
+
+  expect(loaded?.checkpoint.channel_values?.[TASKS]).toEqual(["from-a"]);
+  saver.close();
+});
+
+function putCheckpoint(
+  saver: BunSqliteSaver,
+  threadId: string,
+  checkpointNs: string,
+  id: string,
+) {
+  return saver.put(
+    { configurable: { thread_id: threadId, checkpoint_ns: checkpointNs } },
+    checkpoint(id),
+    { source: "input", step: -1, parents: {} },
+  );
+}
+
+function checkpoint(id: string) {
+  return {
+    v: 4,
+    id,
+    ts: new Date(0).toISOString(),
+    channel_values: {},
+    channel_versions: {},
+    versions_seen: {},
+  };
+}
+
+function checkpointId(index: number) {
+  return `00000000-0000-6000-8000-${index.toString().padStart(12, "0")}`;
+}

@@ -64,11 +64,24 @@ async function migratePendingSends(
   ctx: TupleContext,
 ) {
   const pending = ctx.db
-    .query<{ pending_sends: string | null }, [string, string]>(
-      `SELECT json_group_array(json_object('type', type, 'value', CAST(value AS TEXT))) as pending_sends
-       FROM writes WHERE thread_id = ? AND checkpoint_id = ? AND channel = '${TASKS}' ORDER BY idx`,
+    .query<{ pending_sends: string | null }, [string, string, string, string]>(
+      `SELECT json_group_array(json_object(
+         'type', pending.type,
+         'value', CAST(pending.value AS TEXT)
+       )) as pending_sends
+       FROM (
+         SELECT type, value FROM writes
+         WHERE thread_id = ? AND checkpoint_ns = ?
+           AND checkpoint_id = ? AND channel = ?
+         ORDER BY idx
+       ) as pending`,
     )
-    .get(row.thread_id, row.parent_checkpoint_id ?? "");
+    .get(
+      row.thread_id,
+      row.checkpoint_ns,
+      row.parent_checkpoint_id ?? "",
+      TASKS,
+    );
   checkpoint.channel_values ??= {};
   checkpoint.channel_values[TASKS] = await Promise.all(
     JSON.parse(pending?.pending_sends ?? "[]").map(
