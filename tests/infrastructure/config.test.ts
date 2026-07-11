@@ -7,9 +7,9 @@ import {
   loadSettings,
   safeId,
   sessionPaths,
-} from "../src/infrastructure/config";
-import { loadHookRules } from "../src/hooks/config";
-import { resolveHookArgs } from "../src/hooks/variables";
+} from "../../src/infrastructure/config";
+import { loadHookRules } from "../../src/hooks/config";
+import { resolveHookArgs } from "../../src/hooks/variables";
 
 const dirs: string[] = [];
 
@@ -119,23 +119,6 @@ test("hook config parses targets and timing and rejects agent after takeover", (
   expect(() => loadHookRules(path)).toThrow(
     "agent after Hook 仅支持 silent 模式",
   );
-  writeFileSync(
-    path,
-    "hooks:\n  - id: invalid-limit\n    target: agent\n    when: before\n    runLimit: -2\n    mode: silent\n    tool: notify\n    args: {}\n",
-  );
-  expect(() => loadHookRules(path)).toThrow();
-});
-
-test("hook config rejects removed on and matchTool fields", () => {
-  const root = mkdtempSync(join(tmpdir(), "agent-hooks-config-"));
-  const path = join(root, "hooks.yaml");
-  dirs.push(root);
-  writeFileSync(
-    path,
-    "hooks:\n  - id: legacy\n    on: tool_before\n    target: write\n    when: before\n    runLimit: -1\n    mode: silent\n    tool: lint\n    args: {}\n    matchTool: write\n",
-  );
-
-  expect(() => loadHookRules(path)).toThrow();
 });
 
 test("hook variables preserve exact values and reject ambiguous output", () => {

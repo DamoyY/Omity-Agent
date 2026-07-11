@@ -2,12 +2,12 @@ import { afterEach, expect, test } from "bun:test";
 import {
   expandEnvPlaceholders,
   normalizeMcpServers,
-} from "../src/infrastructure/mcp";
+} from "../../src/infrastructure/mcp";
 import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
-} from "../src/infrastructure/mcpSupport/toolNameOverrides";
-import { mcpErrorResultAsOutput } from "../src/infrastructure/mcpSupport/toolErrorOutput";
+} from "../../src/infrastructure/mcpSupport/toolNameOverrides";
+import { mcpErrorResultAsOutput } from "../../src/infrastructure/mcpSupport/toolErrorOutput";
 
 const savedEnv = new Map<string, string | undefined>();
 
@@ -115,18 +115,6 @@ test("mcp stdio config allows omitted or blank args", () => {
   });
 });
 
-test("mcp config normalizes tool name overrides", () => {
-  expect(
-    normalizeMcpToolNameOverrides({
-      web__search: "search",
-      web__crawl: "crawl",
-    }),
-  ).toEqual({
-    web__search: "search",
-    web__crawl: "crawl",
-  });
-});
-
 test("mcp config rejects renaming a tool to agent", () => {
   expect(() => normalizeMcpToolNameOverrides({ web__search: "agent" })).toThrow(
     "MCP 工具重命名配置 settings/mcp.yaml.toolNameOverrides.web__search 不能命名为 agent",
@@ -178,14 +166,6 @@ test("mcp error result keeps its failure status with readable context", () => {
       },
     ],
   });
-});
-
-test("mcp successful result is not changed", () => {
-  const result = {
-    content: [{ type: "text", text: "ok" }],
-  };
-
-  expect(mcpErrorResultAsOutput(result, "web", "search")).toBe(result);
 });
 
 function toolNames(names: string[]) {

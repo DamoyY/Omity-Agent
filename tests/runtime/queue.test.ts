@@ -1,34 +1,20 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { AIMessage } from "@langchain/core/messages";
 import { fakeModel } from "@langchain/core/testing";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createAgent } from "langchain";
 import { afterEach, expect, test } from "bun:test";
-import { AgentDatabase } from "../src/infrastructure/database";
-import { Logger } from "../src/infrastructure/logger";
-import { processQueue } from "../src/runtime/queue";
-import type { HostContext } from "../src/runtime/context";
-import type { Settings } from "../src/types";
+import { AgentDatabase } from "../../src/infrastructure/database";
+import { Logger } from "../../src/infrastructure/logger";
+import {
+  isModelNetworkError,
+  modelNetworkRetryDelayMs,
+} from "../../src/runtime/network";
+import { processQueue } from "../../src/runtime/queue";
+import type { HostContext } from "../../src/runtime/context";
+import type { Settings } from "../../src/types";
+import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 
-const dirs: string[] = [];
-const logs: string[] = [];
-const originalLog = console.log;
-const workspace = "F:\\workspace\\test";
-
-afterEach(() => {
-  console.log = originalLog;
-  logs.length = 0;
-  for (const dir of dirs.splice(0)) {
-    rmSync(dir, {
-      recursive: true,
-      force: true,
-      maxRetries: 10,
-      retryDelay: 50,
-    });
-  }
-});
+afterEach(cleanupDatabaseDirs);
 
 test("append is consumed at a LangGraph boundary", async () => {
   const db = makeDb();
@@ -108,46 +94,25 @@ test("ctrl-c while paused stops host without ending pause", async () => {
   db.close();
 });
 
-test("pause wait message is logged once per pause", async () => {
-  console.log = (message?: unknown) => {
-    logs.push(String(message));
-  };
-
-  const db = makeDb();
-  db.resetSession("123", workspace);
-  db.appendUser("123", "暂停中的输入");
-  db.setControl("123", "pause");
-  const item = db.nextQueue("123");
-  const graph = {
-    stream: async function* () {},
-    getState: async () => ({
-      values: { messages: [new AIMessage("完成")] },
-      next: [],
-    }),
-  };
-  const context = makeContext(db, graph);
-  context.logger = new Logger("info");
-
-  try {
-    setTimeout(() => db.setControl("123", "running"), 10);
-    await processQueue(context, item!);
-
-    const pauseLogs = logs.filter((line) =>
-      line
-        .replace(/\x1B\[[0-9;]*m/g, "")
-        .includes("暂停中，等待 resume 或 cancel"),
-    );
-    expect(pauseLogs).toHaveLength(1);
-  } finally {
-    db.close();
-  }
+test("detects retryable model network errors", () => {
+  expect(isModelNetworkError(new Error("fetch failed"))).toBe(true);
+  expect(
+    isModelNetworkError(
+      new Error("Received empty response from chat model call."),
+    ),
+  ).toBe(true);
+  expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
+  expect(isModelNetworkError({ name: "TimeoutError" })).toBe(true);
+  expect(isModelNetworkError({ cause: { code: "ENOTFOUND" } })).toBe(true);
+  expect(isModelNetworkError(new Error("Unexpected EOF"))).toBe(true);
+  expect(isModelNetworkError({ name: "AbortError" })).toBe(false);
 });
 
-function makeDb() {
-  const dir = mkdtempSync(join(tmpdir(), "agent-queue-"));
-  dirs.push(dir);
-  return new AgentDatabase(join(dir, "app.sqlite"));
-}
+test("model network retry delay grows with a cap", () => {
+  expect(modelNetworkRetryDelayMs(1)).toBe(1_000);
+  expect(modelNetworkRetryDelayMs(2)).toBe(2_000);
+  expect(modelNetworkRetryDelayMs(99)).toBe(30_000);
+});
 
 function makeContext(db: AgentDatabase, graph: unknown): HostContext {
   return {

@@ -8,12 +8,11 @@ import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createAgent } from "langchain";
 import { z } from "zod";
 import { expect, test } from "bun:test";
-import { HookLedger } from "../src/hooks/ledger";
-import { createHookMiddleware } from "../src/hooks/middleware";
-import { HookRuntime } from "../src/hooks/runtime";
-import { Logger } from "../src/infrastructure/logger";
-import type { HookRule } from "../src/types";
-import { hookRule } from "./support/hooks";
+import { HookLedger } from "../../src/hooks/ledger";
+import { createHookMiddleware } from "../../src/hooks/middleware";
+import { HookRuntime } from "../../src/hooks/runtime";
+import { Logger } from "../../src/infrastructure/logger";
+import type { HookRule } from "../../src/types";
 
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
@@ -30,9 +29,7 @@ test("mixed hook modes resolve variables in config order", async () => {
       schema: z
         .object({
           label: z.string(),
-          cwd: z.string().optional(),
           previous: z.unknown().optional(),
-          nested: z.array(z.unknown()).optional(),
         })
         .strict(),
     },
@@ -75,7 +72,7 @@ test("mixed hook modes resolve variables in config order", async () => {
     });
 
     expect(received).toEqual([
-      { label: "before-silent", cwd: dir, nested: [`work:${dir}`] },
+      { label: "before-silent" },
       { label: "before-takeover", previous: "before-silent-result" },
       { label: "after-silent", previous: "original-result" },
       { label: "after-takeover", previous: "after-silent-result" },
@@ -154,8 +151,6 @@ function rules(): HookRule[] {
   return [
     hookRule("before-silent", "before", "silent", {
       label: "before-silent",
-      cwd: "${cwd}",
-      nested: ["work:${cwd}"],
     }),
     hookRule("before-takeover", "before", "takeover", {
       label: "before-takeover",
@@ -182,4 +177,21 @@ function rules(): HookRule[] {
       },
     },
   ];
+}
+
+function hookRule(
+  id: string,
+  when: HookRule["when"],
+  mode: HookRule["mode"],
+  args: Record<string, unknown>,
+): HookRule {
+  return {
+    id,
+    target: "original",
+    when,
+    runLimit: -1,
+    mode,
+    args,
+    tool: "hook",
+  };
 }

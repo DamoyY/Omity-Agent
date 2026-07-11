@@ -4,7 +4,7 @@ import {
   createStreamLogState,
   handleStreamEvent,
   incrementalSummary,
-} from "../src/runtime/stream";
+} from "../../src/runtime/stream";
 
 test("stream debug logging keeps only incremental context", () => {
   const state = createStreamLogState();

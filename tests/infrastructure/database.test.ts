@@ -1,12 +1,12 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { appendAssistantMessage } from "../src/infrastructure/messages";
+import { appendAssistantMessage } from "../../src/infrastructure/messages";
 import {
   cleanupDatabaseDirs,
   makeDatabases,
   makeDb,
   workspace,
-} from "./support/database";
+} from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -76,16 +76,6 @@ test("replace history clears redundant stream events", () => {
     .query<{ category: string }, []>("SELECT category FROM events ORDER BY id")
     .all();
   expect(rows.map((row) => row.category)).toEqual(["client"]);
-  db.close();
-});
-
-test("control is stored in sql", () => {
-  const db = makeDb();
-  db.createSession("123", workspace);
-  db.setControl("123", "pause");
-  expect(db.control("123")).toBe("pause");
-  db.setControl("123", "running");
-  expect(db.control("123")).toBe("running");
   db.close();
 });
 

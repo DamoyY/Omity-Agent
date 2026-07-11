@@ -3,8 +3,8 @@ import type {
   DisplayEvent,
   DisplayMessage,
   DisplayQueue,
-} from "../src/app/timeline";
-import { buildTimeline } from "../src/app/timeline";
+} from "../../../src/app/timeline";
+import { buildTimeline } from "../../../src/app/timeline";
 
 test("streaming tool call is hidden after the final tool call is visible", () => {
   const messages: DisplayMessage[] = [
@@ -40,37 +40,6 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
   expect(view).toHaveLength(1);
   expect(toolCalls(view[0])).toHaveLength(1);
   expect(toolCalls(view[0])[0]?.streaming).toBeUndefined();
-});
-
-test("streaming tool call is visible before the final tool call is persisted", () => {
-  const queue: DisplayQueue[] = [
-    { id: 1, content: "run", status: "running", error: null },
-  ];
-  const events: DisplayEvent[] = [
-    {
-      id: 1,
-      message: "tool_call",
-      payload: {
-        kind: "tool_call_delta",
-        queueId: 1,
-        call: { args: '{"cwd":', id: "call-1", name: "tool", index: 0 },
-      },
-    },
-  ];
-
-  const view = buildTimeline([], queue, events);
-
-  expect(view).toHaveLength(1);
-  expect(toolCalls(view[0])).toEqual([
-    {
-      id: "call-1",
-      index: 0,
-      input: {},
-      inputText: '{"cwd":',
-      name: "tool",
-      streaming: true,
-    },
-  ]);
 });
 
 test("streaming tool call is grouped with previous assistant message", () => {

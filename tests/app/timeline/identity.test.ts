@@ -3,8 +3,8 @@ import type {
   DisplayEvent,
   DisplayMessage,
   DisplayQueue,
-} from "../../src/app/timeline";
-import { buildTimeline } from "../../src/app/timeline";
+} from "../../../src/app/timeline";
+import { buildTimeline } from "../../../src/app/timeline";
 
 const queue: DisplayQueue[] = [
   { id: 1, content: "run", status: "running", error: null },

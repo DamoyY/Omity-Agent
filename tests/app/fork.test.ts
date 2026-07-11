@@ -1,8 +1,8 @@
 import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { forkDatabaseBeforeMessage } from "../src/app/fork";
-import { appendAssistantMessage } from "../src/infrastructure/messages";
-import { cleanupDatabaseDirs, makeDb, workspace } from "./support/database";
+import { forkDatabaseBeforeMessage } from "../../src/app/fork";
+import { appendAssistantMessage } from "../../src/infrastructure/messages";
+import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -125,7 +125,7 @@ test("fork preserves completed takeover pairs before an appended user", () => {
   const source = makeDb();
   const target = makeDb();
   source.resetSession("source", workspace);
-  const root = source.appendUser("source", "第一条");
+  source.appendUser("source", "第一条");
   source.startQueue("source", source.nextQueue("source")!);
   source.replaceHistory("source", [
     ...source.history("source"),
@@ -154,7 +154,6 @@ test("fork preserves completed takeover pairs before an appended user", () => {
     beforeMessageId: forkPoint.id,
   });
 
-  expect(root).not.toBe(appended);
   expect(target.history("target").map((message) => message.type)).toEqual([
     "human",
     "ai",

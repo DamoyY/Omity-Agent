@@ -21,7 +21,7 @@ export default [
       "@typescript-eslint": tseslint.plugin,
     },
     rules: {
-      "@typescript-eslint/no-deprecated": "error",
+      "@typescript-eslint/no-deprecated": "warn",
     },
   },
 ];

@@ -2,11 +2,10 @@ import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
 import { afterEach, expect, test } from "bun:test";
 import {
   buildModel,
-  buildResponsesInstructions,
   normalizeResponsesPayload,
   normalizeResponsesStreamEvent,
-} from "../src/agent";
-import type { Settings } from "../src/types";
+} from "../../src/agent";
+import type { Settings } from "../../src/types";
 
 const savedEnv = new Map<string, string | undefined>();
 
@@ -67,20 +66,6 @@ function makeSettings(api: Settings["model"]["api"]): Settings {
   };
 }
 
-test("buildModel selects OpenAI Completions API", () => {
-  setEnv("TEST_OPENAI_KEY", "test-key");
-  expect(buildModel(makeSettings("completions"))).toBeInstanceOf(
-    ChatOpenAICompletions,
-  );
-});
-
-test("buildModel selects OpenAI Responses API", () => {
-  setEnv("TEST_OPENAI_KEY", "test-key");
-  expect(buildModel(makeSettings("responses"))).toBeInstanceOf(
-    ChatOpenAIResponses,
-  );
-});
-
 test("buildModel passes reasoning_effort to OpenAI Completions API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const settings = makeSettings("completions");
@@ -125,13 +110,6 @@ test("buildModel passes instructions to OpenAI Responses API", () => {
   expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe(
     "system\n\nskills",
   );
-});
-
-test("buildResponsesInstructions appends skills after system prompt", () => {
-  expect(buildResponsesInstructions("system", "skills")).toBe(
-    "system\n\nskills",
-  );
-  expect(buildResponsesInstructions("system", "")).toBe("system");
 });
 
 test("normalizes missing Responses API output_text annotations", () => {

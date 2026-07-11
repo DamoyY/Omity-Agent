@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
 import { TASKS } from "@langchain/langgraph-checkpoint";
-import { BunSqliteSaver } from "../src/checkpointer";
+import { BunSqliteSaver } from "../../src/checkpointer";
 
 const dirs: string[] = [];
 

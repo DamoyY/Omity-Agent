@@ -1,7 +1,7 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { queueMessageId } from "../src/infrastructure/messages";
-import { cleanupDatabaseDirs, makeDb, workspace } from "./support/database";
+import { queueMessageId } from "../../src/infrastructure/messages";
+import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 

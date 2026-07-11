@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
-import { parseClientIntent, runClient } from "../src/client";
-import { loadSettings, sessionPaths } from "../src/infrastructure/config";
-import { AgentDatabase } from "../src/infrastructure/database";
+import { parseClientIntent, runClient } from "../../src/client";
+import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
+import { AgentDatabase } from "../../src/infrastructure/database";
 
 const dirs: string[] = [];
 
@@ -14,11 +14,8 @@ afterEach(() => {
   }
 });
 
-test("client intent parses append assignment", () => {
+test("client intent parses messages and controls", () => {
   expect(parseClientIntent(["append=你好"])).toEqual({ append: "你好" });
-});
-
-test("client intent parses controls", () => {
   expect(parseClientIntent(["pause"])).toEqual({ control: "pause" });
   expect(parseClientIntent(["continue"])).toEqual({ control: "running" });
   expect(parseClientIntent(["resume"])).toEqual({ control: "running" });

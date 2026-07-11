@@ -5,9 +5,9 @@ import { AIMessage } from "@langchain/core/messages";
 import { fakeModel } from "@langchain/core/testing";
 import { createAgent } from "langchain";
 import { afterEach, expect, test } from "bun:test";
-import { createSkillsMiddleware } from "../src/agent";
-import { buildSkillsMessage, loadSkills } from "../src/skills";
-import type { Settings } from "../src/types";
+import { createSkillsMiddleware } from "../../src/agent";
+import { buildSkillsMessage, loadSkills } from "../../src/skills";
+import type { Settings } from "../../src/types";
 
 const dirs: string[] = [];
 

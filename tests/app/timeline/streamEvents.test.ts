@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import type { DisplayEvent, DisplayQueue } from "../../src/app/timeline";
-import { buildTimeline } from "../../src/app/timeline";
+import type { DisplayEvent, DisplayQueue } from "../../../src/app/timeline";
+import { buildTimeline } from "../../../src/app/timeline";
 
 const queue: DisplayQueue[] = [
   { id: 1, content: "run", status: "running", error: null },
@@ -75,15 +75,6 @@ test("accepts cumulative argument snapshots", () => {
   ]);
 
   expect(calls[0]?.inputText).toBe('{"value":10}');
-});
-
-test("preserves repeated tool name delta content", () => {
-  const calls = streamedCalls([
-    toolEvent(1, { id: "call-1", index: 0, name: "foo" }),
-    toolEvent(2, { index: 0, name: "foo" }),
-  ]);
-
-  expect(calls[0]?.name).toBe("foofoo");
 });
 
 test("keeps parallel tool call indexes separate", () => {

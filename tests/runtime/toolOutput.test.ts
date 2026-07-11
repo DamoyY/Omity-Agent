@@ -6,7 +6,7 @@ import { afterEach, expect, test } from "bun:test";
 import {
   countTokens,
   redirectLargeToolOutput,
-} from "../src/runtime/largeOutput";
+} from "../../src/runtime/largeOutput";
 
 const dirs: string[] = [];
 

@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { expect, test } from "bun:test";
-import { normalizeWorkspacePath } from "../src/infrastructure/workspacePath";
+import { normalizeWorkspacePath } from "../../src/infrastructure/workspacePath";
 
 const env = {
   MIXED_ROOT: "C:/Users/example",
