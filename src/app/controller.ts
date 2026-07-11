@@ -10,7 +10,7 @@ import {
 } from "../infrastructure/config";
 import { AgentDatabase } from "../infrastructure/database";
 import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
-import type { Control } from "../types";
+import type { Control, Settings } from "../types";
 import { AppEvents } from "./events";
 import { forkDatabaseBeforeMessage } from "./fork";
 import { AppRegistry } from "./registry";
@@ -25,12 +25,14 @@ interface RunningHost {
 
 export class AppController {
   readonly events = new AppEvents();
+  private readonly settings: Settings;
   private readonly registry: AppRegistry;
   private readonly hosts = new Map<string, RunningHost>();
   private readonly hostErrors = new Map<string, string>();
 
   constructor(private readonly appRoot: string) {
-    this.registry = new AppRegistry(appRoot);
+    this.settings = loadSettings(appRoot);
+    this.registry = new AppRegistry(this.settings);
   }
 
   close() {
@@ -82,7 +84,6 @@ export class AppController {
     const result = runClient({ sessionId, append: content }, this.appRoot);
     this.events.notify(sessionId);
     this.hostErrors.delete(sessionId);
-    this.registry.touch(sessionId);
     return result;
   }
 
@@ -91,16 +92,14 @@ export class AppController {
     const result = runClient({ sessionId, control }, this.appRoot);
     if (control === "running") this.ensureHost(session.id, session.workspace);
     this.events.notify(sessionId);
-    this.registry.touch(sessionId);
     return result;
   }
 
   forkSession(sessionId: string, beforeMessageId: number) {
     const session = this.registry.require(sessionId);
     const id = `web-${randomUUID()}`;
-    const settings = loadSettings(this.appRoot);
-    const sourcePaths = resolveSessionPaths(settings, sessionId);
-    const targetPaths = sessionPaths(settings, id);
+    const sourcePaths = resolveSessionPaths(this.settings, sessionId);
+    const targetPaths = sessionPaths(this.settings, id);
     let created = false;
     try {
       const source = new AgentDatabase(sourcePaths.appDb);
@@ -140,8 +139,7 @@ export class AppController {
 
   transcript(sessionId: string) {
     this.registry.require(sessionId);
-    const settings = loadSettings(this.appRoot);
-    const paths = resolveSessionPaths(settings, sessionId);
+    const paths = resolveSessionPaths(this.settings, sessionId);
     if (!existsSync(paths.appDb)) throw sessionNotFound(sessionId);
     const db = new AgentDatabase(paths.appDb);
     try {

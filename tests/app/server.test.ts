@@ -82,7 +82,7 @@ test("app registry scans session databases without creating a global db", () => 
   db.createSession("cli-session", workspace);
   db.close();
 
-  const sessions = new AppRegistry(root).list();
+  const sessions = new AppRegistry(settings).list();
   expect(sessions).toHaveLength(1);
   const session = required(sessions[0]);
   expect(session.id).toBe("cli-session");

@@ -2,8 +2,9 @@ import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Database } from "bun:sqlite";
 import { sessionNotFound } from "../errors";
-import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
+import { resolveSessionPaths } from "../infrastructure/config";
 import { applySchema } from "../infrastructure/schema";
+import type { Settings } from "../types";
 
 export interface RegisteredSession {
   id: string;
@@ -22,8 +23,7 @@ interface SessionRow {
 export class AppRegistry {
   private readonly sessionsDir: string;
 
-  constructor(private readonly appRoot: string) {
-    const settings = loadSettings(appRoot);
+  constructor(private readonly settings: Settings) {
     this.sessionsDir = resolve(settings.paths.dataDir, "sessions");
   }
 
@@ -39,26 +39,8 @@ export class AppRegistry {
   }
 
   require(id: string) {
-    const settings = loadSettings(this.appRoot);
-    const paths = resolveSessionPaths(settings, id);
+    const paths = resolveSessionPaths(this.settings, id);
     return readSession(paths.dir, id);
-  }
-
-  touch(id: string) {
-    this.require(id);
-    const settings = loadSettings(this.appRoot);
-    const paths = resolveSessionPaths(settings, id);
-    const db = new Database(paths.appDb, {
-      create: false,
-      strict: true,
-    });
-    try {
-      db.query("UPDATE sessions SET updated_at = unixepoch() WHERE id = ?").run(
-        id,
-      );
-    } finally {
-      db.close();
-    }
   }
 }
 
