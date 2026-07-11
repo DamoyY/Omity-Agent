@@ -1,4 +1,5 @@
 # Hook 按配置顺序执行；工具名使用重命名后的最终 MCP 工具名。
+# runLimit 是整个 session 的运行上限；0 为关闭，-1 为无限次。
 # id 必须唯一；args 支持任意深度的变量：
 # - ${cwd}: 当前会话的用户工作目录
 # - ${previousTool.output}: 前一个工具的 ToolMessage.content
@@ -9,24 +10,28 @@
 #   - id: format-after-user
 #     target: agent
 #     when: before
+#     runLimit: -1
 #     mode: silent
 #     tool: formatter
 #     args: { path: "${cwd}" }
 #   - id: notify-after-answer
 #     target: agent
 #     when: after
+#     runLimit: 1
 #     mode: silent
 #     tool: notify
 #     args: { result: "${previousTool.output}" }
 #   - id: check-before-write
 #     target: write_file
 #     when: before
+#     runLimit: -1
 #     mode: takeover
 #     tool: validate
 #     args: {}
 #   - id: format-after-write
 #     target: write_file
 #     when: after
+#     runLimit: 3
 #     mode: silent
 #     tool: formatter
 #     args: { path: . }
@@ -34,6 +39,7 @@ hooks:
   - id: open-terminal
     target: agent
     when: before
+    runLimit: 1
     mode: takeover
     tool: terminal__new_tab
     args:
@@ -42,6 +48,7 @@ hooks:
   - id: read-agents-md
     target: agent
     when: before
+    runLimit: 1
     mode: takeover
     tool: terminal__send_command
     args:

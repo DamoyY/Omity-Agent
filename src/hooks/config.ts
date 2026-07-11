@@ -8,6 +8,7 @@ const callFields = {
   id: z.string().min(1),
   target: z.string().min(1),
   when: z.enum(["before", "after"]),
+  runLimit: z.number().int().min(-1),
   tool: z.string().min(1),
   args: argsSchema,
 };

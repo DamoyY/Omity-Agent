@@ -79,6 +79,7 @@ async function runHookStep(
   threadId: string,
   signal?: AbortSignal,
 ) {
+  if (!hooks.shouldRun(rule, sourceId, threadId)) return null;
   if (rule.mode === "silent") {
     await hooks.runSilent(rule, sourceId, threadId, signal);
     return null;

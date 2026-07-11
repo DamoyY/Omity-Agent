@@ -74,24 +74,28 @@ test("hook config parses targets and timing and rejects agent after takeover", (
   - id: user
     target: agent
     when: before
+    runLimit: -1
     mode: takeover
     tool: format
     args: { path: . }
   - id: end
     target: agent
     when: after
+    runLimit: 1
     mode: silent
     tool: notify
     args: {}
   - id: before
     target: write
     when: before
+    runLimit: 0
     mode: silent
     tool: lint
     args: {}
   - id: after
     target: write
     when: after
+    runLimit: 2
     mode: takeover
     tool: verify
     args: {}
@@ -108,11 +112,16 @@ test("hook config parses targets and timing and rejects agent after takeover", (
   );
   writeFileSync(
     path,
-    "hooks:\n  - id: invalid\n    target: agent\n    when: after\n    mode: takeover\n    tool: notify\n    args: {}\n",
+    "hooks:\n  - id: invalid\n    target: agent\n    when: after\n    runLimit: -1\n    mode: takeover\n    tool: notify\n    args: {}\n",
   );
   expect(() => loadHookRules(path)).toThrow(
     "agent after Hook 仅支持 silent 模式",
   );
+  writeFileSync(
+    path,
+    "hooks:\n  - id: invalid-limit\n    target: agent\n    when: before\n    runLimit: -2\n    mode: silent\n    tool: notify\n    args: {}\n",
+  );
+  expect(() => loadHookRules(path)).toThrow();
 });
 
 test("hook config rejects removed on and matchTool fields", () => {
@@ -121,7 +130,7 @@ test("hook config rejects removed on and matchTool fields", () => {
   dirs.push(root);
   writeFileSync(
     path,
-    "hooks:\n  - id: legacy\n    on: tool_before\n    target: write\n    when: before\n    mode: silent\n    tool: lint\n    args: {}\n    matchTool: write\n",
+    "hooks:\n  - id: legacy\n    on: tool_before\n    target: write\n    when: before\n    runLimit: -1\n    mode: silent\n    tool: lint\n    args: {}\n    matchTool: write\n",
   );
 
   expect(() => loadHookRules(path)).toThrow();

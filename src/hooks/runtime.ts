@@ -2,8 +2,8 @@ import { ToolMessage, type ToolCall } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Logger } from "../infrastructure/logger";
 import type { HookRule, HookWhen } from "../types";
-import { HookLedger } from "./ledger";
-import { createHookCallId, hookTrigger } from "./storage/calls";
+import { HookLedger, type InvocationRow } from "./ledger";
+import * as callStorage from "./storage/calls";
 import { resolveHookArgs } from "./variables";
 
 export class HookRuntime {
@@ -23,6 +23,8 @@ export class HookRuntime {
     if (this.tools.size !== tools.length)
       throw new Error("MCP 工具名称重复，无法编译 Hook");
     for (const rule of rules) {
+      if (!Number.isInteger(rule.runLimit) || rule.runLimit < -1)
+        throw new Error(`Hook ${rule.id} 的 runLimit 必须是大于等于 -1 的整数`);
       this.requireTool(rule.tool, `Hook ${rule.id}`);
       if (rule.target !== "agent")
         this.requireTool(rule.target, `Hook ${rule.id} 目标`);
@@ -35,6 +37,15 @@ export class HookRuntime {
     );
   }
 
+  shouldRun(rule: HookRule, sourceId: string, threadId: string) {
+    return this.ledger.canRun(
+      this.sessionId,
+      threadId,
+      callStorage.hookCallDetails(rule, sourceId),
+      rule.runLimit,
+    );
+  }
+
   async runSilentChain(
     target: string,
     when: HookWhen,
@@ -43,8 +54,11 @@ export class HookRuntime {
     signal?: AbortSignal,
   ) {
     for (const rule of this.matching(target, when)) {
+      if (!this.shouldRun(rule, sourceId, threadId)) continue;
       if (rule.mode !== "silent")
-        throw new Error(`${hookTrigger(target, when)} 不能在图外执行接管 Hook`);
+        throw new Error(
+          `${callStorage.hookTrigger(target, when)} 不能在图外执行接管 Hook`,
+        );
       await this.runSilent(rule, sourceId, threadId, signal);
     }
   }
@@ -54,12 +68,12 @@ export class HookRuntime {
     sourceId: string,
     threadId: string,
   ): Promise<ToolCall> {
-    const details = {
-      trigger: hookTrigger(rule.target, rule.when),
-      sourceId,
-      hookId: rule.id,
-    };
-    const callId = createHookCallId(this.sessionId, threadId, details);
+    const details = callStorage.hookCallDetails(rule, sourceId);
+    const callId = callStorage.createHookCallId(
+      this.sessionId,
+      threadId,
+      details,
+    );
     if (rule.mode === "takeover")
       this.ledger.registerCall(callId, this.sessionId, threadId, details);
     return {
@@ -79,10 +93,12 @@ export class HookRuntime {
     threadId: string,
     signal?: AbortSignal,
   ) {
-    const trigger = hookTrigger(rule.target, rule.when);
-    const { key, existing } = this.claim(
-      { trigger, sourceId, hookId: rule.id },
+    const trigger = callStorage.hookTrigger(rule.target, rule.when);
+    const { key, existing } = this.ledger.claim(
+      this.sessionId,
       threadId,
+      { trigger, sourceId, hookId: rule.id },
+      rule.runLimit,
     );
     if (existing) return this.restore(existing, key);
     this.logger.debug("执行静默 Hook", {
@@ -117,7 +133,9 @@ export class HookRuntime {
     invoke: () => Promise<unknown>,
   ) {
     const details = this.ledger.requireCall(callId, this.sessionId, threadId);
-    return this.runRecorded(details, threadId, invoke);
+    const rule = this.rules.find(({ id }) => id === details.hookId);
+    if (!rule) throw new Error(`Hook 配置不存在：${details.hookId}`);
+    return this.runRecorded(details, threadId, invoke, rule.runLimit);
   }
 
   async runAgentTool(
@@ -137,8 +155,14 @@ export class HookRuntime {
     details: { trigger: string; sourceId: string; hookId: string },
     threadId: string,
     invoke: () => Promise<unknown>,
+    runLimit = -1,
   ) {
-    const { key, existing } = this.claim(details, threadId);
+    const { key, existing } = this.ledger.claim(
+      this.sessionId,
+      threadId,
+      details,
+      runLimit,
+    );
     if (existing) return this.restore(existing, key);
     try {
       const output = await invoke();
@@ -152,41 +176,12 @@ export class HookRuntime {
     }
   }
 
-  private claim(
-    details: { trigger: string; sourceId: string; hookId: string },
-    threadId: string,
-  ) {
-    const key = this.invocationKey(details, threadId);
-    return {
-      key,
-      existing: this.ledger.claim({
-        key,
-        sessionId: this.sessionId,
-        threadId,
-        ...details,
-      }),
-    };
-  }
-
-  private restore(existing: ReturnType<HookLedger["claim"]>, key: string) {
+  private restore(existing: InvocationRow | null, key: string) {
     if (!existing) throw new Error(`工具调用记录缺失：${key}`);
     this.ledger.requireRunnable(existing, key);
     const output = this.ledger.restoredOutput(existing);
     if (!output) throw new Error(`工具调用结果缺失：${key}`);
     return output;
-  }
-
-  private invocationKey(
-    details: { trigger: string; sourceId: string; hookId: string },
-    threadId: string,
-  ) {
-    return [
-      this.sessionId,
-      threadId,
-      details.trigger,
-      details.sourceId,
-      details.hookId,
-    ].join("\u001f");
   }
 
   private requireTool(name: string, description: string) {

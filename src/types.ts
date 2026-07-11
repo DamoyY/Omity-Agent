@@ -18,6 +18,7 @@ export type HookRule = {
   id: string;
   target: string;
   when: HookWhen;
+  runLimit: number;
   mode: HookMode;
   tool: string;
   args: Record<string, unknown>;

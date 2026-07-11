@@ -11,8 +11,15 @@ import {
   requireHookCall,
   type HookCallDetails,
 } from "./storage/calls";
+import {
+  applyInvocationSchema,
+  bindInvocation,
+  canRunInvocation,
+  insertInvocation,
+  type InvocationDetails,
+} from "./storage/invocations";
 
-type InvocationRow = {
+export type InvocationRow = {
   status: string;
   output_json: string | null;
   error: string | null;
@@ -31,45 +38,42 @@ export class HookLedger {
     this.db = new Database(path, { create: true, strict: true });
     this.db.run("PRAGMA journal_mode = WAL");
     applyHookCallSchema(this.db);
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS invocations (
-        invocation_key TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL,
-        thread_id TEXT NOT NULL,
-        hook_id TEXT NOT NULL,
-        trigger TEXT NOT NULL,
-        source_id TEXT NOT NULL,
-        status TEXT NOT NULL,
-        output_json TEXT,
-        error TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    `);
+    applyInvocationSchema(this.db);
   }
 
   close() {
     this.db.close();
   }
 
-  claim(details: InvocationDetails) {
+  canRun(
+    sessionId: string,
+    threadId: string,
+    details: Omit<InvocationDetails, "key" | "sessionId" | "threadId">,
+    runLimit: number,
+  ) {
+    return canRunInvocation(
+      this.db,
+      bindInvocation(sessionId, threadId, details),
+      runLimit,
+    );
+  }
+
+  claim(
+    sessionId: string,
+    threadId: string,
+    source: Omit<InvocationDetails, "key" | "sessionId" | "threadId">,
+    runLimit: number,
+  ) {
+    const details = bindInvocation(sessionId, threadId, source);
     const row = this.read(details.key);
-    if (row) return row;
-    this.db
-      .query(
-        `INSERT INTO invocations
-         (invocation_key, session_id, thread_id, hook_id, trigger, source_id, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'running', unixepoch(), unixepoch())`,
-      )
-      .run(
-        details.key,
-        details.sessionId,
-        details.threadId,
-        details.hookId,
-        details.trigger,
-        details.sourceId,
-      );
-    return null;
+    if (row) return { key: details.key, existing: row };
+    if (insertInvocation(this.db, details, runLimit))
+      return { key: details.key, existing: null };
+    const concurrent = this.read(details.key);
+    if (concurrent) return { key: details.key, existing: concurrent };
+    throw new Error(
+      `Hook ${details.hookId} 已达到 session 运行上限 ${runLimit}`,
+    );
   }
 
   complete(key: string, output: ToolMessage) {
@@ -157,15 +161,6 @@ export class HookLedger {
       .get(key);
   }
 }
-
-export type InvocationDetails = {
-  key: string;
-  sessionId: string;
-  threadId: string;
-  hookId: string;
-  trigger: string;
-  sourceId: string;
-};
 
 function parseOutput(value: string | null): StoredOutput | undefined {
   if (value === null) return undefined;

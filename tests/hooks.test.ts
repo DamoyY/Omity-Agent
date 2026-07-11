@@ -101,6 +101,29 @@ test("silent hook is omitted from agent context and runs once", async () => {
   ]);
 });
 
+test("runLimit disables hooks and applies across session threads", async () => {
+  const calls: string[] = [];
+  const disabled = makeTool("disabled", () => calls.push("disabled"));
+  const limited = makeTool("limited", () => calls.push("limited"));
+  const hooks = makeRuntime(
+    [
+      silent("disabled", "agent", "before", "disabled", 0),
+      silent("limited", "agent", "before", "limited", 2),
+    ],
+    [disabled, limited],
+  );
+  for (let index = 0; index < 3; index++) {
+    await hooks.runSilentChain(
+      "agent",
+      "before",
+      `queue:${index}`,
+      `thread:${index}`,
+    );
+  }
+
+  expect(calls).toEqual(["limited", "limited"]);
+});
+
 function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const dir = mkdtempSync(join(tmpdir(), "agent-hooks-"));
   dirs.push(dir);
@@ -136,11 +159,25 @@ function takeover(
   target: string,
   when: HookRule["when"],
 ): HookRule {
-  return { id, target, when, mode: "takeover", tool: "hook", args: {} };
+  return { ...silent(id, target, when), mode: "takeover" };
 }
 
-function silent(id: string, target: string, when: HookRule["when"]): HookRule {
-  return { id, target, when, mode: "silent", tool: "hook", args: {} };
+function silent(
+  id: string,
+  target: string,
+  when: HookRule["when"],
+  toolName = "hook",
+  runLimit = -1,
+): HookRule {
+  return {
+    id,
+    target,
+    when,
+    runLimit,
+    mode: "silent",
+    tool: toolName,
+    args: {},
+  };
 }
 
 function assertToolProtocol(messages: BaseMessage[]) {

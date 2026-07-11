@@ -105,6 +105,7 @@ test("user takeover receives the preceding silent hook output", async () => {
         id: "silent-user",
         target: "agent",
         when: "before",
+        runLimit: -1,
         mode: "silent",
         tool: "hook",
         args: {},
@@ -113,6 +114,7 @@ test("user takeover receives the preceding silent hook output", async () => {
         id: "takeover-user",
         target: "agent",
         when: "before",
+        runLimit: -1,
         mode: "takeover",
         tool: "hook",
         args: { previous: "${previousTool.output}" },
@@ -168,6 +170,7 @@ function rules(): HookRule[] {
       id: "agent-end",
       target: "agent",
       when: "after",
+      runLimit: -1,
       mode: "silent",
       tool: "hook",
       args: {
@@ -184,5 +187,13 @@ function hook(
   mode: "silent" | "takeover",
   args: Record<string, unknown>,
 ): HookRule {
-  return { id, target: "original", when, mode, args, tool: "hook" };
+  return {
+    id,
+    target: "original",
+    when,
+    runLimit: -1,
+    mode,
+    args,
+    tool: "hook",
+  };
 }
