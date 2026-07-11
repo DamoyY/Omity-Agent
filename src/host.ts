@@ -1,5 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
 import { buildGraph } from "./agent";
+import { sessionConflict, sessionNotFound } from "./errors";
 import {
   loadSettings,
   resolveSessionPaths,
@@ -138,7 +139,7 @@ export function deleteHostSession(sessionId: string, root = process.cwd()) {
   const settings = loadSettings(root);
   const paths = resolveSessionPaths(settings, sessionId);
   if (!existsSync(paths.dir)) {
-    throw new Error(`会话不存在：${sessionId}`);
+    throw sessionNotFound(sessionId);
   }
   rmSync(paths.dir, { recursive: true, force: true });
 }
@@ -150,10 +151,10 @@ function prepareWritableSession(
   const planned = resolveSessionPaths(settings, mode.sessionId);
   const exists = existsSync(planned.dir);
   if (mode.kind === "new" && exists) {
-    throw new Error(`会话已存在：${mode.sessionId}`);
+    throw sessionConflict(mode.sessionId);
   }
   if (mode.kind === "overwrite" && !exists) {
-    throw new Error(`会话不存在：${mode.sessionId}`);
+    throw sessionNotFound(mode.sessionId);
   }
   if (mode.kind === "overwrite") {
     rmSync(planned.dir, { recursive: true, force: true });
@@ -163,13 +164,13 @@ function prepareWritableSession(
 
 function openHostDatabase(path: string, mode: HostMode, workspace: string) {
   if (mode.kind === "load" && !existsSync(path)) {
-    throw new Error(`会话不存在：${mode.sessionId}`);
+    throw sessionNotFound(mode.sessionId);
   }
   const db = new AgentDatabase(path);
   if (mode.kind === "load") {
     if (!db.hasSession(mode.sessionId)) {
       db.close();
-      throw new Error(`会话不存在：${mode.sessionId}`);
+      throw sessionNotFound(mode.sessionId);
     }
     return db;
   }

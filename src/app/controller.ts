@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
 import { runClient } from "../client";
+import { sessionNotFound } from "../errors";
 import { deleteHostSession, runHostSession } from "../host";
 import {
   loadSettings,
@@ -141,7 +142,7 @@ export class AppController {
     this.registry.require(sessionId);
     const settings = loadSettings(this.appRoot);
     const paths = resolveSessionPaths(settings, sessionId);
-    if (!existsSync(paths.appDb)) throw new Error(`会话不存在：${sessionId}`);
+    if (!existsSync(paths.appDb)) throw sessionNotFound(sessionId);
     const db = new AgentDatabase(paths.appDb);
     try {
       return loadTranscript(db, sessionId);

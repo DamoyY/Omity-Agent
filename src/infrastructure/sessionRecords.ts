@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { sessionConflict, sessionNotFound } from "../errors";
 import type { Control } from "../types";
 
 export interface HostLeaseClaim {
@@ -14,14 +15,14 @@ export function createSessionRecord(
   workspace: string,
 ) {
   if (hasSessionRecord(db, sessionId)) {
-    throw new Error(`会话已存在：${sessionId}`);
+    throw sessionConflict(sessionId);
   }
   const result = db
     .query(
       "INSERT INTO sessions (id, workspace, control, status, created_at, updated_at) VALUES (?, ?, 'running', 'idle', unixepoch(), unixepoch())",
     )
     .run(sessionId, workspace);
-  if (result.changes !== 1) throw new Error(`会话已存在：${sessionId}`);
+  if (result.changes !== 1) throw sessionConflict(sessionId);
 }
 
 export function ensureSessionRecord(
@@ -49,7 +50,7 @@ export function hasSessionRecord(db: Database, sessionId: string) {
 
 export function requireSessionRecord(db: Database, sessionId: string) {
   if (!hasSessionRecord(db, sessionId)) {
-    throw new Error(`会话不存在：${sessionId}`);
+    throw sessionNotFound(sessionId);
   }
 }
 
@@ -60,7 +61,7 @@ export function readWorkspaceRecord(db: Database, sessionId: string) {
       "SELECT workspace FROM sessions WHERE id = ?",
     )
     .get(sessionId);
-  if (!row) throw new Error(`会话不存在：${sessionId}`);
+  if (!row) throw sessionNotFound(sessionId);
   return row.workspace;
 }
 
@@ -82,7 +83,7 @@ export function readControlRecord(db: Database, sessionId: string): Control {
   } finally {
     query.finalize();
   }
-  if (!row) throw new Error(`会话不存在：${sessionId}`);
+  if (!row) throw sessionNotFound(sessionId);
   return row.control;
 }
 

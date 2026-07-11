@@ -1,5 +1,20 @@
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import type { Control } from "../../../types";
+import { z } from "zod";
+
+const errorResponse = z.object({
+  error: z.object({ code: z.string(), message: z.string() }),
+});
+
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 export interface SessionInfo {
   id: string;
@@ -85,15 +100,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const json = (await response.json()) as unknown;
   if (!response.ok) {
-    const message =
-      isRecord(json) && typeof json["error"] === "string"
-        ? json["error"]
-        : response.statusText;
-    throw new Error(message);
+    const parsed = errorResponse.safeParse(json);
+    if (!parsed.success) {
+      throw new Error(
+        `API 错误响应结构无效：HTTP ${response.status.toString()}`,
+      );
+    }
+    throw new ApiError(
+      response.status,
+      parsed.data.error.code,
+      parsed.data.error.message,
+    );
   }
   return json as T;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

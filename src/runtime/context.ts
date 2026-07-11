@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { randomUUID } from "node:crypto";
+import { DomainError } from "../errors";
 import type { BunSqliteSaver } from "../checkpointer";
 import type { AgentDatabase } from "../infrastructure/database";
 import type { Logger } from "../infrastructure/logger";
@@ -109,7 +110,10 @@ export class HostLease {
         ttlMs: leaseTtlMs,
       })
     ) {
-      throw new Error(`会话已有 Host 正在运行：${sessionId}`);
+      throw new DomainError(
+        "HOST_LEASE_CONFLICT",
+        `会话已有 Host 正在运行：${sessionId}`,
+      );
     }
     this.timer = setInterval(() => {
       this.renew();

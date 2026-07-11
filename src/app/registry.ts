@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Database } from "bun:sqlite";
+import { sessionNotFound } from "../errors";
 import { loadSettings, resolveSessionPaths } from "../infrastructure/config";
 import { applySchema } from "../infrastructure/schema";
 
@@ -63,7 +64,7 @@ export class AppRegistry {
 
 function readSession(dir: string, id?: string) {
   const dbPath = resolve(dir, "agent.sqlite");
-  if (!existsSync(dbPath)) throw new Error(`会话数据库不存在：${dbPath}`);
+  if (!existsSync(dbPath)) throw sessionNotFound(id ?? dir);
   const db = new Database(dbPath, { create: false, strict: true });
   try {
     try {
@@ -87,7 +88,7 @@ function readSession(dir: string, id?: string) {
             "SELECT id, workspace, created_at, updated_at FROM sessions LIMIT 1",
           )
           .get();
-    if (!row) throw new Error(`会话不存在：${id ?? dir}`);
+    if (!row) throw sessionNotFound(id ?? dir);
     return toSession(row);
   } finally {
     db.close();

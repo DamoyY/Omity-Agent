@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { DomainError } from "../errors";
 import type { QueueItem, QueueStatus } from "../types";
 import { insertUserMessage } from "./messages";
 import { toQueueItem, type QueueRow } from "./queueRows";
@@ -99,7 +100,7 @@ export function startQueueRecord(
       [item.id, sessionId, item.status, item.userMessageId],
     );
     if (result.changes !== 1) {
-      throw new Error(`队列认领冲突：${item.id.toString()}`);
+      throw queueClaimConflict(item.id);
     }
     syncRunStatus(db, item.id);
     return item.userMessageId;
@@ -114,10 +115,17 @@ export function startQueueRecord(
     [messageId, item.id, sessionId],
   );
   if (result.changes !== 1) {
-    throw new Error(`队列认领冲突：${item.id.toString()}`);
+    throw queueClaimConflict(item.id);
   }
   syncRunStatus(db, item.id);
   return messageId;
+}
+
+function queueClaimConflict(queueId: number) {
+  return new DomainError(
+    "QUEUE_CLAIM_CONFLICT",
+    `队列认领冲突：${queueId.toString()}`,
+  );
 }
 
 export function setQueueStatusRecord(

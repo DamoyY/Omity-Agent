@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterEach, expect, test } from "bun:test";
 import { normalizeError } from "../../src/app/http/errors";
+import { DomainError, sessionNotFound } from "../../src/errors";
 import {
   controlBody,
   decodeSessionId,
@@ -50,13 +51,24 @@ test("API validates encoded session IDs without path normalization", () => {
 });
 
 test("API maps missing sessions and conflicts to explicit status codes", () => {
-  expect(normalizeError(new Error("会话不存在：123"))).toMatchObject({
+  expect(normalizeError(sessionNotFound("123"))).toMatchObject({
     status: 404,
+    code: "SESSION_NOT_FOUND",
   });
   expect(
-    normalizeError(new Error("会话已有 Host 正在运行：123")),
+    normalizeError(
+      new DomainError("HOST_LEASE_CONFLICT", "会话已有 Host 正在运行：123"),
+    ),
   ).toMatchObject({
     status: 409,
+    code: "HOST_LEASE_CONFLICT",
+  });
+  expect(
+    normalizeError(new Error("会话不存在：文案不再参与映射")),
+  ).toMatchObject({
+    status: 500,
+    code: "INTERNAL_ERROR",
+    message: "内部服务器错误",
   });
 });
 

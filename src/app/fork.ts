@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { DomainError } from "../errors";
 import { AgentDatabase } from "../infrastructure/database";
 import {
   messageInsert,
@@ -61,7 +62,12 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   } finally {
     query.finalize();
   }
-  if (!row) throw new Error(`Fork 消息不存在：${messageId.toString()}`);
+  if (!row) {
+    throw new DomainError(
+      "FORK_MESSAGE_NOT_FOUND",
+      `Fork 消息不存在：${messageId.toString()}`,
+    );
+  }
   if (storedMessageType(row.message_json) !== "human") {
     throw new Error("只能从用户消息创建 Fork");
   }

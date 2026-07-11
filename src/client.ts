@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { sessionNotFound } from "./errors";
 import { loadSettings, resolveSessionPaths } from "./infrastructure/config";
 import { AgentDatabase } from "./infrastructure/database";
 import type { Control } from "./types";
@@ -26,13 +27,13 @@ export function runClient(command: ClientCommand, root = process.cwd()) {
   const settings = loadSettings(root);
   const paths = resolveSessionPaths(settings, command.sessionId);
   if (!existsSync(paths.appDb)) {
-    throw new Error(`会话不存在：${command.sessionId}`);
+    throw sessionNotFound(command.sessionId);
   }
   const db = new AgentDatabase(paths.appDb);
   const result: ClientResult = {};
   try {
     if (!db.hasSession(command.sessionId)) {
-      throw new Error(`会话不存在：${command.sessionId}`);
+      throw sessionNotFound(command.sessionId);
     }
     if (command.append !== undefined) {
       result.queueId = db.appendUser(command.sessionId, command.append);
