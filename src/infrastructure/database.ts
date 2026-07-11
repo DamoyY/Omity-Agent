@@ -7,11 +7,7 @@ import {
   insertStreamToolCall,
   type StreamToolCallDelta,
 } from "./eventRecords";
-import {
-  appendAssistantMessage,
-  loadMessages,
-  replaceMessages,
-} from "./messages";
+import { loadMessages, replaceMessages } from "./messages";
 import {
   appendDraftQueue,
   appendForkPauseQueue,
@@ -25,7 +21,6 @@ import { applySchema } from "./schema";
 import {
   acquireHostLeaseRecord,
   createSessionRecord,
-  ensureSessionRecord,
   hasSessionRecord,
   readControlRecord,
   readWorkspaceRecord,
@@ -70,10 +65,6 @@ export class AgentDatabase {
 
   createSession(sessionId: string, workspace: string) {
     createSessionRecord(this.db, sessionId, workspace);
-  }
-
-  ensureSession(sessionId: string, workspace: string) {
-    ensureSessionRecord(this.db, sessionId, workspace);
   }
 
   hasSession(sessionId: string) {
@@ -129,11 +120,6 @@ export class AgentDatabase {
 
   setQueueStatus(queueId: number, status: QueueStatus, error?: string) {
     setQueueStatusRecord(this.db, queueId, status, error);
-  }
-
-  appendAssistant(sessionId: string, queueId: number, content: string) {
-    this.requireSession(sessionId);
-    appendAssistantMessage(this.db, sessionId, queueId, content);
   }
 
   replaceHistory(sessionId: string, messages: BaseMessage[]) {

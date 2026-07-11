@@ -1,5 +1,6 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
+import { appendAssistantMessage } from "../src/infrastructure/messages";
 import {
   cleanupDatabaseDirs,
   makeDatabases,
@@ -17,7 +18,7 @@ test("queue append and transcript lifecycle", () => {
   expect(item?.id).toBe(queueId);
   db.startQueue("123", item!);
   expect(db.history("123").map((message) => message.text)).toEqual(["你好"]);
-  db.appendAssistant("123", queueId, "你好，有什么可以帮你？");
+  appendAssistantMessage(db.db, "123", queueId, "你好，有什么可以帮你？");
   db.setQueueStatus(queueId, "done");
   expect(db.history("123").at(-1)?.text).toBe("你好，有什么可以帮你？");
   db.close();
@@ -80,7 +81,7 @@ test("replace history clears redundant stream events", () => {
 
 test("control is stored in sql", () => {
   const db = makeDb();
-  db.ensureSession("123", workspace);
+  db.createSession("123", workspace);
   db.setControl("123", "pause");
   expect(db.control("123")).toBe("pause");
   db.setControl("123", "running");

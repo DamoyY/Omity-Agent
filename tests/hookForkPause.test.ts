@@ -16,6 +16,7 @@ import {
 } from "../src/hooks/middleware";
 import { HookRuntime } from "../src/hooks/runtime";
 import { AgentDatabase } from "../src/infrastructure/database";
+import { appendAssistantMessage } from "../src/infrastructure/messages";
 import { Logger } from "../src/infrastructure/logger";
 import type { HostContext } from "../src/runtime/context";
 import { processQueue } from "../src/runtime/queue";
@@ -31,7 +32,7 @@ test("forked appended message runs its hook once after resume", async () => {
     source.createSession("source", dir);
     const rootQueue = source.appendUser("source", "first");
     source.startQueue("source", source.nextQueue("source")!);
-    source.appendAssistant("source", rootQueue, "first reply");
+    appendAssistantMessage(source.db, "source", rootQueue, "first reply");
     const appendedQueue = source.appendUser("source", "second");
     source.startQueue("source", source.pendingAppends("source")[0]!);
     forkDatabaseBeforeMessage({

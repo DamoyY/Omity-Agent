@@ -1,6 +1,7 @@
 import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { forkDatabaseBeforeMessage } from "../src/app/fork";
+import { appendAssistantMessage } from "../src/infrastructure/messages";
 import { cleanupDatabaseDirs, makeDb, workspace } from "./support/database";
 
 afterEach(cleanupDatabaseDirs);
@@ -11,11 +12,11 @@ test("fork copies messages before selected user message", () => {
   source.resetSession("source", workspace);
   const first = source.appendUser("source", "第一条");
   source.startQueue("source", source.nextQueue("source")!);
-  source.appendAssistant("source", first, "第一条回复");
+  appendAssistantMessage(source.db, "source", first, "第一条回复");
   source.setQueueStatus(first, "done");
   const forkPoint = source.appendUser("source", "不要复制");
   source.startQueue("source", source.nextQueue("source")!);
-  source.appendAssistant("source", forkPoint, "也不要复制");
+  appendAssistantMessage(source.db, "source", forkPoint, "也不要复制");
   const forkMessageId = userMessageId(source, forkPoint);
 
   forkDatabaseBeforeMessage({
@@ -92,7 +93,7 @@ test("fork point must be a user message", () => {
   source.resetSession("source", workspace);
   const queueId = source.appendUser("source", "问题");
   source.startQueue("source", source.nextQueue("source")!);
-  source.appendAssistant("source", queueId, "回答");
+  appendAssistantMessage(source.db, "source", queueId, "回答");
   const assistantRow = latestMessageId(source);
 
   expect(() =>
