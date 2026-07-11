@@ -52,6 +52,10 @@ export class AppController {
     }));
   }
 
+  assertSession(sessionId: string) {
+    this.registry.require(sessionId);
+  }
+
   pickWorkspace() {
     return pickWorkspaceDirectory();
   }

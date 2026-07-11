@@ -39,7 +39,9 @@ test("settings yaml resolves AppData data directory", () => {
     expect(settings.toolOutput.maxTokens).toBe(8192);
     expect(settings.agent.systemPrompt).toBe("test");
     expect(settings.skills.usagePrompt).toBe("use skills");
-    expect(sessionPaths(settings, "abc/def").dir).toContain(safeId("abc/def"));
+    expect(sessionPaths(settings, "abc-def").dir).toContain(safeId("abc-def"));
+    expect(() => sessionPaths(settings, "abc/def")).toThrow("路径 ID 无效");
+    expect(() => sessionPaths(settings, "abc:def")).toThrow("路径 ID 无效");
   });
 });
 

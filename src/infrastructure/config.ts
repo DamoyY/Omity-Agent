@@ -105,11 +105,16 @@ export function resolveSessionPaths(settings: Settings, sessionId: string) {
 }
 
 export function safeId(value: string) {
-  const safe = value.replaceAll(/[^a-zA-Z0-9._-]/g, "_");
-  if (safe.length === 0) {
-    throw new Error("会话 ID 不能为空");
+  if (
+    value.length === 0 ||
+    value.length > 128 ||
+    value === "." ||
+    value === ".." ||
+    !/^[a-zA-Z0-9._-]+$/.test(value)
+  ) {
+    throw new Error(`路径 ID 无效：${value}`);
   }
-  return safe;
+  return value;
 }
 
 function readYaml(path: string) {

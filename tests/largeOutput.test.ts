@@ -36,19 +36,19 @@ test("normalizes MCP text content before size handling", async () => {
   const normalized = await redirectLargeToolOutput(shortMessage, {
     dataDir: root,
     maxTokens: countTokens(short),
-    sessionId: "demo/session",
+    sessionId: "demo-session",
     outputId: "call-0",
   });
   const redirected = await redirectLargeToolOutput(message, {
     dataDir: root,
     maxTokens: 1,
-    sessionId: "demo/session",
+    sessionId: "demo-session",
     outputId: "call-1",
   });
   const outputPath = join(
     root,
     "sessions",
-    "demo_session",
+    "demo-session",
     "large_output",
     "call-1.txt",
   );
