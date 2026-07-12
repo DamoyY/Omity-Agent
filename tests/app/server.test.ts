@@ -19,11 +19,11 @@ import {
   requestBodyLimit,
 } from "../../src/app/http/request";
 import { AppRegistry } from "../../src/app/registry";
+import { AppController } from "../../src/app/controller";
 import {
-  AppController,
   resolveSessionState,
   resolveSessionStatus,
-} from "../../src/app/controller";
+} from "../../src/app/sessionState";
 import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
 import { AgentDatabase } from "../../src/infrastructure/database";
 import { captureError } from "../../src/failures/details";

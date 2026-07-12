@@ -11,12 +11,17 @@ import {
 import { AgentDatabase } from "../infrastructure/database";
 import { removeDatabaseDirectory } from "../infrastructure/sqlite";
 import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
-import type { Control, SessionStatus, Settings } from "../types";
-import type { ErrorDetails } from "../failures/details";
+import type { Control, Settings } from "../types";
+import {
+  clearSessionDraft,
+  readSessionDraft,
+  writeSessionDraft,
+} from "./composerDraft";
 import { AppEvents } from "./events";
 import { forkDatabaseBeforeMessage } from "./fork";
 import { AppHosts } from "./hosts";
 import { AppRegistry, type RegisteredSession } from "./registry";
+import { resolveSessionState } from "./sessionState";
 import { loadTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
 
@@ -72,13 +77,24 @@ export class AppController {
     };
   }
 
-  sendMessage(sessionId: string, content: string) {
+  sendMessage(sessionId: string, content: string, draftRevision: number) {
     const session = this.registry.require(sessionId);
     this.hosts.ensure(session.id, session.workspace);
     const result = runClient({ sessionId, append: content }, this.appRoot);
+    clearSessionDraft(this.settings, sessionId, draftRevision);
     this.events.notify(sessionId);
     this.hosts.clearError(sessionId);
     return result;
+  }
+
+  composerDraft(sessionId: string) {
+    this.registry.require(sessionId);
+    return readSessionDraft(this.settings, sessionId);
+  }
+
+  saveComposerDraft(sessionId: string, content: string, revision: number) {
+    this.registry.require(sessionId);
+    return writeSessionDraft(this.settings, sessionId, content, revision);
   }
 
   control(sessionId: string, control: Control) {
@@ -163,31 +179,4 @@ export class AppController {
       ...state,
     };
   }
-}
-
-export function resolveSessionState(
-  session: Pick<RegisteredSession, "control" | "paused" | "error">,
-  activity: Extract<SessionStatus, "tool" | "model" | "idle">,
-  hostError: ErrorDetails | null,
-) {
-  return {
-    status: resolveSessionStatus(session, activity, hostError),
-    error: hostError ?? session.error,
-  };
-}
-
-export function resolveSessionStatus(
-  session: Pick<RegisteredSession, "control" | "paused" | "error">,
-  activity: Extract<SessionStatus, "tool" | "model" | "idle">,
-  hostError: ErrorDetails | null,
-): SessionStatus {
-  if (hostError || session.error) return "error";
-  if (
-    session.paused ||
-    session.control === "pause" ||
-    session.control === "pause_cancel"
-  ) {
-    return "paused";
-  }
-  return activity;
 }

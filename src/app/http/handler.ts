@@ -3,6 +3,7 @@ import type { AppController } from "../controller";
 import { HttpError } from "./errors";
 import {
   controlBody,
+  composerDraftBody,
   createSessionBody,
   decodeSessionId,
   forkBody,
@@ -18,6 +19,8 @@ type ApiController = Pick<
   | "createSession"
   | "deleteSession"
   | "transcript"
+  | "composerDraft"
+  | "saveComposerDraft"
   | "sendMessage"
   | "control"
   | "forkSession"
@@ -71,9 +74,27 @@ export async function handleApi(
     controller.events.stream(res, sessionId);
     return;
   }
+  if (req.method === "GET" && action === "composer-draft") {
+    sendJson(res, controller.composerDraft(sessionId));
+    return;
+  }
+  if (
+    (req.method === "PUT" || req.method === "POST") &&
+    action === "composer-draft"
+  ) {
+    const body = await readJson(req, composerDraftBody);
+    sendJson(
+      res,
+      controller.saveComposerDraft(sessionId, body.content, body.revision),
+    );
+    return;
+  }
   if (req.method === "POST" && action === "messages") {
     const body = await readJson(req, messageBody);
-    sendJson(res, controller.sendMessage(sessionId, body.content));
+    sendJson(
+      res,
+      controller.sendMessage(sessionId, body.content, body.draftRevision),
+    );
     return;
   }
   if (req.method === "POST" && action === "control") {

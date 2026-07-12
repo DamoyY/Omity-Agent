@@ -81,7 +81,7 @@ export function NewSessionPage({
   recentWorkspaces: string[];
   workspace: string;
   onPickWorkspace: () => Promise<string | null>;
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, draftRevision: number) => Promise<void>;
   onWorkspaceChange: (workspace: string) => void;
 }) {
   const { t } = useTranslation();

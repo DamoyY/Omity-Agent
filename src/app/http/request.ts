@@ -9,7 +9,16 @@ export const createSessionBody = z
   .object({ workspace: z.string().trim().min(1).max(32_767) })
   .strict();
 export const messageBody = z
-  .object({ content: z.string().refine((value) => value.trim().length > 0) })
+  .object({
+    content: z.string().refine((value) => value.trim().length > 0),
+    draftRevision: z.number().int().nonnegative(),
+  })
+  .strict();
+export const composerDraftBody = z
+  .object({
+    content: z.string(),
+    revision: z.number().int().positive(),
+  })
   .strict();
 export const controlBody = z
   .object({ control: z.enum(["running", "pause", "cancel"]) })

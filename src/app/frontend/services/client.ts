@@ -72,10 +72,48 @@ export function appEvents() {
   return eventSource("/api/events");
 }
 
-export async function sendMessage(sessionId: string, content: string) {
+export async function loadComposerDraft(sessionId: string) {
+  return request<{ content: string | null; revision: number }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
+  );
+}
+
+export async function saveComposerDraft(
+  sessionId: string,
+  content: string,
+  revision: number,
+) {
+  return request<{ revision: number }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ content, revision }),
+    },
+  );
+}
+
+export function beaconComposerDraft(
+  sessionId: string,
+  content: string,
+  revision: number,
+) {
+  const body = new Blob([JSON.stringify({ content, revision })], {
+    type: "application/json",
+  });
+  return navigator.sendBeacon(
+    `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
+    body,
+  );
+}
+
+export async function sendMessage(
+  sessionId: string,
+  content: string,
+  draftRevision: number,
+) {
   return request(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
     method: "POST",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, draftRevision }),
   });
 }
 

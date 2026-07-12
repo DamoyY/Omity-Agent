@@ -1,56 +1,61 @@
+import {
+  beaconComposerDraft,
+  loadComposerDraft,
+  saveComposerDraft,
+} from "./client";
+
 export type ComposerDraftTarget =
   { kind: "new" } | { kind: "session"; sessionId: string };
 
-interface DraftStorage {
-  getItem(key: string): string | null;
-  removeItem(key: string): void;
-  setItem(key: string, value: string): void;
-}
-
-interface DraftStores {
-  persistent: DraftStorage;
-  temporary: DraftStorage;
+export interface LoadedComposerDraft {
+  content: string;
+  revision: number;
 }
 
 const newSessionKey = "omity:composer:new";
-const sessionKeyPrefix = "omity:composer:session:";
 
-export function readComposerDraft(
+export async function readComposerDraft(
   target: ComposerDraftTarget,
   fallback: string,
-  stores = browserStores(),
 ) {
-  return storage(target, stores).getItem(key(target)) ?? fallback;
+  if (target.kind === "session") {
+    const draft = await loadComposerDraft(target.sessionId);
+    return {
+      content: draft.content ?? fallback,
+      revision: draft.revision,
+    };
+  }
+  return {
+    content: window.sessionStorage.getItem(newSessionKey) ?? fallback,
+    revision: 0,
+  };
 }
 
 export function writeComposerDraft(
   target: ComposerDraftTarget,
   content: string,
-  stores = browserStores(),
+  revision: number,
 ) {
-  storage(target, stores).setItem(key(target), content);
+  if (target.kind === "session") {
+    return saveComposerDraft(target.sessionId, content, revision);
+  }
+  window.sessionStorage.setItem(newSessionKey, content);
+  return Promise.resolve({ revision: 0 });
 }
 
-export function clearComposerDraft(
+export function flushComposerDraft(
   target: ComposerDraftTarget,
-  stores = browserStores(),
+  content: string,
+  revision: number,
 ) {
-  storage(target, stores).removeItem(key(target));
+  if (target.kind === "session") {
+    if (revision === 0) return true;
+    return beaconComposerDraft(target.sessionId, content, revision);
+  }
+  window.sessionStorage.setItem(newSessionKey, content);
+  return true;
 }
 
-function browserStores(): DraftStores {
-  return {
-    persistent: window.localStorage,
-    temporary: window.sessionStorage,
-  };
-}
-
-function storage(target: ComposerDraftTarget, stores: DraftStores) {
-  return target.kind === "session" ? stores.persistent : stores.temporary;
-}
-
-function key(target: ComposerDraftTarget) {
-  return target.kind === "session"
-    ? `${sessionKeyPrefix}${target.sessionId}`
-    : newSessionKey;
+export function clearTemporaryComposerDraft() {
+  window.sessionStorage.removeItem(newSessionKey);
 }

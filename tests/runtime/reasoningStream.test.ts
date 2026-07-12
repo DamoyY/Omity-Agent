@@ -15,6 +15,7 @@ test("streamed reasoning separates summary parts and reasoning items", () => {
     reasoningChunk({ parts: [{ index: 1, text: "**Second**" }] }),
     reasoningChunk({ id: "rs_2", parts: [] }),
     reasoningChunk({ parts: [{ index: 0, text: "**Third**" }] }),
+    new AIMessageChunk({ content: [] }),
   ];
 
   expect(
@@ -45,6 +46,30 @@ test("existing summary newlines are not duplicated", () => {
   });
 
   expect(messageReasoning(message)).toBe("First\n\nSecond");
+});
+
+test("adjacent bold summaries in one part are separated across deltas", () => {
+  const state = createReasoningStreamState();
+  const chunks = [
+    reasoningChunk({ parts: [{ index: 0, text: "**Planning*" }] }),
+    reasoningChunk({ parts: [{ index: 0, text: "***Refining**" }] }),
+    new AIMessageChunk({ content: [] }),
+  ];
+
+  expect(
+    chunks.map((chunk) => streamedMessageReasoning(chunk, state)).join(""),
+  ).toBe("**Planning**\n\n**Refining**");
+});
+
+test("persisted adjacent bold summaries in one part are separated", () => {
+  const message = new AIMessage({
+    content: [],
+    additional_kwargs: {
+      reasoning: reasoningItem("rs_1", ["**Planning****Refining**"]),
+    },
+  });
+
+  expect(messageReasoning(message)).toBe("**Planning**\n\n**Refining**");
 });
 
 function reasoningChunk({

@@ -64,7 +64,7 @@ export function ChatPage({
   sessionStatus?: SessionStatus;
   view: TimelineMessage[];
   workspace?: string;
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, draftRevision: number) => Promise<void>;
   onControl: (control: Extract<Control, "running" | "pause">) => Promise<void>;
   onFork: (messageId: number) => Promise<void>;
   onPickWorkspace: () => Promise<string | null>;

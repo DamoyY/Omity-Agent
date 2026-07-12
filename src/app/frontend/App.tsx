@@ -20,7 +20,6 @@ import {
   useBootstrap,
   useSessionTranscript,
 } from "./services/queries";
-import { clearComposerDraft } from "./services/composerDrafts";
 import { recentWorkspaces } from "./services/recentWorkspaces";
 
 export function App() {
@@ -77,7 +76,6 @@ export function App() {
           }}
           onDelete={async (id) => {
             await deleteSession(id);
-            clearComposerDraft({ kind: "session", sessionId: id });
             removeSession(queryClient, id);
             if (activeSession?.id === id) {
               const next = sessions.find((session) => session.id !== id);
@@ -127,20 +125,20 @@ export function App() {
             const result = await pickWorkspace();
             return result.workspace;
           }}
-          onSend={async (content) => {
+          onSend={async (content, draftRevision) => {
             if (forkDraft && activeSession) {
-              await sendMessage(activeSession.id, content);
+              await sendMessage(activeSession.id, content, draftRevision);
               return;
             }
             if (currentPage.kind === "new") {
               const { session } = await createSession(newWorkspace ?? cwd);
               addSession(queryClient, session);
-              await sendMessage(session.id, content);
+              await sendMessage(session.id, content, 0);
               navigate(sessionPage(session.id));
               return;
             }
             if (!activeSession) return;
-            await sendMessage(activeSession.id, content);
+            await sendMessage(activeSession.id, content, draftRevision);
             await queryClient.invalidateQueries({
               queryKey: transcriptKey(activeSession.id),
             });

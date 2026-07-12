@@ -1,74 +1,71 @@
-import { expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, expect, test } from "bun:test";
 import {
-  clearComposerDraft,
-  readComposerDraft,
-  writeComposerDraft,
-  type ComposerDraftTarget,
-} from "../../src/app/frontend/services/composerDrafts";
+  clearSessionDraft,
+  readSessionDraft,
+  writeSessionDraft,
+} from "../../src/app/composerDraft";
+import { sessionPaths } from "../../src/infrastructure/config";
+import { AgentDatabase } from "../../src/infrastructure/database";
+import { testSettings } from "../support/settings";
 
-test("session drafts persist independently in persistent storage", () => {
-  const stores = draftStores();
-  const first = session("first");
-  const second = session("second");
+const dirs: string[] = [];
 
-  writeComposerDraft(first, "first draft", stores);
-  writeComposerDraft(second, "second draft", stores);
-
-  expect(readComposerDraft(first, "", stores)).toBe("first draft");
-  expect(readComposerDraft(second, "", stores)).toBe("second draft");
-  expect(stores.temporary.size).toBe(0);
+afterEach(() => {
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
-test("new-session draft uses temporary storage", () => {
-  const stores = draftStores();
-  const target = { kind: "new" } as const;
+test("session composer drafts survive database reopen", () => {
+  const fixture = createSession();
 
-  writeComposerDraft(target, "temporary draft", stores);
-
-  expect(readComposerDraft(target, "", stores)).toBe("temporary draft");
-  expect(stores.persistent.size).toBe(0);
+  expect(writeSessionDraft(fixture.settings, "session", "draft", 1)).toEqual({
+    revision: 1,
+  });
+  expect(readSessionDraft(fixture.settings, "session")).toEqual({
+    content: "draft",
+    revision: 1,
+  });
 });
 
-test("stored empty drafts override defaults until cleared", () => {
-  const stores = draftStores();
-  const target = session("fork");
+test("stale saves cannot overwrite newer composer drafts", () => {
+  const fixture = createSession();
 
-  writeComposerDraft(target, "", stores);
-  expect(readComposerDraft(target, "server draft", stores)).toBe("");
+  writeSessionDraft(fixture.settings, "session", "newer", 2);
+  writeSessionDraft(fixture.settings, "session", "older", 1);
 
-  clearComposerDraft(target, stores);
-  expect(readComposerDraft(target, "server draft", stores)).toBe(
-    "server draft",
+  expect(readSessionDraft(fixture.settings, "session")).toEqual({
+    content: "newer",
+    revision: 2,
+  });
+});
+
+test("sending clears only the composer revision it submitted", () => {
+  const fixture = createSession();
+
+  writeSessionDraft(fixture.settings, "session", "submitted", 1);
+  writeSessionDraft(fixture.settings, "session", "next message", 2);
+  clearSessionDraft(fixture.settings, "session", 1);
+  expect(readSessionDraft(fixture.settings, "session").content).toBe(
+    "next message",
   );
+
+  clearSessionDraft(fixture.settings, "session", 2);
+  expect(readSessionDraft(fixture.settings, "session")).toEqual({
+    content: null,
+    revision: 0,
+  });
 });
 
-function session(sessionId: string): ComposerDraftTarget {
-  return { kind: "session", sessionId };
-}
-
-function draftStores() {
-  return {
-    persistent: new MemoryStorage(),
-    temporary: new MemoryStorage(),
-  };
-}
-
-class MemoryStorage {
-  private readonly values = new Map<string, string>();
-
-  get size() {
-    return this.values.size;
-  }
-
-  getItem(key: string) {
-    return this.values.get(key) ?? null;
-  }
-
-  removeItem(key: string) {
-    this.values.delete(key);
-  }
-
-  setItem(key: string, value: string) {
-    this.values.set(key, value);
-  }
+function createSession() {
+  const root = mkdtempSync(join(tmpdir(), "composer-draft-"));
+  dirs.push(root);
+  const settings = testSettings(root);
+  const database = new AgentDatabase(sessionPaths(settings, "session").dbPath);
+  database.createSession("session", root);
+  database.close();
+  return { settings };
 }
