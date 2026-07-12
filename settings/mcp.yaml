@@ -52,6 +52,9 @@ mcpServers:
   capture:
     transport: stdio
     command: F:/workspace/windows_capture/target/release/WinCapture.exe
+  image_viewer:
+    transport: stdio
+    command: F:/workspace/image-viewer-mcp/target/release/image-viewer-mcp.exe
 
 toolNameOverrides:
   diff__apply_patch: apply_patch
@@ -61,6 +64,7 @@ toolNameOverrides:
   codegraph__codegraph_callers: codegraph_callers
   codegraph__codegraph_callees: codegraph_callees
   codegraph__codegraph_impact: codegraph_impact
+  image_viewer__view_images: view_images
 
 freeformToolInputs:
   - apply_patch
