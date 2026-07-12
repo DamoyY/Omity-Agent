@@ -78,7 +78,7 @@ test("app registry scans session databases without creating a global db", () => 
   mkdirSync(workspace);
   const settings = loadSettings(root);
   const paths = sessionPaths(settings, "cli-session");
-  const db = new AgentDatabase(paths.appDb);
+  const db = new AgentDatabase(paths.dbPath);
   db.createSession("cli-session", workspace);
   db.close();
 

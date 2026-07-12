@@ -26,10 +26,10 @@ export function runClient(command: ClientCommand, root = process.cwd()) {
   }
   const settings = loadSettings(root);
   const paths = resolveSessionPaths(settings, command.sessionId);
-  if (!existsSync(paths.appDb)) {
+  if (!existsSync(paths.dbPath)) {
     throw sessionNotFound(command.sessionId);
   }
-  const db = new AgentDatabase(paths.appDb);
+  const db = new AgentDatabase(paths.dbPath);
   const result: ClientResult = {};
   try {
     if (!db.hasSession(command.sessionId)) {

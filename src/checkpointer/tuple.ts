@@ -10,6 +10,7 @@ import {
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { CheckpointRow, WriteJson } from "./sql";
 import { deserialize } from "./serde";
+import { hydrateCheckpoint, hydratePendingValue } from "./messageRefs";
 
 interface TupleContext {
   db: Database;
@@ -22,10 +23,13 @@ export async function rowToTuple(
   config: RunnableConfig,
   ctx: TupleContext,
 ): Promise<CheckpointTuple> {
-  const checkpoint = await deserialize<Checkpoint>(
-    ctx.serde,
-    row.type ?? "json",
-    row.checkpoint,
+  const checkpoint = hydrateCheckpoint(
+    ctx.db,
+    await deserialize<Checkpoint>(
+      ctx.serde,
+      row.type ?? "json",
+      row.checkpoint,
+    ),
   );
   if (checkpoint.v < 4 && row.parent_checkpoint_id) {
     await migratePendingSends(checkpoint, row, ctx);
@@ -43,20 +47,23 @@ export async function rowToTuple(
           },
         }
       : undefined,
-    pendingWrites: await pendingWrites(row, ctx.serde),
+    pendingWrites: await pendingWrites(row, ctx),
   };
 }
 
 async function pendingWrites(
   row: CheckpointRow,
-  serde: SerializerProtocol,
+  ctx: TupleContext,
 ): Promise<CheckpointPendingWrite[]> {
   const writes = parseWriteRows(row.pending_writes ?? "[]");
   return Promise.all(
     writes.map(async (write): Promise<CheckpointPendingWrite> => [
       write.task_id,
       write.channel,
-      await deserialize(serde, write.type ?? "json", write.value ?? ""),
+      hydratePendingValue(
+        ctx.db,
+        await deserialize(ctx.serde, write.type ?? "json", write.value ?? ""),
+      ),
     ]),
   );
 }

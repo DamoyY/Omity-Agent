@@ -1,9 +1,10 @@
 import { existsSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { Database } from "bun:sqlite";
 import { sessionNotFound } from "../errors";
 import { resolveSessionPaths } from "../infrastructure/config";
 import { applySchema } from "../infrastructure/schema";
+import { closeDatabase, configureDatabase } from "../infrastructure/sqlite";
 import type { Settings } from "../types";
 
 export interface RegisteredSession {
@@ -31,7 +32,9 @@ export class AppRegistry {
     if (!existsSync(this.sessionsDir)) return [];
     return readdirSync(this.sessionsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => readSession(join(this.sessionsDir, entry.name)))
+      .map((entry) =>
+        readSession(resolveSessionPaths(this.settings, entry.name).dbPath),
+      )
       .sort(
         (left, right) =>
           right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
@@ -40,15 +43,15 @@ export class AppRegistry {
 
   require(id: string) {
     const paths = resolveSessionPaths(this.settings, id);
-    return readSession(paths.dir, id);
+    return readSession(paths.dbPath, id);
   }
 }
 
-function readSession(dir: string, id?: string) {
-  const dbPath = resolve(dir, "agent.sqlite");
-  if (!existsSync(dbPath)) throw sessionNotFound(id ?? dir);
+function readSession(dbPath: string, id?: string) {
+  if (!existsSync(dbPath)) throw sessionNotFound(id ?? dbPath);
   const db = new Database(dbPath, { create: false, strict: true });
   try {
+    configureDatabase(db);
     try {
       applySchema(db);
     } catch (error) {
@@ -70,10 +73,10 @@ function readSession(dir: string, id?: string) {
             "SELECT id, workspace, created_at, updated_at FROM sessions LIMIT 1",
           )
           .get();
-    if (!row) throw sessionNotFound(id ?? dir);
+    if (!row) throw sessionNotFound(id ?? dbPath);
     return toSession(row);
   } finally {
-    db.close();
+    closeDatabase(db);
   }
 }
 

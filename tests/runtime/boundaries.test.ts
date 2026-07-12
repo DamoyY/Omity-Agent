@@ -26,7 +26,7 @@ test("append during model execution continues after the agent boundary", async (
   const db = makeDb();
   db.resetSession("session", workspace);
   db.appendUser("session", "first");
-  const ledger = new HookLedger(":memory:", testLeaseOptions);
+  const ledger = new HookLedger(db.db, testLeaseOptions);
   let afterCalls = 0;
   const afterTool = tool(
     () => {
@@ -84,7 +84,6 @@ test("append during model execution continues after the agent boundary", async (
     expect(afterCalls).toBe(1);
     expect(db.nextQueue("session")).toBeNull();
   } finally {
-    ledger.close();
     db.close();
   }
 });

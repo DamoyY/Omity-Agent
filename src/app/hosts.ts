@@ -10,6 +10,7 @@ interface RunningHost {
 export class AppHosts {
   private readonly running = new Map<string, RunningHost>();
   private readonly errors = new Map<string, string>();
+  private closing = false;
 
   constructor(
     private readonly appRoot: string,
@@ -33,6 +34,7 @@ export class AppHosts {
   }
 
   start(sessionId: string, root: string, kind: HostMode["kind"]) {
+    if (this.closing) throw new Error("App 正在关闭，不能启动 Host");
     if (this.running.has(sessionId)) return;
     const controller = new AbortController();
     const done = runHostSession({ kind, sessionId }, this.appRoot, {
@@ -70,6 +72,7 @@ export class AppHosts {
   }
 
   async close() {
+    this.closing = true;
     const hosts = [...this.running.entries()];
     for (const [sessionId, host] of hosts) {
       host.controller.abort(new Error("App 正在关闭"));

@@ -1,15 +1,16 @@
 import type { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
 import { DomainError } from "../errors";
 import { AgentDatabase } from "../infrastructure/database";
-import {
-  messageInsert,
-  messageRowsToChatMessages,
-} from "../infrastructure/messageSerialization";
+import { messageRowsToChatMessages } from "../infrastructure/messageSerialization";
+import { storeMessage } from "../infrastructure/messages";
 import { contentToText } from "../runtime/content";
 
 interface MessageRow {
   id: number;
+  source_id: string;
   message_json: string;
+  position: number;
   created_at: number;
 }
 
@@ -31,7 +32,7 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
   const messages = forkMessages(
     options.source.db,
     options.sourceSessionId,
-    options.beforeMessageId,
+    forkPoint.position,
   );
   if (
     !messages.some(
@@ -54,7 +55,9 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
     throw new Error(`Fork 消息 ID 无效：${messageId.toString()}`);
   }
   const query = db.prepare<MessageRow, [string, number]>(
-    "SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id = ?",
+    `SELECT m.id, m.source_id, b.message_json, m.position, m.created_at
+     FROM messages m JOIN message_blobs b ON b.digest = m.blob_digest
+     WHERE m.session_id = ? AND m.id = ? AND m.position IS NOT NULL`,
   );
   let row: MessageRow | null;
   try {
@@ -74,16 +77,14 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   return row;
 }
 
-function forkMessages(
-  db: Database,
-  sessionId: string,
-  beforeMessageId: number,
-) {
+function forkMessages(db: Database, sessionId: string, beforePosition: number) {
   const query = db.prepare<MessageRow, [string, number]>(
-    "SELECT id, message_json, created_at FROM messages WHERE session_id = ? AND id < ? ORDER BY id",
+    `SELECT m.id, m.source_id, b.message_json, m.position, m.created_at
+     FROM messages m JOIN message_blobs b ON b.digest = m.blob_digest
+     WHERE m.session_id = ? AND m.position < ? ORDER BY m.position`,
   );
   try {
-    return query.all(sessionId, beforeMessageId);
+    return query.all(sessionId, beforePosition);
   } finally {
     query.finalize();
   }
@@ -94,16 +95,16 @@ function insertMessages(
   sessionId: string,
   messages: MessageRow[],
 ) {
-  const insert = db.query(
-    "INSERT INTO messages (session_id, message_json, queue_id, created_at) VALUES (?, ?, NULL, ?)",
-  );
-  for (const message of messages) {
+  for (const [position, message] of messages.entries()) {
     const [chatMessage] = messageRowsToChatMessages([message]);
     if (!chatMessage) throw new Error("无法还原 Fork 消息");
-    chatMessage.id = undefined;
-    insert.run(
+    chatMessage.id = randomUUID();
+    storeMessage(
+      db,
       sessionId,
-      messageInsert(chatMessage).messageJson,
+      chatMessage,
+      position,
+      undefined,
       message.created_at,
     );
   }

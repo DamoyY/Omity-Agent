@@ -15,6 +15,7 @@ import { createAgentGraph } from "../../src/agent";
 import { HookLedger } from "../../src/hooks/ledger";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { isHookCallId } from "../../src/hooks/storage/calls";
+import { AgentDatabase } from "../../src/infrastructure/database";
 import { Logger } from "../../src/infrastructure/logger";
 import type { HookRule } from "../../src/types";
 import { required } from "../support/database";
@@ -22,10 +23,10 @@ import { testLeaseOptions } from "../support/leases";
 import { testSettings } from "../support/settings";
 
 const dirs: string[] = [];
-const ledgers: HookLedger[] = [];
+const databases: AgentDatabase[] = [];
 
 afterEach(() => {
-  for (const ledger of ledgers.splice(0)) ledger.close();
+  for (const db of databases.splice(0)) db.close();
   for (const dir of dirs.splice(0))
     rmSync(dir, { recursive: true, force: true });
 });
@@ -126,8 +127,10 @@ test("each hook execution commits one hooks node boundary", async () => {
 function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const dir = mkdtempSync(join(tmpdir(), "agent-hooks-"));
   dirs.push(dir);
-  const ledger = new HookLedger(join(dir, "hooks.sqlite"), testLeaseOptions);
-  ledgers.push(ledger);
+  const db = new AgentDatabase(join(dir, "app.sqlite"));
+  db.createSession("session", dir);
+  databases.push(db);
+  const ledger = new HookLedger(db.db, testLeaseOptions);
   return new HookRuntime(
     rules,
     tools,

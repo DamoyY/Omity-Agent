@@ -4,10 +4,13 @@ import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
 import { TASKS } from "@langchain/langgraph-checkpoint";
 import { BunSqliteSaver } from "../../src/checkpointer";
+import { AgentDatabase } from "../../src/infrastructure/database";
 
 const dirs: string[] = [];
+const databases: AgentDatabase[] = [];
 
 afterEach(() => {
+  for (const db of databases.splice(0)) db.close();
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -19,9 +22,22 @@ function makePath() {
   return join(dir, "checkpoints.sqlite");
 }
 
+function openSaver(path = makePath()) {
+  const db = new AgentDatabase(path);
+  databases.push(db);
+  return { db, saver: new BunSqliteSaver(db.db, "session") };
+}
+
+function closeDatabase(db: AgentDatabase) {
+  db.close();
+  databases.splice(databases.indexOf(db), 1);
+}
+
 test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   const path = makePath();
-  const saver = new BunSqliteSaver(path);
+  const first = openSaver(path);
+  first.db.createSession("session", dirs.at(-1) ?? "");
+  const { saver } = first;
   const saved = await saver.put(
     { configurable: { thread_id: "thread-1" } },
     {
@@ -35,9 +51,10 @@ test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
     { source: "input", step: -1, parents: {} },
   );
   await saver.putWrites(saved, [["messages", "pending"]], "task-1");
-  saver.close();
+  closeDatabase(first.db);
 
-  const reopened = new BunSqliteSaver(path);
+  const reopenedDatabase = openSaver(path);
+  const reopened = reopenedDatabase.saver;
   const loaded = await reopened.getTuple({
     configurable: { thread_id: "thread-1" },
   });
@@ -48,11 +65,11 @@ test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   expect(
     await reopened.getTuple({ configurable: { thread_id: "thread-1" } }),
   ).toBeUndefined();
-  reopened.close();
+  closeDatabase(reopenedDatabase.db);
 });
 
 test("pending writes keep deterministic order and per-channel conflicts", async () => {
-  const saver = new BunSqliteSaver(makePath());
+  const { saver } = openSaver();
   const saved = await putCheckpoint(saver, "thread", "", checkpointId(1));
   await saver.putWrites(
     saved,
@@ -79,11 +96,10 @@ test("pending writes keep deterministic order and per-channel conflicts", async 
     ["task-b", "__error__", "new error"],
     ["task-b", "messages", "old message"],
   ]);
-  saver.close();
 });
 
 test("legacy pending sends stay inside their checkpoint namespace", async () => {
-  const saver = new BunSqliteSaver(makePath());
+  const { saver } = openSaver();
   const parentId = checkpointId(1);
   const parentA = await putCheckpoint(saver, "thread", "a", parentId);
   const parentB = await putCheckpoint(saver, "thread", "b", parentId);
@@ -101,7 +117,6 @@ test("legacy pending sends stay inside their checkpoint namespace", async () => 
   const loaded = await saver.getTuple(child);
 
   expect(loaded?.checkpoint.channel_values[TASKS]).toEqual(["from-a"]);
-  saver.close();
 });
 
 function putCheckpoint(

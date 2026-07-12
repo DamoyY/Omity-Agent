@@ -31,6 +31,9 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
     if (error instanceof CanceledRun) return;
+    if (run.items.every(({ id }) => isTerminal(ctx.db.queueStatus(id)))) {
+      throw error;
+    }
     if (ctx.controller.signal.aborted) {
       setRunStatus(ctx, run, "paused");
       return;
@@ -43,6 +46,10 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
   } finally {
     end();
   }
+}
+
+function isTerminal(status: QueueItem["status"]) {
+  return status === "done" || status === "canceled";
 }
 
 async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
@@ -96,9 +103,9 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
             setRunStatus(ctx, run, "paused");
             return waitIfPaused(ctx, run);
           },
-          cancel: async () => {
-            await cancelRun(ctx, run);
-            throw new CanceledRun("运行已取消");
+          cancel: () => {
+            cancelRun(ctx, run);
+            return Promise.reject(new CanceledRun("运行已取消"));
           },
         },
       );
@@ -107,7 +114,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     }
     const control = ctx.db.control(ctx.sessionId);
     if (control === "cancel") {
-      await cancelRun(ctx, run);
+      cancelRun(ctx, run);
       return;
     }
     const state = readGraphState(await ctx.graph.getState(config));
@@ -160,7 +167,7 @@ async function waitIfPaused(ctx: HostContext, run: QueueRun) {
       return false;
     }
     if (control === "cancel") {
-      await cancelRun(ctx, run);
+      cancelRun(ctx, run);
       throw new CanceledRun("运行已取消");
     }
     if (control === "running") {

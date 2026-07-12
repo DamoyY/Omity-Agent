@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { runClient } from "../client";
 import { sessionNotFound } from "../errors";
 import { deleteHostSession } from "../host";
@@ -9,6 +9,7 @@ import {
   sessionPaths,
 } from "../infrastructure/config";
 import { AgentDatabase } from "../infrastructure/database";
+import { removeDatabaseDirectory } from "../infrastructure/sqlite";
 import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
 import type { Control, Settings } from "../types";
 import { AppEvents } from "./events";
@@ -96,27 +97,32 @@ export class AppController {
     const sourcePaths = resolveSessionPaths(this.settings, sessionId);
     const targetPaths = sessionPaths(this.settings, id);
     let created = false;
+    let source: AgentDatabase | undefined;
+    let target: AgentDatabase | undefined;
     try {
-      const source = new AgentDatabase(sourcePaths.appDb);
-      const target = new AgentDatabase(targetPaths.appDb);
-      try {
-        forkDatabaseBeforeMessage({
-          source,
-          target,
-          sourceSessionId: sessionId,
-          targetSessionId: id,
-          workspace: session.workspace,
-          beforeMessageId,
-        });
-        this.control(sessionId, "pause");
-        created = true;
-      } finally {
-        target.close();
-        source.close();
-      }
+      source = new AgentDatabase(sourcePaths.dbPath);
+      target = new AgentDatabase(targetPaths.dbPath);
+      forkDatabaseBeforeMessage({
+        source,
+        target,
+        sourceSessionId: sessionId,
+        targetSessionId: id,
+        workspace: session.workspace,
+        beforeMessageId,
+      });
+      this.control(sessionId, "pause");
+      created = true;
     } finally {
-      if (!created) {
-        rmSync(targetPaths.dir, { recursive: true, force: true });
+      try {
+        try {
+          target?.close();
+        } finally {
+          source?.close();
+        }
+      } finally {
+        if (!created) {
+          removeDatabaseDirectory(targetPaths.dir);
+        }
       }
     }
     this.hosts.clearError(id);
@@ -135,8 +141,8 @@ export class AppController {
   transcript(sessionId: string) {
     this.registry.require(sessionId);
     const paths = resolveSessionPaths(this.settings, sessionId);
-    if (!existsSync(paths.appDb)) throw sessionNotFound(sessionId);
-    const db = new AgentDatabase(paths.appDb);
+    if (!existsSync(paths.dbPath)) throw sessionNotFound(sessionId);
+    const db = new AgentDatabase(paths.dbPath);
     try {
       return loadTranscript(db, sessionId);
     } finally {

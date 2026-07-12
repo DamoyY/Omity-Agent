@@ -1,59 +1,11 @@
-import {
-  ToolMessage,
-  mapChatMessagesToStoredMessages,
-  mapStoredMessagesToChatMessages,
-  type StoredMessage,
-} from "@langchain/core/messages";
+import type { ToolMessage } from "@langchain/core/messages";
 
-interface StoredOutput {
-  output: unknown;
-  structuredOutput?: unknown;
-  message?: StoredMessage;
-}
-
-export function serializeToolOutput(output: ToolMessage) {
-  const serialized: unknown = mapChatMessagesToStoredMessages([output]);
-  if (!isStoredMessages(serialized) || !serialized[0]) {
-    throw new Error("无法序列化工具结果");
-  }
-  const message = serialized[0];
-  const structuredOutput = extractStructuredOutput(output.artifact);
-  const stored: StoredOutput = {
-    output: output.content,
-    ...(structuredOutput === undefined ? {} : { structuredOutput }),
-    message,
-  };
-  const json = JSON.stringify(stored);
-  return json;
-}
-
-export function restoreToolOutput(value: string | null) {
-  const stored = parseOutput(value);
-  if (!stored?.message) return undefined;
-  const restored: unknown = mapStoredMessagesToChatMessages([stored.message]);
-  if (!Array.isArray(restored)) throw new Error("Hook 工具结果记录无效");
-  const message: unknown = restored[0];
-  return ToolMessage.isInstance(message) ? message : undefined;
-}
-
-export function readToolOutput(value: string | null) {
-  const stored = parseOutput(value);
-  if (!stored) return undefined;
+export function readToolOutput(message: ToolMessage) {
+  const structuredOutput = extractStructuredOutput(message.artifact);
   return {
-    output: stored.output,
-    ...(stored.structuredOutput === undefined
-      ? {}
-      : { structuredOutput: stored.structuredOutput }),
+    output: message.content,
+    ...(structuredOutput === undefined ? {} : { structuredOutput }),
   };
-}
-
-function parseOutput(value: string | null): StoredOutput | undefined {
-  if (value === null) return undefined;
-  const parsed = JSON.parse(value) as unknown;
-  if (typeof parsed !== "object" || parsed === null || !("output" in parsed)) {
-    throw new Error("Hook 工具结果记录无效");
-  }
-  return parsed;
 }
 
 function extractStructuredOutput(value: unknown) {
@@ -68,14 +20,6 @@ function extractStructuredOutput(value: unknown) {
     throw new Error("MCP 结构化输出 artifact 缺少 data");
   }
   return artifact["data"];
-}
-
-function isStoredMessages(value: unknown): value is StoredMessage[] {
-  return isUnknownArray(value) && value.every(isStoredMessage);
-}
-
-function isStoredMessage(value: unknown): value is StoredMessage {
-  return isRecord(value) && typeof value["type"] === "string";
 }
 
 function isStructuredArtifact(

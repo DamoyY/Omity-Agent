@@ -2,6 +2,7 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { QueueItem } from "../types";
 import { contentToText } from "./content";
 import type { HostContext } from "./context";
+import { deleteThreadData } from "../checkpointer/lifecycle";
 
 export class CanceledRun extends Error {}
 
@@ -24,7 +25,8 @@ export function finishRun(
   if (!content) throw new Error("模型没有生成可记录的最终文本");
   const lastItem = run.items.at(-1);
   if (!lastItem) throw new Error("运行没有可记录的队列项");
-  setRunStatus(ctx, run, "done");
+  finalizeRun(ctx, run, "done");
+  ctx.observer?.changed?.(ctx.sessionId);
   ctx.logger.info("队列完成", { queueId: lastItem.id, chars: content.length });
   if (ctx.settings.logging.streamTokens) process.stdout.write("\n");
 }
@@ -43,12 +45,23 @@ function requireFinalMessageId(plan: unknown) {
   return plan.finalMessageId;
 }
 
-export async function cancelRun(ctx: HostContext, run: QueueRun) {
-  setRunStatus(ctx, run, "canceled");
-  ctx.db.setControl(ctx.sessionId, "running");
-  await ctx.checkpointer.deleteThread(run.threadId);
+export function cancelRun(ctx: HostContext, run: QueueRun) {
+  finalizeRun(ctx, run, "canceled");
   ctx.controller.abort(new CanceledRun("运行已取消"));
+  ctx.observer?.changed?.(ctx.sessionId);
   ctx.logger.warn("队列已取消，Host 已关闭", { queueId: run.items[0].id });
+}
+
+function finalizeRun(
+  ctx: HostContext,
+  run: QueueRun,
+  status: "done" | "canceled",
+) {
+  ctx.db.db.transaction(() => {
+    for (const item of run.items) ctx.db.setQueueStatus(item.id, status);
+    if (status === "canceled") ctx.db.setControl(ctx.sessionId, "running");
+    deleteThreadData(ctx.db.db, run.threadId);
+  })();
 }
 
 export function setRunStatus(

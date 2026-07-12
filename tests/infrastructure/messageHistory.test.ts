@@ -48,19 +48,57 @@ test("preserves full LangChain message structure", () => {
   db.close();
 });
 
-test("clears redundant stream events", () => {
+test("persists only transient stream deltas", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
+  const queueId = db.appendUser("123", "问题");
+  db.setControl("123", "pause");
   db.streamToken("123", 1, "答案");
   db.streamToolCall("123", 1, { id: "call-1", name: "tool" });
-  db.event("123", "info", "client", "append", { queueId: 1 });
+
+  const events = db.db
+    .query<
+      {
+        kind: string;
+        message_id: string | null;
+        payload_json: string;
+        queue_id: number;
+      },
+      []
+    >("SELECT queue_id, message_id, kind, payload_json FROM events ORDER BY id")
+    .all();
+
+  expect(queueId).toBe(1);
+  expect(events).toEqual([
+    {
+      queue_id: 1,
+      message_id: null,
+      kind: "assistant_text_delta",
+      payload_json: '"答案"',
+    },
+    {
+      queue_id: 1,
+      message_id: null,
+      kind: "tool_call_delta",
+      payload_json: '{"id":"call-1","name":"tool"}',
+    },
+  ]);
 
   db.syncHistory("123", [new HumanMessage("问题"), new AIMessage("答案")]);
 
-  const rows = db.db
-    .query<{ category: string }, []>("SELECT category FROM events ORDER BY id")
-    .all();
-  expect(rows.map((row) => row.category)).toEqual(["client"]);
+  expect(db.db.query("SELECT id FROM events").all()).toEqual([]);
+  db.close();
+});
+
+test("clears stream deltas when their queue becomes terminal", () => {
+  const db = makeDb();
+  db.resetSession("123", workspace);
+  const queueId = db.appendUser("123", "问题");
+  db.streamToken("123", queueId, "未完成");
+
+  db.setQueueStatus(queueId, "canceled");
+
+  expect(db.db.query("SELECT id FROM events").all()).toEqual([]);
   db.close();
 });
 
@@ -89,7 +127,7 @@ test("retains the unchanged prefix and queue message identity", () => {
 
 function messageRows(db: ReturnType<typeof makeDb>) {
   const query = db.db.prepare<{ id: number; created_at: number }, []>(
-    "SELECT id, created_at FROM messages ORDER BY id",
+    "SELECT id, created_at FROM messages WHERE position IS NOT NULL ORDER BY position",
   );
   try {
     return query.all();
@@ -100,7 +138,7 @@ function messageRows(db: ReturnType<typeof makeDb>) {
 
 function queueMessageRowId(db: ReturnType<typeof makeDb>, queueId: number) {
   const query = db.db.prepare<{ user_message_id: number }, [number]>(
-    "SELECT user_message_id FROM queue WHERE id = ?",
+    "SELECT id AS user_message_id FROM messages WHERE queue_id = ?",
   );
   try {
     return query.get(queueId)?.user_message_id;

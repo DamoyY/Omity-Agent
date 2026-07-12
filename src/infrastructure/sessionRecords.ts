@@ -19,7 +19,7 @@ export function createSessionRecord(
   }
   const result = db
     .query(
-      "INSERT INTO sessions (id, workspace, control, status, created_at, updated_at) VALUES (?, ?, 'running', 'idle', unixepoch(), unixepoch())",
+      "INSERT INTO sessions (id, workspace, control, created_at, updated_at) VALUES (?, ?, 'running', unixepoch(), unixepoch())",
     )
     .run(sessionId, workspace);
   if (result.changes !== 1) throw sessionConflict(sessionId);
@@ -31,7 +31,7 @@ export function ensureSessionRecord(
   workspace: string,
 ) {
   db.query(
-    "INSERT OR IGNORE INTO sessions (id, workspace, control, status, created_at, updated_at) VALUES (?, ?, 'running', 'idle', unixepoch(), unixepoch())",
+    "INSERT OR IGNORE INTO sessions (id, workspace, control, created_at, updated_at) VALUES (?, ?, 'running', unixepoch(), unixepoch())",
   ).run(sessionId, workspace);
 }
 

@@ -5,10 +5,10 @@ import { insertUserMessage } from "./messages";
 import { toQueueItem, type QueueRow } from "./queueRows";
 
 const queueSelect = `
-  SELECT q.id, q.run_id, q.content, q.status, q.user_message_id,
-    r.root_queue_id
+  SELECT q.id, q.root_id, COALESCE(q.content, '') AS content,
+    q.status, m.id AS user_message_id
   FROM queue q
-  LEFT JOIN runs r ON r.id = q.run_id`;
+  LEFT JOIN messages m ON m.queue_id = q.id`;
 
 export function appendUserQueue(
   db: Database,
@@ -19,26 +19,21 @@ export function appendUserQueue(
     sessionId,
   );
   const activeRun = db
-    .query<{ id: number }, [string]>(
-      "SELECT id FROM runs WHERE session_id = ? AND status IN ('pending', 'running', 'paused') ORDER BY id LIMIT 1",
+    .query<{ root_id: number }, [string]>(
+      `SELECT root_id FROM queue
+       WHERE session_id = ? AND root_id IS NOT NULL
+         AND status IN ('pending', 'running', 'paused')
+       ORDER BY root_id LIMIT 1`,
     )
     .get(sessionId);
-  if (activeRun) return appendToRun(db, sessionId, activeRun.id, content);
+  if (activeRun) return appendToRun(db, sessionId, activeRun.root_id, content);
   const result = db
     .query(
-      "INSERT INTO queue (session_id, content, status, created_at) VALUES (?, ?, 'pending', unixepoch())",
+      "INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'pending')",
     )
     .run(sessionId, content);
   const queueId = Number(result.lastInsertRowid);
-  const run = db
-    .query(
-      "INSERT INTO runs (session_id, root_queue_id, status, created_at) VALUES (?, ?, 'pending', unixepoch())",
-    )
-    .run(sessionId, queueId);
-  db.query("UPDATE queue SET run_id = ? WHERE id = ?").run(
-    Number(run.lastInsertRowid),
-    queueId,
-  );
+  db.query("UPDATE queue SET root_id = ? WHERE id = ?").run(queueId, queueId);
   return queueId;
 }
 
@@ -49,7 +44,7 @@ export function appendDraftQueue(
 ) {
   const result = db
     .query(
-      "INSERT INTO queue (session_id, content, status, created_at) VALUES (?, ?, 'draft', unixepoch())",
+      "INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'draft')",
     )
     .run(sessionId, content);
   return Number(result.lastInsertRowid);
@@ -78,8 +73,8 @@ export function consumedRunRows(
   if (runId === null) return [];
   const query = db.prepare<QueueRow, [string, number]>(
     `${queueSelect}
-     WHERE q.session_id = ? AND q.run_id = ?
-       AND q.user_message_id IS NOT NULL
+     WHERE q.session_id = ? AND q.root_id = ?
+       AND m.id IS NOT NULL
        AND q.status IN ('pending', 'running', 'paused')
      ORDER BY q.id`,
   );
@@ -115,30 +110,29 @@ export function startQueueRecord(
 ) {
   if (item.userMessageId !== null) {
     const result = db.run(
-      `UPDATE queue SET status = 'running', updated_at = unixepoch()
-       WHERE id = ? AND session_id = ? AND user_message_id = ?
+      `UPDATE queue SET status = 'running'
+       WHERE id = ? AND session_id = ?
+         AND EXISTS (SELECT 1 FROM messages WHERE id = ? AND queue_id = queue.id)
          AND status IN ('pending', 'running', 'paused')`,
       [item.id, sessionId, item.userMessageId],
     );
     if (result.changes !== 1) {
       throw queueClaimConflict(item.id);
     }
-    syncRunStatus(db, item.id);
     return item.userMessageId;
   }
   const messageId = insertUserMessage(db, sessionId, item.content, item.id);
   const result = db.run(
-    `UPDATE queue SET status = 'running', started_at = unixepoch(),
-       updated_at = unixepoch(), user_message_id = ?
+    `UPDATE queue SET status = 'running', content = NULL
      WHERE id = ? AND session_id = ?
        AND status IN ('pending', 'running', 'paused')
-       AND user_message_id IS NULL`,
-    [messageId, item.id, sessionId],
+       AND content IS NOT NULL
+       AND EXISTS (SELECT 1 FROM messages WHERE id = ? AND queue_id = queue.id)`,
+    [item.id, sessionId, messageId],
   );
   if (result.changes !== 1) {
     throw queueClaimConflict(item.id);
   }
-  syncRunStatus(db, item.id);
   return messageId;
 }
 
@@ -155,45 +149,33 @@ export function setQueueStatusRecord(
   status: QueueStatus,
   error?: string,
 ) {
-  db.run(
-    "UPDATE queue SET status = ?, error = ?, updated_at = unixepoch() WHERE id = ?",
-    [status, error ?? null, queueId],
-  );
-  syncRunStatus(db, queueId);
+  db.run("UPDATE queue SET status = ?, error = ? WHERE id = ?", [
+    status,
+    error ?? null,
+    queueId,
+  ]);
+}
+
+export function queueStatusRecord(db: Database, queueId: number) {
+  const row = db
+    .query<{ status: QueueStatus }, [number]>(
+      "SELECT status FROM queue WHERE id = ?",
+    )
+    .get(queueId);
+  if (!row) throw new Error(`队列不存在：${queueId.toString()}`);
+  return row.status;
 }
 
 function appendToRun(
   db: Database,
   sessionId: string,
-  runId: number,
+  rootId: number,
   content: string,
 ) {
   const result = db
     .query(
-      "INSERT INTO queue (session_id, run_id, content, status, created_at) VALUES (?, ?, ?, 'pending', unixepoch())",
+      "INSERT INTO queue (session_id, root_id, content, status) VALUES (?, ?, ?, 'pending')",
     )
-    .run(sessionId, runId, content);
+    .run(sessionId, rootId, content);
   return Number(result.lastInsertRowid);
-}
-
-function syncRunStatus(db: Database, queueId: number) {
-  db.run(
-    `UPDATE runs SET status = CASE
-       WHEN EXISTS (
-         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'running'
-       ) THEN 'running'
-       WHEN EXISTS (
-         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'paused'
-       ) THEN 'paused'
-       WHEN EXISTS (
-         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'pending'
-       ) THEN 'pending'
-       WHEN EXISTS (
-         SELECT 1 FROM queue WHERE run_id = runs.id AND status = 'canceled'
-       ) THEN 'canceled'
-       ELSE 'done'
-     END, updated_at = unixepoch()
-     WHERE id = (SELECT run_id FROM queue WHERE id = ?)`,
-    [queueId],
-  );
 }

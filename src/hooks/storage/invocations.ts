@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Database } from "bun:sqlite";
 
 export interface InvocationDetails {
@@ -11,7 +12,7 @@ export interface InvocationDetails {
 
 export interface InvocationRow {
   status: string;
-  output_json: string | null;
+  output_message_id: number | null;
   error: string | null;
 }
 
@@ -21,18 +22,26 @@ export function applyInvocationSchema(db: Database) {
       invocation_key TEXT PRIMARY KEY,
       session_id TEXT NOT NULL,
       thread_id TEXT NOT NULL,
-      hook_id TEXT NOT NULL,
-      trigger TEXT NOT NULL,
-      source_id TEXT NOT NULL,
-      status TEXT NOT NULL,
-      owner_id TEXT NOT NULL,
-      lease_expires_at INTEGER NOT NULL,
-      output_json TEXT,
+      owner_id TEXT,
+      lease_expires_at INTEGER,
+      output_message_id INTEGER,
       error TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY (output_message_id) REFERENCES messages(id)
     )
   `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS hook_usage (
+      session_id TEXT NOT NULL,
+      hook_id TEXT NOT NULL,
+      used_count INTEGER NOT NULL,
+      PRIMARY KEY (session_id, hook_id),
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    )
+  `);
+  db.run(
+    "CREATE INDEX IF NOT EXISTS invocations_thread_id ON invocations(thread_id)",
+  );
 }
 
 export function createInvocationKey(
@@ -40,13 +49,17 @@ export function createInvocationKey(
   threadId: string,
   details: Pick<InvocationDetails, "trigger" | "sourceId" | "hookId">,
 ) {
-  return [
-    sessionId,
-    threadId,
-    details.trigger,
-    details.sourceId,
-    details.hookId,
-  ].join("\u001f");
+  return createHash("sha256")
+    .update(
+      JSON.stringify([
+        sessionId,
+        threadId,
+        details.trigger,
+        details.sourceId,
+        details.hookId,
+      ]),
+    )
+    .digest("base64url");
 }
 
 export function bindInvocation(
@@ -66,32 +79,44 @@ export function insertInvocation(
   now: number,
   leaseMs: number,
 ) {
-  const result = db
-    .query(
-      `INSERT OR IGNORE INTO invocations
-       (invocation_key, session_id, thread_id, hook_id, trigger, source_id,
-        status, owner_id, lease_expires_at, created_at, updated_at)
-       SELECT ?, ?, ?, ?, ?, ?, 'running', ?, ?, unixepoch(), unixepoch()
-       WHERE ? = -1 OR (
-         SELECT COUNT(*) FROM invocations
-         WHERE session_id = ? AND hook_id = ? AND trigger <> 'agent_tool'
-       ) < ?`,
-    )
-    .run(
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO invocations
+     (invocation_key, session_id, thread_id, owner_id, lease_expires_at)
+     SELECT ?, ?, ?, ?, ?
+     WHERE ? = 'agent_tool' OR ? = -1 OR COALESCE((
+       SELECT used_count FROM hook_usage WHERE session_id = ? AND hook_id = ?
+     ), 0) < ?`,
+  );
+  const increment = db.prepare(
+    `INSERT INTO hook_usage (session_id, hook_id, used_count) VALUES (?, ?, 1)
+     ON CONFLICT (session_id, hook_id)
+     DO UPDATE SET used_count = used_count + 1`,
+  );
+  const claim = db.transaction(() => {
+    const result = insert.run(
       details.key,
       details.sessionId,
       details.threadId,
-      details.hookId,
-      details.trigger,
-      details.sourceId,
       ownerId,
       now + leaseMs,
+      details.trigger,
       runLimit,
       details.sessionId,
       details.hookId,
       runLimit,
     );
-  return result.changes === 1;
+    if (result.changes !== 1) return false;
+    if (details.trigger !== "agent_tool") {
+      increment.run(details.sessionId, details.hookId);
+    }
+    return true;
+  });
+  try {
+    return claim.immediate();
+  } finally {
+    increment.finalize();
+    insert.finalize();
+  }
 }
 
 export function reclaimInvocation(
@@ -103,8 +128,8 @@ export function reclaimInvocation(
 ) {
   const result = db.run(
     `UPDATE invocations
-     SET owner_id = ?, lease_expires_at = ?, updated_at = unixepoch()
-     WHERE invocation_key = ? AND status = 'running'
+     SET owner_id = ?, lease_expires_at = ?
+     WHERE invocation_key = ? AND output_message_id IS NULL AND error IS NULL
        AND lease_expires_at <= ?`,
     [ownerId, now + leaseMs, key, now],
   );
@@ -119,8 +144,9 @@ export function renewInvocation(
   leaseMs: number,
 ) {
   const result = db.run(
-    `UPDATE invocations SET lease_expires_at = ?, updated_at = unixepoch()
-     WHERE invocation_key = ? AND status = 'running' AND owner_id = ?`,
+    `UPDATE invocations SET lease_expires_at = ?
+     WHERE invocation_key = ? AND output_message_id IS NULL AND error IS NULL
+       AND owner_id = ?`,
     [now + leaseMs, key, ownerId],
   );
   return result.changes === 1;
@@ -129,7 +155,12 @@ export function renewInvocation(
 export function readInvocation(db: Database, key: string) {
   return db
     .query<InvocationRow, [string]>(
-      "SELECT status, output_json, error FROM invocations WHERE invocation_key = ?",
+      `SELECT CASE
+         WHEN output_message_id IS NOT NULL THEN 'done'
+         WHEN error IS NOT NULL THEN 'error'
+         ELSE 'running'
+       END AS status, output_message_id, error
+       FROM invocations WHERE invocation_key = ?`,
     )
     .get(key);
 }

@@ -47,10 +47,10 @@ function makeSession(sessionId: string) {
   writePrompts(settingsDir);
   writeFileSync(join(settingsDir, "hooks.yaml"), "hooks: []\n");
   const paths = sessionPaths(loadSettings(root), sessionId);
-  const db = new AgentDatabase(paths.appDb);
+  const db = new AgentDatabase(paths.dbPath);
   db.createSession(sessionId, root);
   db.close();
-  return { dbPath: paths.appDb, root };
+  return { dbPath: paths.dbPath, root };
 }
 
 function writePrompts(settingsDir: string) {

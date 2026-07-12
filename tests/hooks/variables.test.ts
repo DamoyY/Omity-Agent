@@ -10,6 +10,7 @@ import { expect, test } from "bun:test";
 import { createAgentGraph } from "../../src/agent";
 import { HookLedger } from "../../src/hooks/ledger";
 import { HookRuntime } from "../../src/hooks/runtime";
+import { AgentDatabase } from "../../src/infrastructure/database";
 import { Logger } from "../../src/infrastructure/logger";
 import type { HookRule } from "../../src/types";
 import { testLeaseOptions } from "../support/leases";
@@ -17,7 +18,9 @@ import { testSettings } from "../support/settings";
 
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
-  const ledger = new HookLedger(join(dir, "hooks.sqlite"), testLeaseOptions);
+  const db = new AgentDatabase(join(dir, "app.sqlite"));
+  db.createSession("session", dir);
+  const ledger = new HookLedger(db.db, testLeaseOptions);
   const received: Record<string, unknown>[] = [];
   const hookTool = tool(
     (args) => {
@@ -64,7 +67,6 @@ test("mixed hook modes resolve variables in config order", async () => {
       hooks,
       checkpointer: new MemorySaver(),
     });
-
     const result = await agent.invoke(
       { messages: [{ role: "user", content: "run" }] },
       { configurable: { thread_id: "thread" } },
@@ -81,14 +83,16 @@ test("mixed hook modes resolve variables in config order", async () => {
       "tool",
     ]);
   } finally {
-    ledger.close();
+    db.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("user takeover receives the preceding silent hook output", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-user-hook-"));
-  const ledger = new HookLedger(join(dir, "hooks.sqlite"), testLeaseOptions);
+  const db = new AgentDatabase(join(dir, "app.sqlite"));
+  db.createSession("session", dir);
+  const ledger = new HookLedger(db.db, testLeaseOptions);
   const received: unknown[] = [];
   const hookTool = tool(
     ({ previous }) => {
@@ -145,7 +149,7 @@ test("user takeover receives the preceding silent hook output", async () => {
     );
     expect(received).toEqual([undefined, "user-hook-result"]);
   } finally {
-    ledger.close();
+    db.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -167,18 +171,13 @@ function rules(): HookRule[] {
       label: "after-takeover",
       previous: "${previousTool.output}",
     }),
-    {
-      id: "agent-end",
-      target: "agent",
-      when: "after",
-      runLimit: -1,
-      mode: "takeover",
-      tool: "hook",
-      args: {
-        label: "agent-end",
-        previous: "${previousTool.output}",
-      },
-    },
+    hookRule(
+      "agent-end",
+      "after",
+      "takeover",
+      { label: "agent-end", previous: "${previousTool.output}" },
+      "agent",
+    ),
   ];
 }
 
@@ -187,10 +186,11 @@ function hookRule(
   when: HookRule["when"],
   mode: HookRule["mode"],
   args: Record<string, unknown>,
+  target: HookRule["target"] = "original",
 ): HookRule {
   return {
     id,
-    target: "original",
+    target,
     when,
     runLimit: -1,
     mode,

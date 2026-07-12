@@ -12,7 +12,6 @@ type AgentGraph = ReturnType<typeof buildGraph>["graph"];
 type HostGraph = Omit<AgentGraph, "getState"> & {
   getState: (...args: Parameters<AgentGraph["getState"]>) => Promise<unknown>;
 };
-
 export interface HostObserver {
   changed?(sessionId: string): void;
   token(sessionId: string, queueId: number, text: string): void;

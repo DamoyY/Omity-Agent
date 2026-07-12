@@ -15,6 +15,7 @@ import {
 
 interface MessageRow {
   id: number;
+  source_id: string;
   message_json: string;
   queue_id: number | null;
   created_at: number;
@@ -26,12 +27,14 @@ interface QueueRow {
   status: string;
   error: string | null;
   user_message_id: number | null;
-  root_queue_id: number | null;
+  root_id: number | null;
 }
 
 interface EventRow {
   id: number;
-  message: string;
+  queue_id: number;
+  message_id: string | null;
+  kind: "assistant_text_delta" | "tool_call_delta";
   payload_json: string;
 }
 
@@ -39,16 +42,19 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const control = db.control(sessionId);
   const messages = db.db
     .query<MessageRow, [string]>(
-      "SELECT id, message_json, queue_id, created_at FROM messages WHERE session_id = ? ORDER BY id",
+      `SELECT m.id, m.source_id, b.message_json, m.queue_id, m.created_at
+       FROM messages m JOIN message_blobs b ON b.digest = m.blob_digest
+       WHERE m.session_id = ? AND m.position IS NOT NULL
+       ORDER BY m.position`,
     )
     .all(sessionId)
     .map(toDisplayMessage);
   const queue = db.db
     .query<QueueRow, [string]>(
-      `SELECT q.id, q.content, q.status, q.error, q.user_message_id,
-        r.root_queue_id
+      `SELECT q.id, COALESCE(q.content, '') AS content, q.status, q.error,
+         m.id AS user_message_id, q.root_id
        FROM queue q
-       LEFT JOIN runs r ON r.id = q.run_id
+       LEFT JOIN messages m ON m.queue_id = q.id
        WHERE q.session_id = ? ORDER BY q.id`,
     )
     .all(sessionId)
@@ -58,11 +64,12 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
       status: row.status,
       error: row.error,
       userMessageId: row.user_message_id,
-      root: row.root_queue_id === row.id,
+      root: row.root_id === row.id,
     }));
   const events = db.db
     .query<EventRow, [string]>(
-      "SELECT id, message, payload_json FROM events WHERE session_id = ? AND category = 'stream' ORDER BY id",
+      `SELECT id, queue_id, message_id, kind, payload_json
+       FROM events WHERE session_id = ? ORDER BY id`,
     )
     .all(sessionId)
     .map(toDisplayEvent);
@@ -71,6 +78,7 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
 
 function toDisplayMessage(row: MessageRow): DisplayMessage {
   const stored = parseStored(row.message_json);
+  stored.data.id = row.source_id;
   const [message] = mapStoredMessagesToChatMessages([stored]);
   if (!message) throw new Error("无法还原消息");
   return {
@@ -87,11 +95,24 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
 }
 
 function toDisplayEvent(row: EventRow): DisplayEvent {
+  const value = JSON.parse(row.payload_json) as unknown;
   return {
     id: row.id,
-    message: row.message,
-    payload: JSON.parse(row.payload_json) as unknown,
+    message: row.kind === "assistant_text_delta" ? "token" : "tool_call",
+    payload: {
+      kind: row.kind,
+      queueId: row.queue_id,
+      ...(row.kind === "assistant_text_delta"
+        ? { text: requireString(value) }
+        : { call: value }),
+      ...(row.message_id ? { messageId: row.message_id } : {}),
+    },
   };
+}
+
+function requireString(value: unknown) {
+  if (typeof value !== "string") throw new Error("stream 文本增量无效");
+  return value;
 }
 
 function parseStored(value: string): StoredMessage {

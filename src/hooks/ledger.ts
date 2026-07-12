@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
-import type { ToolMessage } from "@langchain/core/messages";
+import { ToolMessage } from "@langchain/core/messages";
+import { loadMessage, storeMessage } from "../infrastructure/messages";
 import {
   applyInvocationSchema,
   bindInvocation,
@@ -11,29 +12,21 @@ import {
   type InvocationRow,
   type InvocationDetails,
 } from "./storage/invocations";
-import {
-  readToolOutput,
-  restoreToolOutput,
-  serializeToolOutput,
-} from "./storage/outputs";
+import { readToolOutput } from "./storage/outputs";
 import { maintainInvocationLease } from "./lease";
 
 export class HookLedger {
-  private readonly db: Database;
   private readonly ownerId = randomUUID();
   private readonly leaseMs: number;
   private readonly now: () => number;
 
-  constructor(path: string, options: { leaseMs: number; now?: () => number }) {
-    this.db = new Database(path, { create: true, strict: true });
-    this.db.run("PRAGMA journal_mode = WAL");
+  constructor(
+    private readonly db: Database,
+    options: { leaseMs: number; now?: () => number },
+  ) {
     applyInvocationSchema(this.db);
     this.leaseMs = options.leaseMs;
     this.now = options.now ?? Date.now;
-  }
-
-  close() {
-    this.db.close();
   }
 
   claim(
@@ -45,13 +38,17 @@ export class HookLedger {
     const details = bindInvocation(sessionId, threadId, source);
     const row = this.read(details.key);
     const now = this.now();
-    if (
-      row?.status === "running" &&
-      reclaimInvocation(this.db, details.key, this.ownerId, now, this.leaseMs)
-    ) {
-      return { kind: "execute", key: details.key } as const;
+    if (row) {
+      if (
+        row.status === "running" &&
+        reclaimInvocation(this.db, details.key, this.ownerId, now, this.leaseMs)
+      ) {
+        return { kind: "execute", key: details.key } as const;
+      }
+      const latest = this.read(details.key);
+      if (!latest) throw new Error(`Hook 调用记录被并发删除：${details.key}`);
+      return { kind: "restore", key: details.key, row: latest } as const;
     }
-    if (row) return { kind: "restore", key: details.key, row } as const;
     if (
       insertInvocation(
         this.db,
@@ -74,22 +71,35 @@ export class HookLedger {
   }
 
   complete(key: string, output: ToolMessage) {
-    const outputJson = serializeToolOutput(output);
-    const result = this.db.run(
-      `UPDATE invocations SET status = 'done', output_json = ?, error = NULL,
-       updated_at = unixepoch() WHERE invocation_key = ?
-       AND status = 'running' AND owner_id = ?`,
-      [outputJson, key, this.ownerId],
-    );
-    if (result.changes !== 1) throw new Error(`Hook Lease 已丢失：${key}`);
+    this.db
+      .transaction(() => {
+        const outputMessageId = storeMessage(
+          this.db,
+          this.sessionId(key),
+          output,
+        );
+        const result = this.db.run(
+          `UPDATE invocations
+           SET output_message_id = ?, error = NULL,
+               owner_id = NULL, lease_expires_at = NULL
+           WHERE invocation_key = ? AND output_message_id IS NULL
+             AND error IS NULL AND owner_id = ?`,
+          [outputMessageId, key, this.ownerId],
+        );
+        if (result.changes !== 1) {
+          throw new Error(`Hook Lease 已丢失：${key}`);
+        }
+      })
+      .immediate();
   }
 
   fail(key: string, error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     const result = this.db.run(
-      `UPDATE invocations SET status = 'error', error = ?,
-       updated_at = unixepoch() WHERE invocation_key = ?
-       AND status = 'running' AND owner_id = ?`,
+      `UPDATE invocations
+       SET error = ?, owner_id = NULL, lease_expires_at = NULL
+       WHERE invocation_key = ? AND output_message_id IS NULL
+         AND error IS NULL AND owner_id = ?`,
       [message, key, this.ownerId],
     );
     if (result.changes !== 1) throw new Error(`Hook Lease 已丢失：${key}`);
@@ -110,16 +120,23 @@ export class HookLedger {
   }
 
   restoredOutput(row: InvocationRow) {
-    return restoreToolOutput(row.output_json);
+    if (row.output_message_id === null) return undefined;
+    const message = loadMessage(this.db, row.output_message_id);
+    return ToolMessage.isInstance(message) ? message : undefined;
   }
 
   output(key: string) {
     const row = this.db
-      .query<{ output_json: string }, [string]>(
-        "SELECT output_json FROM invocations WHERE invocation_key = ? AND status = 'done' AND output_json IS NOT NULL",
+      .query<{ output_message_id: number }, [string]>(
+        `SELECT output_message_id FROM invocations
+         WHERE invocation_key = ? AND output_message_id IS NOT NULL`,
       )
       .get(key);
-    return readToolOutput(row?.output_json ?? null);
+    if (!row) return undefined;
+    const message = loadMessage(this.db, row.output_message_id);
+    return ToolMessage.isInstance(message)
+      ? readToolOutput(message)
+      : undefined;
   }
 
   invocationKey(
@@ -136,16 +153,18 @@ export class HookLedger {
     throw new Error(`Hook 调用状态不确定，拒绝重复执行 ${key}${detail}`);
   }
 
-  rows() {
-    return this.db
-      .query<{ status: string; trigger: string }, []>(
-        "SELECT status, trigger FROM invocations ORDER BY rowid",
-      )
-      .all();
-  }
-
   private read(key: string) {
     return readInvocation(this.db, key);
+  }
+
+  private sessionId(key: string) {
+    const row = this.db
+      .query<{ session_id: string }, [string]>(
+        "SELECT session_id FROM invocations WHERE invocation_key = ?",
+      )
+      .get(key);
+    if (!row) throw new Error(`Hook 调用记录缺失：${key}`);
+    return row.session_id;
   }
 }
 

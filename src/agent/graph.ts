@@ -7,6 +7,7 @@ import {
   type ToolCall,
 } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import type { Database } from "bun:sqlite";
 import {
   Annotation,
   END,
@@ -71,10 +72,10 @@ interface AgentGraphOptions {
 export function buildGraph(
   settings: Settings,
   tools: StructuredToolInterface[],
-  checkpointPath: string,
+  database: Database,
   hooks: HookRuntime,
 ) {
-  const checkpointer = new BunSqliteSaver(checkpointPath);
+  const checkpointer = new BunSqliteSaver(database, hooks.sessionId);
   const skillsMessage = buildSkillsMessage(settings);
   const instructions = buildResponsesInstructions(
     settings.agent.systemPrompt,

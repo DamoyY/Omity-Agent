@@ -17,11 +17,11 @@ test("fork copies messages before selected user message", () => {
   source.resetSession("source", workspace);
   const first = source.appendUser("source", "第一条");
   source.startQueue("source", required(source.nextQueue("source")));
-  appendAssistantMessage(source.db, "source", first, "第一条回复");
+  appendAssistantMessage(source.db, "source", "第一条回复");
   source.setQueueStatus(first, "done");
   const forkPoint = source.appendUser("source", "不要复制");
   source.startQueue("source", required(source.nextQueue("source")));
-  appendAssistantMessage(source.db, "source", forkPoint, "也不要复制");
+  appendAssistantMessage(source.db, "source", "也不要复制");
   const forkMessageId = userMessageId(source, forkPoint);
 
   forkDatabaseBeforeMessage({
@@ -84,7 +84,11 @@ function readOnlyQueue(db: ReturnType<typeof makeDb>) {
   const query = db.db.prepare<
     { content: string; status: string; user_message_id: number | null },
     []
-  >("SELECT content, status, user_message_id FROM queue ORDER BY id LIMIT 1");
+  >(
+    `SELECT q.content, q.status, m.id AS user_message_id
+     FROM queue q LEFT JOIN messages m ON m.queue_id = q.id
+     ORDER BY q.id LIMIT 1`,
+  );
   try {
     return query.get();
   } finally {
@@ -96,9 +100,9 @@ test("fork point must be a user message", () => {
   const source = makeDb();
   const target = makeDb();
   source.resetSession("source", workspace);
-  const queueId = source.appendUser("source", "问题");
+  source.appendUser("source", "问题");
   source.startQueue("source", required(source.nextQueue("source")));
-  appendAssistantMessage(source.db, "source", queueId, "回答");
+  appendAssistantMessage(source.db, "source", "回答");
   const assistantRow = latestMessageId(source);
 
   expect(() => {

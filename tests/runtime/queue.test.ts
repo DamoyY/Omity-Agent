@@ -1,3 +1,4 @@
+import { AIMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
 import { AgentDatabase } from "../../src/infrastructure/database";
@@ -27,6 +28,46 @@ test("unexpected errors pause the queue", async () => {
 
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
+  db.close();
+});
+
+test("observer errors cannot revive a terminal queue", async () => {
+  const db = makeDb();
+  db.resetSession("123", workspace);
+  db.appendUser("123", "会完成的输入");
+  const item = required(db.nextQueue("123"));
+  const final = new AIMessage({ id: "final", content: "done" });
+  const graph = {
+    stream: () => Promise.resolve([]),
+    getState: () =>
+      Promise.resolve({
+        values: {
+          messages: [...db.history("123"), final],
+          hookPlan: { kind: "done", finalMessageId: "final" },
+        },
+        next: [],
+        tasks: [],
+      }),
+  };
+  const context = makeContext(db, graph);
+  let changes = 0;
+  context.observer = {
+    changed: () => {
+      if (++changes === 3) throw new Error("observer failed");
+    },
+    token: () => undefined,
+  };
+
+  let terminalError: unknown;
+  try {
+    await processQueue(context, item);
+  } catch (error) {
+    terminalError = error;
+  }
+
+  expect(terminalError).toMatchObject({ message: "observer failed" });
+  expect(db.queueStatus(item.id)).toBe("done");
+  expect(db.nextQueue("123")).toBeNull();
   db.close();
 });
 

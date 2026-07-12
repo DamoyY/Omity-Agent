@@ -1,8 +1,10 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { ToolMessage } from "@langchain/core/messages";
 import { expect, test } from "bun:test";
 import { HookLedger } from "../../src/hooks/ledger";
+import { AgentDatabase } from "../../src/infrastructure/database";
 
 const details = {
   trigger: "agent:before",
@@ -12,9 +14,22 @@ const details = {
 
 test("stale running invocation can be reclaimed after its lease", () => {
   const { dir, path } = ledgerPath();
-  const first = new HookLedger(path, { leaseMs: 100, now: () => 1_000 });
-  const active = new HookLedger(path, { leaseMs: 100, now: () => 1_050 });
-  const recovered = new HookLedger(path, { leaseMs: 100, now: () => 1_101 });
+  const firstDb = new AgentDatabase(path);
+  firstDb.createSession("session", dir);
+  const activeDb = new AgentDatabase(path);
+  const recoveredDb = new AgentDatabase(path);
+  const first = new HookLedger(firstDb.db, {
+    leaseMs: 100,
+    now: () => 1_000,
+  });
+  const active = new HookLedger(activeDb.db, {
+    leaseMs: 100,
+    now: () => 1_050,
+  });
+  const recovered = new HookLedger(recoveredDb.db, {
+    leaseMs: 100,
+    now: () => 1_101,
+  });
   try {
     const claimed = first.claim("session", "thread", details, -1);
     const blocked = active.claim("session", "thread", details, -1);
@@ -34,17 +49,20 @@ test("stale running invocation can be reclaimed after its lease", () => {
       first.fail(claimed.key, "late result");
     }).toThrow("Hook Lease 已丢失");
   } finally {
-    first.close();
-    active.close();
-    recovered.close();
+    firstDb.close();
+    activeDb.close();
+    recoveredDb.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("active invocation renews its lease until the operation completes", async () => {
   const { dir, path } = ledgerPath();
-  const first = new HookLedger(path, { leaseMs: 60 });
-  const contender = new HookLedger(path, { leaseMs: 60 });
+  const firstDb = new AgentDatabase(path);
+  firstDb.createSession("session", dir);
+  const contenderDb = new AgentDatabase(path);
+  const first = new HookLedger(firstDb.db, { leaseMs: 60 });
+  const contender = new HookLedger(contenderDb.db, { leaseMs: 60 });
   const release = Promise.withResolvers<undefined>();
   try {
     const claimed = first.claim("session", "thread", details, -1);
@@ -61,8 +79,39 @@ test("active invocation renews its lease until the operation completes", async (
     await maintained;
     first.fail(claimed.key, "test complete");
   } finally {
-    first.close();
-    contender.close();
+    firstDb.close();
+    contenderDb.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("claim rereads an invocation completed during reclaim", () => {
+  const { dir, path } = ledgerPath();
+  const firstDb = new AgentDatabase(path);
+  firstDb.createSession("session", dir);
+  const contenderDb = new AgentDatabase(path);
+  const first = new HookLedger(firstDb.db, { leaseMs: 100, now: () => 1_000 });
+  const claimed = first.claim("session", "thread", details, -1);
+  if (claimed.kind !== "execute") throw new Error("Hook claim 状态无效");
+  const contender = new HookLedger(contenderDb.db, {
+    leaseMs: 100,
+    now: () => {
+      first.complete(
+        claimed.key,
+        new ToolMessage({ content: "done", tool_call_id: "call" }),
+      );
+      return 1_101;
+    },
+  });
+  try {
+    const recovered = contender.claim("session", "thread", details, -1);
+    expect(recovered.kind).toBe("restore");
+    if (recovered.kind !== "restore") throw new Error("Hook 恢复状态无效");
+    expect(recovered.row.status).toBe("done");
+    expect(contender.restoredOutput(recovered.row)?.content).toBe("done");
+  } finally {
+    firstDb.close();
+    contenderDb.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });

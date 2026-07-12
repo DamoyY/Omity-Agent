@@ -4,10 +4,10 @@ import { join } from "node:path";
 import { AIMessage } from "@langchain/core/messages";
 import { fakeModel } from "@langchain/core/testing";
 import { tool, type StructuredToolInterface } from "@langchain/core/tools";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { z } from "zod";
 import { expect, test } from "bun:test";
 import { createAgentGraph } from "../../src/agent";
+import { BunSqliteSaver } from "../../src/checkpointer";
 import { HookLedger } from "../../src/hooks/ledger";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { AgentDatabase } from "../../src/infrastructure/database";
@@ -20,8 +20,8 @@ import { testSettings } from "../support/settings";
 
 test("host restart resumes after one committed hook boundary", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
-  const db = new AgentDatabase(join(dir, "app.sqlite"));
-  const ledgers: HookLedger[] = [];
+  const path = join(dir, "agent.sqlite");
+  let db = new AgentDatabase(path);
   let hookCalls = 0;
   const received: unknown[] = [];
   try {
@@ -40,12 +40,8 @@ test("host restart resumes after one committed hook boundary", async () => {
         schema: z.object({ previous: z.unknown().optional() }).strict(),
       },
     );
-    const checkpointer = new MemorySaver();
-    const firstLedger = new HookLedger(
-      join(dir, "hooks.sqlite"),
-      testLeaseOptions,
-    );
-    ledgers.push(firstLedger);
+    const checkpointer = new BunSqliteSaver(db.db, "session");
+    const firstLedger = new HookLedger(db.db, testLeaseOptions);
     const firstHooks = runtime(firstLedger, hookTool, dir);
     const firstGraph = createAgentGraph({
       settings: testSettings(dir),
@@ -77,25 +73,21 @@ test("host restart resumes after one committed hook boundary", async () => {
       "ai",
       "tool",
     ]);
-    firstLedger.close();
-    ledgers.splice(ledgers.indexOf(firstLedger), 1);
-
-    const recoveredLedger = new HookLedger(
-      join(dir, "hooks.sqlite"),
-      testLeaseOptions,
-    );
-    ledgers.push(recoveredLedger);
+    db.close();
+    db = new AgentDatabase(path);
+    const recoveredLedger = new HookLedger(db.db, testLeaseOptions);
     const recoveredHooks = runtime(recoveredLedger, hookTool, dir);
+    const recoveredCheckpointer = new BunSqliteSaver(db.db, "session");
     const recoveredGraph = createAgentGraph({
       settings: testSettings(dir),
       model: fakeModel().respond(new AIMessage("done")),
       tools: [hookTool],
       hooks: recoveredHooks,
-      checkpointer,
+      checkpointer: recoveredCheckpointer,
     });
     db.setControl("session", "running");
     await processQueue(
-      makeContext(db, recoveredGraph, checkpointer, dir),
+      makeContext(db, recoveredGraph, recoveredCheckpointer, dir),
       required(db.nextQueue("session")),
     );
 
@@ -109,11 +101,31 @@ test("host restart resumes after one committed hook boundary", async () => {
       "ai",
     ]);
   } finally {
-    for (const ledger of ledgers) ledger.close();
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    await removeDirectory(dir);
   }
 });
+
+async function removeDirectory(dir: string) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (
+        !(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "EBUSY"
+        ) ||
+        attempt === 49
+      ) {
+        throw error;
+      }
+      await Bun.sleep(50);
+    }
+  }
+}
 
 function runtime(
   ledger: HookLedger,
@@ -152,7 +164,7 @@ function runtime(
 function makeContext(
   db: AgentDatabase,
   graph: unknown,
-  checkpointer: MemorySaver,
+  checkpointer: BunSqliteSaver,
   dataDir: string,
 ): HostContext {
   return {
@@ -160,7 +172,7 @@ function makeContext(
     logger: new Logger("error", true),
     db,
     graph: graph as HostContext["graph"],
-    checkpointer: checkpointer as never,
+    checkpointer: checkpointer,
     inputNode: "hooks",
     sessionId: "session",
     controller: new AbortController(),

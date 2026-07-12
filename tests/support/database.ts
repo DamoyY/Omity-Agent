@@ -38,8 +38,8 @@ async function removeDatabaseDir(dir: string) {
       rmSync(dir, { recursive: true, force: true });
       return;
     } catch (error) {
-      if (!isBusy(error) || attempt === 9) throw error;
-      await Bun.sleep(50);
+      if (!isBusy(error) || attempt === 29) throw error;
+      await Bun.sleep(100);
     }
   }
 }

@@ -2,7 +2,8 @@ import { Database } from "bun:sqlite";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Control, QueueItem, QueueStatus } from "../types";
 import {
-  insertEvent,
+  clearQueueStreamEvents,
+  clearStreamEvents,
   insertStreamToken,
   insertStreamToolCall,
   type StreamToolCallDelta,
@@ -14,10 +15,12 @@ import {
   consumedRunRows,
   nextQueueRow,
   pendingAppendRows,
+  queueStatusRecord,
   setQueueStatusRecord,
   startQueueRecord,
 } from "./queueRecords";
 import { applySchema } from "./schema";
+import { closeDatabase, configureDatabase } from "./sqlite";
 import {
   acquireHostLeaseRecord,
   createSessionRecord,
@@ -38,13 +41,17 @@ export class AgentDatabase {
 
   constructor(path: string) {
     this.db = new Database(path, { create: true, strict: true });
-    this.db.run("PRAGMA journal_mode = WAL");
-    this.db.run("PRAGMA foreign_keys = ON");
-    applySchema(this.db);
+    try {
+      configureDatabase(this.db);
+      applySchema(this.db);
+    } catch (error) {
+      closeDatabase(this.db);
+      throw error;
+    }
   }
 
   close() {
-    this.db.close();
+    closeDatabase(this.db);
   }
 
   onChange(notify: () => void) {
@@ -53,10 +60,15 @@ export class AgentDatabase {
 
   resetSession(sessionId: string, workspace: string) {
     const tx = this.db.transaction(() => {
-      this.db.query("DELETE FROM runs WHERE session_id = ?").run(sessionId);
-      this.db.query("DELETE FROM queue WHERE session_id = ?").run(sessionId);
+      this.db.query("DELETE FROM writes").run();
+      this.db.query("DELETE FROM checkpoints").run();
+      this.db.query("DELETE FROM invocations").run();
+      this.db.query("DELETE FROM hook_usage").run();
+      this.db.query("DELETE FROM host_leases").run();
+      clearStreamEvents(this.db, sessionId);
       this.db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
-      this.db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);
+      this.db.query("DELETE FROM message_blobs").run();
+      this.db.query("DELETE FROM queue WHERE session_id = ?").run(sessionId);
       this.db.query("DELETE FROM sessions WHERE id = ?").run(sessionId);
       this.createSession(sessionId, workspace);
     });
@@ -77,14 +89,12 @@ export class AgentDatabase {
 
   appendUser(sessionId: string, content: string) {
     this.requireSession(sessionId);
-    const queueId = this.db.transaction(() =>
-      appendUserQueue(this.db, sessionId, content),
-    )();
-    touchSessionRecord(this.db, sessionId);
-    this.event(sessionId, "info", "client", "append", {
-      queueId,
+    const tx = this.db.transaction(() => {
+      const queueId = appendUserQueue(this.db, sessionId, content);
+      touchSessionRecord(this.db, sessionId);
+      return queueId;
     });
-    return queueId;
+    return tx();
   }
 
   appendDraft(sessionId: string, content: string) {
@@ -116,14 +126,26 @@ export class AgentDatabase {
   }
 
   setQueueStatus(queueId: number, status: QueueStatus, error?: string) {
-    setQueueStatusRecord(this.db, queueId, status, error);
+    const tx = this.db.transaction(() => {
+      setQueueStatusRecord(this.db, queueId, status, error);
+      if (status === "done" || status === "canceled") {
+        clearQueueStreamEvents(this.db, queueId);
+      }
+    });
+    tx();
+  }
+
+  queueStatus(queueId: number) {
+    return queueStatusRecord(this.db, queueId);
   }
 
   syncHistory(sessionId: string, messages: BaseMessage[]) {
     this.requireSession(sessionId);
-    syncMessages(this.db, sessionId, messages, {
-      clearStreamEvents: true,
+    const tx = this.db.transaction(() => {
+      syncMessages(this.db, sessionId, messages);
+      clearStreamEvents(this.db, sessionId);
     });
+    tx();
   }
 
   history(sessionId: string): BaseMessage[] {
@@ -137,7 +159,6 @@ export class AgentDatabase {
 
   setControl(sessionId: string, control: Control) {
     writeControlRecord(this.db, sessionId, control);
-    this.event(sessionId, "info", "client", "control", { control });
   }
 
   acquireHostLease(claim: HostLeaseClaim) {
@@ -150,17 +171,6 @@ export class AgentDatabase {
 
   releaseHostLease(sessionId: string, ownerId: string) {
     return releaseHostLeaseRecord(this.db, sessionId, ownerId);
-  }
-
-  event(
-    sessionId: string,
-    level: string,
-    category: string,
-    message: string,
-    payload: unknown,
-  ) {
-    insertEvent(this.db, sessionId, level, category, message, payload);
-    this.notify?.();
   }
 
   streamToken(

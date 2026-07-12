@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { appendAssistantMessage } from "../../src/infrastructure/messages";
+import { sqliteBusyTimeoutMs } from "../../src/infrastructure/sqlite";
 import {
   cleanupDatabaseDirs,
   makeDatabases,
@@ -18,9 +19,16 @@ test("queue append and transcript lifecycle", () => {
   expect(item?.id).toBe(queueId);
   db.startQueue("123", required(item));
   expect(db.history("123").map((message) => message.text)).toEqual(["你好"]);
-  appendAssistantMessage(db.db, "123", queueId, "你好，有什么可以帮你？");
+  appendAssistantMessage(db.db, "123", "你好，有什么可以帮你？");
   db.setQueueStatus(queueId, "done");
   expect(db.history("123").at(-1)?.text).toBe("你好，有什么可以帮你？");
+  db.close();
+});
+
+test("database waits for transient writer contention", () => {
+  const db = makeDb();
+  const row = db.db.query<{ timeout: number }, []>("PRAGMA busy_timeout").get();
+  expect(row?.timeout).toBe(sqliteBusyTimeoutMs);
   db.close();
 });
 

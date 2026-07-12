@@ -4,17 +4,17 @@ export type StreamToolCallDelta = Partial<
   Record<"args" | "id" | "name", string> & { index: number }
 >;
 
-export function insertEvent(
+function insertStreamEvent(
   db: Database,
   sessionId: string,
-  level: string,
-  category: string,
-  message: string,
+  queueId: number,
+  kind: "assistant_text_delta" | "tool_call_delta",
   payload: unknown,
+  messageId?: string,
 ) {
   db.query(
-    "INSERT INTO events (session_id, level, category, message, payload_json, created_at) VALUES (?, ?, ?, ?, ?, unixepoch())",
-  ).run(sessionId, level, category, message, JSON.stringify(payload));
+    "INSERT INTO events (session_id, queue_id, message_id, kind, payload_json) VALUES (?, ?, ?, ?, ?)",
+  ).run(sessionId, queueId, messageId ?? null, kind, JSON.stringify(payload));
 }
 
 export function insertStreamToken(
@@ -24,12 +24,14 @@ export function insertStreamToken(
   text: string,
   messageId?: string,
 ) {
-  insertEvent(db, sessionId, "info", "stream", "token", {
-    kind: "assistant_text_delta",
+  insertStreamEvent(
+    db,
+    sessionId,
     queueId,
+    "assistant_text_delta",
     text,
-    ...(messageId ? { messageId } : {}),
-  });
+    messageId,
+  );
 }
 
 export function insertStreamToolCall(
@@ -39,10 +41,13 @@ export function insertStreamToolCall(
   call: StreamToolCallDelta,
   messageId?: string,
 ) {
-  insertEvent(db, sessionId, "info", "stream", "tool_call", {
-    kind: "tool_call_delta",
-    queueId,
-    call,
-    ...(messageId ? { messageId } : {}),
-  });
+  insertStreamEvent(db, sessionId, queueId, "tool_call_delta", call, messageId);
+}
+
+export function clearStreamEvents(db: Database, sessionId: string) {
+  db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);
+}
+
+export function clearQueueStreamEvents(db: Database, queueId: number) {
+  db.query("DELETE FROM events WHERE queue_id = ?").run(queueId);
 }

@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { buildGraph, hookNode } from "./agent";
 import { sessionConflict, sessionNotFound } from "./errors";
 import {
@@ -14,6 +14,7 @@ import { hostLoop } from "./runtime/loop";
 import { HostLease, type HostObserver } from "./runtime/context";
 import { HookLedger } from "./hooks/ledger";
 import { HookRuntime } from "./hooks/runtime";
+import { removeDatabaseDirectory } from "./infrastructure/sqlite";
 
 export interface HostMode {
   kind: "new" | "load" | "overwrite";
@@ -58,7 +59,7 @@ export async function runHostSession(
     mode.kind === "load"
       ? resolveSessionPaths(settings, mode.sessionId)
       : prepareWritableSession(settings, mode);
-  const db = openHostDatabase(paths.appDb, mode, workspace);
+  const db = openHostDatabase(paths.dbPath, mode, workspace);
   const controller = options.controller ?? new AbortController();
   let lease: HostLease;
   try {
@@ -75,63 +76,67 @@ export async function runHostSession(
   }
   db.onChange(() => options.observer?.changed?.(mode.sessionId));
   if (mode.kind === "new") {
-    logger.info("已创建新会话", { sessionId: mode.sessionId, db: paths.appDb });
+    logger.info("已创建新会话", {
+      sessionId: mode.sessionId,
+      db: paths.dbPath,
+    });
   } else if (mode.kind === "load") {
-    logger.info("已加载会话", { sessionId: mode.sessionId, db: paths.appDb });
+    logger.info("已加载会话", { sessionId: mode.sessionId, db: paths.dbPath });
   } else {
-    logger.info("已覆盖会话", { sessionId: mode.sessionId, db: paths.appDb });
+    logger.info("已覆盖会话", { sessionId: mode.sessionId, db: paths.dbPath });
   }
   let mcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
   try {
     mcp = await loadMcp(root, logger);
-    const hookLedger = new HookLedger(paths.hookDb, {
+    const hookLedger = new HookLedger(db.db, {
       leaseMs: settings.leases.hookTtlMs,
     });
+    const hooks = new HookRuntime(
+      settings.hooks,
+      mcp.tools,
+      hookLedger,
+      logger,
+      mode.sessionId,
+      db.workspace(mode.sessionId),
+    );
+    const { graph, checkpointer } = buildGraph(
+      settings,
+      mcp.tools,
+      db.db,
+      hooks,
+    );
+    const stopOnSigint = () => {
+      controller.abort(new Error("收到 Ctrl+C"));
+      logger.warn("收到 Ctrl+C，Host 正在停止");
+    };
     try {
-      const hooks = new HookRuntime(
-        settings.hooks,
-        mcp.tools,
-        hookLedger,
-        logger,
-        mode.sessionId,
-        db.workspace(mode.sessionId),
-      );
-      const { graph, checkpointer } = buildGraph(
+      if (options.wireSigint ?? false) process.once("SIGINT", stopOnSigint);
+      await hostLoop({
         settings,
-        mcp.tools,
-        paths.checkpointDb,
-        hooks,
-      );
-      const stopOnSigint = () => {
-        controller.abort(new Error("收到 Ctrl+C"));
-        logger.warn("收到 Ctrl+C，Host 正在停止");
-      };
-      try {
-        if (options.wireSigint ?? false) process.once("SIGINT", stopOnSigint);
-        await hostLoop({
-          settings,
-          logger,
-          db,
-          graph,
-          checkpointer,
-          inputNode: hookNode,
-          sessionId: mode.sessionId,
-          controller,
-          wake: options.wake,
-          observer: options.observer,
-        });
-        lease.assertOwned();
-      } finally {
-        process.removeListener("SIGINT", stopOnSigint);
-        checkpointer.close();
-      }
+        logger,
+        db,
+        graph,
+        checkpointer,
+        inputNode: hookNode,
+        sessionId: mode.sessionId,
+        controller,
+        wake: options.wake,
+        observer: options.observer,
+      });
+      lease.assertOwned();
     } finally {
-      hookLedger.close();
+      process.removeListener("SIGINT", stopOnSigint);
     }
   } finally {
-    await mcp?.close();
-    lease.close();
-    db.close();
+    try {
+      await mcp?.close();
+    } finally {
+      try {
+        lease.close();
+      } finally {
+        db.close();
+      }
+    }
   }
 }
 
@@ -141,7 +146,7 @@ export function deleteHostSession(sessionId: string, root = process.cwd()) {
   if (!existsSync(paths.dir)) {
     throw sessionNotFound(sessionId);
   }
-  rmSync(paths.dir, { recursive: true, force: true });
+  removeDatabaseDirectory(paths.dir);
 }
 
 function prepareWritableSession(
@@ -157,7 +162,7 @@ function prepareWritableSession(
     throw sessionNotFound(mode.sessionId);
   }
   if (mode.kind === "overwrite") {
-    rmSync(planned.dir, { recursive: true, force: true });
+    removeDatabaseDirectory(planned.dir);
   }
   return sessionPaths(settings, mode.sessionId);
 }
@@ -167,13 +172,17 @@ function openHostDatabase(path: string, mode: HostMode, workspace: string) {
     throw sessionNotFound(mode.sessionId);
   }
   const db = new AgentDatabase(path);
-  if (mode.kind === "load") {
-    if (!db.hasSession(mode.sessionId)) {
-      db.close();
-      throw sessionNotFound(mode.sessionId);
+  try {
+    if (mode.kind === "load") {
+      if (!db.hasSession(mode.sessionId)) {
+        throw sessionNotFound(mode.sessionId);
+      }
+      return db;
     }
+    db.createSession(mode.sessionId, workspace);
     return db;
+  } catch (error) {
+    db.close();
+    throw error;
   }
-  db.createSession(mode.sessionId, workspace);
-  return db;
 }

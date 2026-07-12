@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 import type { Settings } from "../types";
@@ -96,16 +96,13 @@ export function loadSettings(
 export function sessionPaths(settings: Settings, sessionId: string) {
   const paths = resolveSessionPaths(settings, sessionId);
   mkdirSync(paths.dir, { recursive: true });
-  mkdirSync(dirname(paths.appDb), { recursive: true });
   return paths;
 }
 
 export function resolveSessionPaths(settings: Settings, sessionId: string) {
   const dir = resolve(settings.paths.dataDir, "sessions", safeId(sessionId));
-  const appDb = resolve(dir, "agent.sqlite");
-  const checkpointDb = resolve(dir, "checkpoints.sqlite");
-  const hookDb = resolve(dir, "hooks.sqlite");
-  return { dir, appDb, checkpointDb, hookDb };
+  const dbPath = resolve(dir, "agent.sqlite");
+  return { dir, dbPath };
 }
 
 export function safeId(value: string) {

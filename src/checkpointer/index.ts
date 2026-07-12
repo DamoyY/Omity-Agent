@@ -20,23 +20,21 @@ import {
 } from "./sql";
 import { rowToTuple } from "./tuple";
 import { putCheckpoint, putPendingWrites } from "./write";
+import { deleteThreadData } from "./lifecycle";
 
 export class BunSqliteSaver extends BaseCheckpointSaver {
-  readonly db: Database;
   private isSetup = false;
 
-  constructor(path: string, serde?: SerializerProtocol) {
+  constructor(
+    readonly db: Database,
+    private readonly sessionId?: string,
+    serde?: SerializerProtocol,
+  ) {
     super(serde);
-    this.db = new Database(path, { create: true, strict: true });
-  }
-
-  close() {
-    this.db.close();
   }
 
   protected setup() {
     if (this.isSetup) return;
-    this.db.run("PRAGMA journal_mode = WAL");
     for (const sql of setupSql) {
       this.db.run(sql);
     }
@@ -101,7 +99,14 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     metadata: CheckpointMetadata,
   ): Promise<RunnableConfig> {
     this.setup();
-    return putCheckpoint(this.db, this.serde, config, checkpoint, metadata);
+    return putCheckpoint(
+      this.db,
+      this.serde,
+      config,
+      checkpoint,
+      metadata,
+      this.resolveSessionId(config),
+    );
   }
 
   async putWrites(
@@ -115,12 +120,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
 
   deleteThread(threadId: string): Promise<void> {
     this.setup();
-    this.db.transaction(() => {
-      this.db
-        .query("DELETE FROM checkpoints WHERE thread_id = ?")
-        .run(threadId);
-      this.db.query("DELETE FROM writes WHERE thread_id = ?").run(threadId);
-    })();
+    deleteThreadData(this.db, threadId);
     return Promise.resolve();
   }
 
@@ -133,5 +133,14 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       serde: this.serde,
       nextVersion: () => this.getNextVersion(undefined),
     });
+  }
+
+  private resolveSessionId(config: RunnableConfig) {
+    if (this.sessionId) return this.sessionId;
+    const threadId = requiredConfigString(
+      config.configurable?.["thread_id"],
+      "thread_id",
+    );
+    return threadId.split(":", 1)[0] ?? threadId;
   }
 }
