@@ -10,7 +10,9 @@ import {
   type ComposerDraftTarget,
 } from "../../services/composerDrafts";
 import { reportError, reportPromiseErrors } from "../../services/errors";
+import type { TokenUsage } from "../../../timeline";
 import { Button, Textarea } from "../ParkUI";
+import { ContextUsage } from "./ContextUsage";
 
 const form = css({
   bg: "surface",
@@ -32,11 +34,13 @@ const messageBox = css({
 });
 
 const actions = css({
-  alignContent: "start",
-  display: "grid",
-  gap: "1",
-  minW: "7rem",
+  display: "flex",
+  flexDirection: "column",
+  h: "full",
+  minW: "9rem",
 });
+
+const controls = css({ display: "grid", gap: "2" });
 
 type ControlState = "pause" | "pausing" | "resume";
 
@@ -46,6 +50,7 @@ export function Composer({
   draftTarget,
   controlDisabled = false,
   controlState,
+  usage,
   onControl,
   onSend,
 }: {
@@ -54,6 +59,7 @@ export function Composer({
   draftTarget: ComposerDraftTarget;
   controlDisabled?: boolean;
   controlState?: ControlState;
+  usage?: TokenUsage | null;
   onControl?: () => Promise<void>;
   onSend: (content: string, draftRevision: number) => Promise<void>;
 }) {
@@ -149,30 +155,33 @@ export function Composer({
         }}
       />
       <div className={actions}>
-        <Button
-          disabled={disabled || loading || submitting}
-          type="submit"
-          variant="outline"
-        >
-          <Send size={14} /> {t("send")}
-        </Button>
-        {controlState && onControl ? (
+        <div className={controls}>
           <Button
-            disabled={controlDisabled}
-            onClick={() => {
-              reportPromiseErrors(onControl());
-            }}
-            type="button"
+            disabled={disabled || loading || submitting}
+            type="submit"
             variant="outline"
           >
-            {controlState === "resume" ? (
-              <Play size={14} />
-            ) : (
-              <Pause size={14} />
-            )}
-            {t(controlState)}
+            <Send size={14} /> {t("send")}
           </Button>
-        ) : null}
+          {controlState && onControl ? (
+            <Button
+              disabled={controlDisabled}
+              onClick={() => {
+                reportPromiseErrors(onControl());
+              }}
+              type="button"
+              variant="outline"
+            >
+              {controlState === "resume" ? (
+                <Play size={14} />
+              ) : (
+                <Pause size={14} />
+              )}
+              {t(controlState)}
+            </Button>
+          ) : null}
+        </div>
+        {usage !== undefined ? <ContextUsage usage={usage} /> : null}
       </div>
     </form>
   );

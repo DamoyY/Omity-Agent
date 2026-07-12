@@ -32,5 +32,8 @@
   "statusModel": "模型",
   "statusIdle": "空闲",
   "statusPaused": "暂停",
-  "statusError": "错误"
+  "statusError": "错误",
+  "contextUsage": "上下文",
+  "kvCache": "KV Cache",
+  "unavailableTokens": "— Tokens"
 }

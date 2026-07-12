@@ -119,6 +119,44 @@ test("tool output retains images", () => {
   expect(output?.images).toEqual([image]);
 });
 
+test("grouped assistant messages retain the latest token usage", () => {
+  const usage = {
+    inputTokens: 1200,
+    outputTokens: 300,
+    cacheReadTokens: 900,
+  };
+  const messages: DisplayMessage[] = [
+    assistant(1, {
+      inputTokens: 800,
+      outputTokens: 200,
+      cacheReadTokens: 400,
+    }),
+    assistant(2, usage),
+  ];
+
+  const view = buildTimeline(messages, [], []);
+
+  expect(view).toHaveLength(1);
+  expect(view[0]?.usage).toEqual(usage);
+});
+
+function assistant(
+  id: number,
+  usage: NonNullable<DisplayMessage["usage"]>,
+): DisplayMessage {
+  return {
+    id,
+    role: "assistant",
+    content: `回答 ${id.toString()}`,
+    reasoning: "",
+    images: [],
+    queueId: null,
+    toolCalls: [],
+    usage,
+    createdAt: id,
+  };
+}
+
 function toolCalls(
   message: ReturnType<typeof buildTimeline>[number] | undefined,
 ) {

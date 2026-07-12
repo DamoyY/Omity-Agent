@@ -15,6 +15,12 @@ export interface DisplayToolCall {
   streaming?: boolean;
 }
 
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+}
+
 export interface DisplayMessage {
   id: number;
   sourceId?: string;
@@ -25,6 +31,7 @@ export interface DisplayMessage {
   queueId: number | null;
   toolCalls: DisplayToolCall[];
   toolCallId?: string;
+  usage?: TokenUsage;
   createdAt: number;
 }
 
@@ -49,6 +56,7 @@ export interface TimelineMessage {
   role: DisplayRole;
   content: string;
   createdAt: number;
+  usage?: TokenUsage;
   parts: TimelinePart[];
 }
 

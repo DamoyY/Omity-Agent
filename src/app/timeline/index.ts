@@ -23,6 +23,7 @@ export type {
   DisplayQueue,
   DisplayRole,
   DisplayToolCall,
+  TokenUsage,
   TimelineMessage,
   TimelinePart,
 } from "./types";
@@ -102,6 +103,7 @@ function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
     }
     target.parts.push(part);
   }
+  if (source.usage) target.usage = source.usage;
 }
 
 function streamMessage(
@@ -155,6 +157,7 @@ function withParts(
     role: message.role,
     content: message.content,
     createdAt: message.createdAt,
+    ...(message.usage ? { usage: message.usage } : {}),
     parts: [
       ...(message.reasoning.trim()
         ? [{ type: "reasoning", content: message.reasoning } as const]

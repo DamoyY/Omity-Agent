@@ -77,6 +77,8 @@ export function ChatPage({
   const firstUserMessageId = view.find((item) => item.role === "user")?.id;
   const forkDraft = queue.find((item) => item.status === "draft")?.content;
   const latestDetail = findLatestDetail(view);
+  const latestUsage =
+    view.findLast((item) => item.usage !== undefined)?.usage ?? null;
 
   if (!activeId) {
     if (newSession) {
@@ -131,6 +133,7 @@ export function ChatPage({
         draft={forkDraft}
         draftTarget={{ kind: "session", sessionId: activeId }}
         key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
+        usage={latestUsage}
         onControl={() => onControl(paused ? "running" : "pause")}
         onSend={onSend}
       />

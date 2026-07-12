@@ -1,6 +1,7 @@
-import type { BaseMessage } from "@langchain/core/messages";
 import {
+  AIMessage,
   mapStoredMessagesToChatMessages,
+  type BaseMessage,
   type StoredMessage,
 } from "@langchain/core/messages";
 import { AgentDatabase } from "../infrastructure/database";
@@ -93,6 +94,7 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
     queueId: row.queue_id,
     toolCalls: extractToolCalls(message),
     toolCallId: extractToolCallId(message),
+    usage: extractTokenUsage(message),
     createdAt: row.created_at,
   };
 }
@@ -150,6 +152,30 @@ function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
 function extractToolCallId(message: BaseMessage) {
   const value = readRecord(message, "tool_call_id");
   return typeof value === "string" ? value : undefined;
+}
+
+function extractTokenUsage(message: BaseMessage) {
+  if (!AIMessage.isInstance(message) || !message.usage_metadata)
+    return undefined;
+  const {
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    input_token_details: inputDetails,
+  } = message.usage_metadata;
+  const cacheReadTokens = inputDetails?.cache_read ?? 0;
+  for (const [name, value] of Object.entries({
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+  })) {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new Error(`模型 usage_metadata.${name} 无效`);
+    }
+  }
+  if (cacheReadTokens > inputTokens) {
+    throw new Error("模型 cache_read tokens 超过 input tokens");
+  }
+  return { inputTokens, outputTokens, cacheReadTokens };
 }
 
 function readRecordArray(message: BaseMessage, key: string) {
