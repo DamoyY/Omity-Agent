@@ -1,8 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { StructuredToolInterface } from "@langchain/core/tools";
 import { loadMcpTools, MultiServerMCPClient } from "@langchain/mcp-adapters";
 import YAML from "yaml";
 import type { Logger } from "./logger";
+import {
+  configureFreeformMcpTools,
+  normalizeFreeformToolInputs,
+} from "./mcpSupport/freeformToolInputs";
 import { collectReadableZodIssues } from "./mcpSupport/schemaIssueText";
 import { disableMcpRequestTimeout } from "./mcpSupport/requestTimeout";
 import {
@@ -14,6 +19,13 @@ import { createMcpErrorOutputClient } from "./mcpSupport/toolErrorOutput";
 const envPlaceholder = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
 
 type McpServers = Record<string, unknown>;
+
+interface LoadedMcp {
+  tools: StructuredToolInterface[];
+  modelTools: StructuredToolInterface[];
+  freeformToolParameters: ReadonlyMap<string, string>;
+  close: () => Promise<void>;
+}
 
 export function expandEnvPlaceholders(
   value: unknown,
@@ -67,11 +79,14 @@ export function createMcpLoadError(error: unknown): Error {
   );
 }
 
-export async function loadMcp(root: string, logger: Logger) {
+export async function loadMcp(
+  root: string,
+  logger: Logger,
+): Promise<LoadedMcp> {
   const path = resolve(root, "settings", "mcp.yaml");
   if (!existsSync(path)) {
     logger.info("MCP 配置不存在，跳过工具加载", { path });
-    return { tools: [], close: () => Promise.resolve() };
+    return emptyMcp();
   }
   const parsed = expandEnvPlaceholders(
     YAML.parse(readFileSync(path, "utf8")) ?? {},
@@ -79,6 +94,7 @@ export async function loadMcp(root: string, logger: Logger) {
     mcpServers?: Record<string, unknown>;
     servers?: Record<string, unknown>;
     toolNameOverrides?: unknown;
+    freeformToolInputs?: unknown;
   };
   const mcpServers = normalizeMcpServers(
     parsed.mcpServers ?? parsed.servers ?? {},
@@ -86,13 +102,19 @@ export async function loadMcp(root: string, logger: Logger) {
   const toolNameOverrides = normalizeMcpToolNameOverrides(
     parsed.toolNameOverrides,
   );
+  const freeformToolInputs = normalizeFreeformToolInputs(
+    parsed.freeformToolInputs,
+  );
   const names = Object.keys(mcpServers);
   if (names.length === 0) {
     if (Object.keys(toolNameOverrides).length > 0) {
       throw new Error("MCP 工具重命名配置需要至少配置一个 MCP 服务器");
     }
+    if (freeformToolInputs.length > 0) {
+      throw new Error("MCP free-form 工具配置需要至少配置一个 MCP 服务器");
+    }
     logger.info("MCP 未配置服务器，Agent 将不带工具运行");
-    return { tools: [], close: () => Promise.resolve() };
+    return emptyMcp();
   }
   const end = logger.child("MCP 工具加载");
   let client: MultiServerMCPClient | undefined;
@@ -123,12 +145,21 @@ export async function loadMcp(root: string, logger: Logger) {
       ).flat(),
       toolNameOverrides,
     );
+    const configuredTools = configureFreeformMcpTools(
+      tools,
+      freeformToolInputs,
+    );
     logger.info("已加载 MCP 工具", {
       servers: names,
       tools: tools.map((tool) => tool.name),
     });
     const connectedClient = client;
-    return { tools, close: () => connectedClient.close() };
+    return {
+      tools,
+      modelTools: configuredTools.modelTools,
+      freeformToolParameters: configuredTools.parameters,
+      close: () => connectedClient.close(),
+    };
   } catch (error) {
     if (client !== undefined) {
       await client.close();
@@ -137,6 +168,15 @@ export async function loadMcp(root: string, logger: Logger) {
   } finally {
     end();
   }
+}
+
+function emptyMcp(): LoadedMcp {
+  return {
+    tools: [],
+    modelTools: [],
+    freeformToolParameters: new Map(),
+    close: () => Promise.resolve(),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

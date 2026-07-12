@@ -17,14 +17,9 @@ import {
   type BaseCheckpointSaver,
   type LangGraphRunnableConfig,
 } from "@langchain/langgraph";
-import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { BunSqliteSaver } from "../checkpointer";
 import { hookNode, modelNode, toolsNode } from "../hooks/graph/commands";
-import {
-  createHookNode,
-  requireThreadId,
-  type InvokeGraphTool,
-} from "../hooks/graph/node";
+import { createHookNode, requireThreadId } from "../hooks/graph/node";
 import {
   agentPlan,
   requireCallId,
@@ -32,7 +27,6 @@ import {
   type HookPlan,
 } from "../hooks/plan";
 import type { HookRuntime } from "../hooks/runtime";
-import { redirectLargeToolOutput } from "../runtime/largeOutput";
 import { buildSkillsMessage } from "../skills";
 import type { Settings } from "../types";
 import {
@@ -41,6 +35,7 @@ import {
   buildResponsesInstructions,
   modelMessages,
 } from "./model";
+import { createToolInvoker } from "./toolExecution";
 
 const AgentState = Annotation.Root({
   ...MessagesAnnotation.spec,
@@ -64,6 +59,8 @@ interface AgentGraphOptions {
   settings: Settings;
   model: BaseChatModel;
   tools: StructuredToolInterface[];
+  modelTools?: StructuredToolInterface[];
+  freeformToolParameters?: ReadonlyMap<string, string>;
   hooks: HookRuntime;
   checkpointer?: BaseCheckpointSaver;
   skillsMessage?: string | null;
@@ -74,6 +71,10 @@ export function buildGraph(
   tools: StructuredToolInterface[],
   database: Database,
   hooks: HookRuntime,
+  toolOptions: Pick<
+    AgentGraphOptions,
+    "modelTools" | "freeformToolParameters"
+  > = {},
 ) {
   const checkpointer = new BunSqliteSaver(database, hooks.sessionId);
   const skillsMessage = buildSkillsMessage(settings);
@@ -89,6 +90,7 @@ export function buildGraph(
     settings,
     model,
     tools,
+    ...toolOptions,
     hooks,
     checkpointer,
     skillsMessage,
@@ -97,8 +99,15 @@ export function buildGraph(
 }
 
 export function createAgentGraph(options: AgentGraphOptions) {
-  const model = bindModelTools(options.model, options.tools);
-  const invokeTool = createToolInvoker(new ToolNode(options.tools), options);
+  const model = bindModelTools(
+    options.model,
+    options.modelTools ?? options.tools,
+  );
+  const invokeTool = createToolInvoker(options.tools, {
+    settings: options.settings,
+    sessionId: options.hooks.sessionId,
+    freeformToolParameters: options.freeformToolParameters ?? new Map(),
+  });
   const runHooks = createHookNode(options.hooks, invokeTool);
 
   const callModel = async (
@@ -146,40 +155,6 @@ export function createAgentGraph(options: AgentGraphOptions) {
     .compile({ checkpointer: options.checkpointer });
 }
 
-function createToolInvoker(
-  rawTools: ToolNode,
-  options: AgentGraphOptions,
-): InvokeGraphTool {
-  return async (call, state, config) => {
-    const synthetic = new AIMessage({ content: "", tool_calls: [call] });
-    const result: unknown = await rawTools.invoke(
-      { ...state, messages: [...state.messages, synthetic] },
-      config,
-    );
-    const output = singleToolOutput(result, requireCallId(call));
-    return redirectLargeToolOutput(output, {
-      dataDir: options.settings.paths.dataDir,
-      maxTokens: options.settings.toolOutput.maxTokens,
-      sessionId: options.hooks.sessionId,
-      outputId: call.id,
-    });
-  };
-}
-
-function singleToolOutput(value: unknown, callId: string) {
-  if (!isRecord(value) || !Array.isArray(value["messages"])) {
-    throw new Error("工具节点没有返回 messages");
-  }
-  const messages = value["messages"];
-  if (messages.length !== 1 || !ToolMessage.isInstance(messages[0])) {
-    throw new Error("工具节点必须返回一个 ToolMessage");
-  }
-  if (messages[0].tool_call_id !== callId) {
-    throw new Error(`工具节点返回了不匹配的调用 ID：${callId}`);
-  }
-  return messages[0];
-}
-
 function pendingToolCall(messages: BaseMessage[]): ToolCall {
   const completed = new Set(
     messages
@@ -193,8 +168,4 @@ function pendingToolCall(messages: BaseMessage[]): ToolCall {
     );
   if (!call) throw new Error("工具节点没有待执行的工具调用");
   return call;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

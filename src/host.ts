@@ -104,6 +104,10 @@ export async function runHostSession(
       mcp.tools,
       db.db,
       hooks,
+      {
+        modelTools: mcp.modelTools,
+        freeformToolParameters: mcp.freeformToolParameters,
+      },
     );
     const stopOnSigint = () => {
       controller.abort(new Error("收到 Ctrl+C"));

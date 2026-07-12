@@ -1,0 +1,93 @@
+import type { StructuredToolInterface } from "@langchain/core/tools";
+import { customTool } from "@langchain/openai";
+
+export interface FreeformMcpTools {
+  modelTools: StructuredToolInterface[];
+  parameters: ReadonlyMap<string, string>;
+}
+
+export function normalizeFreeformToolInputs(
+  value: unknown,
+  path = "settings/mcp.yaml.freeformToolInputs",
+): string[] {
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`MCP free-form 工具配置 ${path} 必须是数组`);
+  }
+
+  const names = new Set<string>();
+  for (const [index, name] of value.entries()) {
+    if (typeof name !== "string" || name.length === 0) {
+      throw new Error(
+        `MCP free-form 工具配置 ${path}[${index.toString()}] 必须是非空字符串`,
+      );
+    }
+    if (names.has(name)) {
+      throw new Error(`MCP free-form 工具配置包含重复工具：${name}`);
+    }
+    names.add(name);
+  }
+  return [...names];
+}
+
+export function configureFreeformMcpTools(
+  tools: StructuredToolInterface[],
+  names: string[],
+): FreeformMcpTools {
+  const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
+  const parameters = new Map<string, string>();
+
+  for (const name of names) {
+    const tool = toolsByName.get(name);
+    if (!tool) {
+      throw new Error(`MCP free-form 工具配置引用了不存在的工具：${name}`);
+    }
+    parameters.set(name, singleStringParameter(tool));
+  }
+
+  return {
+    parameters,
+    modelTools: tools.map((tool) => {
+      if (!parameters.has(tool.name)) return tool;
+      return customTool(
+        () =>
+          Promise.reject(
+            new Error(`模型工具定义 ${tool.name} 不能直接用于执行`),
+          ),
+        {
+          name: tool.name,
+          description: tool.description,
+          format: { type: "text" },
+        },
+      );
+    }),
+  };
+}
+
+function singleStringParameter(tool: StructuredToolInterface) {
+  const schema: unknown = tool.schema;
+  const properties = isRecord(schema) ? schema["properties"] : undefined;
+  const entries = isRecord(properties) ? Object.entries(properties) : [];
+  if (entries.length !== 1) {
+    throw new Error(
+      `MCP free-form 工具 ${tool.name} 必须恰好声明一个输入参数，实际为 ${entries.length.toString()} 个`,
+    );
+  }
+
+  const [entry] = entries;
+  if (!entry) throw new Error(`MCP free-form 工具 ${tool.name} 缺少输入参数`);
+  const [parameter, definition] = entry;
+  if (!parameter) {
+    throw new Error(`MCP free-form 工具 ${tool.name} 的输入参数名不能为空`);
+  }
+  if (!isRecord(definition) || definition["type"] !== "string") {
+    throw new Error(
+      `MCP free-form 工具 ${tool.name} 的唯一输入参数 ${parameter} 必须是字符串`,
+    );
+  }
+  return parameter;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
