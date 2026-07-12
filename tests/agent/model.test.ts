@@ -90,7 +90,7 @@ test("buildModel passes reasoning_effort to OpenAI Responses API", () => {
   expect(model).toBeInstanceOf(ChatOpenAIResponses);
   expect((model as ChatOpenAIResponses).invocationParams().reasoning).toEqual({
     effort: "low",
-    summary: "auto",
+    summary: "detailed",
   });
 });
 

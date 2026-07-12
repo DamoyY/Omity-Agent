@@ -30,7 +30,7 @@ export function buildModel(settings: Settings, instructions?: string) {
           ...(settings.model.reasoning_effort === undefined
             ? {}
             : { effort: settings.model.reasoning_effort }),
-          summary: "auto",
+          summary: "detailed",
         },
         ...(instructions ? { modelKwargs: { instructions } } : {}),
       })
