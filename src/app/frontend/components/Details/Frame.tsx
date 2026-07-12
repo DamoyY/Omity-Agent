@@ -1,58 +1,62 @@
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { css, cva } from "styled-system/css";
+import { sva } from "styled-system/css";
 
-const details = cva({
+const frame = sva({
+  slots: ["root", "summary", "disclosure", "icon", "title"],
   base: {
-    borderLeftWidth: "2px",
-    color: "muted",
-    fontSize: "sm",
-    maxW: "full",
-    mt: "-2",
-    minW: 0,
-    p: 0,
-    w: "full",
-    "& pre": { m: 0, maxW: "full" },
+    root: {
+      borderLeftWidth: "2px",
+      color: "muted",
+      fontSize: "sm",
+      maxW: "full",
+      mt: "-2",
+      minW: 0,
+      p: 0,
+      w: "full",
+      "& pre": { m: 0, maxW: "full" },
+    },
+    summary: {
+      alignItems: "center",
+      cursor: "pointer",
+      display: "flex",
+      gap: "2",
+      h: "detailHeader",
+      listStyle: "none",
+      maxW: "full",
+      px: "2",
+      _hover: { bg: "controlHover" },
+      "&::-webkit-details-marker": { display: "none" },
+    },
+    disclosure: {
+      color: "muted",
+      flexShrink: 0,
+      transition: "transform 120ms ease",
+      "details[open] &": { transform: "rotate(90deg)" },
+    },
+    icon: { flexShrink: 0 },
+    title: {
+      color: "mutedStrong",
+      flex: "1",
+      lineHeight: "normal",
+      minW: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+    },
   },
   variants: {
     tone: {
-      model: { borderLeftColor: "statusModel" },
-      tool: { borderLeftColor: "statusTool" },
+      model: {
+        root: { borderLeftColor: "statusModel" },
+        icon: { color: "statusModel" },
+      },
+      tool: {
+        root: { borderLeftColor: "statusTool" },
+        icon: { color: "statusTool" },
+      },
     },
   },
-});
-const summary = css({
-  alignItems: "center",
-  cursor: "pointer",
-  display: "flex",
-  gap: "2",
-  h: "2.25rem",
-  listStyle: "none",
-  maxW: "full",
-  px: "2",
-  _hover: { bg: "controlHover" },
-  "&::-webkit-details-marker": { display: "none" },
-});
-const disclosure = css({
-  color: "muted",
-  flexShrink: 0,
-  transition: "transform 120ms ease",
-  "details[open] &": { transform: "rotate(90deg)" },
-});
-const iconTone = cva({
-  base: { flexShrink: 0 },
-  variants: {
-    tone: { model: { color: "statusModel" }, tool: { color: "statusTool" } },
-  },
-});
-const summaryText = css({
-  color: "mutedStrong",
-  flex: "1",
-  lineHeight: "normal",
-  minW: 0,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
 });
 
 export function Frame({
@@ -73,18 +77,19 @@ export function Frame({
   tone: "model" | "tool";
 }) {
   const [expanded, setExpanded] = useState(expandedInitially);
+  const classes = frame({ tone });
   return (
     <details
-      className={details({ tone })}
+      className={classes.root}
       onToggle={(event) => {
         setExpanded(event.currentTarget.open);
       }}
       open={expanded}
     >
-      <summary aria-label={label} className={summary}>
-        <ChevronRight className={disclosure} size={12} />
-        <Icon className={iconTone({ tone })} size={13} />
-        {title ? <span className={summaryText}>{title}</span> : null}
+      <summary aria-label={label} className={classes.summary}>
+        <ChevronRight className={classes.disclosure} size={12} />
+        <Icon className={classes.icon} size={13} />
+        {title ? <span className={classes.title}>{title}</span> : null}
         {accessory}
       </summary>
       {expanded ? children : null}

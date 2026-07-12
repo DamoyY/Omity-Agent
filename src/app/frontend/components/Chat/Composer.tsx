@@ -21,19 +21,28 @@ const form = css({
   borderTopColor: "line",
   display: "grid",
   gap: "3",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  p: "6",
+  gridTemplateColumns: {
+    base: "minmax(0, 1fr)",
+    md: "minmax(0, 1fr) auto",
+  },
+  p: { base: "3", md: "6" },
   w: "full",
 });
 
 const actions = css({
   display: "flex",
-  flexDirection: "column",
+  flexDirection: { base: "row", md: "column" },
+  gap: { base: "3", md: "0" },
   h: "full",
-  minW: "9rem",
+  justifyContent: { base: "space-between", md: "initial" },
+  minW: { md: "controlColumn" },
 });
 
-const controls = css({ display: "grid", gap: "2" });
+const controls = css({
+  display: "grid",
+  gap: "2",
+  gridAutoFlow: { base: "column", md: "row" },
+});
 
 type ControlState = "pause" | "pausing" | "resume";
 

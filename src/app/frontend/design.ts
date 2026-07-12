@@ -5,7 +5,14 @@ export const layout = css({
   color: "text",
   display: "grid",
   fontFamily: "body",
-  gridTemplateColumns: "22rem minmax(0, 1fr)",
+  gridTemplateColumns: {
+    base: "minmax(0, 1fr)",
+    lg: "auto minmax(0, 1fr)",
+  },
+  gridTemplateRows: {
+    base: "minmax(8rem, 35vh) minmax(0, 1fr)",
+    lg: "minmax(0, 1fr)",
+  },
   h: "100vh",
   overflow: "hidden",
 });
@@ -19,6 +26,7 @@ export const sidebar = css({
   minH: 0,
   minW: 0,
   overflow: "hidden",
+  w: { lg: "appSidebar" },
 });
 
 export const main = css({

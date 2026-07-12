@@ -28,7 +28,7 @@ const ioPanel = css({
 });
 const panelTitle = css({ color: "mutedStrong", fontSize: "xs", m: 0 });
 const codeBlock = css({
-  maxH: "16rem",
+  maxH: "toolOutput",
   minH: "3rem",
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",

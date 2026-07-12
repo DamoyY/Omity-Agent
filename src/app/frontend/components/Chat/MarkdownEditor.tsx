@@ -15,7 +15,7 @@ const root = css({
   bg: "surfaceInset",
   borderColor: "lineStrong",
   borderWidth: "1px",
-  h: "12rem",
+  h: "composerEditor",
   minW: 0,
   overflow: "hidden",
   _focusWithin: {

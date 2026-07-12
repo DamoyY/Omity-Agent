@@ -25,23 +25,30 @@ const forkButton = css({
   flexShrink: 0,
 });
 
-const message = css({
-  bg: "surface",
-  borderColor: "line",
-  borderWidth: "1px",
-  display: "grid",
-  gap: "3",
-  justifyItems: "start",
-  maxW: "52rem",
-  minW: 0,
-  p: "4",
-  textAlign: "left",
-  w: "fit-content",
-});
-
-const userMessage = css({
-  bg: "surfaceRaised",
-  borderColor: "lineStrong",
+const message = cva({
+  base: {
+    bg: "surface",
+    borderColor: "line",
+    borderWidth: "1px",
+    display: "grid",
+    gap: "3",
+    justifyItems: "start",
+    maxW: "content",
+    minW: 0,
+    p: "4",
+    textAlign: "left",
+    w: "fit-content",
+  },
+  variants: {
+    role: {
+      assistant: {},
+      tool: {},
+      user: {
+        bg: "surfaceRaised",
+        borderColor: "lineStrong",
+      },
+    },
+  },
 });
 
 const roleTone = cva({
@@ -81,7 +88,7 @@ export function Message({
   const tone = roleTone({ role: item.role });
   return (
     <div className={cx(row, item.role === "user" && userRow)}>
-      <article className={cx(message, item.role === "user" && userMessage)}>
+      <article className={message({ role: item.role })}>
         <div className={header}>
           <span className={actions}>
             {canFork ? (

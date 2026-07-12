@@ -12,13 +12,13 @@ const content = css({
   gap: "4",
   minH: 0,
   overflowY: "auto",
-  p: "6",
+  p: { base: "3", md: "6" },
 });
 
 const form = css({
   display: "grid",
   gap: "3",
-  maxW: "52rem",
+  maxW: "content",
   w: "full",
 });
 
@@ -32,7 +32,10 @@ const title = css({
 const workspaceRow = css({
   display: "grid",
   gap: "2",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gridTemplateColumns: {
+    base: "minmax(0, 1fr)",
+    sm: "minmax(0, 1fr) auto",
+  },
   minW: 0,
 });
 
