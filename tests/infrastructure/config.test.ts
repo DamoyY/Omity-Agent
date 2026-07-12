@@ -2,13 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
+import { appDataRoot } from "../../src/infrastructure/configuration/configuredPath";
+import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import {
-  appDataRoot,
-  loadSettings,
   safeId,
   sessionPaths,
-} from "../../src/infrastructure/config";
-import { loadHookRules } from "../../src/hooks/config";
+} from "../../src/infrastructure/configuration/sessionPaths";
+import { loadHookRules } from "../../src/infrastructure/configuration/hookRules";
 import { resolveHookArgs } from "../../src/hooks/variables";
 
 const dirs: string[] = [];

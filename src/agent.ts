@@ -7,5 +7,5 @@ export {
 export {
   normalizeResponsesPayload,
   normalizeResponsesStreamEvent,
-} from "./infrastructure/responses";
+} from "./infrastructure/openai/normalizeResponse";
 export { hookNode, modelNode, toolsNode } from "./hooks/graph/commands";

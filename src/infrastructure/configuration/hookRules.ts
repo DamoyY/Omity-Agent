@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import YAML from "yaml";
 import { z } from "zod";
-import type { HookRule } from "../types";
+import type { HookRule } from "../../types";
 
 const argsSchema = z.record(z.string(), z.unknown());
 const callFields = {

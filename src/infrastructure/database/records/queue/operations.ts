@@ -1,9 +1,12 @@
 import type { Database } from "bun:sqlite";
-import { DomainError } from "../errors";
-import { stringifyError, type ErrorDetails } from "../failures/details";
-import type { QueueItem, QueueStatus } from "../types";
-import { insertUserMessage } from "./messages";
-import { toQueueItem, type QueueRow } from "./queueRows";
+import { DomainError } from "../../../../errors";
+import {
+  stringifyError,
+  type ErrorDetails,
+} from "../../../../failures/details";
+import type { QueueItem, QueueStatus } from "../../../../types";
+import { insertUserMessage } from "../messages/history";
+import { toQueueItem, type QueueRow } from "./rowMapping";
 
 const queueSelect = `
   SELECT q.id, q.root_id, COALESCE(q.content, '') AS content,

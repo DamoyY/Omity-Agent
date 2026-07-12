@@ -2,12 +2,12 @@ import { afterEach, expect, test } from "bun:test";
 import {
   expandEnvPlaceholders,
   normalizeMcpServers,
-} from "../../src/infrastructure/mcp";
+} from "../../src/infrastructure/mcp/config";
 import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
-} from "../../src/infrastructure/mcpSupport/toolNameOverrides";
-import { mcpErrorResultAsOutput } from "../../src/infrastructure/mcpSupport/toolErrorOutput";
+} from "../../src/infrastructure/mcp/nameOverrides";
+import { mcpErrorResultAsOutput } from "../../src/infrastructure/mcp/errorOutput";
 
 const savedEnv = new Map<string, string | undefined>();
 

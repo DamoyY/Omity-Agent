@@ -3,12 +3,12 @@ import { DynamicStructuredTool } from "@langchain/core/tools";
 import { afterEach, expect, test } from "bun:test";
 import { modelMessages } from "../../src/agent/model";
 import { createToolInvoker } from "../../src/agent/toolExecution";
-import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/responses";
-import { configureFreeformMcpTools } from "../../src/infrastructure/mcpSupport/freeformToolInputs";
+import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
+import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
 import {
   messageInsert,
   messageRowsToChatMessages,
-} from "../../src/infrastructure/messageSerialization";
+} from "../../src/infrastructure/database/records/messages/serialization";
 import { testSettings } from "../support/settings";
 
 const servers: ReturnType<typeof Bun.serve>[] = [];

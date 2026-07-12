@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { assertCoreSchema } from "./schemaValidation";
+import { assertCoreSchema } from "./validateSchema";
 
 export const migrationSql = [
   `

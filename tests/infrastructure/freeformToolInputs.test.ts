@@ -10,7 +10,7 @@ import { materializeFreeformToolCall } from "../../src/agent/toolExecution";
 import {
   configureFreeformMcpTools,
   normalizeFreeformToolInputs,
-} from "../../src/infrastructure/mcpSupport/freeformToolInputs";
+} from "../../src/infrastructure/mcp/freeformInputs";
 
 test("normalizes free-form tool names", () => {
   expect(normalizeFreeformToolInputs(undefined)).toEqual([]);

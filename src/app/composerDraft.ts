@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { Settings } from "../types";
-import { resolveSessionPaths } from "../infrastructure/config";
-import { AgentDatabase } from "../infrastructure/database";
+import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
+import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 
 export function readSessionDraft(settings: Settings, sessionId: string) {
   return withSessionDatabase(settings, sessionId, (db) => {

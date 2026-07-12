@@ -4,7 +4,7 @@ import {
   type BaseMessage,
   type StoredMessage,
 } from "@langchain/core/messages";
-import { AgentDatabase } from "../infrastructure/database";
+import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import { contentToText, messageReasoning } from "../runtime/content";
 import { extractToolImages } from "../runtime/modelImages";
 import { parseError } from "../failures/details";

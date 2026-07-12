@@ -3,14 +3,14 @@ import { existsSync } from "node:fs";
 import { runClient } from "../client";
 import { sessionNotFound } from "../errors";
 import { deleteHostSession } from "../host";
+import { loadSettings } from "../infrastructure/configuration/loadSettings";
 import {
-  loadSettings,
   resolveSessionPaths,
   sessionPaths,
-} from "../infrastructure/config";
-import { AgentDatabase } from "../infrastructure/database";
-import { removeDatabaseDirectory } from "../infrastructure/sqlite";
-import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
+} from "../infrastructure/configuration/sessionPaths";
+import { normalizeWorkspacePath } from "../infrastructure/configuration/workspacePath";
+import { AgentDatabase } from "../infrastructure/database/agentDatabase";
+import { removeDatabaseDirectory } from "../infrastructure/database/connection";
 import type { Control, Settings } from "../types";
 import {
   clearSessionDraft,

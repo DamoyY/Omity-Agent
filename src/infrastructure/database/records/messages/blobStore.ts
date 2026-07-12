@@ -1,10 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
-import {
-  messageInsert,
-  messageRowsToChatMessages,
-} from "./messageSerialization";
+import { messageInsert, messageRowsToChatMessages } from "./serialization";
 
 export interface StoredMessageRef {
   sourceId: string;

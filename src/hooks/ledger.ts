@@ -1,7 +1,10 @@
 import { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import { ToolMessage } from "@langchain/core/messages";
-import { loadMessage, storeMessage } from "../infrastructure/messages";
+import {
+  loadMessage,
+  storeMessage,
+} from "../infrastructure/database/records/messages/history";
 import {
   applyInvocationSchema,
   bindInvocation,

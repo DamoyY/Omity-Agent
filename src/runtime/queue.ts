@@ -10,7 +10,7 @@ import {
   type QueueRun,
 } from "./run";
 import { createStreamLogState, handleStreamEvent } from "./stream";
-import { queueMessageId } from "../infrastructure/messages";
+import { queueMessageId } from "../infrastructure/database/records/messages/history";
 import { consumeBoundaryAppends } from "./appends";
 import { captureError } from "../failures/details";
 

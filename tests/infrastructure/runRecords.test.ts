@@ -1,6 +1,6 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { queueMessageId } from "../../src/infrastructure/messages";
+import { queueMessageId } from "../../src/infrastructure/database/records/messages/history";
 import {
   cleanupDatabaseDirs,
   makeDb,

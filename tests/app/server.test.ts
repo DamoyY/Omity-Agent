@@ -24,8 +24,9 @@ import {
   resolveSessionState,
   resolveSessionStatus,
 } from "../../src/app/sessionState";
-import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
+import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { captureError } from "../../src/failures/details";
 import { required } from "../support/database";
 

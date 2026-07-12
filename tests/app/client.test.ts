@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
 import { parseClientIntent, runClient } from "../../src/client";
-import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
+import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 
 const dirs: string[] = [];
 

@@ -1,20 +1,20 @@
 import { existsSync } from "node:fs";
 import { buildGraph } from "./agent";
 import { sessionConflict, sessionNotFound } from "./errors";
+import { loadSettings } from "./infrastructure/configuration/loadSettings";
 import {
-  loadSettings,
   resolveSessionPaths,
   sessionPaths,
-} from "./infrastructure/config";
-import { AgentDatabase } from "./infrastructure/database";
-import { Logger } from "./infrastructure/logger";
-import { loadMcp } from "./infrastructure/mcp";
-import { normalizeWorkspacePath } from "./infrastructure/workspacePath";
+} from "./infrastructure/configuration/sessionPaths";
+import { normalizeWorkspacePath } from "./infrastructure/configuration/workspacePath";
+import { AgentDatabase } from "./infrastructure/database/agentDatabase";
+import { removeDatabaseDirectory } from "./infrastructure/database/connection";
+import { Logger } from "./infrastructure/logging/logger";
+import { loadMcp } from "./infrastructure/mcp/loadTools";
 import { hostLoop } from "./runtime/loop";
 import { HostLease, type HostObserver } from "./runtime/context";
 import { HookLedger } from "./hooks/ledger";
 import { HookRuntime } from "./hooks/runtime";
-import { removeDatabaseDirectory } from "./infrastructure/sqlite";
 
 export interface HostMode {
   kind: "new" | "load" | "overwrite";

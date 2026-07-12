@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 
 const dirs: string[] = [];
 

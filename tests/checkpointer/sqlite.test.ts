@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
 import { TASKS } from "@langchain/langgraph-checkpoint";
 import { BunSqliteSaver } from "../../src/checkpointer";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];

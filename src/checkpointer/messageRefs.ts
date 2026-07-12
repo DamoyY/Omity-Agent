@@ -12,8 +12,8 @@ import {
   messageRef,
   persistMessageBlob,
   type StoredMessageRef,
-} from "../infrastructure/messageBlobs";
-import { syncMessages } from "../infrastructure/messages";
+} from "../infrastructure/database/records/messages/blobStore";
+import { syncMessages } from "../infrastructure/database/records/messages/history";
 
 const messageRefsKey = "__omity_message_refs__";
 const storedMessageRefKey = "__omity_stored_message_ref__";

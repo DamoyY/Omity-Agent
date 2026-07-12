@@ -2,9 +2,12 @@ import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { Database } from "bun:sqlite";
 import { sessionNotFound } from "../errors";
-import { resolveSessionPaths } from "../infrastructure/config";
-import { applySchema } from "../infrastructure/schema";
-import { closeDatabase, configureDatabase } from "../infrastructure/sqlite";
+import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
+import {
+  closeDatabase,
+  configureDatabase,
+} from "../infrastructure/database/connection";
+import { applySchema } from "../infrastructure/database/schema";
 import type { Control, Settings } from "../types";
 import { parseError, type ErrorDetails } from "../failures/details";
 

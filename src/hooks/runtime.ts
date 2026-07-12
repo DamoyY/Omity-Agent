@@ -1,6 +1,6 @@
 import type { ToolMessage } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
-import type { Logger } from "../infrastructure/logger";
+import type { Logger } from "../infrastructure/logging/logger";
 import type { HookRule, HookWhen } from "../types";
 import { executeRecorded, restoreInvocation } from "./execution";
 import { HookLedger } from "./ledger";

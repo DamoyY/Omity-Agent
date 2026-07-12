@@ -1,15 +1,15 @@
 import { Database } from "bun:sqlite";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { Control, QueueItem, QueueStatus } from "../types";
-import type { ErrorDetails } from "../failures/details";
+import type { Control, QueueItem, QueueStatus } from "../../types";
+import type { ErrorDetails } from "../../failures/details";
 import {
   clearQueueStreamEvents,
   clearStreamEvents,
   insertStreamReasoning,
   insertStreamToken,
   insertStreamToolCall,
-} from "./eventRecords";
-import { loadMessages, syncMessages } from "./messages";
+} from "./records/streamEvents";
+import { loadMessages, syncMessages } from "./records/messages/history";
 import {
   appendDraftQueue,
   appendUserQueue,
@@ -19,22 +19,25 @@ import {
   queueStatusRecord,
   setQueueStatusRecord,
   startQueueRecord,
-} from "./queueRecords";
+} from "./records/queue/operations";
 import { applySchema } from "./schema";
-import { closeDatabase, configureDatabase } from "./sqlite";
+import { closeDatabase, configureDatabase } from "./connection";
+import { resetSessionStorage } from "./maintenance";
 import {
   acquireHostLeaseRecord,
+  releaseHostLeaseRecord,
+  renewHostLeaseRecord,
+  type HostLeaseClaim,
+} from "./records/hostLeases";
+import {
   createSessionRecord,
   hasSessionRecord,
   readControlRecord,
   readWorkspaceRecord,
-  releaseHostLeaseRecord,
-  renewHostLeaseRecord,
   requireSessionRecord,
   touchSessionRecord,
   writeControlRecord,
-  type HostLeaseClaim,
-} from "./sessionRecords";
+} from "./records/sessions";
 
 type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown
   ? Args
@@ -64,20 +67,9 @@ export class AgentDatabase {
   }
 
   resetSession(sessionId: string, workspace: string) {
-    const tx = this.db.transaction(() => {
-      this.db.query("DELETE FROM writes").run();
-      this.db.query("DELETE FROM checkpoints").run();
-      this.db.query("DELETE FROM invocations").run();
-      this.db.query("DELETE FROM hook_usage").run();
-      this.db.query("DELETE FROM host_leases").run();
-      clearStreamEvents(this.db, sessionId);
-      this.db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
-      this.db.query("DELETE FROM message_blobs").run();
-      this.db.query("DELETE FROM queue WHERE session_id = ?").run(sessionId);
-      this.db.query("DELETE FROM sessions WHERE id = ?").run(sessionId);
-      this.createSession(sessionId, workspace);
-    });
-    tx();
+    this.db.transaction(() => {
+      resetSessionStorage(this.db, sessionId, workspace);
+    })();
   }
 
   createSession(sessionId: string, workspace: string) {

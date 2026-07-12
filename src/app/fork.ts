@@ -1,9 +1,9 @@
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import { DomainError } from "../errors";
-import { AgentDatabase } from "../infrastructure/database";
-import { messageRowsToChatMessages } from "../infrastructure/messageSerialization";
-import { storeMessage } from "../infrastructure/messages";
+import { AgentDatabase } from "../infrastructure/database/agentDatabase";
+import { storeMessage } from "../infrastructure/database/records/messages/history";
+import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { contentToText } from "../runtime/content";
 
 interface MessageRow {

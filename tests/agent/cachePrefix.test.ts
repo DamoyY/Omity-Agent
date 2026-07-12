@@ -3,8 +3,8 @@ import { ChatOpenAICompletions } from "@langchain/openai";
 import { expect, test } from "bun:test";
 import type { OpenAI } from "openai";
 import { modelMessages } from "../../src/agent/model";
-import { configureFreeformMcpTools } from "../../src/infrastructure/mcpSupport/freeformToolInputs";
-import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/responses";
+import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
+import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
 import {
   cacheTestCleanup,
   imageToolOutput,

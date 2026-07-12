@@ -1,9 +1,9 @@
 import { AIMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { parseError } from "../../src/failures/details";
-import { Logger } from "../../src/infrastructure/logger";
+import { Logger } from "../../src/infrastructure/logging/logger";
 import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import type { Settings } from "../../src/types";

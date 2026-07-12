@@ -3,7 +3,7 @@ import type { BaseMessage } from "@langchain/core/messages";
 import { AIMessage, SystemMessage } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { ChatOpenAICompletions } from "@langchain/openai";
-import { CompatibleChatOpenAIResponses } from "../infrastructure/responses";
+import { CompatibleChatOpenAIResponses } from "../infrastructure/openai/compatibleResponses";
 import { prepareModelImageMessages } from "../runtime/modelImages";
 import type { Settings } from "../types";
 

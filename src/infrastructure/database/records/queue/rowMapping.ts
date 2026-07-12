@@ -1,4 +1,4 @@
-import type { QueueItem, QueueStatus } from "../types";
+import type { QueueItem, QueueStatus } from "../../../../types";
 
 export interface QueueRow {
   id: number;

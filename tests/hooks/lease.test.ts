@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { ToolMessage } from "@langchain/core/messages";
 import { expect, test } from "bun:test";
 import { HookLedger } from "../../src/hooks/ledger";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 
 const details = {
   trigger: "agent:before",

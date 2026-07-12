@@ -1,8 +1,8 @@
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database";
-import { Logger } from "../../src/infrastructure/logger";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HostContext } from "../../src/runtime/context";
 import { processQueue } from "../../src/runtime/queue";
 import {

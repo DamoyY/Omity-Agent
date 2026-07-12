@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { pruneMessageBlobs } from "../infrastructure/messageBlobs";
+import { pruneMessageBlobs } from "../infrastructure/database/records/messages/blobStore";
 
 export function deleteThreadData(db: Database, threadId: string) {
   db.transaction(() => {

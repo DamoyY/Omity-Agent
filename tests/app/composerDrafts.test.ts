@@ -7,8 +7,8 @@ import {
   readSessionDraft,
   writeSessionDraft,
 } from "../../src/app/composerDraft";
-import { sessionPaths } from "../../src/infrastructure/config";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { testSettings } from "../support/settings";
 
 const dirs: string[] = [];

@@ -22,7 +22,7 @@ import {
   pruneMessageBlobs,
   replaceCheckpointBlobRefs,
   replaceWriteBlobRefs,
-} from "../infrastructure/messageBlobs";
+} from "../infrastructure/database/records/messages/blobStore";
 
 export async function putCheckpoint(
   db: Database,

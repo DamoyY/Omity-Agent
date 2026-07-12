@@ -1,5 +1,5 @@
 import { HumanMessage } from "@langchain/core/messages";
-import { queueMessageId } from "../infrastructure/messages";
+import { queueMessageId } from "../infrastructure/database/records/messages/history";
 import type { HostContext } from "./context";
 import type { QueueRun } from "./run";
 

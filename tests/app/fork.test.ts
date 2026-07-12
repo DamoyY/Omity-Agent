@@ -1,7 +1,7 @@
 import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { forkDatabaseBeforeMessage } from "../../src/app/fork";
-import { appendAssistantMessage } from "../../src/infrastructure/messages";
+import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
 import {
   cleanupDatabaseDirs,
   makeDb,

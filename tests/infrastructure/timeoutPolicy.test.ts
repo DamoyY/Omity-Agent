@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { Protocol } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import { disableMcpRequestTimeout } from "../../src/infrastructure/mcpSupport/requestTimeout";
+import { disableMcpRequestTimeout } from "../../src/infrastructure/mcp/requestTimeout";
 
 test("mcp request timeout is disabled", () => {
   disableMcpRequestTimeout();

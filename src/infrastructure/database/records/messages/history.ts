@@ -5,11 +5,8 @@ import {
 } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
-import {
-  messageRowsToChatMessages,
-  type MessageRow,
-} from "./messageSerialization";
-import { persistMessageBlob, pruneMessageBlobs } from "./messageBlobs";
+import { messageRowsToChatMessages, type MessageRow } from "./serialization";
+import { persistMessageBlob, pruneMessageBlobs } from "./blobStore";
 
 const messageColumns =
   "b.message_json AS message_json, m.source_id AS source_id";

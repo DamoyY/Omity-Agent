@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
-import { appendAssistantMessage } from "../../src/infrastructure/messages";
-import { sqliteBusyTimeoutMs } from "../../src/infrastructure/sqlite";
+import { sqliteBusyTimeoutMs } from "../../src/infrastructure/database/connection";
+import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
 import {
   cleanupDatabaseDirs,
   makeDatabases,

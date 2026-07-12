@@ -1,7 +1,7 @@
 import { ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { afterEach } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 
 const servers: ReturnType<typeof Bun.serve>[] = [];
 const databases: AgentDatabase[] = [];

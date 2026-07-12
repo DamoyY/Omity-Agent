@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { ToolMessage, type MessageContent } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
 import { getEncoding } from "js-tiktoken";
-import { safeId } from "../infrastructure/config";
+import { safeId } from "../infrastructure/configuration/sessionPaths";
 import type { Settings } from "../types";
 import { inspectToolTextContent } from "./outputText";
 

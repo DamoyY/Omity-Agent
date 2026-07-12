@@ -1,6 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import { z } from "zod";
-import { safeId } from "../../infrastructure/config";
+import { safeId } from "../../infrastructure/configuration/sessionPaths";
 import { HttpError } from "./errors";
 
 export const requestBodyLimit = 1024 * 1024;
