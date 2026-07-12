@@ -44,6 +44,15 @@ mcpServers:
       - --mcp
     env:
       CODEGRAPH_MCP_TOOLS: codegraph_node,codegraph_search,codegraph_callers,codegraph_callees,codegraph_impact
+  win_capture:
+    transport: stdio
+    command: F:/workspace/windows_capture/target/release/WinCapture.exe
 
 toolNameOverrides:
   diff__apply_patch: apply_patch
+  codegraph__codegraph_explore: codegraph_explore
+  codegraph__codegraph_node: codegraph_node
+  codegraph__codegraph_search: codegraph_search
+  codegraph__codegraph_callers: codegraph_callers
+  codegraph__codegraph_callees: codegraph_callees
+  codegraph__codegraph_impact: codegraph_impact
