@@ -1,4 +1,4 @@
-import { FolderOpen } from "lucide-react";
+import { Check, FolderOpen, History } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
@@ -40,14 +40,44 @@ const pathInput = css({
   textOverflow: "ellipsis",
 });
 
+const recent = css({
+  display: "grid",
+  gap: "2",
+});
+
+const recentLabel = css({
+  color: "muted",
+  fontSize: "xs",
+});
+
+const recentList = css({
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "2",
+  minW: 0,
+});
+
+const recentButton = css({
+  maxW: "full",
+  minW: 0,
+});
+
+const recentPath = css({
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+});
+
 export function NewSessionPage({
   pageClassName,
+  recentWorkspaces,
   workspace,
   onPickWorkspace,
   onSend,
   onWorkspaceChange,
 }: {
   pageClassName: string;
+  recentWorkspaces: string[];
   workspace: string;
   onPickWorkspace: () => Promise<string | null>;
   onSend: (content: string) => Promise<void>;
@@ -90,6 +120,32 @@ export function NewSessionPage({
                 <FolderOpen size={14} /> {t("chooseFolder")}
               </Button>
             </span>
+            {recentWorkspaces.length > 0 ? (
+              <div className={recent}>
+                <span className={recentLabel}>{t("recentWorkspaces")}</span>
+                <div className={recentList}>
+                  {recentWorkspaces.map((recentWorkspace) => (
+                    <Button
+                      aria-pressed={recentWorkspace === workspace}
+                      className={recentButton}
+                      key={recentWorkspace}
+                      onClick={() => {
+                        onWorkspaceChange(recentWorkspace);
+                      }}
+                      title={recentWorkspace}
+                      type="button"
+                    >
+                      {recentWorkspace === workspace ? (
+                        <Check size={14} />
+                      ) : (
+                        <History size={14} />
+                      )}
+                      <span className={recentPath}>{recentWorkspace}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </Field.Root>
         </div>
       </section>

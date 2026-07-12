@@ -2,6 +2,7 @@
   "brand": "Omity",
   "newSession": "新建会话",
   "workspace": "工作目录",
+  "recentWorkspaces": "最近使用",
   "chooseFolder": "选择文件夹",
   "create": "创建",
   "messagePlaceholder": "输入消息，Ctrl + Enter 发送",

@@ -21,6 +21,7 @@ import {
   useBootstrap,
   useSessionTranscript,
 } from "./services/queries";
+import { recentWorkspaces } from "./services/recentWorkspaces";
 
 export function App() {
   const { t } = useTranslation();
@@ -98,6 +99,7 @@ export function App() {
           pausing={pausing}
           control={transcript.control}
           queue={transcript.queue}
+          recentWorkspaces={recentWorkspaces(sessions)}
           view={transcript.view}
           workspace={newWorkspace ?? cwd}
           onControl={async (control) => {

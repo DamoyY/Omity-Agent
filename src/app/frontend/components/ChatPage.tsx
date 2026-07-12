@@ -75,6 +75,7 @@ export function ChatPage({
   newSession,
   pausing,
   queue,
+  recentWorkspaces,
   view,
   workspace,
   onSend,
@@ -89,6 +90,7 @@ export function ChatPage({
   newSession: boolean;
   pausing: boolean;
   queue: DisplayQueue[];
+  recentWorkspaces: string[];
   view: TimelineMessage[];
   workspace?: string;
   onSend: (content: string) => Promise<void>;
@@ -108,6 +110,7 @@ export function ChatPage({
       return (
         <NewSessionPage
           pageClassName={page}
+          recentWorkspaces={recentWorkspaces}
           workspace={workspace ?? ""}
           onPickWorkspace={onPickWorkspace}
           onSend={onSend}
