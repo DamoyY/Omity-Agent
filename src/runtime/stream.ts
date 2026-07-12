@@ -1,17 +1,24 @@
 import { AIMessageChunk } from "@langchain/core/messages";
 import type { HostContext } from "./context";
-import { contentBlocksToReasoning, contentToText } from "./content";
+import {
+  contentToText,
+  createReasoningStreamState,
+  type ReasoningStreamState,
+  streamedMessageReasoning,
+} from "./content";
 
 const omitted = Symbol("omitted");
 type DiffResult = { value: unknown } | typeof omitted;
 
 export interface StreamLogState {
+  reasoning: ReasoningStreamState;
   seenFacts: Set<string>;
   seenStructures: Set<string>;
 }
 
 export function createStreamLogState(): StreamLogState {
   return {
+    reasoning: createReasoningStreamState(),
     seenFacts: new Set(),
     seenStructures: new Set(),
   };
@@ -35,7 +42,7 @@ export function handleStreamEvent(
     if (!isAiChunk(chunk)) return;
     const messageId = readMessageId(chunk);
     const text = contentToText(chunk.content);
-    const reasoning = contentBlocksToReasoning(chunk.contentBlocks);
+    const reasoning = streamedMessageReasoning(chunk, state.reasoning);
     if (text && ctx.settings.logging.streamTokens) {
       ctx.logger.token(text);
     }
