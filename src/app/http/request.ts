@@ -5,12 +5,20 @@ import { HttpError } from "./errors";
 
 export const requestBodyLimit = 1024 * 1024;
 
+const nonEmptyMessage = z.string().refine((value) => value.trim().length > 0);
+
 export const createSessionBody = z
-  .object({ workspace: z.string().trim().min(1).max(32_767) })
+  .object({
+    workspace: z.string().trim().min(1).max(32_767),
+    history: z.array(
+      z.object({ user: nonEmptyMessage, assistant: nonEmptyMessage }).strict(),
+    ),
+    message: nonEmptyMessage,
+  })
   .strict();
 export const messageBody = z
   .object({
-    content: z.string().refine((value) => value.trim().length > 0),
+    content: nonEmptyMessage,
     draftRevision: z.number().int().nonnegative(),
   })
   .strict();

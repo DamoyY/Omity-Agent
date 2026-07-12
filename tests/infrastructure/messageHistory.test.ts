@@ -6,8 +6,45 @@ import {
   required,
   workspace,
 } from "../support/database";
+import { initializeConversation } from "../../src/infrastructure/database/initialConversation";
 
 afterEach(cleanupDatabaseDirs);
+
+test("initial conversation keeps history outside the pending queue", () => {
+  const db = makeDb();
+  db.resetSession("123", workspace);
+
+  const queueId = initializeConversation(
+    db.db,
+    "123",
+    [
+      new HumanMessage("历史问题一"),
+      new AIMessage("历史回答一"),
+      new HumanMessage("历史问题二"),
+      new AIMessage("历史回答二"),
+    ],
+    "当前问题",
+  );
+
+  expect(db.history("123").map((message) => message.text)).toEqual([
+    "历史问题一",
+    "历史回答一",
+    "历史问题二",
+    "历史回答二",
+  ]);
+  expect(
+    db.pendingAppends("123").map(({ id, content }) => ({ id, content })),
+  ).toEqual([{ id: queueId, content: "当前问题" }]);
+  db.startQueue("123", required(db.nextQueue("123")));
+  expect(db.history("123").map((message) => message.text)).toEqual([
+    "历史问题一",
+    "历史回答一",
+    "历史问题二",
+    "历史回答二",
+    "当前问题",
+  ]);
+  db.close();
+});
 
 test("preserves full LangChain message structure", () => {
   const db = makeDb();

@@ -55,7 +55,13 @@ export function createApi(controller: ApiController) {
   );
   app.post("/api/sessions", async (c) => {
     const body = await readJson(c.req, createSessionBody);
-    return c.json({ session: controller.createSession(body.workspace) });
+    return c.json({
+      session: controller.createSession(
+        body.workspace,
+        body.history,
+        body.message,
+      ),
+    });
   });
   app.delete("/api/sessions/:sessionId", async (c) => {
     const sessionId = decodeSessionId(c.req.param("sessionId"));

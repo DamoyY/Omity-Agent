@@ -22,6 +22,37 @@ test("API JSON validation rejects invalid controls and empty messages", async ()
   expect(emptyMessage.status).toBe(400);
 });
 
+test("session creation validates and forwards the complete initial state", async () => {
+  const calls: unknown[] = [];
+  const controller = apiController();
+  controller.createSession = (...args: unknown[]) => {
+    calls.push(args);
+    return {
+      id: "new-session",
+      workspace: "F:/workspace",
+      createdAt: 1,
+      updatedAt: 1,
+      status: "idle",
+      error: null,
+    };
+  };
+  const api = createApi(controller);
+  const body = {
+    workspace: "F:/workspace",
+    history: [{ user: "旧问题", assistant: "旧回答" }],
+    message: "新问题",
+  };
+  const response = await api.request("/api/sessions", jsonRequest(body));
+  expect(response.status).toBe(200);
+  expect(calls).toEqual([[body.workspace, body.history, body.message]]);
+
+  const incomplete = await api.request(
+    "/api/sessions",
+    jsonRequest({ ...body, history: [{ user: "", assistant: "回答" }] }),
+  );
+  expect(incomplete.status).toBe(400);
+});
+
 test("API JSON reader enforces the body size limit", async () => {
   const body = `"${"x".repeat(requestBodyLimit)}"`;
   const response = await createApi(apiController()).request(

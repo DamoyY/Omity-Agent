@@ -4,6 +4,7 @@ import type { SessionStatus } from "../../../types";
 import { z } from "zod";
 import { reportError } from "./errors";
 import type { ErrorDetails } from "../../../failures/details";
+import type { InitialSessionState } from "../../initialState";
 
 const errorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
@@ -34,10 +35,13 @@ export async function bootstrap(signal?: AbortSignal) {
   });
 }
 
-export async function createSession(workspace: string) {
+export async function createSession(
+  workspace: string,
+  initialState: InitialSessionState,
+) {
   return request<{ session: SessionInfo }>("/api/sessions", {
     method: "POST",
-    body: JSON.stringify({ workspace }),
+    body: JSON.stringify({ workspace, ...initialState }),
   });
 }
 

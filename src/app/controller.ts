@@ -11,7 +11,9 @@ import {
 import { normalizeWorkspacePath } from "../infrastructure/configuration/workspacePath";
 import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import { removeDatabaseDirectory } from "../infrastructure/database/connection";
+import { initializeConversation } from "../infrastructure/database/initialConversation";
 import type { Control, Settings } from "../types";
+import { initialHistory, type InitialMessagePair } from "./initialState";
 import {
   clearSessionDraft,
   readSessionDraft,
@@ -60,12 +62,26 @@ export class AppController {
     return pickWorkspaceDirectory();
   }
 
-  createSession(workspace: string) {
+  createSession(
+    workspace: string,
+    history: InitialMessagePair[],
+    message: string,
+  ) {
     const root = normalizeWorkspacePath(workspace, this.appRoot);
-    loadSettings(this.appRoot, { cwd: root });
+    const settings = loadSettings(this.appRoot, { cwd: root });
     const id = `web-${randomUUID()}`;
-    this.hosts.start(id, root, "new");
-    this.hosts.clearError(id);
+    const paths = sessionPaths(settings, id);
+    const db = new AgentDatabase(paths.dbPath);
+    let initialized = false;
+    try {
+      db.createSession(id, root);
+      initializeConversation(db.db, id, initialHistory(history), message);
+      initialized = true;
+    } finally {
+      db.close();
+      if (!initialized) removeDatabaseDirectory(paths.dir);
+    }
+    this.hosts.start(id, root, "load");
     const now = Math.floor(Date.now() / 1000);
     return {
       id,

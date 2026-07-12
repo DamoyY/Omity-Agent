@@ -21,6 +21,7 @@ import {
   useSessionTranscript,
 } from "./services/queries";
 import { recentWorkspaces } from "./services/recentWorkspaces";
+import type { InitialSessionState } from "../initialState";
 
 export function App() {
   const queryClient = useQueryClient();
@@ -90,6 +91,14 @@ export function App() {
           sessionStatus={activeSession?.status}
           view={transcript.view}
           workspace={newWorkspace ?? cwd}
+          onCreate={async (initialState: InitialSessionState) => {
+            const { session } = await createSession(
+              newWorkspace ?? cwd,
+              initialState,
+            );
+            addSession(queryClient, session);
+            navigate(sessionPage(session.id));
+          }}
           onControl={async (control) => {
             if (!activeSession) return;
             const running = transcript.queue.some(
@@ -129,13 +138,6 @@ export function App() {
           onSend={async (content, draftRevision) => {
             if (forkDraft && activeSession) {
               await sendMessage(activeSession.id, content, draftRevision);
-              return;
-            }
-            if (currentPage.kind === "new") {
-              const { session } = await createSession(newWorkspace ?? cwd);
-              addSession(queryClient, session);
-              await sendMessage(session.id, content, 0);
-              navigate(sessionPage(session.id));
               return;
             }
             if (!activeSession) return;

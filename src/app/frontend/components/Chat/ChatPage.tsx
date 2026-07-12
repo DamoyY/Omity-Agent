@@ -3,9 +3,10 @@ import { css } from "styled-system/css";
 import type { DisplayQueue, TimelineMessage } from "../../../timeline";
 import type { Control, SessionStatus } from "../../../../types";
 import { Composer } from "./Composer";
-import { NewSessionPage } from "../NewSessionPage";
+import { NewSessionPage } from "../NewSession";
 import { TranscriptScroll } from "../TranscriptScroll";
 import { Message } from "./Message";
+import type { InitialSessionState } from "../../../initialState";
 
 const page = css({
   display: "grid",
@@ -49,6 +50,7 @@ export function ChatPage({
   sessionStatus,
   view,
   workspace,
+  onCreate,
   onSend,
   onControl,
   onDelete,
@@ -65,6 +67,7 @@ export function ChatPage({
   sessionStatus?: SessionStatus;
   view: TimelineMessage[];
   workspace?: string;
+  onCreate: (state: InitialSessionState) => Promise<void>;
   onSend: (content: string, draftRevision: number) => Promise<void>;
   onControl: (control: Extract<Control, "running" | "pause">) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -89,8 +92,8 @@ export function ChatPage({
           pageClassName={page}
           recentWorkspaces={recentWorkspaces}
           workspace={workspace ?? ""}
+          onCreate={onCreate}
           onPickWorkspace={onPickWorkspace}
-          onSend={onSend}
           onWorkspaceChange={onWorkspaceChange}
         />
       );

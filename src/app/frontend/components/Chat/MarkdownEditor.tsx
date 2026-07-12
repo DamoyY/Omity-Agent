@@ -15,7 +15,6 @@ const root = css({
   bg: "surfaceInset",
   borderColor: "lineStrong",
   borderWidth: "1px",
-  h: "composerEditor",
   minW: 0,
   overflow: "hidden",
   _focusWithin: {
@@ -26,34 +25,40 @@ const root = css({
   },
 });
 
+const fixedRoot = css({ h: "composerEditor" });
+
 const disabledRoot = css({
   borderColor: "line",
   opacity: 0.65,
 });
 
+const bareRoot = css({
+  alignSelf: "start",
+  borderWidth: "0",
+  _focusWithin: { outlineOffset: "-1px" },
+});
+
 const codeMirror = css({
   cursor: "text",
-  h: "full",
-  "& > .cm-editor": { h: "full" },
 });
+
+const fixedCodeMirror = css({ h: "full", "& > .cm-editor": { h: "full" } });
 
 const editorTheme = EditorView.theme(
   {
     "&": {
-      backgroundColor: "var(--colors-surface-inset)",
+      backgroundColor: "var(--colors-surface)",
       color: "var(--colors-text)",
       fontFamily: "var(--fonts-mono)",
       fontSize: "14px",
-      height: "100%",
     },
     ".cm-content": {
       caretColor: "var(--colors-text)",
       lineHeight: "1.6",
-      minHeight: "100%",
       padding: "10px 0",
     },
     ".cm-gutters": {
-      backgroundColor: "var(--colors-surface)",
+      backgroundColor: "var(--colors-control)",
       borderRight: "1px solid var(--colors-line)",
       color: "var(--colors-muted)",
     },
@@ -102,25 +107,49 @@ const markdownHighlight = HighlightStyle.define([
   { tag: tags.contentSeparator, color: "var(--colors-syntax-comment)" },
 ]);
 
+const fluidTheme = EditorView.theme({
+  "&": { height: "auto" },
+  ".cm-content": { minHeight: "2.5rem" },
+  ".cm-gutters": { color: "var(--colors-muted-strong)" },
+  ".cm-placeholder": { color: "var(--colors-muted-strong)" },
+  ".cm-scroller": { overflow: "visible" },
+});
+
+const fixedTheme = EditorView.theme({
+  "&": { height: "100%" },
+  ".cm-content": { minHeight: "100%" },
+});
+
 export function MarkdownEditor({
-  className,
+  bare = false,
   disabled,
+  fluid = false,
+  label,
   onChange,
   onSubmit,
   placeholder,
   value,
 }: {
-  className?: string;
+  bare?: boolean;
   disabled: boolean;
+  fluid?: boolean;
+  label?: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   placeholder: string;
   value: string;
 }) {
   return (
-    <div className={cx(root, disabled && disabledRoot, className)}>
+    <div
+      className={cx(
+        root,
+        !fluid && fixedRoot,
+        bare && bareRoot,
+        disabled && disabledRoot,
+      )}
+    >
       <CodeMirror
-        aria-label={placeholder}
+        aria-label={label ?? placeholder}
         basicSetup={{
           autocompletion: false,
           foldGutter: false,
@@ -128,7 +157,7 @@ export function MarkdownEditor({
           highlightActiveLineGutter: true,
           lineNumbers: true,
         }}
-        className={codeMirror}
+        className={cx(codeMirror, !fluid && fixedCodeMirror)}
         editable={!disabled}
         extensions={[
           markdown(),
@@ -145,6 +174,7 @@ export function MarkdownEditor({
           }),
           syntaxHighlighting(markdownHighlight),
           editorTheme,
+          fluid ? fluidTheme : fixedTheme,
           Prec.highest(
             keymap.of([
               {
@@ -158,7 +188,7 @@ export function MarkdownEditor({
             ]),
           ),
         ]}
-        height="100%"
+        height={fluid ? "auto" : "100%"}
         indentWithTab
         onChange={onChange}
         placeholder={placeholder}
