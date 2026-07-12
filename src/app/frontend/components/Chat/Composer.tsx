@@ -11,8 +11,9 @@ import {
 } from "../../services/composerDrafts";
 import { reportError, reportPromiseErrors } from "../../services/errors";
 import type { TokenUsage } from "../../../timeline";
-import { Button, Textarea } from "../ParkUI";
+import { Button } from "../ParkUI";
 import { ContextUsage } from "./ContextUsage";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 const form = css({
   bg: "surface",
@@ -23,14 +24,6 @@ const form = css({
   gridTemplateColumns: "minmax(0, 1fr) auto",
   p: "6",
   w: "full",
-});
-
-const messageBox = css({
-  bg: "surfaceInset",
-  borderColor: "lineStrong",
-  h: "12rem",
-  minW: 0,
-  resize: "none",
 });
 
 const actions = css({
@@ -126,14 +119,9 @@ export function Composer({
         reportPromiseErrors(submit());
       }}
     >
-      <Textarea
-        className={messageBox}
+      <MarkdownEditor
         disabled={disabled || loading || submitting}
-        placeholder={t("messagePlaceholder")}
-        size="md"
-        value={content}
-        onChange={(event) => {
-          const nextContent = event.currentTarget.value;
+        onChange={(nextContent) => {
           contentRef.current = nextContent;
           setContent(nextContent);
           revisionRef.current += 1;
@@ -147,12 +135,11 @@ export function Composer({
             });
           reportPromiseErrors(saveRef.current);
         }}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" || !event.ctrlKey) return;
-          if (event.nativeEvent.isComposing) return;
-          event.preventDefault();
-          event.currentTarget.form?.requestSubmit();
+        onSubmit={() => {
+          reportPromiseErrors(submit());
         }}
+        placeholder={t("messagePlaceholder")}
+        value={content}
       />
       <div className={actions}>
         <div className={controls}>
