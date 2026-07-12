@@ -12,6 +12,7 @@ import {
 import { createStreamLogState, handleStreamEvent } from "./stream";
 import { queueMessageId } from "../infrastructure/messages";
 import { consumeBoundaryAppends } from "./appends";
+import { captureError } from "../failures/details";
 
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id.toString()}`);
@@ -38,11 +39,11 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
       setRunStatus(ctx, run, "paused");
       return;
     }
-    const message = error instanceof Error ? error.message : String(error);
-    setRunStatus(ctx, run, "paused", message);
+    const details = captureError(error);
+    setRunStatus(ctx, run, "paused", details);
     ctx.db.setControl(ctx.sessionId, "pause");
     ctx.observer?.changed?.(ctx.sessionId);
-    ctx.logger.error("队列异常，已暂停", { queueId: item.id, error: message });
+    ctx.logger.error("队列异常，已暂停", { queueId: item.id, error: details });
   } finally {
     end();
   }

@@ -1,13 +1,13 @@
 import { Database } from "bun:sqlite";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Control, QueueItem, QueueStatus } from "../types";
+import type { ErrorDetails } from "../failures/details";
 import {
   clearQueueStreamEvents,
   clearStreamEvents,
   insertStreamReasoning,
   insertStreamToken,
   insertStreamToolCall,
-  type StreamToolCallDelta,
 } from "./eventRecords";
 import { loadMessages, syncMessages } from "./messages";
 import {
@@ -35,6 +35,10 @@ import {
   writeControlRecord,
   type HostLeaseClaim,
 } from "./sessionRecords";
+
+type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown
+  ? Args
+  : never;
 
 export class AgentDatabase {
   readonly db: Database;
@@ -126,7 +130,7 @@ export class AgentDatabase {
     )();
   }
 
-  setQueueStatus(queueId: number, status: QueueStatus, error?: string) {
+  setQueueStatus(queueId: number, status: QueueStatus, error?: ErrorDetails) {
     const tx = this.db.transaction(() => {
       setQueueStatusRecord(this.db, queueId, status, error);
       if (status === "done" || status === "canceled") {
@@ -174,33 +178,18 @@ export class AgentDatabase {
     return releaseHostLeaseRecord(this.db, sessionId, ownerId);
   }
 
-  streamToken(
-    sessionId: string,
-    queueId: number,
-    text: string,
-    messageId?: string,
-  ) {
-    insertStreamToken(this.db, sessionId, queueId, text, messageId);
+  streamToken(...args: DatabaseArgs<typeof insertStreamToken>) {
+    insertStreamToken(this.db, ...args);
     this.notify?.();
   }
 
-  streamReasoning(
-    sessionId: string,
-    queueId: number,
-    text: string,
-    messageId?: string,
-  ) {
-    insertStreamReasoning(this.db, sessionId, queueId, text, messageId);
+  streamReasoning(...args: DatabaseArgs<typeof insertStreamReasoning>) {
+    insertStreamReasoning(this.db, ...args);
     this.notify?.();
   }
 
-  streamToolCall(
-    sessionId: string,
-    queueId: number,
-    call: StreamToolCallDelta,
-    messageId?: string,
-  ) {
-    insertStreamToolCall(this.db, sessionId, queueId, call, messageId);
+  streamToolCall(...args: DatabaseArgs<typeof insertStreamToolCall>) {
+    insertStreamToolCall(this.db, ...args);
     this.notify?.();
   }
 

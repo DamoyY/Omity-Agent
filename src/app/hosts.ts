@@ -1,6 +1,7 @@
 import { runHostSession, type HostMode } from "../host";
 import type { SessionStatus } from "../types";
 import { AppEvents } from "./events";
+import { captureError, type ErrorDetails } from "../failures/details";
 
 type HostActivity = Extract<SessionStatus, "tool" | "model" | "idle">;
 
@@ -13,7 +14,7 @@ interface RunningHost {
 
 export class AppHosts {
   private readonly running = new Map<string, RunningHost>();
-  private readonly errors = new Map<string, string>();
+  private readonly errors = new Map<string, ErrorDetails>();
   private closing = false;
 
   constructor(
@@ -69,10 +70,7 @@ export class AppHosts {
       },
     })
       .catch((error: unknown) => {
-        this.errors.set(
-          sessionId,
-          error instanceof Error ? error.message : String(error),
-        );
+        this.errors.set(sessionId, captureError(error));
       })
       .finally(() => {
         if (this.running.get(sessionId)?.controller === controller) {

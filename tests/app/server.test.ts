@@ -26,6 +26,7 @@ import {
 } from "../../src/app/controller";
 import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
 import { AgentDatabase } from "../../src/infrastructure/database";
+import { captureError } from "../../src/failures/details";
 import { required } from "../support/database";
 
 const dirs: string[] = [];
@@ -85,14 +86,18 @@ test("app session summaries expose paused queue errors", async () => {
   const db = new AgentDatabase(paths.dbPath);
   db.createSession("failed-session", workspace);
   const queueId = db.appendUser("failed-session", "test");
-  db.setQueueStatus(queueId, "paused", "model request failed");
+  db.setQueueStatus(
+    queueId,
+    "paused",
+    captureError(new Error("model request failed")),
+  );
   db.close();
 
   const controller = new AppController(root);
   expect(controller.bootstrap().sessions[0]).toMatchObject({
     id: "failed-session",
     status: "error",
-    error: "model request failed",
+    error: { name: "Error", message: "model request failed" },
   });
   await controller.close();
 });
@@ -119,29 +124,32 @@ test("app registry scans session databases without creating a global db", () => 
 
 test("session status prioritizes errors and pauses over host activity", () => {
   const running = { control: "running" as const, paused: false, error: null };
+  const failure = captureError(new Error("Run failed"));
   expect(resolveSessionStatus(running, "model", null)).toBe("model");
-  expect(resolveSessionStatus(running, "tool", "Host failed")).toBe("error");
+  expect(resolveSessionStatus(running, "tool", failure)).toBe("error");
   expect(resolveSessionStatus({ ...running, paused: true }, "tool", null)).toBe(
     "paused",
   );
   expect(
-    resolveSessionStatus({ ...running, error: "Run failed" }, "model", null),
+    resolveSessionStatus({ ...running, error: failure }, "model", null),
   ).toBe("error");
 });
 
 test("session state exposes host errors before queue errors", () => {
+  const runError = captureError(new Error("Run failed"));
+  const hostError = captureError(new Error("Host failed"));
   const session = {
     control: "running" as const,
     paused: true,
-    error: "Run failed",
+    error: runError,
   };
-  expect(resolveSessionState(session, "model", "Host failed")).toEqual({
+  expect(resolveSessionState(session, "model", hostError)).toEqual({
     status: "error",
-    error: "Host failed",
+    error: hostError,
   });
   expect(resolveSessionState(session, "model", null)).toEqual({
     status: "error",
-    error: "Run failed",
+    error: runError,
   });
 });
 

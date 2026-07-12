@@ -1,6 +1,7 @@
 import type { QueueItem } from "../types";
 import { waitForWake, type HostContext } from "./context";
-import { errorMessage, modelNetworkRetryDelayMs } from "./network";
+import { modelNetworkRetryDelayMs } from "./network";
+import { captureError } from "../failures/details";
 
 interface RetriedRun {
   items: [QueueItem, ...QueueItem[]];
@@ -24,7 +25,7 @@ export async function waitBeforeModelNetworkRetry(
     queueId: run.items[0].id,
     attempt,
     delayMs,
-    error: errorMessage(error),
+    error: captureError(error),
   });
   const deadline = Date.now() + delayMs;
   while (Date.now() < deadline) {

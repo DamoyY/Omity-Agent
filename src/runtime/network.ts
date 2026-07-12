@@ -60,10 +60,6 @@ export function modelNetworkRetryDelayMs(attempt: number): number {
   return Math.min(30_000, 1_000 * 2 ** exponent);
 }
 
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

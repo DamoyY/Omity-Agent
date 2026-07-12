@@ -32,7 +32,7 @@ export interface DisplayQueue {
   id: number;
   content: string;
   status: string;
-  error: string | null;
+  error: ErrorDetails | null;
   userMessageId?: number | null;
   root?: boolean;
 }
@@ -56,3 +56,4 @@ export type TimelinePart =
   | { type: "content"; content: string }
   | { type: "reasoning"; content: string }
   | { type: "tool"; call: DisplayToolCall; output?: DisplayMessage };
+import type { ErrorDetails } from "../../failures/details";

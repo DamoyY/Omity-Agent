@@ -12,6 +12,7 @@ import { AgentDatabase } from "../infrastructure/database";
 import { removeDatabaseDirectory } from "../infrastructure/sqlite";
 import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
 import type { Control, SessionStatus, Settings } from "../types";
+import type { ErrorDetails } from "../failures/details";
 import { AppEvents } from "./events";
 import { forkDatabaseBeforeMessage } from "./fork";
 import { AppHosts } from "./hosts";
@@ -167,7 +168,7 @@ export class AppController {
 export function resolveSessionState(
   session: Pick<RegisteredSession, "control" | "paused" | "error">,
   activity: Extract<SessionStatus, "tool" | "model" | "idle">,
-  hostError: string | null,
+  hostError: ErrorDetails | null,
 ) {
   return {
     status: resolveSessionStatus(session, activity, hostError),
@@ -178,7 +179,7 @@ export function resolveSessionState(
 export function resolveSessionStatus(
   session: Pick<RegisteredSession, "control" | "paused" | "error">,
   activity: Extract<SessionStatus, "tool" | "model" | "idle">,
-  hostError: string | null,
+  hostError: ErrorDetails | null,
 ): SessionStatus {
   if (hostError || session.error) return "error";
   if (

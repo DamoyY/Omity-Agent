@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { DomainError } from "../errors";
+import { stringifyError, type ErrorDetails } from "../failures/details";
 import type { QueueItem, QueueStatus } from "../types";
 import { insertUserMessage } from "./messages";
 import { toQueueItem, type QueueRow } from "./queueRows";
@@ -147,7 +148,7 @@ export function setQueueStatusRecord(
   db: Database,
   queueId: number,
   status: QueueStatus,
-  error?: string,
+  error?: ErrorDetails,
 ) {
   if (status === "paused" && error === undefined) {
     db.run("UPDATE queue SET status = ? WHERE id = ?", [status, queueId]);
@@ -155,7 +156,7 @@ export function setQueueStatusRecord(
   }
   db.run("UPDATE queue SET status = ?, error = ? WHERE id = ?", [
     status,
-    error ?? null,
+    error ? stringifyError(error) : null,
     queueId,
   ]);
 }

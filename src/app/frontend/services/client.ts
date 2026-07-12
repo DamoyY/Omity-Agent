@@ -3,6 +3,7 @@ import type { Control } from "../../../types";
 import type { SessionStatus } from "../../../types";
 import { z } from "zod";
 import { reportError } from "./errors";
+import type { ErrorDetails } from "../../../failures/details";
 
 const errorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
@@ -24,7 +25,7 @@ export interface SessionInfo {
   createdAt: number;
   updatedAt: number;
   status: SessionStatus;
-  error: string | null;
+  error: ErrorDetails | null;
 }
 
 export async function bootstrap(signal?: AbortSignal) {

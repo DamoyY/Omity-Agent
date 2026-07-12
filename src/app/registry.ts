@@ -6,6 +6,7 @@ import { resolveSessionPaths } from "../infrastructure/config";
 import { applySchema } from "../infrastructure/schema";
 import { closeDatabase, configureDatabase } from "../infrastructure/sqlite";
 import type { Control, Settings } from "../types";
+import { parseError, type ErrorDetails } from "../failures/details";
 
 export interface RegisteredSession {
   id: string;
@@ -14,7 +15,7 @@ export interface RegisteredSession {
   updatedAt: number;
   control: Control;
   paused: boolean;
-  error: string | null;
+  error: ErrorDetails | null;
 }
 
 interface SessionRow {
@@ -102,6 +103,6 @@ function toSession(row: SessionRow): RegisteredSession {
     updatedAt: row.updated_at,
     control: row.control,
     paused: row.paused === 1,
-    error: row.error,
+    error: row.error ? parseError(row.error) : null,
   };
 }

@@ -3,6 +3,7 @@ import type { QueueItem } from "../types";
 import { contentToText } from "./content";
 import type { HostContext } from "./context";
 import { deleteThreadData } from "../checkpointer/lifecycle";
+import type { ErrorDetails } from "../failures/details";
 
 export class CanceledRun extends Error {}
 
@@ -68,7 +69,7 @@ export function setRunStatus(
   ctx: HostContext,
   run: QueueRun,
   status: QueueItem["status"],
-  error?: string,
+  error?: ErrorDetails,
 ) {
   for (const item of run.items) ctx.db.setQueueStatus(item.id, status, error);
   ctx.observer?.changed?.(ctx.sessionId);

@@ -9,6 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { css, cva, cx } from "styled-system/css";
 import type { SessionStatus } from "../../../../types";
+import type { ErrorDetails } from "../../../../failures/details";
 
 const indicator = cva({
   base: {
@@ -46,7 +47,7 @@ export function Status({
   error,
   status,
 }: {
-  error: string | null;
+  error: ErrorDetails | null;
   status: SessionStatus;
 }) {
   const { t } = useTranslation();
@@ -54,12 +55,12 @@ export function Status({
   const Icon = meta.icon;
   const label = t(meta.label);
   const description =
-    status === "error" && error ? `${label}: ${error}` : label;
+    status === "error" && error ? `${label}: ${error.message}` : label;
   return (
     <span
       aria-label={description}
       className={indicator({ status })}
-      title={status === "error" && error ? error : label}
+      title={status === "error" && error ? error.message : label}
     >
       <Icon
         aria-hidden="true"

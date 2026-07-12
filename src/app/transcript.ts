@@ -6,6 +6,7 @@ import {
 import { AgentDatabase } from "../infrastructure/database";
 import { contentToText, messageReasoning } from "../runtime/content";
 import { extractToolImages } from "../runtime/modelImages";
+import { parseError } from "../failures/details";
 import {
   buildTimeline,
   type DisplayEvent,
@@ -63,7 +64,7 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
       id: row.id,
       content: row.content,
       status: row.status,
-      error: row.error,
+      error: row.error ? parseError(row.error) : null,
       userMessageId: row.user_message_id,
       root: row.root_id === row.id,
     }));

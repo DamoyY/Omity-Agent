@@ -2,6 +2,7 @@ import { AIMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
 import { AgentDatabase } from "../../src/infrastructure/database";
+import { parseError } from "../../src/failures/details";
 import { Logger } from "../../src/infrastructure/logger";
 import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
@@ -32,11 +33,13 @@ test("unexpected errors pause the queue", async () => {
 
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
-  expect(
-    db.db
-      .query<{ error: string | null }, []>("SELECT error FROM queue LIMIT 1")
-      .get()?.error,
-  ).toBe("boom");
+  const stored = db.db
+    .query<{ error: string }, []>("SELECT error FROM queue LIMIT 1")
+    .get();
+  expect(parseError(required(stored).error)).toMatchObject({
+    name: "Error",
+    message: "boom",
+  });
   db.close();
 });
 
