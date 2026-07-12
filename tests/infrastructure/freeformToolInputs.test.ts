@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import type { ToolCall } from "@langchain/core/messages";
+import {
+  AIMessageChunk,
+  type RawInputToolCallChunk,
+  type ToolCall,
+} from "@langchain/core/messages";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { ChatOpenAIResponses } from "@langchain/openai";
 import { materializeFreeformToolCall } from "../../src/agent/toolExecution";
@@ -94,6 +98,32 @@ test("maps custom tool text without changing its contents", () => {
 
   expect(executable.args).toEqual({ patch: input });
   expect(call.args).toEqual({ input });
+});
+
+test("maps free-form input after streaming tool-call aggregation", () => {
+  const input = "*** Begin Patch\n*** End Patch\n";
+  const rawCall: RawInputToolCallChunk = {
+    name: "apply_patch",
+    id: "call-streamed",
+    index: 0,
+    type: "tool_call_chunk",
+    args: input,
+    isCustomTool: true,
+  };
+  const chunk = new AIMessageChunk({
+    content: "",
+    tool_call_chunks: [rawCall],
+  });
+  const call = chunk.tool_calls?.[0];
+  if (!call) throw new Error("缺少流式聚合后的 apply_patch 调用");
+
+  const executable = materializeFreeformToolCall(
+    call,
+    new Map([["apply_patch", "patch"]]),
+  );
+
+  expect(call.args).toEqual({ input });
+  expect(executable.args).toEqual({ patch: input });
 });
 
 test("does not remap structured hook calls", () => {

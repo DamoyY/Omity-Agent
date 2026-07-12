@@ -50,9 +50,11 @@ export function materializeFreeformToolCall(
   parameters: ReadonlyMap<string, string>,
 ): ToolCall {
   const parameter = parameters.get(call.name);
-  if (!parameter || !isCustomToolCall(call)) return call;
+  if (!parameter) return call;
 
   const args: unknown = call.args;
+  if (!isCustomToolCall(call) && !isRawFreeformInput(args)) return call;
+
   const input = isRecord(args) ? args["input"] : undefined;
   if (typeof input !== "string") {
     throw new Error(`MCP free-form 工具 ${call.name} 没有返回字符串输入`);
@@ -62,6 +64,14 @@ export function materializeFreeformToolCall(
 
 function isCustomToolCall(call: ToolCall) {
   return isRecord(call) && call["isCustomTool"] === true;
+}
+
+function isRawFreeformInput(args: unknown) {
+  return (
+    isRecord(args) &&
+    Object.keys(args).length === 1 &&
+    typeof args["input"] === "string"
+  );
 }
 
 function singleToolOutput(value: unknown, callId: string) {
