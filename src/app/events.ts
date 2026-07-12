@@ -2,12 +2,20 @@ import type { ServerResponse } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
 import mitt from "mitt";
 
-type Events = Record<"changed", string>;
+interface Events {
+  changed: string;
+  sessions: string;
+}
 
 export class AppEvents {
   private readonly bus = mitt<Events>();
 
   notify(sessionId: string) {
+    this.bus.emit("changed", sessionId);
+    this.bus.emit("sessions", sessionId);
+  }
+
+  notifyTranscript(sessionId: string) {
     this.bus.emit("changed", sessionId);
   }
 
@@ -29,19 +37,22 @@ export class AppEvents {
     });
   }
 
-  stream(sessionId: string, res: ServerResponse) {
+  stream(res: ServerResponse, sessionId?: string) {
     res.writeHead(200, {
       "cache-control": "no-cache",
       connection: "keep-alive",
       "content-type": "text/event-stream; charset=utf-8",
     });
     res.write(serialize("changed"));
+    const event = sessionId ? "changed" : "sessions";
     const handler = (changedSessionId: string) => {
-      if (changedSessionId === sessionId) res.write(serialize("changed"));
+      if (!sessionId || changedSessionId === sessionId) {
+        res.write(serialize("changed"));
+      }
     };
-    this.bus.on("changed", handler);
+    this.bus.on(event, handler);
     res.once("close", () => {
-      this.bus.off("changed", handler);
+      this.bus.off(event, handler);
     });
   }
 }

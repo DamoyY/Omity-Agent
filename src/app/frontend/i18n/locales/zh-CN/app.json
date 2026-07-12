@@ -26,4 +26,9 @@
   "delete": "删除",
   "error": "请求失败",
   "runPausedError": "会话因运行错误而暂停"
+  ,"statusTool": "工具"
+  ,"statusModel": "模型"
+  ,"statusIdle": "空闲"
+  ,"statusPaused": "暂停"
+  ,"statusError": "错误"
 }

@@ -1,5 +1,7 @@
 export type Control = "running" | "pause" | "cancel" | "pause_cancel";
 
+export type SessionStatus = "tool" | "model" | "idle" | "paused" | "error";
+
 export type QueueStatus =
   "draft" | "pending" | "running" | "paused" | "done" | "canceled";
 

@@ -74,7 +74,7 @@ export async function runHostSession(
     db.close();
     throw error;
   }
-  db.onChange(() => options.observer?.changed?.(mode.sessionId));
+  db.onChange(() => options.observer?.transcript?.(mode.sessionId));
   if (mode.kind === "new") {
     logger.info("已创建新会话", {
       sessionId: mode.sessionId,

@@ -1,5 +1,6 @@
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import type { Control } from "../../../types";
+import type { SessionStatus } from "../../../types";
 import { z } from "zod";
 
 const errorResponse = z.object({
@@ -21,7 +22,7 @@ export interface SessionInfo {
   workspace: string;
   createdAt: number;
   updatedAt: number;
-  running: boolean;
+  status: SessionStatus;
 }
 
 export async function bootstrap(signal?: AbortSignal) {
@@ -64,6 +65,10 @@ export function sessionEvents(sessionId: string) {
   return new EventSource(
     `/api/sessions/${encodeURIComponent(sessionId)}/events`,
   );
+}
+
+export function appEvents() {
+  return new EventSource("/api/events");
 }
 
 export async function sendMessage(sessionId: string, content: string) {

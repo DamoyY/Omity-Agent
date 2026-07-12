@@ -6,6 +6,7 @@ export async function hostLoop(ctx: HostContext) {
   while (!ctx.controller.signal.aborted) {
     const item = ctx.db.nextQueue(ctx.sessionId);
     if (!item) {
+      ctx.observer?.activity?.(ctx.sessionId, "idle");
       if (ctx.db.control(ctx.sessionId) === "pause_cancel") {
         ctx.db.setControl(ctx.sessionId, "pause");
         ctx.logger.warn("暂停状态收到 cancel，Host 已关闭", {
@@ -28,6 +29,7 @@ export async function hostLoop(ctx: HostContext) {
       await waitForWake(ctx, ctx.settings.host.pollMs);
       continue;
     }
+    ctx.observer?.activity?.(ctx.sessionId, "model");
     await processQueue(ctx, item);
   }
 }

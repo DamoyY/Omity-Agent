@@ -8,6 +8,7 @@ import type { Control } from "../../../types";
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import {
   bootstrap,
+  appEvents,
   loadTranscript,
   sessionEvents,
   type SessionInfo,
@@ -36,10 +37,22 @@ const emptyTranscript: TranscriptData = {
 };
 
 export function useBootstrap() {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const query = useQuery({
     queryKey: bootstrapKey,
     queryFn: ({ signal }) => bootstrap(signal),
   });
+  useEffect(() => {
+    const events = appEvents();
+    const refresh = () => {
+      void queryClient.invalidateQueries({ queryKey: bootstrapKey });
+    };
+    events.addEventListener("changed", refresh);
+    return () => {
+      events.close();
+    };
+  }, [queryClient]);
+  return query;
 }
 
 export function useSessionTranscript(
@@ -62,7 +75,6 @@ export function useSessionTranscript(
       void queryClient.invalidateQueries({
         queryKey: transcriptKey(sessionId),
       });
-      void queryClient.invalidateQueries({ queryKey: bootstrapKey });
     };
     events.addEventListener("changed", refresh);
     return () => {

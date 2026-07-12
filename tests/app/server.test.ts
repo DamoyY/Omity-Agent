@@ -19,6 +19,7 @@ import {
   requestBodyLimit,
 } from "../../src/app/http/request";
 import { AppRegistry } from "../../src/app/registry";
+import { resolveSessionStatus } from "../../src/app/controller";
 import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
 import { AgentDatabase } from "../../src/infrastructure/database";
 import { required } from "../support/database";
@@ -90,6 +91,18 @@ test("app registry scans session databases without creating a global db", () => 
   expect(typeof session.createdAt).toBe("number");
   expect(typeof session.updatedAt).toBe("number");
   expect(existsSync(join(settings.paths.dataDir, "app.sqlite"))).toBe(false);
+});
+
+test("session status prioritizes errors and pauses over host activity", () => {
+  const running = { control: "running" as const, paused: false, error: null };
+  expect(resolveSessionStatus(running, "model", null)).toBe("model");
+  expect(resolveSessionStatus(running, "tool", "Host failed")).toBe("error");
+  expect(
+    resolveSessionStatus({ ...running, paused: true }, "tool", null),
+  ).toBe("paused");
+  expect(
+    resolveSessionStatus({ ...running, error: "Run failed" }, "model", null),
+  ).toBe("error");
 });
 
 function request(body: unknown) {

@@ -42,6 +42,11 @@ export default defineConfig({
           syntaxProperty: { value: "#7dcfff" },
           syntaxString: { value: "#9ece6a" },
           syntaxTitle: { value: "#2ac3de" },
+          statusError: { value: "#f7768e" },
+          statusIdle: { value: "#737373" },
+          statusModel: { value: "#7dcfff" },
+          statusPaused: { value: "#ff9e64" },
+          statusTool: { value: "#9ece6a" },
         },
         fonts: {
           body: {

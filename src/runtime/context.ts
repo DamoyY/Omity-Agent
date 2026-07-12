@@ -4,7 +4,7 @@ import { DomainError } from "../errors";
 import type { BunSqliteSaver } from "../checkpointer";
 import type { AgentDatabase } from "../infrastructure/database";
 import type { Logger } from "../infrastructure/logger";
-import type { Settings } from "../types";
+import type { SessionStatus, Settings } from "../types";
 import type { buildGraph } from "../agent";
 import { BaseMessage } from "@langchain/core/messages";
 
@@ -13,7 +13,12 @@ type HostGraph = Omit<AgentGraph, "getState"> & {
   getState: (...args: Parameters<AgentGraph["getState"]>) => Promise<unknown>;
 };
 export interface HostObserver {
+  activity?(
+    sessionId: string,
+    status: Extract<SessionStatus, "tool" | "model" | "idle">,
+  ): void;
   changed?(sessionId: string): void;
+  transcript?(sessionId: string): void;
   token(sessionId: string, queueId: number, text: string): void;
 }
 

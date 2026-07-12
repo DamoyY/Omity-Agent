@@ -1,10 +1,14 @@
 import { runHostSession, type HostMode } from "../host";
+import type { SessionStatus } from "../types";
 import { AppEvents } from "./events";
+
+type HostActivity = Extract<SessionStatus, "tool" | "model" | "idle">;
 
 interface RunningHost {
   root: string;
   controller: AbortController;
   done: Promise<void>;
+  activity: HostActivity;
 }
 
 export class AppHosts {
@@ -25,6 +29,10 @@ export class AppHosts {
     return this.errors.get(sessionId) ?? null;
   }
 
+  activity(sessionId: string): HostActivity {
+    return this.running.get(sessionId)?.activity ?? "idle";
+  }
+
   clearError(sessionId: string) {
     this.errors.delete(sessionId);
   }
@@ -43,8 +51,18 @@ export class AppHosts {
       quiet: true,
       wake: (delayMs) => this.events.wait(sessionId, delayMs),
       observer: {
+        activity: (changedSessionId, activity) => {
+          const host = this.running.get(changedSessionId);
+          if (!host || host.controller !== controller) return;
+          if (host.activity === activity) return;
+          host.activity = activity;
+          this.events.notify(changedSessionId);
+        },
         changed: (changedSessionId) => {
           this.events.notify(changedSessionId);
+        },
+        transcript: (changedSessionId) => {
+          this.events.notifyTranscript(changedSessionId);
         },
         token: () => undefined,
       },
@@ -59,8 +77,14 @@ export class AppHosts {
         if (this.running.get(sessionId)?.controller === controller) {
           this.running.delete(sessionId);
         }
+        this.events.notify(sessionId);
       });
-    this.running.set(sessionId, { root, controller, done });
+    this.running.set(sessionId, {
+      root,
+      controller,
+      done,
+      activity: "idle",
+    });
   }
 
   async stop(sessionId: string) {

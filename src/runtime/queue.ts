@@ -142,9 +142,16 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       continue;
     }
     if (state.next.length === 0) {
+      ctx.observer?.activity?.(ctx.sessionId, "idle");
       finishRun(ctx, run, state.values.messages, state.values.hookPlan);
       return;
     }
+    const nextActivity = state.next.includes("tools")
+      ? "tool"
+      : state.next.includes("model_request")
+        ? "model"
+        : undefined;
+    if (nextActivity) ctx.observer?.activity?.(ctx.sessionId, nextActivity);
     input = null;
   }
 }

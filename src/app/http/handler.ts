@@ -39,6 +39,10 @@ export async function handleApi(
     sendJson(res, { sessions: controller.sessions() });
     return;
   }
+  if (req.method === "GET" && route.pathname === "/api/events") {
+    controller.events.stream(res);
+    return;
+  }
   if (req.method === "POST" && route.pathname === "/api/workspace-picker") {
     sendJson(res, { workspace: await controller.pickWorkspace() });
     return;
@@ -64,7 +68,7 @@ export async function handleApi(
   }
   if (req.method === "GET" && action === "events") {
     controller.assertSession(sessionId);
-    controller.events.stream(sessionId, res);
+    controller.events.stream(res, sessionId);
     return;
   }
   if (req.method === "POST" && action === "messages") {

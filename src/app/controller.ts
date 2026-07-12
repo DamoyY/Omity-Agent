@@ -11,11 +11,11 @@ import {
 import { AgentDatabase } from "../infrastructure/database";
 import { removeDatabaseDirectory } from "../infrastructure/sqlite";
 import { normalizeWorkspacePath } from "../infrastructure/workspacePath";
-import type { Control, Settings } from "../types";
+import type { Control, SessionStatus, Settings } from "../types";
 import { AppEvents } from "./events";
 import { forkDatabaseBeforeMessage } from "./fork";
 import { AppHosts } from "./hosts";
-import { AppRegistry } from "./registry";
+import { AppRegistry, type RegisteredSession } from "./registry";
 import { loadTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
 
@@ -43,11 +43,7 @@ export class AppController {
   }
 
   sessions() {
-    return this.registry.list().map((session) => ({
-      ...session,
-      running: this.hosts.has(session.id),
-      error: this.hosts.error(session.id),
-    }));
+    return this.registry.list().map((session) => this.sessionInfo(session));
   }
 
   assertSession(sessionId: string) {
@@ -70,7 +66,7 @@ export class AppController {
       workspace: root,
       createdAt: now,
       updatedAt: now,
-      running: true,
+      status: "idle" as const,
     };
   }
 
@@ -127,7 +123,7 @@ export class AppController {
     }
     this.hosts.clearError(id);
     this.events.notify(sessionId);
-    return this.registry.require(id);
+    return this.sessionInfo(this.registry.require(id));
   }
 
   async deleteSession(sessionId: string) {
@@ -149,4 +145,30 @@ export class AppController {
       db.close();
     }
   }
+
+  private sessionInfo(session: RegisteredSession) {
+    const status = resolveSessionStatus(
+      session,
+      this.hosts.activity(session.id),
+      this.hosts.error(session.id),
+    );
+    const { control: _control, paused: _paused, error: _error, ...info } = session;
+    return { ...info, status };
+  }
+}
+
+export function resolveSessionStatus(
+  session: Pick<RegisteredSession, "control" | "paused" | "error">,
+  activity: Extract<SessionStatus, "tool" | "model" | "idle">,
+  hostError: string | null,
+): SessionStatus {
+  if (hostError || session.error) return "error";
+  if (
+    session.paused ||
+    session.control === "pause" ||
+    session.control === "pause_cancel"
+  ) {
+    return "paused";
+  }
+  return activity;
 }

@@ -5,13 +5,16 @@ import { sessionNotFound } from "../errors";
 import { resolveSessionPaths } from "../infrastructure/config";
 import { applySchema } from "../infrastructure/schema";
 import { closeDatabase, configureDatabase } from "../infrastructure/sqlite";
-import type { Settings } from "../types";
+import type { Control, Settings } from "../types";
 
 export interface RegisteredSession {
   id: string;
   workspace: string;
   createdAt: number;
   updatedAt: number;
+  control: Control;
+  paused: boolean;
+  error: string | null;
 }
 
 interface SessionRow {
@@ -19,7 +22,24 @@ interface SessionRow {
   workspace: string;
   created_at: number;
   updated_at: number;
+  control: Control;
+  paused: number;
+  error: string | null;
 }
+
+const sessionSelect = `
+  SELECT s.id, s.workspace, s.created_at, s.updated_at, s.control,
+    EXISTS(
+      SELECT 1 FROM queue q
+      WHERE q.session_id = s.id AND q.status = 'paused'
+    ) AS paused,
+    (
+      SELECT q.error FROM queue q
+      WHERE q.session_id = s.id AND q.status = 'paused'
+        AND q.error IS NOT NULL
+      ORDER BY q.id DESC LIMIT 1
+    ) AS error
+  FROM sessions s`;
 
 export class AppRegistry {
   private readonly sessionsDir: string;
@@ -65,13 +85,11 @@ function readSession(dbPath: string, id?: string) {
     const row = id
       ? db
           .query<SessionRow, [string]>(
-            "SELECT id, workspace, created_at, updated_at FROM sessions WHERE id = ?",
+            `${sessionSelect} WHERE s.id = ?`,
           )
           .get(id)
       : db
-          .query<SessionRow, []>(
-            "SELECT id, workspace, created_at, updated_at FROM sessions LIMIT 1",
-          )
+          .query<SessionRow, []>(`${sessionSelect} LIMIT 1`)
           .get();
     if (!row) throw sessionNotFound(id ?? dbPath);
     return toSession(row);
@@ -86,5 +104,8 @@ function toSession(row: SessionRow): RegisteredSession {
     workspace: row.workspace,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    control: row.control,
+    paused: row.paused === 1,
+    error: row.error,
   };
 }
