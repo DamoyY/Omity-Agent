@@ -55,6 +55,9 @@ mcpServers:
   image_viewer:
     transport: stdio
     command: F:/workspace/image-viewer-mcp/target/release/image-viewer-mcp.exe
+    args:
+      - --config
+      - F:/workspace/image-viewer-mcp/settings.yaml
 
 toolNameOverrides:
   diff__apply_patch: apply_patch
