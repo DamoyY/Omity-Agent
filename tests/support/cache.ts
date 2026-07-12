@@ -102,20 +102,7 @@ function mockOpenAI(
     async fetch(request) {
       const body = (await request.json()) as Record<string, unknown>;
       requests.push(body);
-      const payload = response();
-      if (
-        body["stream"] === true &&
-        new URL(request.url).pathname.endsWith("/responses")
-      ) {
-        const event = JSON.stringify({
-          type: "response.completed",
-          response: payload,
-        });
-        return new Response(`data: ${event}\n\ndata: [DONE]\n\n`, {
-          headers: { "Content-Type": "text/event-stream" },
-        });
-      }
-      return Response.json(payload);
+      return Response.json(response());
     },
   });
   servers.push(server);

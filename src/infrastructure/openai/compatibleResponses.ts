@@ -4,15 +4,8 @@ import {
   normalizeResponsesPayload,
   normalizeResponsesStream,
 } from "./normalizeResponse";
-import {
-  incrementalRequest,
-  type ResponseChain,
-  type ResponseRequest,
-} from "./responseContinuation";
 
 export class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
-  private responseChain?: ResponseChain;
-
   override invocationParams(options?: this["ParsedCallOptions"]) {
     const params = super.invocationParams(options);
     return {
@@ -32,38 +25,20 @@ export class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
     requestOptions?: OpenAI.RequestOptions,
   ): Promise<OpenAI.Responses.Response>;
   override async completionWithRetry(
-    request: ResponseRequest,
+    request:
+      | OpenAI.Responses.ResponseCreateParamsStreaming
+      | OpenAI.Responses.ResponseCreateParamsNonStreaming,
     requestOptions?: OpenAI.RequestOptions,
   ): Promise<
     | AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
     | OpenAI.Responses.Response
   > {
     if (request.stream) {
-      const outgoing = incrementalRequest(request, this.responseChain);
-      const stream = await super.completionWithRetry(outgoing, requestOptions);
-      return normalizeResponsesStream(stream, (response) => {
-        this.rememberResponse(request, response);
-      });
+      const stream = await super.completionWithRetry(request, requestOptions);
+      return normalizeResponsesStream(stream);
     }
-    const outgoing = incrementalRequest(request, this.responseChain);
-    const response = await super.completionWithRetry(outgoing, requestOptions);
-    const normalized = normalizeResponsesPayload(response);
-    this.rememberResponse(request, normalized);
-    return normalized;
-  }
-
-  private rememberResponse(
-    request: ResponseRequest,
-    response: OpenAI.Responses.Response,
-  ) {
-    if (response.status !== "completed" && response.status !== "incomplete") {
-      return;
-    }
-    this.responseChain = {
-      request,
-      responseId: response.id,
-      output: response.output,
-    };
+    const response = await super.completionWithRetry(request, requestOptions);
+    return normalizeResponsesPayload(response);
   }
 }
 

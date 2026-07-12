@@ -1,7 +1,6 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { ChatOpenAICompletions } from "@langchain/openai";
 import { expect, test } from "bun:test";
-import type { OpenAI } from "openai";
 import { modelMessages } from "../../src/agent/model";
 import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
 import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
@@ -58,7 +57,7 @@ test("Completions 请求在追加历史和 SQLite 恢复后保持缓存前缀", 
   expect(requests[2]?.["tools"]).toEqual(requests[1]?.["tools"]);
 });
 
-test("Responses 请求使用响应 ID 和严格增量 input 延续会话", async () => {
+test("Responses HTTP 请求保留完整历史和稳定缓存键", async () => {
   const requests: Record<string, unknown>[] = [];
   const server = mockResponses(requests);
   const settings = testSettings("data");
@@ -93,79 +92,19 @@ test("Responses 请求使用响应 ID 和严格增量 input 延续会话", async
   const thirdResponse = await model.invoke(
     modelMessages(settings, null, thirdHistory),
   );
-  const equalHistory = [...thirdHistory, thirdResponse];
-  const fourthResponse = await model.invoke(
-    modelMessages(settings, null, equalHistory),
-  );
-  await model.invoke(
-    modelMessages(settings, null, [
-      ...equalHistory,
-      fourthResponse,
-      new HumanMessage({ id: "user-4", content: "changed params" }),
-    ]),
-    { parallel_tool_calls: false },
-  );
+  expect(thirdResponse.text).toBe("ok");
 
-  const [first, second, third, equal, changedParams] = requests;
+  const [first, second, third] = requests;
+  const firstInput = requiredArray(first?.["input"]);
+  const secondInput = requiredArray(second?.["input"]);
+  const thirdInput = requiredArray(third?.["input"]);
   expect(first?.["prompt_cache_key"]).toBe("session-1");
   expect(second?.["prompt_cache_key"]).toBe("session-1");
-  expect(second?.["previous_response_id"]).toBe("response-1");
-  expect(second?.["input"]).toEqual([
-    { type: "message", role: "user", content: "continue" },
-  ]);
-  expect(third?.["previous_response_id"]).toBe("response-2");
-  expect(third?.["input"]).toEqual([
-    { type: "message", role: "user", content: "persisted" },
-  ]);
-  expect(equal?.["previous_response_id"]).toBeUndefined();
-  expect(requiredArray(equal?.["input"]).length).toBeGreaterThan(1);
-  expect(changedParams?.["previous_response_id"]).toBeUndefined();
-  expect(requiredArray(changedParams?.["input"]).length).toBeGreaterThan(1);
-  expect(changedParams?.["instructions"]).toBe(first?.["instructions"]);
-  expect(changedParams?.["tools"]).toEqual(first?.["tools"]);
-});
-
-test("Responses 流式终态响应建立下一次请求的增量链", async () => {
-  const requests: Record<string, unknown>[] = [];
-  const server = mockResponses(requests);
-  const model = new CompatibleChatOpenAIResponses({
-    model: "test",
-    apiKey: "test",
-    streaming: true,
-    promptCacheKey: "stream-session",
-    configuration: { baseURL: `${server.url}v1` },
-  });
-  const firstInput: OpenAI.Responses.ResponseInput = [
-    { type: "message", role: "user", content: "first" },
-  ];
-  const firstStream = await model.completionWithRetry({
-    model: "test",
-    input: firstInput,
-    prompt_cache_key: "stream-session",
-    stream: true,
-  });
-  let firstResponse: OpenAI.Responses.Response | undefined;
-  for await (const event of firstStream) {
-    if (event.type === "response.completed") firstResponse = event.response;
-  }
-  if (!firstResponse) throw new Error("流式响应缺少 completed 事件");
-  const delta = { type: "message", role: "user", content: "second" } as const;
-  const secondStream = await model.completionWithRetry({
-    model: "test",
-    input: [
-      ...firstInput,
-      ...(firstResponse.output as unknown as OpenAI.Responses.ResponseInput),
-      delta,
-    ],
-    prompt_cache_key: "stream-session",
-    stream: true,
-  });
-  let secondCompleted = false;
-  for await (const event of secondStream) {
-    if (event.type === "response.completed") secondCompleted = true;
-  }
-
-  expect(secondCompleted).toBeTrue();
-  expect(requests[1]?.["previous_response_id"]).toBe("response-1");
-  expect(requests[1]?.["input"]).toEqual([delta]);
+  expect(third?.["prompt_cache_key"]).toBe("session-1");
+  expect(second?.["previous_response_id"]).toBeUndefined();
+  expect(third?.["previous_response_id"]).toBeUndefined();
+  expect(secondInput.slice(0, firstInput.length)).toEqual(firstInput);
+  expect(thirdInput.slice(0, secondInput.length)).toEqual(secondInput);
+  expect(third?.["instructions"]).toBe(first?.["instructions"]);
+  expect(third?.["tools"]).toEqual(first?.["tools"]);
 });

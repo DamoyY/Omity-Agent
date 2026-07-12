@@ -22,18 +22,8 @@ export function normalizeResponsesPayload<T>(payload: T): T {
 
 export async function* normalizeResponsesStream(
   stream: AsyncIterable<OpenAI.Responses.ResponseStreamEvent>,
-  onResponse: (response: OpenAI.Responses.Response) => void,
 ) {
-  for await (const event of stream) {
-    const normalized = normalizeResponsesStreamEvent(event);
-    if (
-      normalized.type === "response.completed" ||
-      normalized.type === "response.incomplete"
-    ) {
-      onResponse(normalized.response);
-    }
-    yield normalized;
-  }
+  for await (const event of stream) yield normalizeResponsesStreamEvent(event);
 }
 
 function normalizeOutputItem(item: unknown) {

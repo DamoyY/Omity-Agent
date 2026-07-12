@@ -29,11 +29,16 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
       const output = Array.isArray(input)
         ? (input as unknown[]).at(-1)
         : undefined;
+      const customCall = Array.isArray(input)
+        ? (input as unknown[]).find(
+            (item) => isRecord(item) && item["type"] === "custom_tool_call",
+          )
+        : undefined;
       if (
-        body["previous_response_id"] !== "resp_1" ||
+        !isRecord(customCall) ||
         !isRecord(output) ||
         output["type"] !== "custom_tool_call_output" ||
-        output["call_id"] !== "call_1"
+        output["call_id"] !== customCall["call_id"]
       ) {
         return Response.json(
           { error: { message: "custom tool output type mismatch" } },
@@ -101,13 +106,7 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
 
   expect(final.text).toBe("Patch applied");
   expect(requests).toHaveLength(2);
-  expect(requests[1]?.["input"]).toEqual([
-    {
-      type: "custom_tool_call_output",
-      call_id: "call_1",
-      output: "Done!",
-    },
-  ]);
+  expect(requests[1]?.["previous_response_id"]).toBeUndefined();
   expect(requests[1]?.["prompt_cache_key"]).toBe("test-session");
 });
 
