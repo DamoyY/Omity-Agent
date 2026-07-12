@@ -1,6 +1,20 @@
 import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/common";
 import { css, cx } from "styled-system/css";
+import { CopyButton } from "./Chat/CopyButton";
+
+const container = css({
+  maxW: "full",
+  minW: 0,
+  position: "relative",
+});
+
+const copyButton = css({
+  position: "absolute",
+  right: "2",
+  top: "2",
+  zIndex: "1",
+});
 
 const block = css({
   bg: "surfaceInset",
@@ -16,6 +30,7 @@ const block = css({
   minW: 0,
   overflow: "auto",
   p: "3",
+  pr: "12",
   whiteSpace: "pre",
   "& .hljs-keyword, & .hljs-selector-tag, & .hljs-built_in": {
     color: "syntaxKeyword",
@@ -62,14 +77,17 @@ export function HighlightedCode({
   language?: string;
 }) {
   return (
-    <pre className={cx(block, className)}>
-      <code
-        className={codeElement}
-        dangerouslySetInnerHTML={{
-          __html: DOMPurify.sanitize(highlight(code, language)),
-        }}
-      />
-    </pre>
+    <div className={container}>
+      <CopyButton className={copyButton} value={code} />
+      <pre className={cx(block, className)}>
+        <code
+          className={codeElement}
+          dangerouslySetInnerHTML={{
+            __html: DOMPurify.sanitize(highlight(code, language)),
+          }}
+        />
+      </pre>
+    </div>
   );
 }
 

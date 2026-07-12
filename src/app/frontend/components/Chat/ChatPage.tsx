@@ -1,0 +1,116 @@
+import { useTranslation } from "react-i18next";
+import { css } from "styled-system/css";
+import type { DisplayQueue, TimelineMessage } from "../../../timeline";
+import type { Control, SessionStatus } from "../../../../types";
+import { Composer } from "./Composer";
+import { NewSessionPage } from "../NewSessionPage";
+import { TranscriptScroll } from "../TranscriptScroll";
+import { Message } from "./Message";
+
+const page = css({
+  display: "grid",
+  gridTemplateRows: "minmax(0, 1fr) auto",
+  h: "full",
+  minH: 0,
+  minW: 0,
+  overflow: "hidden",
+});
+
+const empty = css({
+  color: "muted",
+  display: "grid",
+  h: "full",
+  placeItems: "center",
+});
+
+export function ChatPage({
+  activeId,
+  control,
+  newSession,
+  pausing,
+  queue,
+  recentWorkspaces,
+  sessionStatus,
+  view,
+  workspace,
+  onSend,
+  onControl,
+  onFork,
+  onPickWorkspace,
+  onWorkspaceChange,
+}: {
+  activeId?: string;
+  control: Control;
+  newSession: boolean;
+  pausing: boolean;
+  queue: DisplayQueue[];
+  recentWorkspaces: string[];
+  sessionStatus?: SessionStatus;
+  view: TimelineMessage[];
+  workspace?: string;
+  onSend: (content: string) => Promise<void>;
+  onControl: (control: Extract<Control, "running" | "pause">) => Promise<void>;
+  onFork: (messageId: number) => Promise<void>;
+  onPickWorkspace: () => Promise<string | null>;
+  onWorkspaceChange: (workspace: string) => void;
+}) {
+  const { t } = useTranslation();
+  const paused = control === "pause" || control === "pause_cancel";
+  const waitingForPause = pausing && !paused;
+  const loopRunning = queue.some((item) => item.status === "running");
+  const firstUserMessageId = view.find((item) => item.role === "user")?.id;
+  const forkDraft = queue.find((item) => item.status === "draft")?.content;
+
+  if (!activeId) {
+    if (newSession) {
+      return (
+        <NewSessionPage
+          pageClassName={page}
+          recentWorkspaces={recentWorkspaces}
+          workspace={workspace ?? ""}
+          onPickWorkspace={onPickWorkspace}
+          onSend={onSend}
+          onWorkspaceChange={onWorkspaceChange}
+        />
+      );
+    }
+    return (
+      <div className={page}>
+        <div className={empty}>{t("empty")}</div>
+      </div>
+    );
+  }
+  return (
+    <div className={page}>
+      <TranscriptScroll activeId={activeId} queue={queue} view={view}>
+        {view.length === 0 ? (
+          <div className={empty}>{t("noMessages")}</div>
+        ) : null}
+        {view.map((item) => (
+          <Message
+            canFork={
+              item.role === "user" &&
+              item.id > 0 &&
+              item.id !== firstUserMessageId
+            }
+            forkDisabled={loopRunning}
+            item={item}
+            key={item.key}
+            onFork={onFork}
+          />
+        ))}
+      </TranscriptScroll>
+      <Composer
+        controlDisabled={
+          waitingForPause || (!paused && sessionStatus === "idle")
+        }
+        controlState={waitingForPause ? "pausing" : paused ? "resume" : "pause"}
+        disabled={!activeId}
+        draft={forkDraft}
+        key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
+        onControl={() => onControl(paused ? "running" : "pause")}
+        onSend={onSend}
+      />
+    </div>
+  );
+}

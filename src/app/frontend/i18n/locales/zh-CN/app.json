@@ -22,6 +22,8 @@
   "pausing": "正在暂停",
   "resume": "继续",
   "fork": "Fork",
+  "copy": "复制",
+  "copied": "已复制",
   "cancel": "取消",
   "delete": "删除",
   "error": "请求失败",

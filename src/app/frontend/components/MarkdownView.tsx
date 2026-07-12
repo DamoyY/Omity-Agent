@@ -20,6 +20,15 @@ const markdown = css({
   "& th, & td": { borderWidth: "1px", borderColor: "line", p: "2" },
 });
 
+const inlineCode = css({
+  display: "inline",
+  fontSize: "sm",
+  lineHeight: "1.25",
+  px: "1.5",
+  py: "0.5",
+  verticalAlign: "baseline",
+});
+
 const components: Components = {
   pre: ({ children }) => <>{children}</>,
   code: ({ children, className }) => {
@@ -30,7 +39,7 @@ const components: Components = {
       return <HighlightedCode code={code} language={language} />;
     }
     return (
-      <Code size="sm" variant="ghost">
+      <Code className={inlineCode} size="md" variant="ghost">
         {children}
       </Code>
     );

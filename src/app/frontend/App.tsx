@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { cx } from "styled-system/css";
-import { ChatPage } from "./components/ChatPage";
+import { ChatPage } from "./components/Chat/ChatPage";
 import { Sidebar } from "./components/Sidebar";
 import { layout, main, sidebar } from "./design";
 import { readPage, writePage, type Page } from "./route";

@@ -17,27 +17,28 @@ import {
 const fieldClasses = fieldRecipe();
 
 const compactControl = css({
-  bg: "control",
-  borderColor: "lineStrong",
   borderRadius: "0",
   color: "text",
   fontFamily: "body",
   fontWeight: "normal",
   minW: 0,
-  _disabled: {
-    bg: "surface",
-    borderColor: "line",
-    color: "muted",
-  },
   _focusVisible: {
     outlineColor: "mutedStrong",
     outlineOffset: "2px",
     outlineStyle: "solid",
     outlineWidth: "1px",
   },
-  _hover: {
-    bg: "controlHover",
+});
+
+const surfacedControl = css({
+  bg: "control",
+  borderColor: "lineStrong",
+  _disabled: {
+    bg: "surface",
+    borderColor: "line",
+    color: "muted",
   },
+  _hover: { bg: "controlHover" },
 });
 
 const compactBadge = css({
@@ -51,6 +52,15 @@ const compactBadge = css({
   w: "fit-content",
 });
 
+const compactCode = css({
+  bg: "surfaceInset",
+  borderColor: "line",
+  borderRadius: "0",
+  borderWidth: "1px",
+  color: "text",
+  fontFamily: "mono",
+});
+
 type ButtonProps = ComponentProps<"button"> & ButtonVariantProps;
 
 export function Button({
@@ -61,7 +71,12 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={cx(buttonRecipe({ size, variant }), compactControl, className)}
+      className={cx(
+        buttonRecipe({ size, variant }),
+        compactControl,
+        variant !== "ghost" && surfacedControl,
+        className,
+      )}
       {...props}
     />
   );
@@ -76,7 +91,12 @@ type InputProps = Omit<ComponentProps<"input">, "size"> & InputVariantProps;
 export function Input({ className, size = "sm", ...props }: InputProps) {
   return (
     <input
-      className={cx(inputRecipe({ size }), compactControl, className)}
+      className={cx(
+        inputRecipe({ size }),
+        compactControl,
+        surfacedControl,
+        className,
+      )}
       {...props}
     />
   );
@@ -87,7 +107,12 @@ type TextareaProps = ComponentProps<"textarea"> & TextareaVariantProps;
 export function Textarea({ className, size = "md", ...props }: TextareaProps) {
   return (
     <textarea
-      className={cx(textareaRecipe({ size }), compactControl, className)}
+      className={cx(
+        textareaRecipe({ size }),
+        compactControl,
+        surfacedControl,
+        className,
+      )}
       {...props}
     />
   );
@@ -134,6 +159,9 @@ export function Code({
   ...props
 }: CodeProps) {
   return (
-    <code className={cx(codeRecipe({ size, variant }), className)} {...props} />
+    <code
+      className={cx(codeRecipe({ size, variant }), compactCode, className)}
+      {...props}
+    />
   );
 }

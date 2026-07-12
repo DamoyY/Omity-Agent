@@ -2,7 +2,7 @@ import { Check, FolderOpen, History } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
-import { Composer } from "./Composer";
+import { Composer } from "./Chat/Composer";
 import { Button, Field, Input } from "./ParkUI";
 import { reportPromiseErrors } from "../services/errors";
 

@@ -2,8 +2,8 @@ import { Pause, Play, Send } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
-import { Button, Textarea } from "./ParkUI";
-import { reportPromiseErrors } from "../services/errors";
+import { reportPromiseErrors } from "../../services/errors";
+import { Button, Textarea } from "../ParkUI";
 
 const form = css({
   bg: "surface",
@@ -12,8 +12,7 @@ const form = css({
   display: "grid",
   gap: "3",
   gridTemplateColumns: "minmax(0, 1fr) auto",
-  px: "6",
-  py: "3",
+  p: "6",
   w: "full",
 });
 
@@ -25,14 +24,10 @@ const messageBox = css({
   resize: "none",
 });
 
-const sendButton = css({
-  alignSelf: "stretch",
-});
-
 const actions = css({
+  alignContent: "start",
   display: "grid",
-  gap: "2",
-  gridAutoRows: "1fr",
+  gap: "1",
   minW: "7rem",
 });
 
@@ -95,7 +90,6 @@ export function Composer({
       />
       <div className={actions}>
         <Button
-          className={sendButton}
           disabled={disabled || submitting}
           type="submit"
           variant="outline"
