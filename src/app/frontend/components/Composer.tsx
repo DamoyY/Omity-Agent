@@ -1,4 +1,4 @@
-import { Send } from "lucide-react";
+import { Pause, Play, Send } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
@@ -29,13 +29,28 @@ const sendButton = css({
   alignSelf: "stretch",
 });
 
+const actions = css({
+  display: "grid",
+  gap: "2",
+  gridAutoRows: "1fr",
+  minW: "7rem",
+});
+
+type ControlState = "pause" | "pausing" | "resume";
+
 export function Composer({
   disabled,
   draft,
+  controlDisabled = false,
+  controlState,
+  onControl,
   onSend,
 }: {
   disabled: boolean;
   draft?: string;
+  controlDisabled?: boolean;
+  controlState?: ControlState;
+  onControl?: () => Promise<void>;
   onSend: (content: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -78,14 +93,33 @@ export function Composer({
           event.currentTarget.form?.requestSubmit();
         }}
       />
-      <Button
-        className={sendButton}
-        disabled={disabled || submitting}
-        type="submit"
-        variant="outline"
-      >
-        <Send size={14} /> {t("send")}
-      </Button>
+      <div className={actions}>
+        <Button
+          className={sendButton}
+          disabled={disabled || submitting}
+          type="submit"
+          variant="outline"
+        >
+          <Send size={14} /> {t("send")}
+        </Button>
+        {controlState && onControl ? (
+          <Button
+            disabled={controlDisabled}
+            onClick={() => {
+              reportPromiseErrors(onControl());
+            }}
+            type="button"
+            variant="outline"
+          >
+            {controlState === "resume" ? (
+              <Play size={14} />
+            ) : (
+              <Pause size={14} />
+            )}
+            {t(controlState)}
+          </Button>
+        ) : null}
+      </div>
     </form>
   );
 }

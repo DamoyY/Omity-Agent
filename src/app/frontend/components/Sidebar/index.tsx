@@ -39,17 +39,22 @@ const workspaceTitle = css({
   whiteSpace: "nowrap",
 });
 const workspaceSessions = css({ display: "grid", gap: "2" });
-const sessionRow = css({
-  alignItems: "start",
+const sessionItem = css({
+  alignItems: "stretch",
+  bg: "surface",
+  borderColor: "line",
+  borderLeftWidth: "3px",
+  borderRightWidth: "1px",
+  borderTopWidth: "1px",
+  borderBottomWidth: "1px",
   display: "grid",
-  gap: "2",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   minW: 0,
 });
 const sessionButton = css({
   alignItems: "stretch",
-  bg: "surface",
-  borderColor: "line",
+  bg: "transparent",
+  borderWidth: "0",
   flexDirection: "column",
   h: "auto",
   justifyContent: "flex-start",
@@ -59,11 +64,9 @@ const sessionButton = css({
   textAlign: "left",
 });
 const activeSession = css({
-  bg: "surfaceRaised",
+  bg: "control",
   borderColor: "lineStrong",
-  outlineWidth: "1px",
-  outlineStyle: "solid",
-  outlineColor: "lineStrong",
+  borderLeftColor: "statusModel",
 });
 const sessionContent = css({
   alignItems: "center",
@@ -77,11 +80,33 @@ const itemTitle = css({
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 });
+const deleteButton = css({
+  alignSelf: "stretch",
+  bg: "transparent",
+  borderTopWidth: "0",
+  borderRightWidth: "0",
+  borderBottomWidth: "0",
+  borderLeftColor: "line",
+  borderLeftWidth: "1px",
+  color: "muted",
+  h: "auto",
+  _hover: {
+    bg: "controlHover",
+    color: "statusError",
+  },
+});
 const fullButton = css({ justifyContent: "flex-start", w: "full" });
+const footer = css({
+  bg: "sidebar",
+  borderTopColor: "line",
+  borderTopWidth: "1px",
+  p: "3",
+});
 
 interface SidebarProps {
   sessions: SessionInfo[];
   activeId?: string;
+  showCreate: boolean;
   onCreate: () => void;
   onDelete: (id: string) => Promise<void>;
   onSelect: (id: string) => void;
@@ -90,6 +115,7 @@ interface SidebarProps {
 export function Sidebar({
   sessions,
   activeId,
+  showCreate,
   onCreate,
   onDelete,
   onSelect,
@@ -100,12 +126,6 @@ export function Sidebar({
       <section className={panel}>
         <h1 className={title}>{t("brand")}</h1>
       </section>
-      <section className={panel}>
-        <Button className={fullButton} onClick={onCreate} type="button">
-          <Plus size={14} />
-          {t("newSession")}
-        </Button>
-      </section>
       <nav className={list}>
         {groupSessions(sessions).map((group) => (
           <section className={workspaceGroup} key={group.workspace}>
@@ -114,12 +134,16 @@ export function Sidebar({
             </h2>
             <div className={workspaceSessions}>
               {group.sessions.map((session) => (
-                <div className={sessionRow} key={session.id}>
+                <div
+                  className={cx(
+                    sessionItem,
+                    session.id === activeId && activeSession,
+                  )}
+                  key={session.id}
+                >
                   <Button
-                    className={cx(
-                      sessionButton,
-                      session.id === activeId && activeSession,
-                    )}
+                    aria-current={session.id === activeId ? "page" : undefined}
+                    className={sessionButton}
                     onClick={() => {
                       onSelect(session.id);
                     }}
@@ -132,6 +156,7 @@ export function Sidebar({
                   </Button>
                   <IconButton
                     aria-label={t("delete")}
+                    className={deleteButton}
                     onClick={() => {
                       reportPromiseErrors(onDelete(session.id));
                     }}
@@ -145,6 +170,14 @@ export function Sidebar({
           </section>
         ))}
       </nav>
+      {showCreate && (
+        <section className={footer}>
+          <Button className={fullButton} onClick={onCreate} type="button">
+            <Plus size={14} />
+            {t("newSession")}
+          </Button>
+        </section>
+      )}
     </>
   );
 }

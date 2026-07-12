@@ -15,7 +15,7 @@ export const sidebar = css({
   borderRightWidth: "1px",
   borderRightColor: "line",
   display: "grid",
-  gridTemplateRows: "auto auto 1fr",
+  gridTemplateRows: "auto minmax(0, 1fr) auto",
   minH: 0,
   minW: 0,
   overflow: "hidden",

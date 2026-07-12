@@ -68,6 +68,7 @@ export function App() {
       <aside className={sidebar}>
         <Sidebar
           activeId={activeSession?.id}
+          showCreate={currentPage.kind !== "new"}
           sessions={sessions}
           onCreate={() => {
             setNewWorkspace(undefined);
@@ -89,12 +90,12 @@ export function App() {
       <main className={main}>
         <ChatPage
           activeId={activeSession?.id}
-          canControl={activeSession !== undefined}
           newSession={currentPage.kind === "new"}
           pausing={pausing}
           control={transcript.control}
           queue={transcript.queue}
           recentWorkspaces={recentWorkspaces(sessions)}
+          sessionStatus={activeSession?.status}
           view={transcript.view}
           workspace={newWorkspace ?? cwd}
           onControl={async (control) => {

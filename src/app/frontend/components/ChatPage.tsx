@@ -1,29 +1,19 @@
-import { GitFork, Pause, Play } from "lucide-react";
+import { GitFork } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css, cx } from "styled-system/css";
 import type { DisplayQueue, TimelineMessage } from "../../timeline";
-import type { Control } from "../../../types";
+import type { Control, SessionStatus } from "../../../types";
 import { Composer } from "./Composer";
 import { MarkdownView } from "./MarkdownView";
 import { NewSessionPage } from "./NewSessionPage";
-import { Button } from "./ParkUI";
+import { IconButton } from "./ParkUI";
 import { ToolCall } from "./ToolCall";
 import { TranscriptScroll } from "./TranscriptScroll";
 import { reportPromiseErrors } from "../services/errors";
 
-const header = css({
-  bg: "surface",
-  borderBottomWidth: "1px",
-  borderBottomColor: "line",
-  display: "flex",
-  gap: "2",
-  justifyContent: "flex-end",
-  p: "3",
-});
-
 const page = css({
   display: "grid",
-  gridTemplateRows: "auto minmax(0, 1fr) auto",
+  gridTemplateRows: "minmax(0, 1fr) auto",
   h: "full",
   minH: 0,
   minW: 0,
@@ -45,7 +35,6 @@ const messageRoot = css({
   gap: "3",
   justifyItems: "start",
   maxW: "52rem",
-  mb: "4",
   minW: 0,
   p: "4",
   w: "fit-content",
@@ -63,20 +52,31 @@ const roleLabel = css({
   fontSize: "xs",
 });
 
-const messageActions = css({
+const messageRow = css({
+  alignItems: "start",
   display: "flex",
-  justifyContent: "flex-end",
+  gap: "2",
+  mb: "4",
+  minW: 0,
   w: "full",
+});
+
+const userMessageRow = css({ justifyContent: "flex-end" });
+
+const forkButton = css({
+  alignSelf: "center",
+  borderWidth: "0",
+  flexShrink: 0,
 });
 
 export function ChatPage({
   activeId,
-  canControl,
   control,
   newSession,
   pausing,
   queue,
   recentWorkspaces,
+  sessionStatus,
   view,
   workspace,
   onSend,
@@ -86,12 +86,12 @@ export function ChatPage({
   onWorkspaceChange,
 }: {
   activeId?: string;
-  canControl: boolean;
   control: Control;
   newSession: boolean;
   pausing: boolean;
   queue: DisplayQueue[];
   recentWorkspaces: string[];
+  sessionStatus?: SessionStatus;
   view: TimelineMessage[];
   workspace?: string;
   onSend: (content: string) => Promise<void>;
@@ -103,6 +103,7 @@ export function ChatPage({
   const { t } = useTranslation();
   const paused = control === "pause" || control === "pause_cancel";
   const waitingForPause = pausing && !paused;
+  const loopRunning = queue.some((item) => item.status === "running");
   const firstUserMessageId = view.find((item) => item.role === "user")?.id;
   const forkDraft = queue.find((item) => item.status === "draft")?.content;
 
@@ -121,75 +122,73 @@ export function ChatPage({
     }
     return (
       <div className={page}>
-        <div />
         <div className={empty}>{t("empty")}</div>
       </div>
     );
   }
   return (
     <div className={page}>
-      {canControl ? (
-        <header className={header}>
-          <Button
-            onClick={() => {
-              reportPromiseErrors(onControl(paused ? "running" : "pause"));
-            }}
-            disabled={waitingForPause}
-            variant="outline"
-          >
-            {paused ? <Play size={14} /> : <Pause size={14} />}
-            {waitingForPause ? t("pausing") : paused ? t("resume") : t("pause")}
-          </Button>
-        </header>
-      ) : (
-        <div />
-      )}
       <TranscriptScroll activeId={activeId} queue={queue} view={view}>
         {view.length === 0 ? (
           <div className={empty}>{t("noMessages")}</div>
         ) : null}
-        {view.map((item) => (
-          <article
-            className={cx(messageRoot, item.role === "user" && userMessage)}
-            key={item.key}
-          >
-            <div className={roleLabel}>{t(item.role)}</div>
-            {item.parts.map((part, index) =>
-              part.type === "content" ? (
-                <MarkdownView
-                  content={part.content}
-                  key={`content-${index.toString()}`}
-                />
-              ) : (
-                <ToolCall
-                  call={part.call}
-                  key={part.call.id}
-                  output={part.output}
-                />
-              ),
-            )}
-            {item.role === "user" &&
+        {view.map((item) => {
+          const canFork =
+            item.role === "user" &&
             item.id > 0 &&
-            item.id !== firstUserMessageId ? (
-              <div className={messageActions}>
-                <Button
+            item.id !== firstUserMessageId;
+          return (
+            <div
+              className={cx(messageRow, item.role === "user" && userMessageRow)}
+              key={item.key}
+            >
+              {canFork ? (
+                <IconButton
+                  aria-label={t("fork")}
+                  className={forkButton}
+                  disabled={loopRunning}
                   onClick={() => {
                     reportPromiseErrors(onFork(item.id));
                   }}
+                  title={t("fork")}
                   type="button"
+                  variant="ghost"
                 >
                   <GitFork size={14} />
-                  {t("fork")}
-                </Button>
-              </div>
-            ) : null}
-          </article>
-        ))}
+                </IconButton>
+              ) : null}
+              <article
+                className={cx(messageRoot, item.role === "user" && userMessage)}
+              >
+                <div className={roleLabel}>{t(item.role)}</div>
+                {item.parts.map((part, index) =>
+                  part.type === "content" ? (
+                    <MarkdownView
+                      content={part.content}
+                      key={`content-${index.toString()}`}
+                    />
+                  ) : (
+                    <ToolCall
+                      call={part.call}
+                      key={part.call.id}
+                      output={part.output}
+                    />
+                  ),
+                )}
+              </article>
+            </div>
+          );
+        })}
       </TranscriptScroll>
       <Composer
+        controlDisabled={
+          waitingForPause || (!paused && sessionStatus === "idle")
+        }
+        controlState={waitingForPause ? "pausing" : paused ? "resume" : "pause"}
         disabled={!activeId}
         draft={forkDraft}
         key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
+        onControl={() => onControl(paused ? "running" : "pause")}
         onSend={onSend}
       />
     </div>

@@ -97,7 +97,6 @@ export function NewSessionPage({
   };
   return (
     <div className={pageClassName}>
-      <div />
       <section className={content}>
         <div className={form}>
           <h1 className={title}>{t("newSession")}</h1>
