@@ -149,6 +149,10 @@ export function setQueueStatusRecord(
   status: QueueStatus,
   error?: string,
 ) {
+  if (status === "paused" && error === undefined) {
+    db.run("UPDATE queue SET status = ? WHERE id = ?", [status, queueId]);
+    return;
+  }
   db.run("UPDATE queue SET status = ?, error = ? WHERE id = ?", [
     status,
     error ?? null,

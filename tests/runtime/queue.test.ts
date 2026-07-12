@@ -24,10 +24,19 @@ test("unexpected errors pause the queue", async () => {
     stream: () => Promise.reject(new Error("boom")),
   };
 
-  await processQueue(makeContext(db, graph), required(item));
+  const context = makeContext(db, graph);
+  await processQueue(context, required(item));
+
+  context.controller.abort();
+  await processQueue(context, required(db.nextQueue("123")));
 
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
+  expect(
+    db.db
+      .query<{ error: string | null }, []>("SELECT error FROM queue LIMIT 1")
+      .get()?.error,
+  ).toBe("boom");
   db.close();
 });
 
