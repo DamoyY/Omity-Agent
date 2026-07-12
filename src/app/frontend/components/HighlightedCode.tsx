@@ -1,7 +1,9 @@
 import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/common";
+import { useRef } from "react";
 import { css, cx } from "styled-system/css";
 import { CopyButton } from "./Chat/CopyButton";
+import { useFollowBottom } from "./TranscriptScroll";
 
 const container = css({
   maxW: "full",
@@ -68,18 +70,27 @@ const codeElement = css({
 });
 
 export function HighlightedCode({
+  autoFollow,
   className,
   code,
   language,
 }: {
+  autoFollow?: boolean;
   className?: string;
   code: string;
   language?: string;
 }) {
+  const blockRef = useRef<HTMLPreElement>(null);
+  const onScroll = useFollowBottom({
+    enabled: autoFollow,
+    ref: blockRef,
+    version: code,
+  });
+
   return (
     <div className={container}>
       <CopyButton className={copyButton} value={code} />
-      <pre className={cx(block, className)}>
+      <pre className={cx(block, className)} ref={blockRef} onScroll={onScroll}>
         <code
           className={codeElement}
           dangerouslySetInnerHTML={{

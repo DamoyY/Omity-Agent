@@ -1,5 +1,12 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
-import type { DisplayQueue, TimelineMessage } from "../../timeline";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+  type RefObject,
+  type UIEventHandler,
+} from "react";
+import type { TimelineMessage } from "../../timeline";
 import { scroll } from "../design";
 
 const followBottomThreshold = 48;
@@ -11,38 +18,54 @@ function isNearBottom(element: HTMLElement) {
   );
 }
 
+export function useFollowBottom<T extends HTMLElement>({
+  enabled = true,
+  ref,
+  resetKey,
+  version,
+}: {
+  enabled?: boolean;
+  ref: RefObject<T | null>;
+  resetKey?: unknown;
+  version: unknown;
+}) {
+  const followingRef = useRef(true);
+
+  useLayoutEffect(() => {
+    followingRef.current = true;
+  }, [resetKey]);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!enabled || !element || !followingRef.current) return;
+    element.scrollTop = element.scrollHeight;
+  }, [enabled, ref, resetKey, version]);
+
+  const onScroll = useCallback<UIEventHandler<T>>((event) => {
+    followingRef.current = isNearBottom(event.currentTarget);
+  }, []);
+
+  return onScroll;
+}
+
 export function TranscriptScroll({
   activeId,
   children,
-  queue,
   view,
 }: {
   activeId: string;
   children: ReactNode;
-  queue: DisplayQueue[];
   view: TimelineMessage[];
 }) {
   const scrollRef = useRef<HTMLElement>(null);
-  const followTailRef = useRef(true);
-
-  useLayoutEffect(() => {
-    followTailRef.current = true;
-  }, [activeId]);
-
-  useLayoutEffect(() => {
-    const element = scrollRef.current;
-    if (!element || !followTailRef.current) return;
-    element.scrollTop = element.scrollHeight;
-  }, [queue, view]);
+  const onScroll = useFollowBottom({
+    ref: scrollRef,
+    resetKey: activeId,
+    version: view,
+  });
 
   return (
-    <section
-      className={scroll}
-      ref={scrollRef}
-      onScroll={(event) => {
-        followTailRef.current = isNearBottom(event.currentTarget);
-      }}
-    >
+    <section className={scroll} ref={scrollRef} onScroll={onScroll}>
       {children}
     </section>
   );

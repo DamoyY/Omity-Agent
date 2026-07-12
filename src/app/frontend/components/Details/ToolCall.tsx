@@ -58,6 +58,7 @@ export function ToolCall({
         <section className={ioPanel}>
           <p className={panelTitle}>{t("input")}</p>
           <HighlightedCode
+            autoFollow={latest}
             className={codeBlock}
             code={formatToolInput(call)}
             language="yaml"
@@ -67,7 +68,11 @@ export function ToolCall({
           <section className={ioPanel}>
             <p className={panelTitle}>{t("output")}</p>
             {output.content.trim() ? (
-              <HighlightedCode className={codeBlock} code={output.content} />
+              <HighlightedCode
+                autoFollow={latest}
+                className={codeBlock}
+                code={output.content}
+              />
             ) : null}
             {output.images.length > 0 ? (
               <div className={imageList}>

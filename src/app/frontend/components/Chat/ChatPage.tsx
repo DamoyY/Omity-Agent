@@ -101,7 +101,7 @@ export function ChatPage({
   }
   return (
     <div className={page}>
-      <TranscriptScroll activeId={activeId} queue={queue} view={view}>
+      <TranscriptScroll activeId={activeId} view={view}>
         {view.length === 0 ? (
           <div className={empty}>{t("noMessages")}</div>
         ) : null}
