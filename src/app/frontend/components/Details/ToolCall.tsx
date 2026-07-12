@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { stringify } from "yaml";
 import type { DisplayMessage, DisplayToolCall } from "../../../timeline";
+import { formatTokens } from "../../tokenUnits";
 import { HighlightedCode } from "../HighlightedCode";
 import { Badge } from "../ParkUI";
 import { Frame } from "./Frame";
@@ -26,7 +27,15 @@ const ioPanel = css({
   gap: "2",
   minW: 0,
 });
-const panelTitle = css({ color: "mutedStrong", fontSize: "xs", m: 0 });
+const panelTitle = css({
+  alignItems: "center",
+  color: "mutedStrong",
+  display: "flex",
+  fontSize: "xs",
+  justifyContent: "space-between",
+  m: 0,
+});
+const tokenCount = css({ color: "muted", fontFamily: "mono" });
 const codeBlock = css({
   maxH: "toolOutput",
   minH: "3rem",
@@ -62,7 +71,10 @@ export function ToolCall({
     >
       <div className={ioGrid}>
         <section className={ioPanel}>
-          <p className={panelTitle}>{t("input")}</p>
+          <p className={panelTitle}>
+            <span>{t("input")}</span>
+            <span className={tokenCount}>{formatTokens(call.inputTokens)}</span>
+          </p>
           <HighlightedCode
             autoFollow={latest}
             className={codeBlock}
@@ -72,7 +84,14 @@ export function ToolCall({
         </section>
         {showOutput ? (
           <section className={ioPanel}>
-            <p className={panelTitle}>{t("output")}</p>
+            <p className={panelTitle}>
+              <span>{t("output")}</span>
+              <span className={tokenCount}>
+                {output
+                  ? formatTokens(output.outputTokens ?? 0)
+                  : t("unavailableTokens")}
+              </span>
+            </p>
             {showOutputCode ? (
               <HighlightedCode
                 autoFollow={latest}

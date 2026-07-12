@@ -17,7 +17,13 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
       images: [],
       queueId: null,
       toolCalls: [
-        { id: "call-1", index: 0, name: "terminal_new_tab", input: {} },
+        {
+          id: "call-1",
+          index: 0,
+          inputTokens: 1,
+          name: "terminal_new_tab",
+          input: {},
+        },
       ],
       createdAt: 1,
     },
@@ -55,7 +61,13 @@ test("streaming tool call is grouped with previous assistant message", () => {
       images: [],
       queueId: null,
       toolCalls: [
-        { id: "call-1", index: 0, name: "terminal_new_tab", input: {} },
+        {
+          id: "call-1",
+          index: 0,
+          inputTokens: 1,
+          name: "terminal_new_tab",
+          input: {},
+        },
       ],
       createdAt: 1,
     },
@@ -97,7 +109,9 @@ test("tool output retains images", () => {
       reasoning: "",
       images: [],
       queueId: null,
-      toolCalls: [{ id: "call-1", index: 0, name: "capture", input: {} }],
+      toolCalls: [
+        { id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} },
+      ],
       createdAt: 1,
     },
     {
@@ -128,7 +142,9 @@ test("started tool call exposes an empty output state", () => {
       reasoning: "",
       images: [],
       queueId: null,
-      toolCalls: [{ id: "call-1", index: 0, name: "capture", input: {} }],
+      toolCalls: [
+        { id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} },
+      ],
       createdAt: 1,
     },
   ];

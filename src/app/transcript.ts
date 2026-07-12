@@ -1,6 +1,6 @@
 import {
-  AIMessage,
   mapStoredMessagesToChatMessages,
+  ToolMessage,
   type BaseMessage,
   type StoredMessage,
 } from "@langchain/core/messages";
@@ -15,6 +15,11 @@ import {
   type DisplayMessage,
   type DisplayToolCall,
 } from "./timeline";
+import {
+  modelTokenUsage,
+  toolInputTokens,
+  toolOutputTokens,
+} from "./timeline/tokenCounts";
 import { z } from "zod";
 
 interface MessageRow {
@@ -94,17 +99,25 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
   stored.data.id = row.source_id;
   const [message] = mapStoredMessagesToChatMessages([stored]);
   if (!message) throw new Error("无法还原消息");
+  const role = messageRole(message);
+  const content = contentToText(message.content);
+  if (role === "tool" && !ToolMessage.isInstance(message)) {
+    throw new Error("工具消息类型无效");
+  }
   return {
     id: row.id,
     ...(message.id ? { sourceId: message.id } : {}),
-    role: messageRole(message),
-    content: contentToText(message.content),
+    role,
+    content,
     reasoning: messageReasoning(message),
     images: extractToolImages(message.content),
     queueId: row.queue_id,
     toolCalls: extractToolCalls(message),
     toolCallId: extractToolCallId(message),
-    usage: extractTokenUsage(message),
+    ...(ToolMessage.isInstance(message)
+      ? { outputTokens: toolOutputTokens(message, content) }
+      : {}),
+    usage: modelTokenUsage(message),
     createdAt: row.created_at,
   };
 }
@@ -148,40 +161,21 @@ function messageRole(message: BaseMessage): DisplayMessage["role"] {
 }
 function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
   const calls = readRecordArray(message, "tool_calls");
-  return calls.map((call, index) => ({
-    id: stringField(call, "id") ?? `tool-${index.toString()}`,
-    index,
-    ...(message.id ? { messageId: message.id } : {}),
-    name: stringField(call, "name") ?? "tool",
-    input: call["args"] ?? call["input"] ?? call,
-  }));
+  return calls.map((call, index) => {
+    const input = call["args"] ?? call["input"] ?? call;
+    return {
+      id: stringField(call, "id") ?? `tool-${index.toString()}`,
+      index,
+      inputTokens: toolInputTokens(call, input),
+      ...(message.id ? { messageId: message.id } : {}),
+      name: stringField(call, "name") ?? "tool",
+      input,
+    };
+  });
 }
 function extractToolCallId(message: BaseMessage) {
   const value = readRecord(message, "tool_call_id");
   return typeof value === "string" ? value : undefined;
-}
-function extractTokenUsage(message: BaseMessage) {
-  if (!AIMessage.isInstance(message) || !message.usage_metadata)
-    return undefined;
-  const {
-    input_tokens: inputTokens,
-    output_tokens: outputTokens,
-    input_token_details: inputDetails,
-  } = message.usage_metadata;
-  const cacheReadTokens = inputDetails?.cache_read ?? 0;
-  for (const [name, value] of Object.entries({
-    inputTokens,
-    outputTokens,
-    cacheReadTokens,
-  })) {
-    if (!Number.isSafeInteger(value) || value < 0) {
-      throw new Error(`模型 usage_metadata.${name} 无效`);
-    }
-  }
-  if (cacheReadTokens > inputTokens) {
-    throw new Error("模型 cache_read tokens 超过 input tokens");
-  }
-  return { inputTokens, outputTokens, cacheReadTokens };
 }
 function readRecordArray(message: BaseMessage, key: string) {
   const value = (message as unknown as Record<string, unknown>)[key];

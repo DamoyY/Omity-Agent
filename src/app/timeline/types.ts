@@ -8,6 +8,7 @@ export interface DisplayImage {
 export interface DisplayToolCall {
   id: string;
   index: number;
+  inputTokens: number;
   name: string;
   input: unknown;
   messageId?: string;
@@ -31,6 +32,7 @@ export interface DisplayMessage {
   queueId: number | null;
   toolCalls: DisplayToolCall[];
   toolCallId?: string;
+  outputTokens?: number;
   usage?: TokenUsage;
   createdAt: number;
 }

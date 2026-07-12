@@ -85,6 +85,7 @@ test("tool stream reconciles by message identity and index", () => {
       call: {
         id: "call-1",
         index: 0,
+        inputTokens: 1,
         messageId: "message-1",
         name: "open",
         input: {},
@@ -106,7 +107,13 @@ test("equal tool inputs do not hide unidentified calls", () => {
   const messages: DisplayMessage[] = [
     assistant({
       id: 1,
-      call: { id: "call-1", index: 0, name: "send", input: { command: "pwd" } },
+      call: {
+        id: "call-1",
+        index: 0,
+        inputTokens: 5,
+        name: "send",
+        input: { command: "pwd" },
+      },
     }),
   ];
   const events = [
@@ -157,7 +164,7 @@ function assistant(options: {
 }
 
 function call(id: string) {
-  return { id, index: 0, name: "read", input: {} };
+  return { id, index: 0, inputTokens: 1, name: "read", input: {} };
 }
 
 function event(

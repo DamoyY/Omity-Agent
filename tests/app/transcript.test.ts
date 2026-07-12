@@ -1,6 +1,7 @@
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { loadTranscript } from "../../src/app/transcript";
+import { countTokens } from "../../src/runtime/tokenizer";
 import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
@@ -28,5 +29,54 @@ test("transcript exposes Responses API token and cache usage", () => {
     outputTokens: 300,
     cacheReadTokens: 900,
   });
+  db.close();
+});
+
+test("transcript counts raw tool input and output text", () => {
+  const db = makeDb();
+  const args = { command: "echo 你好" };
+  const output = "执行完成";
+  db.resetSession("tool-token-session", workspace);
+  db.syncHistory("tool-token-session", [
+    new HumanMessage("运行命令"),
+    new AIMessage({
+      content: "",
+      tool_calls: [{ id: "call-1", name: "shell", args }],
+    }),
+    new ToolMessage({ content: output, tool_call_id: "call-1" }),
+  ]);
+
+  const transcript = loadTranscript(db, "tool-token-session");
+  const part = transcript.view
+    .flatMap((message) => message.parts)
+    .find((item) => item.type === "tool");
+
+  expect(part?.type).toBe("tool");
+  if (part?.type !== "tool") throw new Error("工具调用未显示");
+  expect(part.call.inputTokens).toBe(countTokens(JSON.stringify(args)));
+  expect(part.output?.outputTokens).toBe(countTokens(output));
+  db.close();
+});
+
+test("transcript keeps the original token count for redirected output", () => {
+  const db = makeDb();
+  db.resetSession("large-output-session", workspace);
+  db.syncHistory("large-output-session", [
+    new AIMessage({
+      content: "",
+      tool_calls: [{ id: "call-1", name: "shell", args: {} }],
+    }),
+    new ToolMessage({
+      content: "工具输出过长，已重定向",
+      tool_call_id: "call-1",
+      metadata: { largeOutput: { path: "output.txt", tokens: 12_345 } },
+    }),
+  ]);
+
+  const part = loadTranscript(db, "large-output-session")
+    .view.flatMap((message) => message.parts)
+    .find((item) => item.type === "tool");
+
+  expect(part?.output?.outputTokens).toBe(12_345);
   db.close();
 });

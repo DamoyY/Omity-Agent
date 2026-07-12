@@ -4,12 +4,11 @@ import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ToolMessage, type MessageContent } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
-import { getEncoding } from "js-tiktoken";
 import { safeId } from "../infrastructure/configuration/sessionPaths";
 import type { Settings } from "../types";
 import { inspectToolTextContent } from "./outputText";
+import { countTokens } from "./tokenizer";
 
-const tokenizer = getEncoding("o200k_base");
 const outputFileIdBytes = 16;
 
 interface LargeOutputRuntimeContext {
@@ -65,10 +64,6 @@ export async function redirectLargeToolOutput(
     path: outputPath,
     tokens,
   });
-}
-
-export function countTokens(text: string) {
-  return tokenizer.encode(text).length;
 }
 
 function copyToolMessage(

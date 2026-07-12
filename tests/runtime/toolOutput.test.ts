@@ -4,10 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import {
-  countTokens,
-  redirectLargeToolOutput,
-} from "../../src/runtime/largeOutput";
+import { redirectLargeToolOutput } from "../../src/runtime/largeOutput";
+import { countTokens } from "../../src/runtime/tokenizer";
 
 const dirs: string[] = [];
 

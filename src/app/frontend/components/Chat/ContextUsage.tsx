@@ -2,6 +2,7 @@ import { DatabaseZap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { TokenUsage } from "../../../timeline";
+import { formatTokens } from "../../tokenUnits";
 
 const panel = css({
   alignItems: "end",
@@ -52,11 +53,4 @@ export function ContextUsage({ usage }: { usage: TokenUsage | null }) {
       </span>
     </div>
   );
-}
-
-export function formatTokens(tokens: number) {
-  if (tokens <= 1000) return `${tokens.toString()} Tokens`;
-  const precision = tokens < 10_000 ? 1 : 0;
-  const compact = (tokens / 1000).toFixed(precision).replace(/\.0$/, "");
-  return `${compact}K Tokens`;
 }

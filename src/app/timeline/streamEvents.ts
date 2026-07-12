@@ -1,4 +1,5 @@
 import type { DisplayEvent, DisplayToolCall } from "./types";
+import { countTokens } from "../../runtime/tokenizer";
 
 interface ToolCallAccumulator {
   id?: string;
@@ -69,6 +70,7 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
     id: call.id ?? `i:${(call.index ?? order).toString()}`,
     index: call.index ?? order,
     input: {},
+    inputTokens: countTokens(call.inputText),
     inputText: call.inputText,
     ...(call.messageId ? { messageId: call.messageId } : {}),
     name: call.name || "tool",

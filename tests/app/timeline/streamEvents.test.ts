@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { DisplayEvent, DisplayQueue } from "../../../src/app/timeline";
 import { buildTimeline } from "../../../src/app/timeline";
+import { countTokens } from "../../../src/runtime/tokenizer";
 
 const queue: DisplayQueue[] = [
   { id: 1, content: "run", status: "running", error: null },
@@ -18,6 +19,7 @@ test("merges tool identity and argument chunks by index", () => {
       id: "call-1",
       index: 0,
       input: {},
+      inputTokens: countTokens('{"command":"where.exe codex","waiting":10}'),
       inputText: '{"command":"where.exe codex","waiting":10}',
       name: "terminal_send_command",
       streaming: true,
@@ -75,6 +77,19 @@ test("accepts cumulative argument snapshots", () => {
   ]);
 
   expect(calls[0]?.inputText).toBe('{"value":10}');
+});
+
+test("updates token count from raw argument text while streaming", () => {
+  const initial = streamedCalls([
+    toolEvent(1, { args: '{"command":"', id: "call-1", index: 0 }),
+  ])[0];
+  const complete = streamedCalls([
+    toolEvent(1, { args: '{"command":"', id: "call-1", index: 0 }),
+    toolEvent(2, { args: 'echo 你好"}', index: 0 }),
+  ])[0];
+
+  expect(initial?.inputTokens).toBe(countTokens('{"command":"'));
+  expect(complete?.inputTokens).toBe(countTokens('{"command":"echo 你好"}'));
 });
 
 test("keeps parallel tool call indexes separate", () => {
