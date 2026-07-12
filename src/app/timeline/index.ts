@@ -1,9 +1,11 @@
 import { sameToolCall } from "./identity";
+import { groupAssistantMessages } from "./grouping";
 import {
   currentToolCallEvents,
   eventMessageId,
   eventQueueId,
   eventReasoning,
+  eventStartedCallId,
   eventText,
   streamToolCalls,
 } from "./streamEvents";
@@ -40,9 +42,17 @@ export function buildTimeline(
         : [],
     ),
   );
+  const startedCallIds = new Set(
+    events.flatMap((event) => {
+      const callId = eventStartedCallId(event);
+      return callId ? [callId] : [];
+    }),
+  );
   const visible = messages
     .filter((item) => item.role !== "tool")
-    .map((item) => withParts(item, `message-${item.id.toString()}`, outputs));
+    .map((item) =>
+      withParts(item, `message-${item.id.toString()}`, outputs, startedCallIds),
+    );
   const visibleToolCalls = visible.flatMap((item) => toolParts(item));
   const persistedSourceIds = new Set(
     messages.map((item) => item.sourceId).filter((id) => id !== undefined),
@@ -63,47 +73,11 @@ export function buildTimeline(
         outputs,
         visibleToolCalls,
         persistedSourceIds,
+        startedCallIds,
       ),
     )
     .filter((item) => item.parts.length > 0);
   return groupAssistantMessages([...visible, ...pending, ...live]);
-}
-
-function groupAssistantMessages(messages: TimelineMessage[]) {
-  const result: TimelineMessage[] = [];
-  let currentAssistant: TimelineMessage | undefined;
-  for (const item of messages) {
-    if (item.role !== "assistant") {
-      currentAssistant = undefined;
-      result.push(item);
-      continue;
-    }
-    if (!currentAssistant) {
-      currentAssistant = item;
-      result.push(item);
-      continue;
-    }
-    mergeAssistant(currentAssistant, item);
-    currentAssistant.id = item.id;
-  }
-  return result;
-}
-
-function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
-  target.content = [target.content, source.content]
-    .filter((content) => content.trim().length > 0)
-    .join("\n\n");
-  for (const part of source.parts) {
-    if (part.type !== "tool") {
-      target.parts.push(part);
-      continue;
-    }
-    if (toolParts(target).some((item) => sameToolCall(item.call, part.call))) {
-      continue;
-    }
-    target.parts.push(part);
-  }
-  if (source.usage) target.usage = source.usage;
 }
 
 function streamMessage(
@@ -112,6 +86,7 @@ function streamMessage(
   outputs: Map<string, DisplayMessage>,
   visibleToolCalls: Extract<TimelinePart, { type: "tool" }>[],
   persistedSourceIds: Set<string>,
+  startedCallIds: Set<string>,
 ) {
   const streamEvents = events
     .filter((event) => eventQueueId(event) === item.id)
@@ -143,6 +118,7 @@ function streamMessage(
     },
     `stream-${item.id.toString()}`,
     outputs,
+    startedCallIds,
   );
 }
 
@@ -150,6 +126,7 @@ function withParts(
   message: DisplayMessage,
   key: string,
   outputs: Map<string, DisplayMessage>,
+  startedCallIds: Set<string>,
 ): TimelineMessage {
   return {
     id: message.id,
@@ -169,6 +146,7 @@ function withParts(
         type: "tool" as const,
         call,
         output: outputs.get(call.id),
+        ...(startedCallIds.has(call.id) ? { started: true } : {}),
       })),
     ],
   };

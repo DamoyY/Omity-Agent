@@ -126,6 +126,7 @@ export function Message({
               key={`${part.call.id}-${index === latestDetailIndex ? "latest" : "settled"}`}
               latest={index === latestDetailIndex}
               output={part.output}
+              started={part.started}
             />
           );
         })}

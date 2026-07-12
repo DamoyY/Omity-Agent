@@ -39,12 +39,18 @@ export function ToolCall({
   call,
   latest,
   output,
+  started,
 }: {
   call: DisplayToolCall;
   latest: boolean;
   output?: DisplayMessage;
+  started?: boolean;
 }) {
   const { t } = useTranslation();
+  const showOutput = output !== undefined || started;
+  const showOutputCode = output
+    ? output.content.trim().length > 0 || output.images.length === 0
+    : started;
   return (
     <Frame
       accessory={call.streaming ? <Badge>{t("streaming")}</Badge> : undefined}
@@ -64,17 +70,17 @@ export function ToolCall({
             language="yaml"
           />
         </section>
-        {output ? (
+        {showOutput ? (
           <section className={ioPanel}>
             <p className={panelTitle}>{t("output")}</p>
-            {output.content.trim() ? (
+            {showOutputCode ? (
               <HighlightedCode
                 autoFollow={latest}
                 className={codeBlock}
-                code={output.content}
+                code={output?.content ?? ""}
               />
             ) : null}
-            {output.images.length > 0 ? (
+            {output && output.images.length > 0 ? (
               <div className={imageList}>
                 {output.images.map((image, index) => (
                   <img

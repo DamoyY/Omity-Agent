@@ -4,12 +4,17 @@ export type StreamToolCallDelta = Partial<
   Record<"args" | "id" | "name", string> & { index: number }
 >;
 
+export type StreamEventKind =
+  | "assistant_reasoning_delta"
+  | "assistant_text_delta"
+  | "tool_call_delta"
+  | "tool_started";
+
 function insertStreamEvent(
   db: Database,
   sessionId: string,
   queueId: number,
-  kind:
-    "assistant_reasoning_delta" | "assistant_text_delta" | "tool_call_delta",
+  kind: StreamEventKind,
   payload: unknown,
   messageId?: string,
 ) {
@@ -60,6 +65,15 @@ export function insertStreamToolCall(
   messageId?: string,
 ) {
   insertStreamEvent(db, sessionId, queueId, "tool_call_delta", call, messageId);
+}
+
+export function insertToolStarted(
+  db: Database,
+  sessionId: string,
+  queueId: number,
+  callId: string,
+) {
+  insertStreamEvent(db, sessionId, queueId, "tool_started", callId);
 }
 
 export function clearStreamEvents(db: Database, sessionId: string) {

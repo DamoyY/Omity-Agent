@@ -8,6 +8,7 @@ import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import { contentToText, messageReasoning } from "../runtime/content";
 import { extractToolImages } from "../runtime/modelImages";
 import { parseError } from "../failures/details";
+import type { StreamEventKind } from "../infrastructure/database/records/streamEvents";
 import {
   buildTimeline,
   type DisplayEvent,
@@ -36,8 +37,7 @@ interface EventRow {
   id: number;
   queue_id: number;
   message_id: string | null;
-  kind:
-    "assistant_reasoning_delta" | "assistant_text_delta" | "tool_call_delta";
+  kind: StreamEventKind;
   payload_json: string;
 }
 
@@ -101,19 +101,19 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
 
 function toDisplayEvent(row: EventRow): DisplayEvent {
   const value = JSON.parse(row.payload_json) as unknown;
-  const textEvent = row.kind !== "tool_call_delta";
+  const payload =
+    row.kind === "tool_call_delta"
+      ? { call: value }
+      : row.kind === "tool_started"
+        ? { callId: requireString(value) }
+        : { text: requireString(value) };
   return {
     id: row.id,
-    message:
-      row.kind === "assistant_text_delta"
-        ? "token"
-        : row.kind === "assistant_reasoning_delta"
-          ? "reasoning"
-          : "tool_call",
+    message: row.kind,
     payload: {
       kind: row.kind,
       queueId: row.queue_id,
-      ...(textEvent ? { text: requireString(value) } : { call: value }),
+      ...payload,
       ...(row.message_id ? { messageId: row.message_id } : {}),
     },
   };

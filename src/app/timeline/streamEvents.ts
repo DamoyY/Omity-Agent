@@ -29,6 +29,14 @@ export function eventMessageId(event: DisplayEvent) {
     : undefined;
 }
 
+export function eventStartedCallId(event: DisplayEvent) {
+  return isRecord(event.payload) &&
+    event.payload["kind"] === "tool_started" &&
+    typeof event.payload["callId"] === "string"
+    ? event.payload["callId"]
+    : undefined;
+}
+
 export function currentToolCallEvents(events: DisplayEvent[]) {
   const lastTextIndex = events.findLastIndex((event) => {
     const queueId = eventQueueId(event) ?? -1;

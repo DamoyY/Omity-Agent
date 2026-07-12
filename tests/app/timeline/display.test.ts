@@ -119,6 +119,35 @@ test("tool output retains images", () => {
   expect(output?.images).toEqual([image]);
 });
 
+test("started tool call exposes an empty output state", () => {
+  const messages: DisplayMessage[] = [
+    {
+      id: 1,
+      role: "assistant",
+      content: "",
+      reasoning: "",
+      images: [],
+      queueId: null,
+      toolCalls: [{ id: "call-1", index: 0, name: "capture", input: {} }],
+      createdAt: 1,
+    },
+  ];
+  const events: DisplayEvent[] = [
+    {
+      id: 1,
+      message: "tool_started",
+      payload: { kind: "tool_started", queueId: 1, callId: "call-1" },
+    },
+  ];
+
+  const part = buildTimeline(messages, [], events)[0]?.parts.find(
+    (item) => item.type === "tool",
+  );
+
+  expect(part?.started).toBe(true);
+  expect(part?.output).toBeUndefined();
+});
+
 test("grouped assistant messages retain the latest token usage", () => {
   const usage = {
     inputTokens: 1200,

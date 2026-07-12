@@ -8,6 +8,7 @@ import {
   insertStreamReasoning,
   insertStreamToken,
   insertStreamToolCall,
+  insertToolStarted,
 } from "./records/streamEvents";
 import { loadMessages, syncMessages } from "./records/messages/history";
 import {
@@ -182,6 +183,11 @@ export class AgentDatabase {
 
   streamToolCall(...args: DatabaseArgs<typeof insertStreamToolCall>) {
     insertStreamToolCall(this.db, ...args);
+    this.notify?.();
+  }
+
+  toolStarted(...args: DatabaseArgs<typeof insertToolStarted>) {
+    insertToolStarted(this.db, ...args);
     this.notify?.();
   }
 

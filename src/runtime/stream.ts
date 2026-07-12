@@ -1,4 +1,8 @@
-import { AIMessageChunk } from "@langchain/core/messages";
+import {
+  AIMessage,
+  AIMessageChunk,
+  type BaseMessage,
+} from "@langchain/core/messages";
 import type { HostContext } from "./context";
 import {
   contentToText,
@@ -66,6 +70,18 @@ export function handleStreamEvent(
   }
   const delta = incrementalSummary(payload, state);
   if (delta !== undefined) ctx.logger.debug("调试事件增量", delta);
+}
+
+export function recordToolExecutionStarted(
+  ctx: HostContext,
+  messages: BaseMessage[],
+  queueId: number,
+) {
+  const request = messages.findLast((message) => AIMessage.isInstance(message));
+  if (!request || !AIMessage.isInstance(request)) return;
+  for (const call of request.tool_calls ?? []) {
+    if (call.id) ctx.db.toolStarted(ctx.sessionId, queueId, call.id);
+  }
 }
 
 export function incrementalSummary(

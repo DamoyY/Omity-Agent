@@ -63,5 +63,10 @@ export interface TimelineMessage {
 export type TimelinePart =
   | { type: "content"; content: string }
   | { type: "reasoning"; content: string }
-  | { type: "tool"; call: DisplayToolCall; output?: DisplayMessage };
+  | {
+      type: "tool";
+      call: DisplayToolCall;
+      output?: DisplayMessage;
+      started?: boolean;
+    };
 import type { ErrorDetails } from "../../failures/details";

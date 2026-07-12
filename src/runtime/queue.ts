@@ -9,7 +9,11 @@ import {
   setRunStatus,
   type QueueRun,
 } from "./run";
-import { createStreamLogState, handleStreamEvent } from "./stream";
+import {
+  createStreamLogState,
+  handleStreamEvent,
+  recordToolExecutionStarted,
+} from "./stream";
 import { queueMessageId } from "../infrastructure/database/records/messages/history";
 import { consumeBoundaryAppends } from "./appends";
 import { captureError } from "../failures/details";
@@ -153,6 +157,8 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         ? "model"
         : undefined;
     if (nextActivity) ctx.observer?.activity?.(ctx.sessionId, nextActivity);
+    if (nextActivity === "tool")
+      recordToolExecutionStarted(ctx, messages, item.id);
     input = null;
   }
 }
