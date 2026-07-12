@@ -1,10 +1,16 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { customTool } from "@langchain/openai";
+import { z } from "zod";
 
 export interface FreeformMcpTools {
   modelTools: StructuredToolInterface[];
   parameters: ReadonlyMap<string, string>;
 }
+
+const toolJsonSchema = z.looseObject({
+  properties: z.record(z.string(), z.unknown()),
+});
+const stringParameterSchema = z.looseObject({ type: z.literal("string") });
 
 export function normalizeFreeformToolInputs(
   value: unknown,
@@ -66,8 +72,8 @@ export function configureFreeformMcpTools(
 
 function singleStringParameter(tool: StructuredToolInterface) {
   const schema: unknown = tool.schema;
-  const properties = isRecord(schema) ? schema["properties"] : undefined;
-  const entries = isRecord(properties) ? Object.entries(properties) : [];
+  const parsed = toolJsonSchema.safeParse(schema);
+  const entries = parsed.success ? Object.entries(parsed.data.properties) : [];
   if (entries.length !== 1) {
     throw new Error(
       `MCP free-form 工具 ${tool.name} 必须恰好声明一个输入参数，实际为 ${entries.length.toString()} 个`,
@@ -80,14 +86,10 @@ function singleStringParameter(tool: StructuredToolInterface) {
   if (!parameter) {
     throw new Error(`MCP free-form 工具 ${tool.name} 的输入参数名不能为空`);
   }
-  if (!isRecord(definition) || definition["type"] !== "string") {
+  if (!stringParameterSchema.safeParse(definition).success) {
     throw new Error(
       `MCP free-form 工具 ${tool.name} 的唯一输入参数 ${parameter} 必须是字符串`,
     );
   }
   return parameter;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

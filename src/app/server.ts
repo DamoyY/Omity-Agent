@@ -1,9 +1,10 @@
-import { createServer } from "node:http";
+import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { getRequestListener } from "@hono/node-server";
 import { createServer as createViteServer, type ViteDevServer } from "vite";
 import { AppController } from "./controller";
-import { sendError } from "./http/errors";
-import { handleApi } from "./http/handler";
+import { errorResponse } from "./http/errors";
+import { createApi } from "./http/handler";
 import { appUrl } from "./launch";
 
 export interface AppServerOptions {
@@ -20,8 +21,15 @@ export async function startAppServer(options: AppServerOptions) {
     server: { hmr: false, middlewareMode: true },
     appType: "spa",
   });
+  const handleApi = getRequestListener(createApi(controller).fetch);
   const server = createServer((req, res) => {
-    void dispatchRequest(controller, vite, req, res);
+    if (req.url?.startsWith("/api/")) {
+      void handleApi(req, res);
+      return;
+    }
+    vite.middlewares(req, res, (error: unknown) => {
+      if (error) sendViteError(res, error);
+    });
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -32,30 +40,19 @@ export async function startAppServer(options: AppServerOptions) {
   await waitForShutdown(controller, vite, server);
 }
 
-async function dispatchRequest(
-  controller: AppController,
-  vite: ViteDevServer,
-  req: Parameters<typeof handleApi>[1],
-  res: Parameters<typeof handleApi>[2],
-) {
-  try {
-    if (req.url?.startsWith("/api/")) {
-      await handleApi(controller, req, res);
-      return;
-    }
-    vite.middlewares(req, res, (error: unknown) => {
-      if (error) sendError(res, error);
-    });
-  } catch (error) {
-    sendError(res, error);
-  }
-}
-
 function listeningPort(address: string | AddressInfo | null) {
   if (!address || typeof address === "string") {
     throw new Error("无法获取 WebUI 监听端口");
   }
   return address.port;
+}
+
+function sendViteError(res: ServerResponse, error: unknown) {
+  const normalized = errorResponse(error);
+  res.writeHead(normalized.status, {
+    "content-type": "application/json; charset=utf-8",
+  });
+  res.end(JSON.stringify(normalized.body));
 }
 
 async function waitForShutdown(

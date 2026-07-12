@@ -1,4 +1,3 @@
-import type { ServerResponse } from "node:http";
 import { DomainError, type DomainErrorCode } from "../../errors";
 
 export type ApiErrorCode =
@@ -29,17 +28,15 @@ export class HttpError extends Error {
   }
 }
 
-export function sendError(res: ServerResponse, error: unknown) {
+export function errorResponse(error: unknown) {
   const normalized = normalizeError(error);
   if (normalized.status === 500) console.error(error);
-  res.writeHead(normalized.status, {
-    "content-type": "application/json; charset=utf-8",
-  });
-  res.end(
-    JSON.stringify({
+  return {
+    status: normalized.status,
+    body: {
       error: { code: normalized.code, message: normalized.message },
-    }),
-  );
+    },
+  };
 }
 
 export function normalizeError(error: unknown) {

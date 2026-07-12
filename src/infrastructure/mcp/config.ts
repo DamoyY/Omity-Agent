@@ -2,27 +2,46 @@ import { readFileSync } from "node:fs";
 import YAML from "yaml";
 import { normalizeFreeformToolInputs } from "./freeformInputs";
 import { normalizeMcpToolNameOverrides } from "./nameOverrides";
+import { z } from "zod";
 
 const envPlaceholder = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
 
 type McpServers = Record<string, unknown>;
 
+const mcpServerSchema = z.looseObject({});
+const mcpServersSchema = z.record(z.string(), mcpServerSchema);
+const mcpConfigurationSchema = z
+  .object({
+    mcpServers: mcpServersSchema.optional(),
+    toolNameOverrides: z.unknown().optional(),
+    freeformToolInputs: z.unknown().optional(),
+  })
+  .strict();
+const stdioServerSchema = z.looseObject({
+  command: z.string(),
+  args: z.array(z.string()).optional(),
+});
+
 export function readMcpConfiguration(path: string) {
   const parsed = expandEnvPlaceholders(
     YAML.parse(readFileSync(path, "utf8")) ?? {},
   );
-  if (!isRecord(parsed)) {
-    throw new Error(`MCP 配置 ${path} 必须是对象`);
+  const result = mcpConfigurationSchema.safeParse(parsed);
+  if (!result.success) {
+    const rootIssue = result.error.issues.find(
+      (issue) => issue.code === "invalid_type" && issue.path.length === 0,
+    );
+    if (rootIssue) throw new Error(`MCP 配置 ${path} 必须是对象`);
+    throw result.error;
   }
+  const configuration = result.data;
   return {
-    mcpServers: normalizeMcpServers(
-      recordValue(parsed["mcpServers"] ?? parsed["servers"]),
-    ),
+    mcpServers: normalizeMcpServers(configuration.mcpServers ?? {}),
     toolNameOverrides: normalizeMcpToolNameOverrides(
-      parsed["toolNameOverrides"],
+      configuration.toolNameOverrides,
     ),
     freeformToolInputs: normalizeFreeformToolInputs(
-      parsed["freeformToolInputs"],
+      configuration.freeformToolInputs,
     ),
   };
 }
@@ -66,22 +85,14 @@ export function normalizeMcpServers(mcpServers: McpServers): McpServers {
 }
 
 function normalizeMcpServer(server: unknown): unknown {
-  if (!isRecord(server) || typeof server["command"] !== "string") {
-    return server;
-  }
+  if (!isRecord(server) || !("command" in server)) return server;
+  const result = stdioServerSchema.safeParse(server);
+  if (!result.success) throw result.error;
   return {
-    ...server,
-    args: server["args"] ?? [],
+    ...result.data,
+    args: result.data.args ?? [],
     stderr: "ignore",
   };
-}
-
-function recordValue(value: unknown): Record<string, unknown> {
-  if (value === undefined) return {};
-  if (!isRecord(value)) {
-    throw new Error("MCP servers 配置必须是对象");
-  }
-  return value;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

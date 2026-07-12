@@ -131,7 +131,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     return rowToTuple(row, config, {
       db: this.db,
       serde: this.serde,
-      nextVersion: () => this.getNextVersion(undefined),
     });
   }
 

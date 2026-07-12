@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import YAML from "yaml";
+import matter from "gray-matter";
+import untildify from "untildify";
 import { z } from "zod";
 import type { Settings, SkillInfo } from "./types";
 
@@ -59,17 +59,13 @@ function readSkill(skillDir: string): SkillInfo {
 }
 
 function parseSkillMeta(content: string, source: string): SkillMeta {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
-  if (!match) throw new Error(`Skill 缺少 YAML front matter：${source}`);
-  const yaml = match[1];
-  if (yaml === undefined) throw new Error(`Skill front matter 为空：${source}`);
-  return skillMetaSchema.parse(YAML.parse(yaml));
+  if (!matter.test(content)) {
+    throw new Error(`Skill 缺少 YAML front matter：${source}`);
+  }
+  return skillMetaSchema.parse(matter(content).data);
 }
 
 function resolveUserPath(path: string) {
-  const expanded =
-    path === "~" || path.startsWith("~/") || path.startsWith("~\\")
-      ? join(homedir(), path.slice(2))
-      : path;
+  const expanded = untildify(path);
   return isAbsolute(expanded) ? expanded : resolve(process.cwd(), expanded);
 }

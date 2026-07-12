@@ -1,6 +1,8 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+import { Hono, type Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AppController } from "../controller";
-import { HttpError } from "./errors";
+import { errorResponse, HttpError } from "./errors";
 import {
   controlBody,
   composerDraftBody,
@@ -9,9 +11,10 @@ import {
   forkBody,
   messageBody,
   readJson,
+  requestBodyLimit,
 } from "./request";
 
-type ApiController = Pick<
+export type ApiController = Pick<
   AppController,
   | "bootstrap"
   | "sessions"
@@ -28,100 +31,82 @@ type ApiController = Pick<
   | "events"
 >;
 
-export async function handleApi(
-  controller: ApiController,
-  req: IncomingMessage,
-  res: ServerResponse,
-) {
-  const route = parseRoute(req);
-  if (req.method === "GET" && route.pathname === "/api/bootstrap") {
-    sendJson(res, controller.bootstrap());
-    return;
-  }
-  if (req.method === "GET" && route.pathname === "/api/sessions") {
-    sendJson(res, { sessions: controller.sessions() });
-    return;
-  }
-  if (req.method === "GET" && route.pathname === "/api/events") {
-    controller.events.stream(res);
-    return;
-  }
-  if (req.method === "POST" && route.pathname === "/api/workspace-picker") {
-    sendJson(res, { workspace: await controller.pickWorkspace() });
-    return;
-  }
-  if (req.method === "POST" && route.pathname === "/api/sessions") {
-    const body = await readJson(req, createSessionBody);
-    sendJson(res, { session: controller.createSession(body.workspace) });
-    return;
-  }
-  const deleteMatch = /^\/api\/sessions\/([^/]+)$/.exec(route.pathname);
-  if (req.method === "DELETE" && deleteMatch) {
-    const sessionId = decodeSessionId(deleteMatch[1] ?? "");
-    sendJson(res, await controller.deleteSession(sessionId));
-    return;
-  }
-  const sessionMatch = /^\/api\/sessions\/([^/]+)\/(.+)$/.exec(route.pathname);
-  if (!sessionMatch) throw new HttpError(404, `未知 API：${route.pathname}`);
-  const sessionId = decodeSessionId(sessionMatch[1] ?? "");
-  const action = sessionMatch[2];
-  if (req.method === "GET" && action === "transcript") {
-    sendJson(res, controller.transcript(sessionId));
-    return;
-  }
-  if (req.method === "GET" && action === "events") {
-    controller.assertSession(sessionId);
-    controller.events.stream(res, sessionId);
-    return;
-  }
-  if (req.method === "GET" && action === "composer-draft") {
-    sendJson(res, controller.composerDraft(sessionId));
-    return;
-  }
-  if (
-    (req.method === "PUT" || req.method === "POST") &&
-    action === "composer-draft"
-  ) {
-    const body = await readJson(req, composerDraftBody);
-    sendJson(
-      res,
-      controller.saveComposerDraft(sessionId, body.content, body.revision),
+export function createApi(controller: ApiController) {
+  const app = new Hono();
+
+  app.use(
+    "*",
+    bodyLimit({
+      maxSize: requestBodyLimit,
+      onError() {
+        throw new HttpError(
+          413,
+          `请求体不能超过 ${requestBodyLimit.toString()} 字节`,
+        );
+      },
+    }),
+  );
+
+  app.get("/api/bootstrap", (c) => c.json(controller.bootstrap()));
+  app.get("/api/sessions", (c) => c.json({ sessions: controller.sessions() }));
+  app.get("/api/events", (c) => controller.events.stream(c));
+  app.post("/api/workspace-picker", async (c) =>
+    c.json({ workspace: await controller.pickWorkspace() }),
+  );
+  app.post("/api/sessions", async (c) => {
+    const body = await readJson(c.req, createSessionBody);
+    return c.json({ session: controller.createSession(body.workspace) });
+  });
+  app.delete("/api/sessions/:sessionId", async (c) => {
+    const sessionId = decodeSessionId(c.req.param("sessionId"));
+    return c.json(await controller.deleteSession(sessionId));
+  });
+  app.get("/api/sessions/:sessionId/transcript", (c) =>
+    c.json(controller.transcript(sessionId(c))),
+  );
+  app.get("/api/sessions/:sessionId/events", (c) => {
+    const id = sessionId(c);
+    controller.assertSession(id);
+    return controller.events.stream(c, id);
+  });
+  app.get("/api/sessions/:sessionId/composer-draft", (c) =>
+    c.json(controller.composerDraft(sessionId(c))),
+  );
+  app.put("/api/sessions/:sessionId/composer-draft", async (c) => {
+    const body = await readJson(c.req, composerDraftBody);
+    return c.json(
+      controller.saveComposerDraft(sessionId(c), body.content, body.revision),
     );
-    return;
-  }
-  if (req.method === "POST" && action === "messages") {
-    const body = await readJson(req, messageBody);
-    sendJson(
-      res,
-      controller.sendMessage(sessionId, body.content, body.draftRevision),
+  });
+  app.post("/api/sessions/:sessionId/messages", async (c) => {
+    const body = await readJson(c.req, messageBody);
+    return c.json(
+      controller.sendMessage(sessionId(c), body.content, body.draftRevision),
     );
-    return;
-  }
-  if (req.method === "POST" && action === "control") {
-    const body = await readJson(req, controlBody);
-    sendJson(res, controller.control(sessionId, body.control));
-    return;
-  }
-  if (req.method === "POST" && action === "fork") {
-    const body = await readJson(req, forkBody);
-    sendJson(res, {
-      session: controller.forkSession(sessionId, body.beforeMessageId),
+  });
+  app.post("/api/sessions/:sessionId/control", async (c) => {
+    const body = await readJson(c.req, controlBody);
+    return c.json(controller.control(sessionId(c), body.control));
+  });
+  app.post("/api/sessions/:sessionId/fork", async (c) => {
+    const body = await readJson(c.req, forkBody);
+    return c.json({
+      session: controller.forkSession(sessionId(c), body.beforeMessageId),
     });
-    return;
-  }
-  throw new HttpError(404, `未知 API：${route.pathname}`);
+  });
+
+  app.notFound((c) => {
+    throw new HttpError(404, `未知 API：${c.req.path}`);
+  });
+  app.onError((error, c) => {
+    const normalized = errorResponse(error);
+    return c.json(normalized.body, normalized.status as ContentfulStatusCode);
+  });
+  return app;
 }
 
-function parseRoute(req: IncomingMessage) {
-  if (!req.url) throw new HttpError(400, "请求缺少 URL");
-  try {
-    return new URL(req.url, "http://127.0.0.1");
-  } catch {
-    throw new HttpError(400, "请求 URL 无效");
-  }
-}
-
-function sendJson(res: ServerResponse, body: unknown) {
-  res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-  res.end(JSON.stringify(body));
+function sessionId(c: Context) {
+  const value = c.req.param("sessionId");
+  if (value === undefined) throw new HttpError(400, "请求缺少 Session ID");
+  return decodeSessionId(value);
 }

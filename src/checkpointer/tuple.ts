@@ -1,7 +1,5 @@
 import type { Database } from "bun:sqlite";
 import {
-  TASKS,
-  maxChannelVersion,
   type Checkpoint,
   type CheckpointPendingWrite,
   type CheckpointTuple,
@@ -11,13 +9,20 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 import type { CheckpointRow, WriteJson } from "./sql";
 import { deserialize } from "./serde";
 import { hydrateCheckpoint, hydratePendingValue } from "./messageRefs";
+import { z } from "zod";
 
 interface TupleContext {
   db: Database;
   serde: SerializerProtocol;
-  nextVersion: () => number | string;
 }
 
+const writeRowSchema = z.looseObject({
+  task_id: z.string(),
+  idx: z.number(),
+  channel: z.string(),
+  type: z.string(),
+  value: z.string(),
+});
 export async function rowToTuple(
   row: CheckpointRow,
   config: RunnableConfig,
@@ -25,19 +30,12 @@ export async function rowToTuple(
 ): Promise<CheckpointTuple> {
   const checkpoint = hydrateCheckpoint(
     ctx.db,
-    await deserialize<Checkpoint>(
-      ctx.serde,
-      row.type ?? "json",
-      row.checkpoint,
-    ),
+    await deserialize<Checkpoint>(ctx.serde, row.type, row.checkpoint),
   );
-  if (checkpoint.v < 4 && row.parent_checkpoint_id) {
-    await migratePendingSends(checkpoint, row, ctx);
-  }
   return {
     config,
     checkpoint,
-    metadata: await deserialize(ctx.serde, row.type ?? "json", row.metadata),
+    metadata: await deserialize(ctx.serde, row.type, row.metadata),
     parentConfig: row.parent_checkpoint_id
       ? {
           configurable: {
@@ -55,94 +53,24 @@ async function pendingWrites(
   row: CheckpointRow,
   ctx: TupleContext,
 ): Promise<CheckpointPendingWrite[]> {
-  const writes = parseWriteRows(row.pending_writes ?? "[]");
+  const writes = parseWriteRows(row.pending_writes);
   return Promise.all(
     writes.map(async (write): Promise<CheckpointPendingWrite> => [
       write.task_id,
       write.channel,
       hydratePendingValue(
         ctx.db,
-        await deserialize(ctx.serde, write.type ?? "json", write.value ?? ""),
+        await deserialize(ctx.serde, write.type, write.value),
       ),
     ]),
   );
 }
 
-async function migratePendingSends(
-  checkpoint: Checkpoint,
-  row: CheckpointRow,
-  ctx: TupleContext,
-) {
-  const pending = ctx.db
-    .query<{ pending_sends: string | null }, [string, string, string, string]>(
-      `SELECT json_group_array(json_object(
-         'type', pending.type,
-         'value', CAST(pending.value AS TEXT)
-       )) as pending_sends
-       FROM (
-         SELECT type, value FROM writes
-         WHERE thread_id = ? AND checkpoint_ns = ?
-           AND checkpoint_id = ? AND channel = ?
-         ORDER BY idx
-       ) as pending`,
-    )
-    .get(
-      row.thread_id,
-      row.checkpoint_ns,
-      row.parent_checkpoint_id ?? "",
-      TASKS,
-    );
-  const sends = parsePendingSends(pending?.pending_sends ?? "[]");
-  checkpoint.channel_values[TASKS] = await Promise.all(
-    sends.map(({ type, value }) => deserialize(ctx.serde, type, value)),
-  );
-  checkpoint.channel_versions[TASKS] =
-    Object.keys(checkpoint.channel_versions).length > 0
-      ? maxChannelVersion(...Object.values(checkpoint.channel_versions))
-      : ctx.nextVersion();
-}
-
 function parseWriteRows(value: string): WriteJson[] {
   const parsed: unknown = JSON.parse(value);
-  if (!Array.isArray(parsed) || !parsed.every(isWriteRow)) {
+  const result = z.array(writeRowSchema).safeParse(parsed);
+  if (!result.success) {
     throw new Error("checkpoint pending writes 记录无效");
   }
-  return parsed;
-}
-
-function parsePendingSends(value: string) {
-  const parsed: unknown = JSON.parse(value);
-  if (!Array.isArray(parsed) || !parsed.every(isPendingSend)) {
-    throw new Error("checkpoint pending sends 记录无效");
-  }
-  return parsed;
-}
-
-function isWriteRow(value: unknown): value is WriteJson {
-  return (
-    isRecord(value) &&
-    typeof value["task_id"] === "string" &&
-    typeof value["idx"] === "number" &&
-    typeof value["channel"] === "string" &&
-    isOptionalString(value["type"]) &&
-    isOptionalString(value["value"])
-  );
-}
-
-function isPendingSend(
-  value: unknown,
-): value is { type: string; value: string } {
-  return (
-    isRecord(value) &&
-    typeof value["type"] === "string" &&
-    typeof value["value"] === "string"
-  );
-}
-
-function isOptionalString(value: unknown) {
-  return value === null || typeof value === "string";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return result.data;
 }

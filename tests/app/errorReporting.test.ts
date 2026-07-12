@@ -74,6 +74,49 @@ test("structured errors retain SDK fields, response headers, body and cause", ()
   });
 });
 
+test("persisted error details are validated recursively", () => {
+  expect(() =>
+    parseError(
+      JSON.stringify({
+        name: "Error",
+        message: "failed",
+        cause: { name: "Error", message: "cause", stack: 42 },
+      }),
+    ),
+  ).toThrow("队列错误详情无效");
+
+  expect(() =>
+    parseError(
+      JSON.stringify({
+        name: "Error",
+        message: "failed",
+        unexpected: true,
+      }),
+    ),
+  ).toThrow("队列错误详情无效");
+});
+
+test("non-error and circular values keep the persisted error contract", () => {
+  const circular: Record<string, unknown> = {
+    reason: "failed",
+    omitted: undefined,
+  };
+  circular["self"] = circular;
+
+  expect(parseError(stringifyError(captureError(circular)))).toMatchObject({
+    name: "Object",
+    message: "[object Object]",
+    details: {
+      value: { reason: "failed", self: "[Circular]" },
+    },
+  });
+
+  expect(captureError(new Date(0))).toMatchObject({
+    name: "Date",
+    details: { value: "1970-01-01T00:00:00.000Z" },
+  });
+});
+
 function session(error: ErrorDetails | null): SessionInfo {
   return {
     id: "session",

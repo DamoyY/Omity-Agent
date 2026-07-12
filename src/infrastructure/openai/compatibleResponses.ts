@@ -6,16 +6,6 @@ import {
 } from "./normalizeResponse";
 
 export class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
-  override invocationParams(options?: this["ParsedCallOptions"]) {
-    const params = super.invocationParams(options);
-    return {
-      ...params,
-      include: mergeResponseIncludes(params.include, [
-        "reasoning.encrypted_content",
-      ]),
-    };
-  }
-
   override completionWithRetry(
     request: OpenAI.Responses.ResponseCreateParamsStreaming,
     requestOptions?: OpenAI.RequestOptions,
@@ -40,11 +30,4 @@ export class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
     const response = await super.completionWithRetry(request, requestOptions);
     return normalizeResponsesPayload(response);
   }
-}
-
-function mergeResponseIncludes(
-  current: OpenAI.Responses.ResponseCreateParams["include"],
-  required: OpenAI.Responses.ResponseCreateParams["include"],
-) {
-  return Array.from(new Set([...(current ?? []), ...(required ?? [])]));
 }

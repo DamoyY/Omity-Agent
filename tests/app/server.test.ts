@@ -7,17 +7,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Readable } from "node:stream";
 import { afterEach, expect, test } from "bun:test";
-import { normalizeError } from "../../src/app/http/errors";
-import { DomainError, sessionNotFound } from "../../src/errors";
-import {
-  controlBody,
-  decodeSessionId,
-  messageBody,
-  readJson,
-  requestBodyLimit,
-} from "../../src/app/http/request";
 import { AppRegistry } from "../../src/app/registry";
 import { AppController } from "../../src/app/controller";
 import {
@@ -36,47 +26,6 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
-});
-
-test("API JSON validation rejects invalid controls and empty messages", async () => {
-  await expectStatus(
-    readJson(request({ control: "invalid" }), controlBody),
-    400,
-  );
-  await expectStatus(readJson(request({ content: "   " }), messageBody), 400);
-});
-
-test("API JSON reader enforces the body size limit", async () => {
-  const body = `"${"x".repeat(requestBodyLimit)}"`;
-  await expectStatus(readJson(rawRequest(body), messageBody), 413);
-});
-
-test("API validates encoded session IDs without path normalization", () => {
-  expect(decodeSessionId("web-123")).toBe("web-123");
-  expect(() => decodeSessionId("abc%2Fdef")).toThrow("路径 ID 无效");
-  expect(() => decodeSessionId("%E0%A4%A")).toThrow("Session ID 编码无效");
-});
-
-test("API maps missing sessions and conflicts to explicit status codes", () => {
-  expect(normalizeError(sessionNotFound("123"))).toMatchObject({
-    status: 404,
-    code: "SESSION_NOT_FOUND",
-  });
-  expect(
-    normalizeError(
-      new DomainError("HOST_LEASE_CONFLICT", "会话已有 Host 正在运行：123"),
-    ),
-  ).toMatchObject({
-    status: 409,
-    code: "HOST_LEASE_CONFLICT",
-  });
-  expect(
-    normalizeError(new Error("会话不存在：文案不再参与映射")),
-  ).toMatchObject({
-    status: 500,
-    code: "INTERNAL_ERROR",
-    message: "会话不存在：文案不再参与映射",
-  });
 });
 
 test("app session summaries expose paused queue errors", async () => {
@@ -153,26 +102,6 @@ test("session state exposes host errors before queue errors", () => {
     error: runError,
   });
 });
-
-function request(body: unknown) {
-  return rawRequest(JSON.stringify(body));
-}
-
-async function expectStatus(promise: Promise<unknown>, status: number) {
-  try {
-    await promise;
-  } catch (error) {
-    expect(error).toMatchObject({ status });
-    return;
-  }
-  throw new Error(`请求应以状态 ${status.toString()} 失败`);
-}
-
-function rawRequest(body: string) {
-  return Object.assign(Readable.from([Buffer.from(body, "utf8")]), {
-    headers: {},
-  }) as never;
-}
 
 function makeRoot() {
   const root = mkdtempSync(join(tmpdir(), "agent-registry-"));

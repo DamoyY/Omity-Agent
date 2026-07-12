@@ -100,9 +100,9 @@ test("buildModel requests encrypted reasoning from OpenAI Responses API", () => 
   settings.model.model = "gpt-5";
   const model = buildModel(settings, "session-1");
 
-  expect((model as ChatOpenAIResponses).invocationParams().include).toContain(
+  expect((model as ChatOpenAIResponses).invocationParams().include).toEqual([
     "reasoning.encrypted_content",
-  );
+  ]);
 });
 
 test("buildModel passes instructions to OpenAI Responses API", () => {

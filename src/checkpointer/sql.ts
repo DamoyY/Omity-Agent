@@ -9,18 +9,18 @@ export interface CheckpointRow {
   checkpoint_ns: string;
   checkpoint_id: string;
   parent_checkpoint_id: string | null;
-  type: string | null;
+  type: string;
   checkpoint: Uint8Array | string;
   metadata: Uint8Array | string;
-  pending_writes: string | null;
+  pending_writes: string;
 }
 
 export interface WriteJson {
   task_id: string;
   idx: number;
   channel: string;
-  type: string | null;
-  value: string | null;
+  type: string;
+  value: string;
 }
 
 export const setupSql = [
@@ -30,9 +30,9 @@ export const setupSql = [
       checkpoint_ns TEXT NOT NULL DEFAULT '',
       checkpoint_id TEXT NOT NULL,
       parent_checkpoint_id TEXT,
-      type TEXT,
-      checkpoint BLOB,
-      metadata BLOB,
+      type TEXT NOT NULL,
+      checkpoint BLOB NOT NULL,
+      metadata BLOB NOT NULL,
       PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
     )
   `,
@@ -44,8 +44,8 @@ export const setupSql = [
       task_id TEXT NOT NULL,
       idx INTEGER NOT NULL,
       channel TEXT NOT NULL,
-      type TEXT,
-      value BLOB,
+      type TEXT NOT NULL,
+      value BLOB NOT NULL,
       PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
     )
   `,

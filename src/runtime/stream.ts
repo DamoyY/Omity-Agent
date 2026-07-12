@@ -3,6 +3,7 @@ import {
   AIMessageChunk,
   type BaseMessage,
 } from "@langchain/core/messages";
+import stableStringify from "fast-json-stable-stringify";
 import type { HostContext } from "./context";
 import {
   contentToText,
@@ -143,20 +144,6 @@ function summarize(value: unknown) {
       : current,
   );
   return JSON.parse(json) as unknown;
-}
-
-function stableStringify(value: unknown): string {
-  return JSON.stringify(stableValue(value));
-}
-
-function stableValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(stableValue);
-  if (!isRecord(value)) return value;
-  return Object.fromEntries(
-    Object.keys(value)
-      .sort()
-      .map((key) => [key, stableValue(value[key])]),
-  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

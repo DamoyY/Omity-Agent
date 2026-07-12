@@ -1,3 +1,5 @@
+import isNetworkError from "is-network-error";
+
 const retryableNames = new Set([
   "APIConnectionError",
   "APIConnectionTimeoutError",
@@ -28,19 +30,10 @@ const retryableCodes = new Set([
   "UND_ERR_SOCKET",
 ]);
 
-const retryableMessageParts = [
-  "connection error",
-  "fetch failed",
-  "network",
-  "received empty response from chat model call.",
-  "socket",
-  "terminated",
-  "tls",
-  "timeout",
-  "unexpected eof",
-];
-
 export function isModelNetworkError(error: unknown): boolean {
+  if (isNetworkError(error)) {
+    return true;
+  }
   if (!isRecord(error)) {
     return false;
   }
@@ -54,12 +47,6 @@ export function isModelNetworkError(error: unknown): boolean {
   }
   if (typeof error["code"] === "string" && retryableCodes.has(error["code"])) {
     return true;
-  }
-  if (typeof error["message"] === "string") {
-    const message = error["message"].toLowerCase();
-    if (retryableMessageParts.some((part) => message.includes(part))) {
-      return true;
-    }
   }
   return isModelNetworkError(error["cause"]);
 }

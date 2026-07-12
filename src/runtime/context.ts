@@ -7,6 +7,7 @@ import type { Logger } from "../infrastructure/logging/logger";
 import type { SessionStatus, Settings } from "../types";
 import type { buildGraph } from "../agent";
 import { BaseMessage } from "@langchain/core/messages";
+import { z } from "zod";
 
 type AgentGraph = ReturnType<typeof buildGraph>["graph"];
 type HostGraph = Omit<AgentGraph, "getState"> & {
@@ -47,64 +48,61 @@ async function abortableSleep(delayMs: number, signal: AbortSignal) {
   }
 }
 
-interface RuntimeGraphState {
-  values: {
+interface RuntimeGraphState extends Record<string, unknown> {
+  values: Record<string, unknown> & {
     messages: BaseMessage[];
     hookPlan?: unknown;
     hookPendingUserIds?: string[];
   };
   next: string[];
-  tasks: { name: string }[];
+  tasks: (Record<string, unknown> & { name: string })[];
 }
+
+const graphMessageSchema = z.custom<BaseMessage>((value) =>
+  BaseMessage.isInstance(value),
+);
+const graphValuesSchema = z.looseObject({
+  messages: z.preprocess(
+    (value) => (Array.isArray(value) ? (value as unknown[]) : []),
+    z.array(graphMessageSchema),
+  ),
+  hookPlan: z.unknown().optional(),
+  hookPendingUserIds: z.array(z.string()).optional(),
+});
+const graphStateSchema = z.looseObject({
+  values: z.preprocess(
+    (value) =>
+      typeof value === "object" && value !== null && !Array.isArray(value)
+        ? value
+        : {},
+    graphValuesSchema,
+  ),
+  next: z.array(z.string()),
+  tasks: z.array(
+    z.looseObject({
+      name: z.string(),
+    }),
+  ),
+});
 
 export function readGraphState(value: unknown): RuntimeGraphState {
-  if (!isRecord(value)) throw new Error("LangGraph 状态无效");
-  const values = value["values"];
-  const rawMessages = isRecord(values) ? values["messages"] : undefined;
-  const messages = Array.isArray(rawMessages) ? rawMessages : [];
-  if (!messages.every((message) => BaseMessage.isInstance(message))) {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("LangGraph 状态无效");
+  }
+  const parsed = graphStateSchema.safeParse(value);
+  if (!parsed.success) {
+    const path = parsed.error.issues[0]?.path;
+    if (path?.[0] === "values" && path[1] === "messages") {
+      throw new Error("LangGraph 消息状态无效");
+    }
+    if (path?.[0] === "next") throw new Error("LangGraph next 状态无效");
+    if (path?.[0] === "tasks") throw new Error("LangGraph task 状态无效");
+    if (path?.[0] === "values" && path[1] === "hookPendingUserIds") {
+      throw new Error("LangGraph Hook pending 状态无效");
+    }
     throw new Error("LangGraph 消息状态无效");
   }
-  const rawNext = value["next"];
-  if (!Array.isArray(rawNext) || !rawNext.every(isString)) {
-    throw new Error("LangGraph next 状态无效");
-  }
-  const rawTasks = value["tasks"];
-  if (!Array.isArray(rawTasks) || !rawTasks.every(isTask)) {
-    throw new Error("LangGraph task 状态无效");
-  }
-  const rawPending = isRecord(values)
-    ? values["hookPendingUserIds"]
-    : undefined;
-  if (
-    rawPending !== undefined &&
-    (!Array.isArray(rawPending) || !rawPending.every(isString))
-  ) {
-    throw new Error("LangGraph Hook pending 状态无效");
-  }
-  return {
-    values: {
-      messages,
-      ...(isRecord(values) && "hookPlan" in values
-        ? { hookPlan: values["hookPlan"] }
-        : {}),
-      ...(rawPending ? { hookPendingUserIds: rawPending } : {}),
-    },
-    next: rawNext,
-    tasks: rawTasks,
-  };
-}
-
-function isTask(value: unknown): value is { name: string } {
-  return isRecord(value) && typeof value["name"] === "string";
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return parsed.data;
 }
 
 export class HostLease {

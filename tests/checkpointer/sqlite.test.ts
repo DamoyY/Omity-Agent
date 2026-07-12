@@ -2,7 +2,6 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
-import { TASKS } from "@langchain/langgraph-checkpoint";
 import { BunSqliteSaver } from "../../src/checkpointer";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 
@@ -96,27 +95,6 @@ test("pending writes keep deterministic order and per-channel conflicts", async 
     ["task-b", "__error__", "new error"],
     ["task-b", "messages", "old message"],
   ]);
-});
-
-test("legacy pending sends stay inside their checkpoint namespace", async () => {
-  const { saver } = openSaver();
-  const parentId = checkpointId(1);
-  const parentA = await putCheckpoint(saver, "thread", "a", parentId);
-  const parentB = await putCheckpoint(saver, "thread", "b", parentId);
-  await saver.putWrites(parentA, [[TASKS, "from-a"]], "task");
-  await saver.putWrites(parentB, [[TASKS, "from-b"]], "task");
-  const child = await saver.put(
-    parentA,
-    {
-      ...checkpoint(checkpointId(2)),
-      v: 3,
-    },
-    { source: "loop", step: 0, parents: {} },
-  );
-
-  const loaded = await saver.getTuple(child);
-
-  expect(loaded?.checkpoint.channel_values[TASKS]).toEqual(["from-a"]);
 });
 
 function putCheckpoint(

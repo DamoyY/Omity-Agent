@@ -1,14 +1,10 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
+import untildify from "untildify";
 
 export function resolveConfiguredPath(root: string, path: string) {
   const withAppData = path.replaceAll("${appData}", appDataRoot());
-  const expanded =
-    withAppData === "~" ||
-    withAppData.startsWith("~/") ||
-    withAppData.startsWith("~\\")
-      ? resolve(homedir(), withAppData.slice(2))
-      : withAppData;
+  const expanded = untildify(withAppData);
   return isAbsolute(expanded) ? resolve(expanded) : resolve(root, expanded);
 }
 

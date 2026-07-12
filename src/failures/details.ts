@@ -1,3 +1,6 @@
+import { serializeError } from "serialize-error";
+import { z } from "zod";
+
 export type ErrorValue =
   | null
   | boolean
@@ -15,8 +18,41 @@ export interface ErrorDetails {
   details?: Record<string, ErrorValue>;
 }
 
+const errorValueSchema: z.ZodType<ErrorValue> = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(errorValueSchema),
+    z.record(z.string(), errorValueSchema),
+  ]),
+);
+
+const errorDetailsSchema: z.ZodType<ErrorDetails> = z.lazy(() =>
+  z.strictObject({
+    name: z.string(),
+    message: z.string(),
+    stack: z.string().optional(),
+    cause: errorDetailsSchema.optional(),
+    details: z.record(z.string(), errorValueSchema).optional(),
+  }),
+);
+
 export function captureError(error: unknown): ErrorDetails {
-  return capture(error, new WeakSet<object>());
+  const serializedError: unknown = serializeError(error);
+  const json = JSON.stringify(serializedError);
+  const serialized: unknown = JSON.parse(json);
+  if (!(error instanceof Error)) {
+    return errorDetailsSchema.parse({
+      name: valueName(error),
+      message: String(error),
+      details: { value: nonErrorValue(error, serialized) },
+    });
+  }
+  return errorDetailsSchema.parse(
+    adaptSerializedError(isRecord(serialized) ? serialized : {}, error),
+  );
 }
 
 export function stringifyError(error: ErrorDetails) {
@@ -25,65 +61,62 @@ export function stringifyError(error: ErrorDetails) {
 
 export function parseError(value: string): ErrorDetails {
   const parsed: unknown = JSON.parse(value);
-  if (!isErrorDetails(parsed)) {
-    throw new Error("队列错误详情无效");
-  }
-  return parsed;
+  const result = errorDetailsSchema.safeParse(parsed);
+  if (!result.success) throw new Error("队列错误详情无效");
+  return result.data;
 }
 
-function capture(value: unknown, seen: WeakSet<object>): ErrorDetails {
-  if (!(value instanceof Error)) {
-    return {
-      name: errorName(value),
-      message: String(value),
-      details: { value: serialize(value, seen) },
-    };
+function adaptSerializedError(
+  serialized: Record<string, unknown>,
+  source?: unknown,
+): ErrorDetails {
+  const details: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(serialized)) {
+    if (["name", "message", "stack", "cause"].includes(key)) continue;
+    details[key] = sourceProperty(source, key, value);
   }
-  if (seen.has(value)) {
-    return {
-      name: value.name,
-      message: value.message,
-      details: { circular: true },
-    };
-  }
-  seen.add(value);
-  const details: Record<string, ErrorValue> = {};
-  for (const key of Reflect.ownKeys(value)) {
-    const label = typeof key === "symbol" ? key.toString() : key;
-    if (["name", "message", "stack", "cause"].includes(label)) continue;
-    details[label] = readProperty(value, key, seen);
-  }
-  const cause =
-    "cause" in value && value.cause !== undefined
-      ? capture(value.cause, seen)
-      : undefined;
+
+  const cause = serialized["cause"];
   return {
-    name: value.name,
-    message: value.message,
-    ...(value.stack ? { stack: value.stack } : {}),
-    ...(cause ? { cause } : {}),
-    ...(Object.keys(details).length > 0 ? { details } : {}),
+    name:
+      typeof serialized["name"] === "string"
+        ? serialized["name"]
+        : valueName(source),
+    message:
+      typeof serialized["message"] === "string"
+        ? serialized["message"]
+        : String(source),
+    ...(typeof serialized["stack"] === "string"
+      ? { stack: serialized["stack"] }
+      : {}),
+    ...(cause === undefined
+      ? {}
+      : {
+          cause: adaptSerializedError(
+            isRecord(cause) ? cause : serializeError(cause),
+            source instanceof Error ? source.cause : undefined,
+          ),
+        }),
+    ...(Object.keys(details).length > 0
+      ? { details: details as Record<string, ErrorValue> }
+      : {}),
   };
 }
 
-function readProperty(
-  target: object,
-  key: PropertyKey,
-  seen: WeakSet<object>,
-): ErrorValue {
+function sourceProperty(source: unknown, key: string, serialized: unknown) {
+  if (!isRecord(source)) return serialized;
   try {
-    return serialize(Reflect.get(target, key), seen);
-  } catch (error) {
-    return `[读取属性失败：${error instanceof Error ? error.message : String(error)}]`;
+    const value = source[key];
+    return value instanceof Headers
+      ? Object.fromEntries(value.entries())
+      : serialized;
+  } catch {
+    return serialized;
   }
 }
 
-function serialize(value: unknown, seen: WeakSet<object>): ErrorValue {
-  if (
-    value === null ||
-    typeof value === "string" ||
-    typeof value === "boolean"
-  ) {
+function nonErrorValue(value: unknown, serialized: unknown): unknown {
+  if (value === null || ["string", "boolean"].includes(typeof value)) {
     return value;
   }
   if (typeof value === "number") {
@@ -93,48 +126,19 @@ function serialize(value: unknown, seen: WeakSet<object>): ErrorValue {
     return String(value);
   }
   if (typeof value === "undefined") return "[undefined]";
-  if (typeof value === "function")
+  if (typeof value === "function") {
     return `[Function ${value.name || "anonymous"}]`;
-  if (value instanceof Error) return capture(value, seen);
-  if (value instanceof Headers) return Object.fromEntries(value.entries());
-  if (value instanceof Date) return value.toISOString();
-  if (seen.has(value)) return "[Circular]";
-  seen.add(value);
-  if (Array.isArray(value)) return value.map((item) => serialize(item, seen));
-  const result: Record<string, ErrorValue> = {};
-  for (const key of Reflect.ownKeys(value)) {
-    const label = typeof key === "symbol" ? key.toString() : key;
-    result[label] = readProperty(value, key, seen);
   }
-  return result;
+  return serialized;
 }
 
-function errorName(value: unknown) {
+function valueName(value: unknown) {
   if (value === null) return "null";
-  if (typeof value === "object") {
-    const constructor = Reflect.get(value, "constructor") as unknown;
-    return typeof constructor === "function" && constructor.name
-      ? constructor.name
-      : "Object";
-  }
-  return typeof value;
-}
-
-function isErrorDetails(value: unknown): value is ErrorDetails {
-  if (!isRecord(value)) return false;
-  if (
-    typeof value["name"] !== "string" ||
-    typeof value["message"] !== "string"
-  ) {
-    return false;
-  }
-  if (value["stack"] !== undefined && typeof value["stack"] !== "string") {
-    return false;
-  }
-  if (value["cause"] !== undefined && !isErrorDetails(value["cause"])) {
-    return false;
-  }
-  return value["details"] === undefined || isRecord(value["details"]);
+  if (typeof value !== "object") return typeof value;
+  const constructor = value.constructor;
+  return typeof constructor === "function" && constructor.name
+    ? constructor.name
+    : "Object";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -15,6 +15,7 @@ import {
   type DisplayMessage,
   type DisplayToolCall,
 } from "./timeline";
+import { z } from "zod";
 
 interface MessageRow {
   id: number;
@@ -23,7 +24,6 @@ interface MessageRow {
   queue_id: number | null;
   created_at: number;
 }
-
 interface QueueRow {
   id: number;
   content: string;
@@ -32,7 +32,6 @@ interface QueueRow {
   user_message_id: number | null;
   root_id: number | null;
 }
-
 interface EventRow {
   id: number;
   queue_id: number;
@@ -40,7 +39,18 @@ interface EventRow {
   kind: StreamEventKind;
   payload_json: string;
 }
-
+const storedMessageSchema = z.looseObject({
+  type: z.string(),
+  data: z.record(z.string(), z.unknown()),
+});
+const streamPayloadSchema = z.discriminatedUnion("kind", [
+  z.looseObject({
+    kind: z.enum(["assistant_reasoning_delta", "assistant_text_delta"]),
+    value: z.string(),
+  }),
+  z.looseObject({ kind: z.literal("tool_call_delta"), value: z.unknown() }),
+  z.looseObject({ kind: z.literal("tool_started"), value: z.string() }),
+]);
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const control = db.control(sessionId);
   const messages = db.db
@@ -100,44 +110,42 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
 }
 
 function toDisplayEvent(row: EventRow): DisplayEvent {
-  const value = JSON.parse(row.payload_json) as unknown;
+  const parsed = streamPayloadSchema.safeParse({
+    kind: row.kind,
+    value: JSON.parse(row.payload_json) as unknown,
+  });
+  if (!parsed.success) throw new Error("stream 文本增量无效");
+  const { kind, value } = parsed.data;
   const payload =
-    row.kind === "tool_call_delta"
+    kind === "tool_call_delta"
       ? { call: value }
-      : row.kind === "tool_started"
-        ? { callId: requireString(value) }
-        : { text: requireString(value) };
+      : kind === "tool_started"
+        ? { callId: value }
+        : { text: value };
   return {
     id: row.id,
-    message: row.kind,
+    message: kind,
     payload: {
-      kind: row.kind,
+      kind,
       queueId: row.queue_id,
       ...payload,
       ...(row.message_id ? { messageId: row.message_id } : {}),
     },
   };
 }
-
-function requireString(value: unknown) {
-  if (typeof value !== "string") throw new Error("stream 文本增量无效");
-  return value;
-}
-
 function parseStored(value: string): StoredMessage {
   const parsed: unknown = JSON.parse(value);
-  if (!isRecord(parsed) || typeof parsed["type"] !== "string") {
+  const result = storedMessageSchema.safeParse(parsed);
+  if (!result.success) {
     throw new Error("消息记录无效");
   }
-  return parsed as unknown as StoredMessage;
+  return result.data as unknown as StoredMessage;
 }
-
 function messageRole(message: BaseMessage): DisplayMessage["role"] {
   if (message.type === "human") return "user";
   if (message.type === "tool") return "tool";
   return "assistant";
 }
-
 function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
   const calls = readRecordArray(message, "tool_calls");
   return calls.map((call, index) => ({
@@ -148,12 +156,10 @@ function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
     input: call["args"] ?? call["input"] ?? call,
   }));
 }
-
 function extractToolCallId(message: BaseMessage) {
   const value = readRecord(message, "tool_call_id");
   return typeof value === "string" ? value : undefined;
 }
-
 function extractTokenUsage(message: BaseMessage) {
   if (!AIMessage.isInstance(message) || !message.usage_metadata)
     return undefined;
@@ -177,20 +183,16 @@ function extractTokenUsage(message: BaseMessage) {
   }
   return { inputTokens, outputTokens, cacheReadTokens };
 }
-
 function readRecordArray(message: BaseMessage, key: string) {
   const value = (message as unknown as Record<string, unknown>)[key];
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
-
 function readRecord(message: BaseMessage, key: string) {
   return (message as unknown as Record<string, unknown>)[key];
 }
-
 function stringField(record: Record<string, unknown>, key: string) {
   return typeof record[key] === "string" ? record[key] : undefined;
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

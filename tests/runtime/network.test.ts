@@ -6,18 +6,25 @@ import {
 } from "../../src/runtime/network";
 
 test("detects retryable model network errors", () => {
-  expect(isModelNetworkError(new Error("fetch failed"))).toBe(true);
+  expect(isModelNetworkError(new TypeError("fetch failed"))).toBe(true);
+  expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
+  expect(isModelNetworkError({ name: "TimeoutError" })).toBe(true);
+  expect(isModelNetworkError({ cause: { code: "ENOTFOUND" } })).toBe(true);
+  expect(isModelNetworkError(new ModelEmptyResponseError())).toBe(true);
+  expect(isModelNetworkError({ name: "AbortError" })).toBe(false);
+});
+
+test("does not guess network failures from broad error messages", () => {
+  expect(isModelNetworkError(new Error("fetch failed"))).toBe(false);
+  expect(
+    isModelNetworkError(new Error("network policy rejected request")),
+  ).toBe(false);
+  expect(isModelNetworkError(new Error("Unexpected EOF"))).toBe(false);
   expect(
     isModelNetworkError(
       new Error("Received empty response from chat model call."),
     ),
-  ).toBe(true);
-  expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
-  expect(isModelNetworkError({ name: "TimeoutError" })).toBe(true);
-  expect(isModelNetworkError({ cause: { code: "ENOTFOUND" } })).toBe(true);
-  expect(isModelNetworkError(new Error("Unexpected EOF"))).toBe(true);
-  expect(isModelNetworkError(new ModelEmptyResponseError())).toBe(true);
-  expect(isModelNetworkError({ name: "AbortError" })).toBe(false);
+  ).toBe(false);
 });
 
 test("model network retry delay grows with a cap", () => {

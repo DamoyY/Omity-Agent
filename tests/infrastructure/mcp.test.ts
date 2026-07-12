@@ -1,7 +1,11 @@
 import { afterEach, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   expandEnvPlaceholders,
   normalizeMcpServers,
+  readMcpConfiguration,
 } from "../../src/infrastructure/mcp/config";
 import {
   normalizeMcpToolNameOverrides,
@@ -74,33 +78,34 @@ test("mcp config reports missing env placeholders", () => {
   );
 });
 
-test("mcp stdio config allows omitted or blank args", () => {
+test("mcp config rejects unknown top-level fields", () => {
+  const directory = mkdtempSync(join(tmpdir(), "omity-mcp-"));
+  const path = join(directory, "mcp.yaml");
+  try {
+    writeFileSync(path, "mcpServers: {}\nunknown: true\n");
+    expect(() => readMcpConfiguration(path)).toThrow("Unrecognized key");
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test("mcp stdio config fills omitted args and suppresses stderr", () => {
   expect(
     normalizeMcpServers({
       omitted: {
         transport: "stdio",
         command: "server.exe",
       },
-      blank: {
-        transport: "stdio",
-        command: "server.exe",
-        args: null,
-      },
       noisy: {
         transport: "stdio",
         command: "server.exe",
         args: ["--serve"],
         stderr: "inherit",
+        extension: { enabled: true },
       },
     }),
   ).toEqual({
     omitted: {
-      transport: "stdio",
-      command: "server.exe",
-      args: [],
-      stderr: "ignore",
-    },
-    blank: {
       transport: "stdio",
       command: "server.exe",
       args: [],
@@ -111,8 +116,17 @@ test("mcp stdio config allows omitted or blank args", () => {
       command: "server.exe",
       args: ["--serve"],
       stderr: "ignore",
+      extension: { enabled: true },
     },
   });
+});
+
+test("mcp stdio config rejects non-array args", () => {
+  expect(() =>
+    normalizeMcpServers({
+      invalid: { command: "server.exe", args: null },
+    }),
+  ).toThrow();
 });
 
 test("mcp config rejects renaming a tool to agent", () => {

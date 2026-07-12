@@ -1,4 +1,4 @@
-import type { IncomingMessage } from "node:http";
+import type { HonoRequest } from "hono/request";
 import { z } from "zod";
 import { safeId } from "../../infrastructure/configuration/sessionPaths";
 import { HttpError } from "./errors";
@@ -28,25 +28,12 @@ export const forkBody = z
   .strict();
 
 export async function readJson<T>(
-  req: IncomingMessage,
+  request: HonoRequest,
   schema: z.ZodType<T>,
 ): Promise<T> {
-  const declared = contentLength(req);
-  if (declared > requestBodyLimit) bodyTooLarge();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for await (const chunk of req) {
-    if (!(chunk instanceof Uint8Array)) {
-      throw new HttpError(400, "请求体数据块无效");
-    }
-    const buffer: Uint8Array = chunk;
-    total += buffer.byteLength;
-    if (total > requestBodyLimit) bodyTooLarge();
-    chunks.push(buffer);
-  }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+    parsed = await request.json<unknown>();
   } catch {
     throw new HttpError(400, "请求体不是有效的 JSON");
   }
@@ -75,24 +62,4 @@ export function decodeSessionId(value: string) {
       error instanceof Error ? error.message : String(error),
     );
   }
-}
-
-function contentLength(req: IncomingMessage) {
-  const value = req.headers["content-length"];
-  if (value === undefined) return 0;
-  if (Array.isArray(value) || !/^\d+$/.test(value)) {
-    throw new HttpError(400, "Content-Length 无效");
-  }
-  const length = Number(value);
-  if (!Number.isSafeInteger(length)) {
-    throw new HttpError(400, "Content-Length 无效");
-  }
-  return length;
-}
-
-function bodyTooLarge(): never {
-  throw new HttpError(
-    413,
-    `请求体不能超过 ${requestBodyLimit.toString()} 字节`,
-  );
 }

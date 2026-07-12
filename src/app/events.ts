@@ -1,5 +1,6 @@
-import type { ServerResponse } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
+import type { Context } from "hono";
+import { streamSSE } from "hono/streaming";
 import mitt from "mitt";
 
 type Events = Record<"changed" | "sessions", string>;
@@ -34,26 +35,41 @@ export class AppEvents {
     });
   }
 
-  stream(res: ServerResponse, sessionId?: string) {
-    res.writeHead(200, {
-      "cache-control": "no-cache",
-      connection: "keep-alive",
-      "content-type": "text/event-stream; charset=utf-8",
-    });
-    res.write(serialize("changed"));
-    const event = sessionId ? "changed" : "sessions";
-    const handler = (changedSessionId: string) => {
-      if (!sessionId || changedSessionId === sessionId) {
-        res.write(serialize("changed"));
+  stream(c: Context, sessionId?: string) {
+    const response = streamSSE(c, async (stream) => {
+      await stream.writeSSE(changedEvent);
+      const event = sessionId ? "changed" : "sessions";
+      let pending = Promise.resolve();
+      let rejectStream: (error: unknown) => void = () => undefined;
+      const abort = () => {
+        resolveStream();
+      };
+      let resolveStream: () => void = () => undefined;
+      const handler = (changedSessionId: string) => {
+        if (sessionId && changedSessionId !== sessionId) return;
+        pending = pending.then(() => stream.writeSSE(changedEvent));
+        void pending.catch(rejectStream);
+      };
+      try {
+        await new Promise<void>((resolve, reject) => {
+          resolveStream = resolve;
+          rejectStream = reject;
+          this.bus.on(event, handler);
+          if (c.req.raw.signal.aborted) resolve();
+          else
+            c.req.raw.signal.addEventListener("abort", abort, {
+              once: true,
+            });
+        });
+        await pending;
+      } finally {
+        this.bus.off(event, handler);
+        c.req.raw.signal.removeEventListener("abort", abort);
       }
-    };
-    this.bus.on(event, handler);
-    res.once("close", () => {
-      this.bus.off(event, handler);
     });
+    response.headers.set("content-type", "text/event-stream; charset=utf-8");
+    return response;
   }
 }
 
-function serialize(event: string) {
-  return `event: ${event}\ndata: {}\n\n`;
-}
+const changedEvent = { event: "changed", data: "{}" } as const;

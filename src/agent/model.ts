@@ -37,7 +37,10 @@ export function buildModel(
             : { effort: settings.model.reasoning_effort }),
           summary: "detailed",
         },
-        ...(instructions ? { modelKwargs: { instructions } } : {}),
+        modelKwargs: {
+          include: ["reasoning.encrypted_content"],
+          ...(instructions ? { instructions } : {}),
+        },
       })
     : new ChatOpenAICompletions({
         ...fields,

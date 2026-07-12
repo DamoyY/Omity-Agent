@@ -45,6 +45,7 @@
     "vite": "latest"
   },
   "dependencies": {
+    "@hono/node-server": "latest",
     "@langchain/core": "latest",
     "@langchain/langgraph": "latest",
     "@langchain/langgraph-checkpoint": "latest",
@@ -56,9 +57,13 @@
     "@tanstack/react-query": "latest",
     "ajv": "latest",
     "dompurify": "latest",
+    "fast-json-stable-stringify": "latest",
+    "gray-matter": "latest",
     "highlight.js": "latest",
+    "hono": "latest",
     "i18next": "latest",
     "i18next-browser-languagedetector": "latest",
+    "is-network-error": "latest",
     "js-tiktoken": "latest",
     "langchain": "latest",
     "lucide-react": "latest",
@@ -68,6 +73,7 @@
     "react-i18next": "latest",
     "react-markdown": "latest",
     "remark-gfm": "latest",
+    "serialize-error": "latest",
     "untildify": "latest",
     "yaml": "latest",
     "zod": "latest"
