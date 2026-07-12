@@ -1,4 +1,5 @@
 import { ChevronRight, Wrench } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { stringify } from "yaml";
@@ -110,9 +111,14 @@ export function ToolCall({
   output?: DisplayMessage;
 }) {
   const { t } = useTranslation();
-  const input = formatToolInput(call);
+  const [expanded, setExpanded] = useState(false);
   return (
-    <details className={details}>
+    <details
+      className={details}
+      onToggle={(event) => {
+        setExpanded(event.currentTarget.open);
+      }}
+    >
       <summary className={summary}>
         <ChevronRight className={disclosure} size={14} />
         <Wrench className={toolIcon} size={14} />
@@ -121,32 +127,38 @@ export function ToolCall({
         </span>
         {call.streaming ? <Badge>{t("streaming")}</Badge> : null}
       </summary>
-      <div className={ioGrid}>
-        <section className={ioPanel}>
-          <p className={panelTitle}>{t("input")}</p>
-          <HighlightedCode className={codeBlock} code={input} language="yaml" />
-        </section>
-        {output ? (
+      {expanded ? (
+        <div className={ioGrid}>
           <section className={ioPanel}>
-            <p className={panelTitle}>{t("output")}</p>
-            {output.content.trim() ? (
-              <HighlightedCode className={codeBlock} code={output.content} />
-            ) : null}
-            {output.images.length > 0 ? (
-              <div className={imageList}>
-                {output.images.map((image, index) => (
-                  <img
-                    alt=""
-                    className={outputImage}
-                    key={`${image.mimeType}-${index.toString()}`}
-                    src={image.src}
-                  />
-                ))}
-              </div>
-            ) : null}
+            <p className={panelTitle}>{t("input")}</p>
+            <HighlightedCode
+              className={codeBlock}
+              code={formatToolInput(call)}
+              language="yaml"
+            />
           </section>
-        ) : null}
-      </div>
+          {output ? (
+            <section className={ioPanel}>
+              <p className={panelTitle}>{t("output")}</p>
+              {output.content.trim() ? (
+                <HighlightedCode className={codeBlock} code={output.content} />
+              ) : null}
+              {output.images.length > 0 ? (
+                <div className={imageList}>
+                  {output.images.map((image, index) => (
+                    <img
+                      alt=""
+                      className={outputImage}
+                      key={`${image.mimeType}-${index.toString()}`}
+                      src={image.src}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+        </div>
+      ) : null}
     </details>
   );
 }
