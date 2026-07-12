@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
   isModelNetworkError,
+  ModelEmptyResponseError,
   modelNetworkRetryDelayMs,
 } from "../../src/runtime/network";
 
@@ -15,6 +16,7 @@ test("detects retryable model network errors", () => {
   expect(isModelNetworkError({ name: "TimeoutError" })).toBe(true);
   expect(isModelNetworkError({ cause: { code: "ENOTFOUND" } })).toBe(true);
   expect(isModelNetworkError(new Error("Unexpected EOF"))).toBe(true);
+  expect(isModelNetworkError(new ModelEmptyResponseError())).toBe(true);
   expect(isModelNetworkError({ name: "AbortError" })).toBe(false);
 });
 

@@ -1,8 +1,17 @@
 const retryableNames = new Set([
   "APIConnectionError",
   "APIConnectionTimeoutError",
+  "ModelEmptyResponseError",
   "TimeoutError",
 ]);
+
+export class ModelEmptyResponseError extends Error {
+  override readonly name = "ModelEmptyResponseError";
+
+  constructor() {
+    super("模型 API 没有返回文本或工具调用");
+  }
+}
 
 const retryableCodes = new Set([
   "ECONNABORTED",

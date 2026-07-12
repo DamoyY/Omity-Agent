@@ -27,6 +27,8 @@ import {
   type HookPlan,
 } from "../hooks/plan";
 import type { HookRuntime } from "../hooks/runtime";
+import { contentToText } from "../runtime/content";
+import { ModelEmptyResponseError } from "../runtime/network";
 import { buildSkillsMessage } from "../skills";
 import type { Settings } from "../types";
 import {
@@ -120,6 +122,9 @@ export function createAgentGraph(options: AgentGraphOptions) {
     );
     if (!AIMessage.isInstance(response))
       throw new Error("模型没有返回 AIMessage");
+    if (!response.tool_calls?.length && !contentToText(response.content)) {
+      throw new ModelEmptyResponseError();
+    }
     response.id ??= randomUUID();
     return {
       messages: [response],
