@@ -47,7 +47,12 @@ export function normalizeError(error: unknown) {
   if (error instanceof DomainError) {
     return new HttpError(domainStatuses[error.code], error.message, error.code);
   }
-  return new HttpError(500, "内部服务器错误", "INTERNAL_ERROR");
+  return new HttpError(500, errorMessage(error), "INTERNAL_ERROR");
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message || error.name;
+  return String(error);
 }
 
 function httpCode(status: number): ApiErrorCode {

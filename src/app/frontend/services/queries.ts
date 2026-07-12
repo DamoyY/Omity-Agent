@@ -13,7 +13,8 @@ import {
   sessionEvents,
   type SessionInfo,
 } from "./client";
-import { reportPausedRunErrors } from "./runErrors";
+import { reportPromiseErrors } from "./errors";
+import { reportSessionErrors } from "./sessionErrors";
 
 export interface BootstrapData {
   cwd: string;
@@ -38,6 +39,7 @@ const emptyTranscript: TranscriptData = {
 
 export function useBootstrap() {
   const queryClient = useQueryClient();
+  const reportedErrors = useRef(new Set<string>());
   const query = useQuery({
     queryKey: bootstrapKey,
     queryFn: ({ signal }) => bootstrap(signal),
@@ -45,22 +47,24 @@ export function useBootstrap() {
   useEffect(() => {
     const events = appEvents();
     const refresh = () => {
-      void queryClient.invalidateQueries({ queryKey: bootstrapKey });
+      reportPromiseErrors(
+        queryClient.invalidateQueries({ queryKey: bootstrapKey }),
+      );
     };
     events.addEventListener("changed", refresh);
     return () => {
       events.close();
     };
   }, [queryClient]);
+  useEffect(() => {
+    if (!query.data) return;
+    reportSessionErrors(query.data.sessions, reportedErrors.current);
+  }, [query.data]);
   return query;
 }
 
-export function useSessionTranscript(
-  sessionId: string | undefined,
-  pausedErrorMessage: string,
-) {
+export function useSessionTranscript(sessionId: string | undefined) {
   const queryClient = useQueryClient();
-  const reportedErrors = useRef(new Set<string>());
   const query = useQuery({
     queryKey: transcriptKey(sessionId ?? ""),
     queryFn: ({ signal }) => loadTranscript(requiredId(sessionId), signal),
@@ -68,29 +72,20 @@ export function useSessionTranscript(
   });
 
   useEffect(() => {
-    reportedErrors.current.clear();
     if (!sessionId) return;
     const events = sessionEvents(sessionId);
     const refresh = () => {
-      void queryClient.invalidateQueries({
-        queryKey: transcriptKey(sessionId),
-      });
+      reportPromiseErrors(
+        queryClient.invalidateQueries({
+          queryKey: transcriptKey(sessionId),
+        }),
+      );
     };
     events.addEventListener("changed", refresh);
     return () => {
       events.close();
     };
   }, [queryClient, sessionId]);
-
-  useEffect(() => {
-    if (!sessionId || !query.data) return;
-    reportPausedRunErrors(
-      sessionId,
-      query.data.queue,
-      reportedErrors.current,
-      pausedErrorMessage,
-    );
-  }, [pausedErrorMessage, query.data, sessionId]);
 
   return query.data ?? emptyTranscript;
 }

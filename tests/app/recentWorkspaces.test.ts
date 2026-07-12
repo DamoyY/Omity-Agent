@@ -25,5 +25,6 @@ function session(workspace: string, index: number): SessionInfo {
     createdAt: index,
     updatedAt: index,
     status: "idle",
+    error: null,
   };
 }

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { Composer } from "./Composer";
 import { Button, Field, Input } from "./ParkUI";
+import { reportPromiseErrors } from "../services/errors";
 
 const content = css({
   alignContent: "start",
@@ -113,7 +114,7 @@ export function NewSessionPage({
               <Button
                 disabled={picking}
                 onClick={() => {
-                  void pickWorkspace();
+                  reportPromiseErrors(pickWorkspace());
                 }}
                 type="button"
               >

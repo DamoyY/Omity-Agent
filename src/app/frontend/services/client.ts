@@ -2,6 +2,7 @@ import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import type { Control } from "../../../types";
 import type { SessionStatus } from "../../../types";
 import { z } from "zod";
+import { reportError } from "./errors";
 
 const errorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
@@ -23,6 +24,7 @@ export interface SessionInfo {
   createdAt: number;
   updatedAt: number;
   status: SessionStatus;
+  error: string | null;
 }
 
 export async function bootstrap(signal?: AbortSignal) {
@@ -62,13 +64,11 @@ export async function loadTranscript(sessionId: string, signal?: AbortSignal) {
 }
 
 export function sessionEvents(sessionId: string) {
-  return new EventSource(
-    `/api/sessions/${encodeURIComponent(sessionId)}/events`,
-  );
+  return eventSource(`/api/sessions/${encodeURIComponent(sessionId)}/events`);
 }
 
 export function appEvents() {
-  return new EventSource("/api/events");
+  return eventSource("/api/events");
 }
 
 export async function sendMessage(sessionId: string, content: string) {
@@ -99,23 +99,36 @@ export async function forkSession(sessionId: string, beforeMessageId: number) {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    headers: { "content-type": "application/json" },
-    ...init,
-  });
-  const json = (await response.json()) as unknown;
-  if (!response.ok) {
-    const parsed = errorResponse.safeParse(json);
-    if (!parsed.success) {
-      throw new Error(
-        `API 错误响应结构无效：HTTP ${response.status.toString()}`,
+  try {
+    const response = await fetch(path, {
+      headers: { "content-type": "application/json" },
+      ...init,
+    });
+    const json = (await response.json()) as unknown;
+    if (!response.ok) {
+      const parsed = errorResponse.safeParse(json);
+      if (!parsed.success) {
+        throw new Error(
+          `API 错误响应结构无效：HTTP ${response.status.toString()}`,
+        );
+      }
+      throw new ApiError(
+        response.status,
+        parsed.data.error.code,
+        parsed.data.error.message,
       );
     }
-    throw new ApiError(
-      response.status,
-      parsed.data.error.code,
-      parsed.data.error.message,
-    );
+    return json as T;
+  } catch (error) {
+    if (!init?.signal?.aborted) reportError(error, { path });
+    throw error;
   }
-  return json as T;
+}
+
+function eventSource(path: string) {
+  const events = new EventSource(path);
+  events.addEventListener("error", (error) => {
+    reportError(error, { path });
+  });
+  return events;
 }

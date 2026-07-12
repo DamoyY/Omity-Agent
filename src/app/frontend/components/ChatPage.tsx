@@ -9,6 +9,7 @@ import { NewSessionPage } from "./NewSessionPage";
 import { Button } from "./ParkUI";
 import { ToolCall } from "./ToolCall";
 import { TranscriptScroll } from "./TranscriptScroll";
+import { reportPromiseErrors } from "../services/errors";
 
 const header = css({
   bg: "surface",
@@ -130,7 +131,9 @@ export function ChatPage({
       {canControl ? (
         <header className={header}>
           <Button
-            onClick={() => void onControl(paused ? "running" : "pause")}
+            onClick={() => {
+              reportPromiseErrors(onControl(paused ? "running" : "pause"));
+            }}
             disabled={waitingForPause}
             variant="outline"
           >
@@ -169,7 +172,12 @@ export function ChatPage({
             item.id > 0 &&
             item.id !== firstUserMessageId ? (
               <div className={messageActions}>
-                <Button onClick={() => void onFork(item.id)} type="button">
+                <Button
+                  onClick={() => {
+                    reportPromiseErrors(onFork(item.id));
+                  }}
+                  type="button"
+                >
                   <GitFork size={14} />
                   {t("fork")}
                 </Button>

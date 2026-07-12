@@ -84,13 +84,9 @@ function readSession(dbPath: string, id?: string) {
     }
     const row = id
       ? db
-          .query<SessionRow, [string]>(
-            `${sessionSelect} WHERE s.id = ?`,
-          )
+          .query<SessionRow, [string]>(`${sessionSelect} WHERE s.id = ?`)
           .get(id)
-      : db
-          .query<SessionRow, []>(`${sessionSelect} LIMIT 1`)
-          .get();
+      : db.query<SessionRow, []>(`${sessionSelect} LIMIT 1`).get();
     if (!row) throw sessionNotFound(id ?? dbPath);
     return toSession(row);
   } finally {

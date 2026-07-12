@@ -19,7 +19,11 @@ import {
   requestBodyLimit,
 } from "../../src/app/http/request";
 import { AppRegistry } from "../../src/app/registry";
-import { resolveSessionStatus } from "../../src/app/controller";
+import {
+  AppController,
+  resolveSessionState,
+  resolveSessionStatus,
+} from "../../src/app/controller";
 import { loadSettings, sessionPaths } from "../../src/infrastructure/config";
 import { AgentDatabase } from "../../src/infrastructure/database";
 import { required } from "../support/database";
@@ -69,8 +73,28 @@ test("API maps missing sessions and conflicts to explicit status codes", () => {
   ).toMatchObject({
     status: 500,
     code: "INTERNAL_ERROR",
-    message: "内部服务器错误",
+    message: "会话不存在：文案不再参与映射",
   });
+});
+
+test("app session summaries expose paused queue errors", async () => {
+  const root = makeRoot();
+  const workspace = join(root, "workspace");
+  mkdirSync(workspace);
+  const paths = sessionPaths(loadSettings(root), "failed-session");
+  const db = new AgentDatabase(paths.dbPath);
+  db.createSession("failed-session", workspace);
+  const queueId = db.appendUser("failed-session", "test");
+  db.setQueueStatus(queueId, "paused", "model request failed");
+  db.close();
+
+  const controller = new AppController(root);
+  expect(controller.bootstrap().sessions[0]).toMatchObject({
+    id: "failed-session",
+    status: "error",
+    error: "model request failed",
+  });
+  await controller.close();
 });
 
 test("app registry scans session databases without creating a global db", () => {
@@ -97,12 +121,28 @@ test("session status prioritizes errors and pauses over host activity", () => {
   const running = { control: "running" as const, paused: false, error: null };
   expect(resolveSessionStatus(running, "model", null)).toBe("model");
   expect(resolveSessionStatus(running, "tool", "Host failed")).toBe("error");
-  expect(
-    resolveSessionStatus({ ...running, paused: true }, "tool", null),
-  ).toBe("paused");
+  expect(resolveSessionStatus({ ...running, paused: true }, "tool", null)).toBe(
+    "paused",
+  );
   expect(
     resolveSessionStatus({ ...running, error: "Run failed" }, "model", null),
   ).toBe("error");
+});
+
+test("session state exposes host errors before queue errors", () => {
+  const session = {
+    control: "running" as const,
+    paused: true,
+    error: "Run failed",
+  };
+  expect(resolveSessionState(session, "model", "Host failed")).toEqual({
+    status: "error",
+    error: "Host failed",
+  });
+  expect(resolveSessionState(session, "model", null)).toEqual({
+    status: "error",
+    error: "Run failed",
+  });
 });
 
 function request(body: unknown) {

@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { Button, Textarea } from "./ParkUI";
+import { reportPromiseErrors } from "../services/errors";
 
 const form = css({
   bg: "surface",
@@ -58,7 +59,7 @@ export function Composer({
       className={form}
       onSubmit={(event) => {
         event.preventDefault();
-        void submit();
+        reportPromiseErrors(submit());
       }}
     >
       <Textarea

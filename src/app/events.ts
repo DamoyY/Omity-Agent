@@ -2,10 +2,7 @@ import type { ServerResponse } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
 import mitt from "mitt";
 
-interface Events {
-  changed: string;
-  sessions: string;
-}
+type Events = Record<"changed" | "sessions", string>;
 
 export class AppEvents {
   private readonly bus = mitt<Events>();

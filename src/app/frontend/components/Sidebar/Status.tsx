@@ -42,13 +42,25 @@ const statusMeta: Record<
   error: { icon: CircleAlert, label: "statusError" },
 };
 
-export function Status({ status }: { status: SessionStatus }) {
+export function Status({
+  error,
+  status,
+}: {
+  error: string | null;
+  status: SessionStatus;
+}) {
   const { t } = useTranslation();
   const meta = statusMeta[status];
   const Icon = meta.icon;
   const label = t(meta.label);
+  const description =
+    status === "error" && error ? `${label}: ${error}` : label;
   return (
-    <span className={indicator({ status })} title={label}>
+    <span
+      aria-label={description}
+      className={indicator({ status })}
+      title={status === "error" && error ? error : label}
+    >
       <Icon
         aria-hidden="true"
         className={cx(meta.active && activeIcon)}

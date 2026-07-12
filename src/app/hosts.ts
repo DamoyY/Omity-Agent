@@ -44,6 +44,7 @@ export class AppHosts {
   start(sessionId: string, root: string, kind: HostMode["kind"]) {
     if (this.closing) throw new Error("App 正在关闭，不能启动 Host");
     if (this.running.has(sessionId)) return;
+    this.errors.delete(sessionId);
     const controller = new AbortController();
     const done = runHostSession({ kind, sessionId }, this.appRoot, {
       controller,
@@ -53,7 +54,7 @@ export class AppHosts {
       observer: {
         activity: (changedSessionId, activity) => {
           const host = this.running.get(changedSessionId);
-          if (!host || host.controller !== controller) return;
+          if (host?.controller !== controller) return;
           if (host.activity === activity) return;
           host.activity = activity;
           this.events.notify(changedSessionId);

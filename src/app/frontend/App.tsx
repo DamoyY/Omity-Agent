@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { cx } from "styled-system/css";
 import { ChatPage } from "./components/ChatPage";
 import { Sidebar } from "./components/Sidebar";
@@ -24,7 +23,6 @@ import {
 import { recentWorkspaces } from "./services/recentWorkspaces";
 
 export function App() {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const bootstrap = useBootstrap();
   const [page, setPage] = useState(readPage);
@@ -37,10 +35,7 @@ export function App() {
     currentPage.kind === "session"
       ? sessions.find((session) => session.id === currentPage.id)
       : undefined;
-  const transcript = useSessionTranscript(
-    activeSession?.id,
-    t("runPausedError"),
-  );
+  const transcript = useSessionTranscript(activeSession?.id);
   const forkDraft = transcript.queue.find((item) => item.status === "draft");
 
   const navigate = useCallback((nextPage: Page, replace = false) => {

@@ -67,6 +67,7 @@ export class AppController {
       createdAt: now,
       updatedAt: now,
       status: "idle" as const,
+      error: null,
     };
   }
 
@@ -147,14 +148,31 @@ export class AppController {
   }
 
   private sessionInfo(session: RegisteredSession) {
-    const status = resolveSessionStatus(
+    const hostError = this.hosts.error(session.id);
+    const state = resolveSessionState(
       session,
       this.hosts.activity(session.id),
-      this.hosts.error(session.id),
+      hostError,
     );
-    const { control: _control, paused: _paused, error: _error, ...info } = session;
-    return { ...info, status };
+    return {
+      id: session.id,
+      workspace: session.workspace,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      ...state,
+    };
   }
+}
+
+export function resolveSessionState(
+  session: Pick<RegisteredSession, "control" | "paused" | "error">,
+  activity: Extract<SessionStatus, "tool" | "model" | "idle">,
+  hostError: string | null,
+) {
+  return {
+    status: resolveSessionStatus(session, activity, hostError),
+    error: hostError ?? session.error,
+  };
 }
 
 export function resolveSessionStatus(

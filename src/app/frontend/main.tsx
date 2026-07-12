@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { i18nReady } from "./i18n";
+import { reportError } from "./services/errors";
 import "./panda.css";
 
 await i18nReady;
@@ -13,7 +14,17 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 
-createRoot(root).render(
+createRoot(root, {
+  onCaughtError: (error, errorInfo) => {
+    reportError(error, { errorInfo });
+  },
+  onRecoverableError: (error, errorInfo) => {
+    reportError(error, { errorInfo });
+  },
+  onUncaughtError: (error, errorInfo) => {
+    reportError(error, { errorInfo });
+  },
+}).render(
   <QueryClientProvider client={queryClient}>
     <App />
   </QueryClientProvider>,
