@@ -24,6 +24,7 @@ export function Reasoning({
       expandedInitially={latest}
       icon={BrainCircuit}
       label={t("reasoning")}
+      title={t("reasoning")}
       tone="model"
     >
       <div className={content}>

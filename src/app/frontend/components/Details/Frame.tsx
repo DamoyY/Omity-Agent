@@ -4,12 +4,11 @@ import { css, cva } from "styled-system/css";
 
 const details = cva({
   base: {
-    bg: "surfaceRaised",
-    borderLeftWidth: "3px",
+    borderLeftWidth: "2px",
     color: "muted",
     fontSize: "sm",
     maxW: "full",
-    mt: "2",
+    mt: "-2",
     minW: 0,
     p: 0,
     w: "full",
@@ -27,10 +26,10 @@ const summary = css({
   cursor: "pointer",
   display: "flex",
   gap: "2",
-  h: "3rem",
+  h: "2.25rem",
   listStyle: "none",
   maxW: "full",
-  px: "3",
+  px: "2",
   _hover: { bg: "controlHover" },
   "&::-webkit-details-marker": { display: "none" },
 });
@@ -49,7 +48,7 @@ const iconTone = cva({
 const summaryText = css({
   color: "mutedStrong",
   flex: "1",
-  lineHeight: "1",
+  lineHeight: "normal",
   minW: 0,
   overflow: "hidden",
   textOverflow: "ellipsis",
@@ -83,8 +82,8 @@ export function Frame({
       open={expanded}
     >
       <summary aria-label={label} className={summary}>
-        <ChevronRight className={disclosure} size={14} />
-        <Icon className={iconTone({ tone })} size={14} />
+        <ChevronRight className={disclosure} size={12} />
+        <Icon className={iconTone({ tone })} size={13} />
         {title ? <span className={summaryText}>{title}</span> : null}
         {accessory}
       </summary>
