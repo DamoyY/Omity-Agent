@@ -77,7 +77,7 @@ export function buildTimeline(
       ),
     )
     .filter((item) => item.parts.length > 0);
-  return groupAssistantMessages([...visible, ...pending, ...live]);
+  return groupAssistantMessages([...visible, ...live, ...pending]);
 }
 
 function streamMessage(
