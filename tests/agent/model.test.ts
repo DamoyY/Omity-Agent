@@ -72,7 +72,7 @@ test("buildModel passes reasoning_effort to OpenAI Completions API", () => {
   const settings = makeSettings("completions");
   settings.model.model = "gpt-5";
   settings.model.reasoning_effort = "high";
-  const model = buildModel(settings);
+  const model = buildModel(settings, "session-1");
 
   expect(model).toBeInstanceOf(ChatOpenAICompletions);
   expect(
@@ -85,7 +85,7 @@ test("buildModel passes reasoning_effort to OpenAI Responses API", () => {
   const settings = makeSettings("responses");
   settings.model.model = "gpt-5";
   settings.model.reasoning_effort = "low";
-  const model = buildModel(settings);
+  const model = buildModel(settings, "session-1");
 
   expect(model).toBeInstanceOf(ChatOpenAIResponses);
   expect((model as ChatOpenAIResponses).invocationParams().reasoning).toEqual({
@@ -98,7 +98,7 @@ test("buildModel requests encrypted reasoning from OpenAI Responses API", () => 
   setEnv("TEST_OPENAI_KEY", "test-key");
   const settings = makeSettings("responses");
   settings.model.model = "gpt-5";
-  const model = buildModel(settings);
+  const model = buildModel(settings, "session-1");
 
   expect((model as ChatOpenAIResponses).invocationParams().include).toContain(
     "reasoning.encrypted_content",
@@ -107,11 +107,24 @@ test("buildModel requests encrypted reasoning from OpenAI Responses API", () => 
 
 test("buildModel passes instructions to OpenAI Responses API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
-  const model = buildModel(makeSettings("responses"), "system\n\nskills");
+  const model = buildModel(
+    makeSettings("responses"),
+    "session-1",
+    "system\n\nskills",
+  );
 
   expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe(
     "system\n\nskills",
   );
+});
+
+test("buildModel uses the session ID as the Responses prompt cache key", () => {
+  setEnv("TEST_OPENAI_KEY", "test-key");
+  const model = buildModel(makeSettings("responses"), "session-1");
+
+  expect(
+    (model as ChatOpenAIResponses).invocationParams().prompt_cache_key,
+  ).toBe("session-1");
 });
 
 test("normalizes missing Responses API output_text annotations", () => {

@@ -1,9 +1,4 @@
-import {
-  AIMessage,
-  HumanMessage,
-  ToolMessage,
-  type ToolCall,
-} from "@langchain/core/messages";
+import { ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { afterEach } from "bun:test";
 import { AgentDatabase } from "../../src/infrastructure/database";
@@ -18,7 +13,7 @@ export function cacheTestCleanup() {
   });
 }
 
-export function persist(messages: (AIMessage | HumanMessage | ToolMessage)[]) {
+export function persist(messages: BaseMessage[]) {
   const database = new AgentDatabase(":memory:");
   databases.push(database);
   database.createSession("session", process.cwd());
@@ -55,57 +50,6 @@ export function imageToolOutput() {
   });
 }
 
-export function responsesFunctionCall() {
-  return new AIMessage({
-    id: "response-1",
-    content: "",
-    tool_calls: [{ id: "call-1", name: "lookup", args: { query: "cache" } }],
-    response_metadata: {
-      output: [
-        {
-          id: "reasoning-1",
-          type: "reasoning",
-          encrypted_content: "ciphertext",
-          summary: [],
-        },
-        {
-          id: "function-1",
-          type: "function_call",
-          call_id: "call-1",
-          name: "lookup",
-          arguments: '{"query":"cache"}',
-        },
-      ],
-    },
-  });
-}
-
-export function responsesCustomCall() {
-  const custom = {
-    id: "custom-item-1",
-    type: "custom_tool_call",
-    call_id: "custom-1",
-    name: "lookup",
-    input: "raw input",
-  };
-  return new AIMessage({
-    id: "response-2",
-    content: "",
-    tool_calls: [
-      {
-        id: "custom-1",
-        name: "lookup",
-        args: { input: "raw input" },
-        isCustomTool: true,
-      } as ToolCall,
-    ],
-    additional_kwargs: { tool_outputs: [custom] },
-    response_metadata: {
-      output: [{ type: "function_call", call_id: "custom-1", name: "lookup" }],
-    },
-  });
-}
-
 export function mockCompletions(requests: Record<string, unknown>[]) {
   return mockOpenAI(requests, () => ({
     id: "completion",
@@ -125,14 +69,14 @@ export function mockCompletions(requests: Record<string, unknown>[]) {
 
 export function mockResponses(requests: Record<string, unknown>[]) {
   return mockOpenAI(requests, () => ({
-    id: "response",
+    id: `response-${requests.length.toString()}`,
     object: "response",
     created_at: 0,
     status: "completed",
     model: "test",
     output: [
       {
-        id: "message",
+        id: `message-${requests.length.toString()}`,
         type: "message",
         status: "completed",
         role: "assistant",
@@ -156,8 +100,22 @@ function mockOpenAI(
   const server = Bun.serve({
     port: 0,
     async fetch(request) {
-      requests.push((await request.json()) as Record<string, unknown>);
-      return Response.json(response());
+      const body = (await request.json()) as Record<string, unknown>;
+      requests.push(body);
+      const payload = response();
+      if (
+        body["stream"] === true &&
+        new URL(request.url).pathname.endsWith("/responses")
+      ) {
+        const event = JSON.stringify({
+          type: "response.completed",
+          response: payload,
+        });
+        return new Response(`data: ${event}\n\ndata: [DONE]\n\n`, {
+          headers: { "Content-Type": "text/event-stream" },
+        });
+      }
+      return Response.json(payload);
     },
   });
   servers.push(server);

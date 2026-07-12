@@ -86,6 +86,7 @@ export function buildGraph(
   );
   const model = buildModel(
     settings,
+    hooks.sessionId,
     settings.model.api === "responses" ? instructions : undefined,
   );
   const graph = createAgentGraph({

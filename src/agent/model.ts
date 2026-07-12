@@ -7,7 +7,11 @@ import { CompatibleChatOpenAIResponses } from "../infrastructure/responses";
 import { prepareModelImageMessages } from "../runtime/modelImages";
 import type { Settings } from "../types";
 
-export function buildModel(settings: Settings, instructions?: string) {
+export function buildModel(
+  settings: Settings,
+  sessionId: string,
+  instructions?: string,
+) {
   const apiKey = process.env[settings.model.apiKeyEnv];
   if (!apiKey) throw new Error(`缺少环境变量 ${settings.model.apiKeyEnv}`);
   const fields = {
@@ -15,6 +19,7 @@ export function buildModel(settings: Settings, instructions?: string) {
     apiKey,
     maxRetries: settings.model.maxRetries,
     timeout: settings.model.timeoutMs,
+    promptCacheKey: sessionId,
     streaming: true,
     configuration: settings.model.baseURL
       ? { baseURL: settings.model.baseURL }
