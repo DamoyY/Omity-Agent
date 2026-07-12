@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { css, cva, cx } from "styled-system/css";
 import type { TimelineMessage } from "../../../timeline";
 import { reportPromiseErrors } from "../../services/errors";
+import { Reasoning } from "../Details/Reasoning";
+import { ToolCall } from "../Details/ToolCall";
 import { MarkdownView } from "../MarkdownView";
 import { IconButton } from "../ParkUI";
-import { ToolCall } from "../ToolCall";
 import { CopyButton } from "./CopyButton";
 
 const row = css({
@@ -101,20 +102,29 @@ export function Message({
             ) : null}
           </span>
         </div>
-        {item.parts.map((part, index) =>
-          part.type === "content" ? (
-            <MarkdownView
-              content={part.content}
-              key={`content-${index.toString()}`}
-            />
-          ) : (
+        {item.parts.map((part, index) => {
+          if (part.type === "content")
+            return (
+              <MarkdownView
+                content={part.content}
+                key={`content-${index.toString()}`}
+              />
+            );
+          if (part.type === "reasoning")
+            return (
+              <Reasoning
+                content={part.content}
+                key={`reasoning-${index.toString()}`}
+              />
+            );
+          return (
             <ToolCall
               call={part.call}
               key={part.call.id}
               output={part.output}
             />
-          ),
-        )}
+          );
+        })}
       </article>
     </div>
   );

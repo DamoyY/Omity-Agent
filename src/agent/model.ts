@@ -22,16 +22,24 @@ export function buildModel(settings: Settings, instructions?: string) {
     ...(settings.model.temperature === undefined
       ? {}
       : { temperature: settings.model.temperature }),
-    ...(settings.model.reasoning_effort === undefined
-      ? {}
-      : { reasoning: { effort: settings.model.reasoning_effort } }),
   };
   return settings.model.api === "responses"
     ? new CompatibleChatOpenAIResponses({
         ...fields,
+        reasoning: {
+          ...(settings.model.reasoning_effort === undefined
+            ? {}
+            : { effort: settings.model.reasoning_effort }),
+          summary: "auto",
+        },
         ...(instructions ? { modelKwargs: { instructions } } : {}),
       })
-    : new ChatOpenAICompletions(fields);
+    : new ChatOpenAICompletions({
+        ...fields,
+        ...(settings.model.reasoning_effort === undefined
+          ? {}
+          : { reasoning: { effort: settings.model.reasoning_effort } }),
+      });
 }
 
 export function bindModelTools(

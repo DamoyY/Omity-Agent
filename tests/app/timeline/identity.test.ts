@@ -28,6 +28,40 @@ test("persisted content hides only its identified stream", () => {
   expect(view[0]?.parts).toEqual([{ type: "content", content: "完成" }]);
 });
 
+test("persisted reasoning hides its identified stream", () => {
+  const messages: DisplayMessage[] = [
+    assistant({ id: 1, sourceId: "message-1", reasoning: "已思考" }),
+  ];
+  const events = [
+    event("reasoning", {
+      kind: "assistant_reasoning_delta",
+      messageId: "message-1",
+      text: "已思考",
+    }),
+  ];
+
+  const view = buildTimeline(messages, queue, events);
+
+  expect(view[0]?.parts).toEqual([{ type: "reasoning", content: "已思考" }]);
+});
+
+test("streamed reasoning is shown before answer text", () => {
+  const events = [
+    event("reasoning", {
+      kind: "assistant_reasoning_delta",
+      text: "分析",
+    }),
+    event("token", { kind: "assistant_text_delta", text: "答案" }, 2),
+  ];
+
+  const view = buildTimeline([], queue, events);
+
+  expect(view[0]?.parts).toEqual([
+    { type: "reasoning", content: "分析" },
+    { type: "content", content: "答案" },
+  ]);
+});
+
 test("old tool stream is hidden after answer text starts", () => {
   const events = [
     event("tool_call", {
@@ -105,6 +139,7 @@ test("repeated assistant content and tool inputs remain visible", () => {
 function assistant(options: {
   id: number;
   content?: string;
+  reasoning?: string;
   sourceId?: string;
   call?: DisplayMessage["toolCalls"][number];
 }): DisplayMessage {
@@ -113,6 +148,7 @@ function assistant(options: {
     ...(options.sourceId ? { sourceId: options.sourceId } : {}),
     role: "assistant",
     content: options.content ?? "",
+    reasoning: options.reasoning ?? "",
     images: [],
     queueId: null,
     toolCalls: options.call ? [options.call] : [],

@@ -13,6 +13,7 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
       sourceId: "message-1",
       role: "assistant",
       content: "",
+      reasoning: "",
       images: [],
       queueId: null,
       toolCalls: [
@@ -50,6 +51,7 @@ test("streaming tool call is grouped with previous assistant message", () => {
       sourceId: "message-1",
       role: "assistant",
       content: "",
+      reasoning: "",
       images: [],
       queueId: null,
       toolCalls: [
@@ -92,6 +94,7 @@ test("tool output retains images", () => {
       id: 1,
       role: "assistant",
       content: "",
+      reasoning: "",
       images: [],
       queueId: null,
       toolCalls: [{ id: "call-1", index: 0, name: "capture", input: {} }],
@@ -101,6 +104,7 @@ test("tool output retains images", () => {
       id: 2,
       role: "tool",
       content: "",
+      reasoning: "",
       images: [image],
       queueId: null,
       toolCalls: [],

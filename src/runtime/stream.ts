@@ -1,6 +1,6 @@
 import { AIMessageChunk } from "@langchain/core/messages";
 import type { HostContext } from "./context";
-import { contentToText } from "./content";
+import { contentBlocksToReasoning, contentToText } from "./content";
 
 const omitted = Symbol("omitted");
 type DiffResult = { value: unknown } | typeof omitted;
@@ -32,11 +32,15 @@ export function handleStreamEvent(
   const payload: unknown = event[1];
   if (mode === "messages") {
     const chunk: unknown = Array.isArray(payload) ? payload[0] : undefined;
-    if (!isRecord(chunk) || !isAiChunk(chunk)) return;
+    if (!isAiChunk(chunk)) return;
     const messageId = readMessageId(chunk);
-    const text = contentToText(chunk["content"]);
+    const text = contentToText(chunk.content);
+    const reasoning = contentBlocksToReasoning(chunk.contentBlocks);
     if (text && ctx.settings.logging.streamTokens) {
       ctx.logger.token(text);
+    }
+    if (reasoning && queueId !== undefined) {
+      ctx.db.streamReasoning(ctx.sessionId, queueId, reasoning, messageId);
     }
     if (text && queueId !== undefined) {
       ctx.db.streamToken(ctx.sessionId, queueId, text, messageId);
@@ -136,9 +140,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isAiChunk(value: Record<string, unknown>) {
-  if (AIMessageChunk.isInstance(value)) return true;
-  return isRecord(value) && value["type"] === "ai";
+function isAiChunk(value: unknown): value is AIMessageChunk {
+  return AIMessageChunk.isInstance(value);
 }
 
 function readMessageId(value: unknown) {

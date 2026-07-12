@@ -3,6 +3,7 @@ import {
   currentToolCallEvents,
   eventMessageId,
   eventQueueId,
+  eventReasoning,
   eventText,
   streamToolCalls,
 } from "./streamEvents";
@@ -92,7 +93,7 @@ function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
     .filter((content) => content.trim().length > 0)
     .join("\n\n");
   for (const part of source.parts) {
-    if (part.type === "content") {
+    if (part.type !== "tool") {
       target.parts.push(part);
       continue;
     }
@@ -120,6 +121,10 @@ function streamMessage(
     .map((event) => eventText(event, item.id))
     .filter((text) => text.length > 0)
     .join("");
+  const reasoning = streamEvents
+    .map((event) => eventReasoning(event, item.id))
+    .filter((text) => text.length > 0)
+    .join("");
   const toolCalls = streamToolCalls(currentToolCallEvents(streamEvents)).filter(
     (call) => !visibleToolCalls.some((part) => sameToolCall(part.call, call)),
   );
@@ -128,6 +133,7 @@ function streamMessage(
       id: -1,
       role: "assistant",
       content,
+      reasoning,
       images: [],
       queueId: null,
       toolCalls,
@@ -150,6 +156,9 @@ function withParts(
     content: message.content,
     createdAt: message.createdAt,
     parts: [
+      ...(message.reasoning.trim()
+        ? [{ type: "reasoning", content: message.reasoning } as const]
+        : []),
       ...(message.content.trim()
         ? [{ type: "content", content: message.content } as const]
         : []),

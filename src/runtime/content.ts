@@ -1,3 +1,5 @@
+import type { BaseMessage } from "@langchain/core/messages";
+
 export function contentToText(content: unknown): string {
   if (typeof content === "string") {
     return content;
@@ -12,6 +14,23 @@ export function contentToText(content: unknown): string {
       .join("");
   }
   return "";
+}
+
+export function messageReasoning(message: BaseMessage) {
+  return contentBlocksToReasoning(message.contentBlocks);
+}
+
+export function contentBlocksToReasoning(content: unknown): string {
+  if (!Array.isArray(content)) return "";
+  return content
+    .flatMap((part) =>
+      isRecord(part) &&
+      part["type"] === "reasoning" &&
+      typeof part["reasoning"] === "string"
+        ? [part["reasoning"]]
+        : [],
+    )
+    .join("\n\n");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

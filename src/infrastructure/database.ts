@@ -4,6 +4,7 @@ import type { Control, QueueItem, QueueStatus } from "../types";
 import {
   clearQueueStreamEvents,
   clearStreamEvents,
+  insertStreamReasoning,
   insertStreamToken,
   insertStreamToolCall,
   type StreamToolCallDelta,
@@ -180,6 +181,16 @@ export class AgentDatabase {
     messageId?: string,
   ) {
     insertStreamToken(this.db, sessionId, queueId, text, messageId);
+    this.notify?.();
+  }
+
+  streamReasoning(
+    sessionId: string,
+    queueId: number,
+    text: string,
+    messageId?: string,
+  ) {
+    insertStreamReasoning(this.db, sessionId, queueId, text, messageId);
     this.notify?.();
   }
 

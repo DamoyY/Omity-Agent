@@ -9,11 +9,11 @@ interface ToolCallAccumulator {
 }
 
 export function eventText(event: DisplayEvent, queueId: number) {
-  if (eventQueueId(event) !== queueId) return "";
-  if (!isRecord(event.payload)) return "";
-  const kind = event.payload["kind"];
-  if (kind !== undefined && kind !== "assistant_text_delta") return "";
-  return typeof event.payload["text"] === "string" ? event.payload["text"] : "";
+  return assistantDelta(event, queueId, "assistant_text_delta");
+}
+
+export function eventReasoning(event: DisplayEvent, queueId: number) {
+  return assistantDelta(event, queueId, "assistant_reasoning_delta");
 }
 
 export function eventQueueId(event: DisplayEvent) {
@@ -30,9 +30,13 @@ export function eventMessageId(event: DisplayEvent) {
 }
 
 export function currentToolCallEvents(events: DisplayEvent[]) {
-  const lastTextIndex = events.findLastIndex(
-    (event) => eventText(event, eventQueueId(event) ?? -1).length > 0,
-  );
+  const lastTextIndex = events.findLastIndex((event) => {
+    const queueId = eventQueueId(event) ?? -1;
+    return (
+      eventText(event, queueId).length > 0 ||
+      eventReasoning(event, queueId).length > 0
+    );
+  });
   return events.slice(lastTextIndex + 1);
 }
 
@@ -114,6 +118,16 @@ function appendArguments(current = "", delta?: string) {
   if (!delta) return current;
   if (current.length === 0 || delta.startsWith(current)) return delta;
   return current + delta;
+}
+
+function assistantDelta(
+  event: DisplayEvent,
+  queueId: number,
+  kind: "assistant_reasoning_delta" | "assistant_text_delta",
+) {
+  if (eventQueueId(event) !== queueId || !isRecord(event.payload)) return "";
+  if (event.payload["kind"] !== kind) return "";
+  return typeof event.payload["text"] === "string" ? event.payload["text"] : "";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

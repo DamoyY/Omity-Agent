@@ -20,6 +20,7 @@ export interface DisplayMessage {
   sourceId?: string;
   role: DisplayRole;
   content: string;
+  reasoning: string;
   images: DisplayImage[];
   queueId: number | null;
   toolCalls: DisplayToolCall[];
@@ -53,4 +54,5 @@ export interface TimelineMessage {
 
 export type TimelinePart =
   | { type: "content"; content: string }
+  | { type: "reasoning"; content: string }
   | { type: "tool"; call: DisplayToolCall; output?: DisplayMessage };

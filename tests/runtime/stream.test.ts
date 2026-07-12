@@ -68,6 +68,29 @@ test("stream messages persist only assistant text chunks", () => {
   expect(stream.tokens).toEqual([{ queueId: 1, text: "hello" }]);
 });
 
+test("stream messages persist assistant reasoning chunks", () => {
+  const stream = makeStreamRecorder();
+  handleStreamEvent(
+    stream.ctx,
+    [
+      "messages",
+      [
+        new AIMessageChunk({
+          id: "message-1",
+          content: [{ type: "reasoning", reasoning: "分析中" }],
+        }),
+        {},
+      ],
+    ],
+    createStreamLogState(),
+    2,
+  );
+
+  expect(stream.reasoning).toEqual([
+    { messageId: "message-1", queueId: 2, text: "分析中" },
+  ]);
+});
+
 test("stream messages persist assistant tool call chunks", () => {
   const stream = makeStreamRecorder();
   handleStreamEvent(
@@ -114,6 +137,11 @@ function makeStreamRecorder() {
     queueId: number;
     text: string;
   }[] = [];
+  const reasoning: {
+    messageId?: string;
+    queueId: number;
+    text: string;
+  }[] = [];
   const toolCalls: {
     call: {
       args?: string;
@@ -134,6 +162,17 @@ function makeStreamRecorder() {
           messageId?: string,
         ) =>
           tokens.push({ queueId, text, ...(messageId ? { messageId } : {}) }),
+        streamReasoning: (
+          _sessionId: string,
+          queueId: number,
+          text: string,
+          messageId?: string,
+        ) =>
+          reasoning.push({
+            queueId,
+            text,
+            ...(messageId ? { messageId } : {}),
+          }),
         streamToolCall: (
           _sessionId: string,
           queueId: number,
@@ -156,6 +195,7 @@ function makeStreamRecorder() {
       sessionId: "session",
       settings: { logging: { streamTokens: false } },
     } as never,
+    reasoning,
     tokens,
     toolCalls,
   };

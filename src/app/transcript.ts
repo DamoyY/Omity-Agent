@@ -4,7 +4,7 @@ import {
   type StoredMessage,
 } from "@langchain/core/messages";
 import { AgentDatabase } from "../infrastructure/database";
-import { contentToText } from "../runtime/content";
+import { contentToText, messageReasoning } from "../runtime/content";
 import { extractToolImages } from "../runtime/modelImages";
 import {
   buildTimeline,
@@ -34,7 +34,8 @@ interface EventRow {
   id: number;
   queue_id: number;
   message_id: string | null;
-  kind: "assistant_text_delta" | "tool_call_delta";
+  kind:
+    "assistant_reasoning_delta" | "assistant_text_delta" | "tool_call_delta";
   payload_json: string;
 }
 
@@ -86,6 +87,7 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
     ...(message.id ? { sourceId: message.id } : {}),
     role: messageRole(message),
     content: contentToText(message.content),
+    reasoning: messageReasoning(message),
     images: extractToolImages(message.content),
     queueId: row.queue_id,
     toolCalls: extractToolCalls(message),
@@ -96,15 +98,19 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
 
 function toDisplayEvent(row: EventRow): DisplayEvent {
   const value = JSON.parse(row.payload_json) as unknown;
+  const textEvent = row.kind !== "tool_call_delta";
   return {
     id: row.id,
-    message: row.kind === "assistant_text_delta" ? "token" : "tool_call",
+    message:
+      row.kind === "assistant_text_delta"
+        ? "token"
+        : row.kind === "assistant_reasoning_delta"
+          ? "reasoning"
+          : "tool_call",
     payload: {
       kind: row.kind,
       queueId: row.queue_id,
-      ...(row.kind === "assistant_text_delta"
-        ? { text: requireString(value) }
-        : { call: value }),
+      ...(textEvent ? { text: requireString(value) } : { call: value }),
       ...(row.message_id ? { messageId: row.message_id } : {}),
     },
   };

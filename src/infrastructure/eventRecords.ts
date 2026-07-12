@@ -8,7 +8,8 @@ function insertStreamEvent(
   db: Database,
   sessionId: string,
   queueId: number,
-  kind: "assistant_text_delta" | "tool_call_delta",
+  kind:
+    "assistant_reasoning_delta" | "assistant_text_delta" | "tool_call_delta",
   payload: unknown,
   messageId?: string,
 ) {
@@ -29,6 +30,23 @@ export function insertStreamToken(
     sessionId,
     queueId,
     "assistant_text_delta",
+    text,
+    messageId,
+  );
+}
+
+export function insertStreamReasoning(
+  db: Database,
+  sessionId: string,
+  queueId: number,
+  text: string,
+  messageId?: string,
+) {
+  insertStreamEvent(
+    db,
+    sessionId,
+    queueId,
+    "assistant_reasoning_delta",
     text,
     messageId,
   );
