@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -10,6 +10,7 @@ import type { Settings } from "../types";
 import { inspectToolTextContent } from "./outputText";
 
 const tokenizer = getEncoding("o200k_base");
+const outputFileIdBytes = 16;
 
 interface LargeOutputRuntimeContext {
   sessionId: string;
@@ -130,10 +131,18 @@ async function writeLargeToolOutput(
 ) {
   const dir = resolve(dataDir, "sessions", safeId(sessionId), "large_output");
   mkdirSync(dir, { recursive: true });
-  const id = outputId
-    ? createHash("sha256").update(outputId).digest("hex")
-    : randomUUID();
+  const id = createOutputFileId(outputId);
   const path = join(dir, `${id}.txt`);
   await writeFile(path, content, "utf8");
   return path;
+}
+
+function createOutputFileId(outputId: string | undefined) {
+  const bytes = outputId
+    ? createHash("sha256")
+        .update(outputId)
+        .digest()
+        .subarray(0, outputFileIdBytes)
+    : randomBytes(outputFileIdBytes);
+  return bytes.toString("base64url");
 }

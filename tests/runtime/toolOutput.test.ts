@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -51,7 +51,7 @@ test("normalizes MCP text content before size handling", async () => {
     "sessions",
     "demo-session",
     "large_output",
-    `${createHash("sha256").update("call-1").digest("hex")}.txt`,
+    `${outputFileId("call-1")}.txt`,
   );
 
   expect(normalized.content).toBe(short);
@@ -80,11 +80,29 @@ test("accepts hook call IDs when writing large output", async () => {
     "sessions",
     "demo-session",
     "large_output",
-    `${createHash("sha256").update(outputId).digest("hex")}.txt`,
+    `${outputFileId(outputId)}.txt`,
   );
 
   expect(readFileSync(outputPath, "utf8")).toBe(original);
   expect(redirected.content).toContain(outputPath);
+});
+
+test("uses compact URL-safe large output file names", async () => {
+  const root = makeDir();
+  await redirectLargeToolOutput(
+    new ToolMessage({ content: "long output", tool_call_id: "call" }),
+    {
+      dataDir: root,
+      maxTokens: 1,
+      sessionId: "demo-session",
+    },
+  );
+  const names = readdirSync(
+    join(root, "sessions", "demo-session", "large_output"),
+  );
+
+  expect(names).toHaveLength(1);
+  expect(names[0]).toMatch(/^[A-Za-z0-9_-]{22}\.txt$/);
 });
 
 test("keeps MCP images outside the text size limit", async () => {
@@ -155,4 +173,12 @@ function makeDir() {
   const dir = mkdtempSync(join(tmpdir(), "agent-large-output-"));
   dirs.push(dir);
   return dir;
+}
+
+function outputFileId(outputId: string) {
+  return createHash("sha256")
+    .update(outputId)
+    .digest()
+    .subarray(0, 16)
+    .toString("base64url");
 }
