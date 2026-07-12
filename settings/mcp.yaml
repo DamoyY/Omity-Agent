@@ -43,7 +43,7 @@ mcpServers:
       - serve
       - --mcp
     env:
-      CODEGRAPH_MCP_TOOLS: explore,node,search,callers,callees,impact
+      CODEGRAPH_MCP_TOOLS: explore,node,search,callers,callees,impact,codegraph_explore,codegraph_node,codegraph_search,codegraph_callers,codegraph_callees,codegraph_impact
   capture:
     transport: stdio
     command: F:/workspace/windows_capture/target/release/WinCapture.exe
