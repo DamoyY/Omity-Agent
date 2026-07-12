@@ -129,6 +129,7 @@ export function ChatPage({
         controlState={waitingForPause ? "pausing" : paused ? "resume" : "pause"}
         disabled={!activeId}
         draft={forkDraft}
+        draftTarget={{ kind: "session", sessionId: activeId }}
         key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
         onControl={() => onControl(paused ? "running" : "pause")}
         onSend={onSend}

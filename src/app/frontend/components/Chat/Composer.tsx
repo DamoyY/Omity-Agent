@@ -2,6 +2,12 @@ import { Pause, Play, Send } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
+import {
+  clearComposerDraft,
+  readComposerDraft,
+  writeComposerDraft,
+  type ComposerDraftTarget,
+} from "../../services/composerDrafts";
 import { reportPromiseErrors } from "../../services/errors";
 import { Button, Textarea } from "../ParkUI";
 
@@ -36,6 +42,7 @@ type ControlState = "pause" | "pausing" | "resume";
 export function Composer({
   disabled,
   draft,
+  draftTarget,
   controlDisabled = false,
   controlState,
   onControl,
@@ -43,13 +50,16 @@ export function Composer({
 }: {
   disabled: boolean;
   draft?: string;
+  draftTarget: ComposerDraftTarget;
   controlDisabled?: boolean;
   controlState?: ControlState;
   onControl?: () => Promise<void>;
   onSend: (content: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [content, setContent] = useState(draft ?? "");
+  const [content, setContent] = useState(() =>
+    readComposerDraft(draftTarget, draft ?? ""),
+  );
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const submit = async () => {
@@ -58,6 +68,7 @@ export function Composer({
     setSubmitting(true);
     try {
       await onSend(content);
+      clearComposerDraft(draftTarget);
       setContent("");
     } finally {
       submittingRef.current = false;
@@ -79,7 +90,9 @@ export function Composer({
         size="md"
         value={content}
         onChange={(event) => {
-          setContent(event.currentTarget.value);
+          const nextContent = event.currentTarget.value;
+          setContent(nextContent);
+          writeComposerDraft(draftTarget, nextContent);
         }}
         onKeyDown={(event) => {
           if (event.key !== "Enter" || !event.ctrlKey) return;

@@ -149,7 +149,12 @@ export function NewSessionPage({
           </Field.Root>
         </div>
       </section>
-      <Composer disabled={false} draft="" onSend={onSend} />
+      <Composer
+        disabled={false}
+        draft=""
+        draftTarget={{ kind: "new" }}
+        onSend={onSend}
+      />
     </div>
   );
 }
