@@ -156,15 +156,10 @@ function sessionPage(id: string): Page {
 
 function resolvePage(page: Page, sessions: { id: string }[], ready: boolean) {
   if (!ready) return page;
-  if (
-    page.kind === "session" &&
-    sessions.some((session) => session.id === page.id)
-  ) {
-    return page;
-  }
   if (page.kind === "new") return page;
-  const first = sessions[0];
-  return first ? sessionPage(first.id) : ({ kind: "new" } as const);
+  return sessions.some((session) => session.id === page.id)
+    ? page
+    : ({ kind: "new" } as const);
 }
 
 function samePage(left: Page, right: Page) {

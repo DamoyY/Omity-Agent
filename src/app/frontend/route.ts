@@ -1,5 +1,5 @@
 export type Page =
-  { kind: "empty" } | { kind: "new" } | { kind: "session"; id: string };
+  { kind: "new" } | { kind: "session"; id: string };
 
 const sessionPrefix = "/sessions/";
 
@@ -10,15 +10,12 @@ export function readPage(): Page {
     const id = decodeURIComponent(pathname.slice(sessionPrefix.length));
     if (id) return { kind: "session", id };
   }
-  return { kind: "empty" };
+  return { kind: "new" };
 }
 
 export function pagePath(page: Page) {
   if (page.kind === "new") return "/new";
-  if (page.kind === "session") {
-    return `/sessions/${encodeURIComponent(page.id)}`;
-  }
-  return "/";
+  return `/sessions/${encodeURIComponent(page.id)}`;
 }
 
 export function writePage(page: Page, replace = false) {
