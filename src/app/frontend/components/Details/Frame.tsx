@@ -59,28 +59,33 @@ const summaryText = css({
 export function Frame({
   accessory,
   children,
+  expandedInitially,
   icon: Icon,
+  label,
   title,
   tone,
 }: {
   accessory?: ReactNode;
   children: ReactNode;
+  expandedInitially: boolean;
   icon: LucideIcon;
-  title: ReactNode;
+  label: string;
+  title?: ReactNode;
   tone: "model" | "tool";
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(expandedInitially);
   return (
     <details
       className={details({ tone })}
       onToggle={(event) => {
         setExpanded(event.currentTarget.open);
       }}
+      open={expanded}
     >
-      <summary className={summary}>
+      <summary aria-label={label} className={summary}>
         <ChevronRight className={disclosure} size={14} />
         <Icon className={iconTone({ tone })} size={14} />
-        <span className={summaryText}>{title}</span>
+        {title ? <span className={summaryText}>{title}</span> : null}
         {accessory}
       </summary>
       {expanded ? children : null}

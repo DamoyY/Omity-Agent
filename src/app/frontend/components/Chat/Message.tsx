@@ -68,11 +68,13 @@ export function Message({
   canFork,
   forkDisabled,
   item,
+  latestDetailIndex,
   onFork,
 }: {
   canFork: boolean;
   forkDisabled: boolean;
   item: TimelineMessage;
+  latestDetailIndex?: number;
   onFork: (messageId: number) => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -114,13 +116,15 @@ export function Message({
             return (
               <Reasoning
                 content={part.content}
-                key={`reasoning-${index.toString()}`}
+                key={`reasoning-${index.toString()}-${index === latestDetailIndex ? "latest" : "settled"}`}
+                latest={index === latestDetailIndex}
               />
             );
           return (
             <ToolCall
               call={part.call}
-              key={part.call.id}
+              key={`${part.call.id}-${index === latestDetailIndex ? "latest" : "settled"}`}
+              latest={index === latestDetailIndex}
               output={part.output}
             />
           );

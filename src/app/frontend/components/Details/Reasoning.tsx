@@ -11,10 +11,21 @@ const content = css({
   minW: 0,
   pt: "3",
 });
-export function Reasoning({ content: reasoning }: { content: string }) {
+export function Reasoning({
+  content: reasoning,
+  latest,
+}: {
+  content: string;
+  latest: boolean;
+}) {
   const { t } = useTranslation();
   return (
-    <Frame icon={BrainCircuit} title={t("reasoning")} tone="model">
+    <Frame
+      expandedInitially={latest}
+      icon={BrainCircuit}
+      label={t("reasoning")}
+      tone="model"
+    >
       <div className={content}>
         <MarkdownView content={reasoning} />
       </div>

@@ -37,17 +37,21 @@ const imageList = css({ display: "grid", gap: "2" });
 const outputImage = css({ display: "block", h: "auto", maxW: "full" });
 export function ToolCall({
   call,
+  latest,
   output,
 }: {
   call: DisplayToolCall;
+  latest: boolean;
   output?: DisplayMessage;
 }) {
   const { t } = useTranslation();
   return (
     <Frame
       accessory={call.streaming ? <Badge>{t("streaming")}</Badge> : undefined}
+      expandedInitially={latest}
       icon={Wrench}
-      title={`${t("toolCall")} · ${call.name}`}
+      label={`${t("toolCall")}: ${call.name}`}
+      title={call.name}
       tone="tool"
     >
       <div className={ioGrid}>

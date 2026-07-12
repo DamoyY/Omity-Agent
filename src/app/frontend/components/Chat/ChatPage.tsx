@@ -23,6 +23,22 @@ const empty = css({
   placeItems: "center",
 });
 
+function findLatestDetail(view: TimelineMessage[]) {
+  for (
+    let messageIndex = view.length - 1;
+    messageIndex >= 0;
+    messageIndex -= 1
+  ) {
+    const item = view[messageIndex];
+    if (!item) continue;
+    const partIndex = item.parts.findLastIndex(
+      (part) => part.type !== "content",
+    );
+    if (partIndex >= 0) return { messageKey: item.key, partIndex };
+  }
+  return undefined;
+}
+
 export function ChatPage({
   activeId,
   control,
@@ -60,6 +76,7 @@ export function ChatPage({
   const loopRunning = queue.some((item) => item.status === "running");
   const firstUserMessageId = view.find((item) => item.role === "user")?.id;
   const forkDraft = queue.find((item) => item.status === "draft")?.content;
+  const latestDetail = findLatestDetail(view);
 
   if (!activeId) {
     if (newSession) {
@@ -96,6 +113,11 @@ export function ChatPage({
             forkDisabled={loopRunning}
             item={item}
             key={item.key}
+            latestDetailIndex={
+              item.key === latestDetail?.messageKey
+                ? latestDetail.partIndex
+                : undefined
+            }
             onFork={onFork}
           />
         ))}
