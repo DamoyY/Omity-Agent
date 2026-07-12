@@ -54,6 +54,7 @@
     "@oclif/core": "latest",
     "@park-ui/panda-preset": "latest",
     "@tanstack/react-query": "latest",
+    "ajv": "latest",
     "dompurify": "latest",
     "highlight.js": "latest",
     "i18next": "latest",
