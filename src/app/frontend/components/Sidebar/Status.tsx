@@ -44,9 +44,11 @@ const statusMeta: Record<
 };
 
 export function Status({
+  compact = false,
   error,
   status,
 }: {
+  compact?: boolean;
   error: ErrorDetails | null;
   status: SessionStatus;
 }) {
@@ -68,7 +70,7 @@ export function Status({
         size={12}
         strokeWidth={2}
       />
-      <span>{label}</span>
+      {!compact && <span>{label}</span>}
     </span>
   );
 }

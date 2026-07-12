@@ -74,14 +74,6 @@ export function App() {
             setNewWorkspace(undefined);
             navigate({ kind: "new" });
           }}
-          onDelete={async (id) => {
-            await deleteSession(id);
-            removeSession(queryClient, id);
-            if (activeSession?.id === id) {
-              const next = sessions.find((session) => session.id !== id);
-              navigate(next ? sessionPage(next.id) : { kind: "new" });
-            }
-          }}
           onSelect={(id) => {
             navigate(sessionPage(id));
           }}
@@ -113,6 +105,15 @@ export function App() {
               throw error;
             }
             if (control !== "pause") setPausingSessionId(undefined);
+          }}
+          onDelete={async () => {
+            if (!activeSession) return;
+            await deleteSession(activeSession.id);
+            removeSession(queryClient, activeSession.id);
+            const next = sessions.find(
+              (session) => session.id !== activeSession.id,
+            );
+            navigate(next ? sessionPage(next.id) : { kind: "new" });
           }}
           onFork={async (messageId) => {
             if (!activeSession) return;

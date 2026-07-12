@@ -51,6 +51,7 @@ export function ChatPage({
   workspace,
   onSend,
   onControl,
+  onDelete,
   onFork,
   onPickWorkspace,
   onWorkspaceChange,
@@ -66,6 +67,7 @@ export function ChatPage({
   workspace?: string;
   onSend: (content: string, draftRevision: number) => Promise<void>;
   onControl: (control: Extract<Control, "running" | "pause">) => Promise<void>;
+  onDelete: () => Promise<void>;
   onFork: (messageId: number) => Promise<void>;
   onPickWorkspace: () => Promise<string | null>;
   onWorkspaceChange: (workspace: string) => void;
@@ -129,12 +131,16 @@ export function ChatPage({
           waitingForPause || (!paused && sessionStatus === "idle")
         }
         controlState={waitingForPause ? "pausing" : paused ? "resume" : "pause"}
+        deleteDisabled={
+          loopRunning || sessionStatus === "model" || sessionStatus === "tool"
+        }
         disabled={!activeId}
         draft={forkDraft}
         draftTarget={{ kind: "session", sessionId: activeId }}
         key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
         usage={latestUsage}
         onControl={() => onControl(paused ? "running" : "pause")}
+        onDelete={onDelete}
         onSend={onSend}
       />
     </div>

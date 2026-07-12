@@ -13,6 +13,7 @@ import { reportError, reportPromiseErrors } from "../../services/errors";
 import type { TokenUsage } from "../../../timeline";
 import { Button } from "../ParkUI";
 import { ContextUsage } from "./ContextUsage";
+import { DeleteSessionButton } from "./DeleteSessionButton";
 import { MarkdownEditor } from "./MarkdownEditor";
 
 const form = css({
@@ -52,8 +53,10 @@ export function Composer({
   draftTarget,
   controlDisabled = false,
   controlState,
+  deleteDisabled = false,
   usage,
   onControl,
+  onDelete,
   onSend,
 }: {
   disabled: boolean;
@@ -61,8 +64,10 @@ export function Composer({
   draftTarget: ComposerDraftTarget;
   controlDisabled?: boolean;
   controlState?: ControlState;
+  deleteDisabled?: boolean;
   usage?: TokenUsage | null;
   onControl?: () => Promise<void>;
+  onDelete?: () => Promise<void>;
   onSend: (content: string, draftRevision: number) => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -175,6 +180,12 @@ export function Composer({
               )}
               {t(controlState)}
             </Button>
+          ) : null}
+          {onDelete ? (
+            <DeleteSessionButton
+              disabled={deleteDisabled}
+              onDelete={onDelete}
+            />
           ) : null}
         </div>
         {usage !== undefined ? <ContextUsage usage={usage} /> : null}

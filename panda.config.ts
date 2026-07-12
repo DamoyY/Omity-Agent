@@ -53,7 +53,7 @@ export default defineConfig({
           mono: { value: "ui-monospace, SFMono-Regular, Consolas, monospace" },
         },
         sizes: {
-          appSidebar: { value: "22rem" },
+          appSidebar: { value: "clamp(15rem, 22vw, 20rem)" },
           content: { value: "52rem" },
           composerEditor: { value: "12rem" },
           controlColumn: { value: "9rem" },
