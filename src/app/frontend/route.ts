@@ -1,5 +1,4 @@
-export type Page =
-  { kind: "new" } | { kind: "session"; id: string };
+export type Page = { kind: "new" } | { kind: "session"; id: string };
 
 const sessionPrefix = "/sessions/";
 

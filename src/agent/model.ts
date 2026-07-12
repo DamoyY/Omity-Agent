@@ -1,6 +1,6 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { BaseMessage } from "@langchain/core/messages";
-import { SystemMessage } from "@langchain/core/messages";
+import { AIMessage, SystemMessage } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { ChatOpenAICompletions } from "@langchain/openai";
 import { CompatibleChatOpenAIResponses } from "../infrastructure/responses";
@@ -57,7 +57,9 @@ export function modelMessages(
   messages: BaseMessage[],
 ) {
   const prepared = prepareModelImageMessages(messages, settings.model.api);
-  if (settings.model.api === "responses") return prepared;
+  if (settings.model.api === "responses") {
+    return restoreResponsesCustomToolCalls(prepared);
+  }
   return [
     new SystemMessage(settings.agent.systemPrompt),
     ...(skillsMessage ? [new SystemMessage(skillsMessage)] : []),
@@ -65,9 +67,56 @@ export function modelMessages(
   ];
 }
 
+export function restoreResponsesCustomToolCalls(messages: BaseMessage[]) {
+  return messages.map((message) => {
+    if (!AIMessage.isInstance(message)) return message;
+    const output = message.response_metadata["output"];
+    const toolOutputs = message.additional_kwargs["tool_outputs"];
+    if (!Array.isArray(output) || !Array.isArray(toolOutputs)) return message;
+
+    const customCalls = new Map(
+      toolOutputs
+        .filter(isCustomToolCallItem)
+        .map((item) => [item.call_id, item]),
+    );
+    const restored = output.map((item: unknown) => {
+      if (!isRecord(item) || item["type"] !== "function_call") return item;
+      const callId = item["call_id"];
+      const customCall = typeof callId === "string" && customCalls.get(callId);
+      if (!customCall) return item;
+      return customCall;
+    });
+    if (restored.every((item, index) => item === output[index])) return message;
+    return new AIMessage({
+      content: message.content,
+      id: message.id,
+      name: message.name,
+      tool_calls: message.tool_calls,
+      invalid_tool_calls: message.invalid_tool_calls,
+      additional_kwargs: message.additional_kwargs,
+      response_metadata: { ...message.response_metadata, output: restored },
+      usage_metadata: message.usage_metadata,
+    });
+  });
+}
+
 export function buildResponsesInstructions(
   systemPrompt: string,
   skillsMessage: string | null | undefined,
 ) {
   return [systemPrompt, skillsMessage].filter(Boolean).join("\n\n");
+}
+
+function isCustomToolCallItem(
+  value: unknown,
+): value is Record<string, unknown> & { call_id: string } {
+  return (
+    isRecord(value) &&
+    value["type"] === "custom_tool_call" &&
+    typeof value["call_id"] === "string"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

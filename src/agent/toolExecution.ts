@@ -23,6 +23,10 @@ export function createToolInvoker(
   const toolNode = new ToolNode(tools);
   return async (call, state, config) => {
     const callId = requireCallId(call);
+    const customToolCall = isFreeformModelToolCall(
+      call,
+      options.freeformToolParameters,
+    );
     const executableCall = materializeFreeformToolCall(
       call,
       options.freeformToolParameters,
@@ -35,13 +39,16 @@ export function createToolInvoker(
       { ...state, messages: [...state.messages, synthetic] },
       config,
     );
-    const output = singleToolOutput(result, callId);
-    return redirectLargeToolOutput(output, {
-      dataDir: options.settings.paths.dataDir,
-      maxTokens: options.settings.toolOutput.maxTokens,
-      sessionId: options.sessionId,
-      outputId: callId,
-    });
+    const output = await redirectLargeToolOutput(
+      singleToolOutput(result, callId),
+      {
+        dataDir: options.settings.paths.dataDir,
+        maxTokens: options.settings.toolOutput.maxTokens,
+        sessionId: options.sessionId,
+        outputId: callId,
+      },
+    );
+    return customToolCall ? markCustomToolOutput(output) : output;
   };
 }
 
@@ -52,9 +59,9 @@ export function materializeFreeformToolCall(
   const parameter = parameters.get(call.name);
   if (!parameter) return call;
 
-  const args: unknown = call.args;
-  if (!isCustomToolCall(call) && !isRawFreeformInput(args)) return call;
+  if (!isFreeformModelToolCall(call, parameters)) return call;
 
+  const args: unknown = call.args;
   const input = isRecord(args) ? args["input"] : undefined;
   if (typeof input !== "string") {
     throw new Error(`MCP free-form 工具 ${call.name} 没有返回字符串输入`);
@@ -64,6 +71,31 @@ export function materializeFreeformToolCall(
 
 function isCustomToolCall(call: ToolCall) {
   return isRecord(call) && call["isCustomTool"] === true;
+}
+
+function isFreeformModelToolCall(
+  call: ToolCall,
+  parameters: ReadonlyMap<string, string>,
+) {
+  return (
+    parameters.has(call.name) &&
+    (isCustomToolCall(call) || isRawFreeformInput(call.args))
+  );
+}
+
+function markCustomToolOutput(message: ToolMessage) {
+  const artifact: unknown = message.artifact;
+  return new ToolMessage({
+    content: message.content,
+    tool_call_id: message.tool_call_id,
+    name: message.name,
+    id: message.id,
+    additional_kwargs: { ...message.additional_kwargs, customTool: true },
+    response_metadata: message.response_metadata,
+    artifact,
+    status: message.status,
+    metadata: message.metadata,
+  });
 }
 
 function isRawFreeformInput(args: unknown) {
