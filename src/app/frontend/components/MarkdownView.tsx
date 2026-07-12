@@ -1,6 +1,7 @@
 import type { Components } from "react-markdown";
 import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { css } from "styled-system/css";
 import { HighlightedCode } from "./HighlightedCode";
@@ -55,10 +56,21 @@ function codeText(value: ReactNode): string {
   return "";
 }
 
-export function MarkdownView({ content }: { content: string }) {
+export function MarkdownView({
+  content,
+  preserveLineBreaks = false,
+}: {
+  content: string;
+  preserveLineBreaks?: boolean;
+}) {
   return (
     <div className={markdown}>
-      <ReactMarkdown components={components} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown
+        components={components}
+        remarkPlugins={
+          preserveLineBreaks ? [remarkGfm, remarkBreaks] : [remarkGfm]
+        }
+      >
         {content}
       </ReactMarkdown>
     </div>

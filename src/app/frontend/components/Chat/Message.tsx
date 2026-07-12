@@ -66,10 +66,28 @@ const header = css({
   display: "flex",
   justifyContent: "flex-end",
   minH: "8",
+  pointerEvents: "none",
+  position: "sticky",
+  top: "0",
   w: "full",
+  zIndex: "1",
 });
 
-const actions = css({ alignItems: "center", display: "flex", gap: "1" });
+const actions = cva({
+  base: {
+    alignItems: "center",
+    display: "flex",
+    gap: "1",
+    pointerEvents: "auto",
+  },
+  variants: {
+    role: {
+      assistant: { bg: "surface" },
+      tool: { bg: "surface" },
+      user: { bg: "surfaceRaised" },
+    },
+  },
+});
 
 export function Message({
   canFork,
@@ -90,7 +108,7 @@ export function Message({
     <div className={cx(row, item.role === "user" && userRow)}>
       <article className={message({ role: item.role })}>
         <div className={header}>
-          <span className={actions}>
+          <span className={actions({ role: item.role })}>
             {canFork ? (
               <IconButton
                 aria-label={t("fork")}
@@ -117,6 +135,7 @@ export function Message({
               <MarkdownView
                 content={part.content}
                 key={`content-${index.toString()}`}
+                preserveLineBreaks={item.role === "user"}
               />
             );
           if (part.type === "reasoning")
