@@ -4,6 +4,7 @@ import { loadMcpTools, MultiServerMCPClient } from "@langchain/mcp-adapters";
 import YAML from "yaml";
 import type { Logger } from "./logger";
 import { collectReadableZodIssues } from "./mcpSupport/schemaIssueText";
+import { disableMcpRequestTimeout } from "./mcpSupport/requestTimeout";
 import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
@@ -96,6 +97,7 @@ export async function loadMcp(root: string, logger: Logger) {
   const end = logger.child("MCP 工具加载");
   let client: MultiServerMCPClient | undefined;
   try {
+    disableMcpRequestTimeout();
     client = new MultiServerMCPClient({
       mcpServers,
       throwOnLoadError: false,
