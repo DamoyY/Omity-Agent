@@ -1,5 +1,4 @@
 import { HumanMessage } from "@langchain/core/messages";
-import { Command } from "@langchain/langgraph";
 import { queueMessageId } from "../infrastructure/messages";
 import type { HostContext } from "./context";
 import type { QueueRun } from "./run";
@@ -20,22 +19,19 @@ export function consumeBoundaryAppends(
   ctx.logger.info("已在节点边界追加输入", {
     queueIds: appends.map((item) => item.id),
   });
-  return new Command({
-    update: {
-      messages: appends.map(
-        (item) =>
-          new HumanMessage({
-            content: item.content,
-            id: queueMessageId(ctx.sessionId, item.id),
-          }),
-      ),
-      hookPendingUserIds: [
-        ...pendingUserIds(state),
-        ...appends.map((item) => queueMessageId(ctx.sessionId, item.id)),
-      ],
-    },
-    goto: ctx.inputNode,
-  });
+  return {
+    messages: appends.map(
+      (item) =>
+        new HumanMessage({
+          content: item.content,
+          id: queueMessageId(ctx.sessionId, item.id),
+        }),
+    ),
+    hookPendingUserIds: [
+      ...pendingUserIds(state),
+      ...appends.map((item) => queueMessageId(ctx.sessionId, item.id)),
+    ],
+  };
 }
 
 interface BoundaryState {

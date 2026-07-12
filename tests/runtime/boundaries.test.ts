@@ -1,12 +1,6 @@
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { tool } from "@langchain/core/tools";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
-import { z } from "zod";
-import { createAgentGraph } from "../../src/agent";
-import { HookLedger } from "../../src/hooks/ledger";
-import { HookRuntime } from "../../src/hooks/runtime";
 import { AgentDatabase } from "../../src/infrastructure/database";
 import { Logger } from "../../src/infrastructure/logger";
 import type { HostContext } from "../../src/runtime/context";
@@ -17,76 +11,9 @@ import {
   required,
   workspace,
 } from "../support/database";
-import { testLeaseOptions } from "../support/leases";
 import { testSettings } from "../support/settings";
 
 afterEach(cleanupDatabaseDirs);
-
-test("append during model execution continues after the agent boundary", async () => {
-  const db = makeDb();
-  db.resetSession("session", workspace);
-  db.appendUser("session", "first");
-  const ledger = new HookLedger(db.db, testLeaseOptions);
-  let afterCalls = 0;
-  const afterTool = tool(
-    () => {
-      afterCalls++;
-      return Promise.resolve("notified");
-    },
-    { name: "notify", description: "notify", schema: z.object({}) },
-  );
-  const hooks = new HookRuntime(
-    [
-      {
-        id: "after",
-        target: "agent",
-        when: "after",
-        runLimit: -1,
-        mode: "silent",
-        tool: "notify",
-        args: {},
-      },
-    ],
-    [afterTool],
-    ledger,
-    new Logger("error", true),
-    "session",
-    workspace,
-  );
-  const model = fakeModel()
-    .respond(() => {
-      db.appendUser("session", "second");
-      return new AIMessage("intermediate");
-    })
-    .respond((messages) => {
-      expect(messages.map(({ content }) => content)).toEqual([
-        "test",
-        "first",
-        "intermediate",
-        "second",
-      ]);
-      return new AIMessage("final");
-    });
-  const checkpointer = new MemorySaver();
-  const graph = createAgentGraph({
-    settings: testSettings(workspace),
-    model,
-    tools: [afterTool],
-    hooks,
-    checkpointer,
-  });
-  try {
-    await processQueue(
-      context(db, graph, checkpointer),
-      required(db.nextQueue("session")),
-    );
-    expect(model.callCount).toBe(2);
-    expect(afterCalls).toBe(1);
-    expect(db.nextQueue("session")).toBeNull();
-  } finally {
-    db.close();
-  }
-});
 
 test("restart completes every consumed queue item in the run", async () => {
   const db = pausedRunWithAppend();
@@ -163,7 +90,6 @@ function context(
     db,
     graph: graph as HostContext["graph"],
     checkpointer: checkpointer as never,
-    inputNode: "hooks",
     sessionId: "session",
     controller: new AbortController(),
   };

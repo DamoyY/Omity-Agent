@@ -173,7 +173,6 @@ function makeContext(
     db,
     graph: graph as HostContext["graph"],
     checkpointer: checkpointer,
-    inputNode: "hooks",
     sessionId: "session",
     controller: new AbortController(),
     wake: (delayMs) => Bun.sleep(delayMs),

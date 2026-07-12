@@ -155,7 +155,6 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     db,
     graph: graph as HostContext["graph"],
     checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
-    inputNode: "model_request",
     sessionId: "123",
     controller: new AbortController(),
   };

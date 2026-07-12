@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { buildGraph, hookNode } from "./agent";
+import { buildGraph } from "./agent";
 import { sessionConflict, sessionNotFound } from "./errors";
 import {
   loadSettings,
@@ -121,7 +121,6 @@ export async function runHostSession(
         db,
         graph,
         checkpointer,
-        inputNode: hookNode,
         sessionId: mode.sessionId,
         controller,
         wake: options.wake,

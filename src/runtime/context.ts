@@ -28,7 +28,6 @@ export interface HostContext {
   db: AgentDatabase;
   graph: HostGraph;
   checkpointer: BunSqliteSaver;
-  inputNode: "hooks" | "model_request";
   sessionId: string;
   controller: AbortController;
   wake?: (delayMs: number) => Promise<void>;
