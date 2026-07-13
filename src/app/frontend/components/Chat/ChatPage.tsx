@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { DisplayQueue, TimelineMessage } from "../../../timeline";
 import type { Control, SessionStatus } from "../../../../types";
-import { Composer } from "./Composer";
+import { Composer } from "./Composer/index";
 import { NewSessionPage } from "../NewSession";
 import { TranscriptScroll } from "../TranscriptScroll";
 import { Message } from "./Message";
