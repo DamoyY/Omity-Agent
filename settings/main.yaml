@@ -2,19 +2,6 @@
 paths:
   dataDir: ${appData}/omity-agent
 
-# 模型配置；provider 为 codex 时固定使用 Responses API，并从
-# ~/.codex/auth.json 读取认证，此时省略 api、apiKeyEnv 和 baseURL。
-model:
-  provider: openai-compatible
-  # 可选 responses 或 completions；OpenAI-compatible 网关通常使用 completions。
-  api: responses
-  model: gpt-5.6-sol
-  apiKeyEnv: 78CODE
-  baseURL: https://api.78code.cc/v1
-  reasoning_effort: xhigh
-  maxRetries: 1
-  timeoutMs: 120000
-
 # Host 轮询、暂停与 LangGraph 运行边界。
 host:
   pollMs: 300

@@ -5,7 +5,10 @@ import { ChatOpenAIResponses } from "@langchain/openai";
 import { afterEach, expect, test } from "bun:test";
 import type { FetchLike } from "openai-codex-oauth";
 import { buildModel, resolveModelApi } from "../../src/agent";
-import { parseMainSettings } from "../../src/infrastructure/configuration/settingsSchema";
+import {
+  parseMainSettings,
+  parseModelSettings,
+} from "../../src/infrastructure/configuration/settingsSchema";
 import { createCodexClientFields } from "../../src/infrastructure/openai/codexAuthentication";
 import type { Settings } from "../../src/types";
 
@@ -17,11 +20,11 @@ afterEach(() => {
   }
 });
 
-test("codex provider does not require OpenAI-compatible connection settings", () => {
+test("codex adapter does not require OpenAI-compatible connection settings", () => {
   const settings = codexSettings();
 
   expect(settings.model).toEqual({
-    provider: "codex",
+    adapter: "codex",
     model: "gpt-5.3-codex",
     reasoning_effort: "high",
     maxRetries: 1,
@@ -32,7 +35,7 @@ test("codex provider does not require OpenAI-compatible connection settings", ()
   expect(Object.hasOwn(settings.model, "baseURL")).toBe(false);
 });
 
-test("codex provider builds a Responses API model without an API key env", () => {
+test("codex adapter builds a Responses API model without an API key env", () => {
   const settings = codexSettings();
   const model = buildModel(settings, "session-1", "system instructions");
 
@@ -113,13 +116,6 @@ interface CapturedRequest {
 function codexSettings(): Settings {
   const main = parseMainSettings({
     paths: { dataDir: "./data" },
-    model: {
-      provider: "codex",
-      model: "gpt-5.3-codex",
-      reasoning_effort: "high",
-      maxRetries: 1,
-      timeoutMs: 120_000,
-    },
     host: {
       pollMs: 1,
       pausePollMs: 1,
@@ -135,8 +131,21 @@ function codexSettings(): Settings {
       skillEnabled: {},
     },
   });
+  const model = parseModelSettings({
+    profile: "codex",
+    profiles: {
+      codex: {
+        adapter: "codex",
+        model: "gpt-5.3-codex",
+        reasoning_effort: "high",
+        maxRetries: 1,
+        timeoutMs: 120_000,
+      },
+    },
+  });
   return {
     ...main,
+    model,
     hooks: [],
     agent: { systemPrompt: "test" },
     skills: { ...main.skills, usagePrompt: "use skills" },

@@ -31,8 +31,7 @@ function makeSettings(api: ModelApi): Settings {
   return {
     paths: { dataDir: "data" },
     model: {
-      provider: "openai-compatible",
-      api,
+      adapter: api,
       model: "test-model",
       apiKeyEnv: "TEST_OPENAI_KEY",
       baseURL: null,

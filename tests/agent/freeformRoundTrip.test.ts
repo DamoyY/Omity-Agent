@@ -162,6 +162,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function responsesSettings() {
   const settings = testSettings("data");
-  settings.model.api = "responses";
+  settings.model.adapter = "responses";
   return settings;
 }

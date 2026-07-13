@@ -4,8 +4,7 @@ export function testSettings(dataDir: string): Settings {
   return {
     paths: { dataDir },
     model: {
-      provider: "openai-compatible",
-      api: "completions",
+      adapter: "completions",
       model: "test",
       apiKeyEnv: "TEST_KEY",
       baseURL: null,

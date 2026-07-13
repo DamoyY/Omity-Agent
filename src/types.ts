@@ -23,14 +23,12 @@ interface SharedModelSettings {
 export type ModelSettings = SharedModelSettings &
   (
     | {
-        provider: "openai-compatible";
-        api: ModelApi;
+        adapter: ModelApi;
         apiKeyEnv: string;
         baseURL: string | null;
       }
     | {
-        provider: "codex";
-        api?: never;
+        adapter: "codex";
         apiKeyEnv?: never;
         baseURL?: never;
       }

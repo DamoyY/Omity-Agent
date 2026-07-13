@@ -4,7 +4,7 @@ import YAML from "yaml";
 import type { Settings } from "../../types";
 import { loadHookRules } from "./hookRules";
 import { resolveConfiguredPath } from "./configuredPath";
-import { parseMainSettings } from "./settingsSchema";
+import { parseMainSettings, parseModelSettings } from "./settingsSchema";
 import { normalizeWorkspacePath } from "./workspacePath";
 
 export interface LoadSettingsOptions {
@@ -19,12 +19,16 @@ export function loadSettings(
   const cwd = normalizeWorkspacePath(options.cwd ?? configRoot, configRoot);
   const settingsDir = resolve(configRoot, "settings");
   const main = parseMainSettings(readYaml(resolve(settingsDir, "main.yaml")));
+  const model = parseModelSettings(
+    readYaml(resolve(settingsDir, "model.yaml")),
+  );
   const promptsDir = resolve(settingsDir, "prompts");
   const context = { cwd };
   const dataDir = resolveConfiguredPath(configRoot, main.paths.dataDir);
   mkdirSync(dataDir, { recursive: true });
   return {
     ...main,
+    model,
     hooks: loadHookRules(resolve(settingsDir, "hooks.yaml")),
     agent: {
       systemPrompt: readPrompt(join(promptsDir, "system.md"), context),

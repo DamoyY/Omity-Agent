@@ -164,8 +164,7 @@ function makeSettings(): Settings {
   return {
     paths: { dataDir: "data" },
     model: {
-      provider: "openai-compatible",
-      api: "completions",
+      adapter: "completions",
       model: "test-model",
       apiKeyEnv: "TEST_OPENAI_KEY",
       baseURL: null,

@@ -114,11 +114,11 @@ export function buildResponsesInstructions(
 }
 
 export function resolveModelApi(model: ModelSettings): ModelApi {
-  return model.provider === "codex" ? "responses" : model.api;
+  return model.adapter === "codex" ? "responses" : model.adapter;
 }
 
 function modelClientFields(model: ModelSettings) {
-  if (model.provider === "codex") return codexClientFields();
+  if (model.adapter === "codex") return codexClientFields();
   const apiKey = process.env[model.apiKeyEnv];
   if (!apiKey) throw new Error(`缺少环境变量 ${model.apiKeyEnv}`);
   return {

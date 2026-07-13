@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
@@ -19,6 +13,7 @@ import { sessionPaths } from "../../src/infrastructure/configuration/sessionPath
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { captureError } from "../../src/failures/details";
 import { required } from "../support/database";
+import { writeTestConfiguration } from "../support/configuration";
 
 const dirs: string[] = [];
 
@@ -106,15 +101,6 @@ test("session state exposes host errors before queue errors", () => {
 function makeRoot() {
   const root = mkdtempSync(join(tmpdir(), "agent-registry-"));
   dirs.push(root);
-  const settingsDir = join(root, "settings");
-  const promptsDir = join(settingsDir, "prompts");
-  mkdirSync(promptsDir, { recursive: true });
-  writeFileSync(
-    join(settingsDir, "main.yaml"),
-    "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\nleases:\n  hostTtlMs: 30000\n  hookTtlMs: 30000\ntoolOutput:\n  maxTokens: 8192\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
-  );
-  writeFileSync(join(settingsDir, "hooks.yaml"), "hooks: []\n");
-  writeFileSync(join(promptsDir, "system.md"), "test");
-  writeFileSync(join(promptsDir, "skills.md"), "use skills");
+  writeTestConfiguration(root);
   return root;
 }

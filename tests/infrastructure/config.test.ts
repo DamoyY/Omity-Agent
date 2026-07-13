@@ -4,12 +4,14 @@ import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
 import { appDataRoot } from "../../src/infrastructure/configuration/configuredPath";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
+import { parseModelSettings } from "../../src/infrastructure/configuration/settingsSchema";
 import {
   safeId,
   sessionPaths,
 } from "../../src/infrastructure/configuration/sessionPaths";
 import { loadHookRules } from "../../src/infrastructure/configuration/hookRules";
 import { resolveHookArgs } from "../../src/hooks/variables";
+import { writeTestConfiguration } from "../support/configuration";
 
 const dirs: string[] = [];
 
@@ -21,16 +23,11 @@ afterEach(() => {
 
 test("settings yaml resolves AppData data directory", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
-  const settingsDir = join(root, "settings");
   const appData = join(root, "app-data");
   dirs.push(root);
-  mkdirSync(settingsDir);
-  writeFileSync(
-    join(settingsDir, "main.yaml"),
-    "paths:\n  dataDir: ${appData}/omity-agent\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  temperature: 0\n  reasoning_effort: medium\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\nleases:\n  hostTtlMs: 30000\n  hookTtlMs: 30000\ntoolOutput:\n  maxTokens: 8192\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
-  );
-  writePrompts(settingsDir, "test", "use skills");
-  writeHooks(settingsDir);
+  writeTestConfiguration(root, {
+    dataDir: "${appData}/omity-agent",
+  });
   withAppDataRoot(appData, () => {
     const settings = loadSettings(root);
     mkdirSync(settings.paths.dataDir, { recursive: true });
@@ -56,23 +53,54 @@ test("settings yaml resolves AppData data directory", () => {
 
 test("prompt files expand current working directory placeholder", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
-  const settingsDir = join(root, "settings");
   const workspace = join(root, "workspace");
   dirs.push(root);
-  mkdirSync(settingsDir);
   mkdirSync(workspace);
-  writeFileSync(
-    join(settingsDir, "main.yaml"),
-    "paths:\n  dataDir: ./data\nmodel:\n  provider: openai-compatible\n  api: completions\n  model: test\n  apiKeyEnv: TEST_KEY\n  baseURL: null\n  maxRetries: 0\n  timeoutMs: 1000\nhost:\n  pollMs: 1\n  pausePollMs: 1\n  idleLogMs: 1\n  recursionLimit: 1\nlogging:\n  level: debug\n  streamTokens: false\nleases:\n  hostTtlMs: 30000\n  hookTtlMs: 30000\ntoolOutput:\n  maxTokens: 8192\nskills:\n  enabled: false\n  directory: ~/.agents/skills\n  skillEnabled: {}\n",
-  );
-  writePrompts(settingsDir, "workspace: ${cwd}", "skills from ${cwd}");
-  writeHooks(settingsDir);
+  writeTestConfiguration(root, {
+    systemPrompt: "workspace: ${cwd}",
+    skillsPrompt: "skills from ${cwd}",
+  });
 
   const settings = loadSettings(root, { cwd: workspace });
 
   expect(settings.paths.dataDir).toBe(resolve(root, "data"));
   expect(settings.agent.systemPrompt).toBe(`workspace: ${workspace}`);
   expect(settings.skills.usagePrompt).toBe(`skills from ${workspace}`);
+});
+
+test("model yaml selects a named profile from multiple profiles", () => {
+  const root = mkdtempSync(join(tmpdir(), "agent-config-"));
+  dirs.push(root);
+  writeTestConfiguration(root, {
+    modelYaml: `profile: codex
+profiles:
+  gateway:
+    adapter: completions
+    model: gateway-model
+    apiKeyEnv: TEST_KEY
+    baseURL: null
+    maxRetries: 0
+    timeoutMs: 1000
+  codex:
+    adapter: codex
+    model: codex-model
+    maxRetries: 1
+    timeoutMs: 2000
+`,
+  });
+
+  expect(loadSettings(root).model).toEqual({
+    adapter: "codex",
+    model: "codex-model",
+    maxRetries: 1,
+    timeoutMs: 2000,
+  });
+});
+
+test("model yaml rejects an unknown profile", () => {
+  expect(() =>
+    parseModelSettings({ profile: "missing", profiles: {} }),
+  ).toThrow("Profile 不存在：missing");
 });
 
 test("hook config parses targets, timing, and modes", () => {
@@ -141,21 +169,6 @@ test("hook variables preserve exact values and reject ambiguous output", () => {
     resolveHookArgs({ missing: "${previousTool.output}" }, { cwd: "F:\\work" }),
   ).toThrow("没有可用的前序工具输出");
 });
-
-function writePrompts(
-  settingsDir: string,
-  systemPrompt: string,
-  skillsPrompt: string,
-) {
-  const promptsDir = join(settingsDir, "prompts");
-  mkdirSync(promptsDir);
-  writeFileSync(join(promptsDir, "system.md"), systemPrompt);
-  writeFileSync(join(promptsDir, "skills.md"), skillsPrompt);
-}
-
-function writeHooks(settingsDir: string) {
-  writeFileSync(join(settingsDir, "hooks.yaml"), "hooks: []\n");
-}
 
 function withAppDataRoot(path: string, callback: () => void) {
   const previous = {
