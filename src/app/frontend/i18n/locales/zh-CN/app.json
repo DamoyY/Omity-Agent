@@ -20,7 +20,7 @@
   "empty": "选择或新建会话",
   "noMessages": "没有消息",
   "user": "用户",
-  "assistant": "模型",
+  "assistant": "助手",
   "tool": "工具",
   "toolCall": "工具调用",
   "reasoning": "思维链",

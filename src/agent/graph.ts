@@ -121,8 +121,7 @@ export function createAgentGraph(options: AgentGraphOptions) {
       modelMessages(options.settings, options.skillsMessage, state.messages),
       config,
     );
-    if (!AIMessage.isInstance(response))
-      throw new Error("模型没有返回 AIMessage");
+    if (!AIMessage.isInstance(response)) throw new Error("没有返回 AIMessage");
     if (!response.tool_calls?.length && !contentToText(response.content)) {
       throw new ModelEmptyResponseError();
     }

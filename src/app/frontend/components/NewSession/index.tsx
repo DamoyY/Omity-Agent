@@ -1,59 +1,37 @@
-import { Send } from "lucide-react";
-import { useState } from "react";
+import { Send, UserRound } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { InitialSessionState } from "../../../initialState";
 import { reportPromiseErrors } from "../../services/errors";
+import {
+  composerActions,
+  composerControls,
+  composerFrame,
+  composerRole,
+} from "../Chat/ComposerFrame";
+import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { Button } from "../ParkUI";
 import { MessageStack, type EditablePair } from "./MessageStack";
 import { WorkspacePicker } from "./WorkspacePicker";
 
-const scroll = css({ h: "full", minH: 0, overflowY: "auto" });
-const form = css({
+const scroll = css({ minH: 0, overflowY: "auto" });
+const scrollContent = css({
+  display: "grid",
+  gridTemplateRows: "auto minmax(min-content, 1fr)",
+  minH: "full",
+});
+const setup = css({
   alignContent: "start",
   display: "grid",
   gap: "6",
-  gridTemplateRows: "auto auto minmax(min-content, 1fr)",
   maxW: "content",
   minH: "full",
   mx: "auto",
   p: { base: "4", md: "8" },
   w: "full",
 });
-const conversation = css({ alignSelf: "end", display: "grid", gap: "6" });
-const header = css({
-  borderBottomColor: "line",
-  borderBottomWidth: "1px",
-  display: "grid",
-  gap: "2",
-  pb: "5",
-});
-const eyebrow = css({
-  color: "muted",
-  fontSize: "xs",
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-});
-const title = css({
-  color: "text",
-  fontSize: "2xl",
-  fontWeight: "normal",
-  m: 0,
-});
-const description = css({
-  color: "muted",
-  fontSize: "sm",
-  m: 0,
-  maxW: "42rem",
-});
-const actions = css({
-  alignItems: "center",
-  borderTopColor: "line",
-  borderTopWidth: "1px",
-  display: "flex",
-  justifyContent: "flex-end",
-  pt: "5",
-});
+const messageFlow = css({ alignSelf: "end" });
 
 export function NewSessionPage({
   pageClassName,
@@ -74,6 +52,22 @@ export function NewSessionPage({
   const [message, setMessage] = useState("");
   const [pairs, setPairs] = useState<EditablePair[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const previousPairCountRef = useRef(pairs.length);
+  useLayoutEffect(() => {
+    const pairAdded = pairs.length > previousPairCountRef.current;
+    previousPairCountRef.current = pairs.length;
+    if (!pairAdded) return;
+    const keepLastMessageInPlace = () => {
+      const node = scrollRef.current;
+      if (node) node.scrollTop = node.scrollHeight;
+    };
+    keepLastMessageInPlace();
+    const frame = requestAnimationFrame(keepLastMessageInPlace);
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [pairs.length]);
   const complete =
     workspace.trim().length > 0 &&
     message.trim().length > 0 &&
@@ -94,29 +88,25 @@ export function NewSessionPage({
     }
   };
   return (
-    <div className={pageClassName}>
-      <div className={scroll}>
-        <form
-          className={form}
-          onSubmit={(event) => {
-            event.preventDefault();
-            reportPromiseErrors(submit());
-          }}
-        >
-          <header className={header}>
-            <span className={eyebrow}>{t("initialState")}</span>
-            <h1 className={title}>{t("newSession")}</h1>
-            <p className={description}>{t("initialStateDescription")}</p>
-          </header>
-          <WorkspacePicker
-            recentWorkspaces={recentWorkspaces}
-            workspace={workspace}
-            onChange={onWorkspaceChange}
-            onPick={onPickWorkspace}
-          />
-          <div className={conversation}>
+    <form
+      className={pageClassName}
+      onSubmit={(event) => {
+        event.preventDefault();
+        reportPromiseErrors(submit());
+      }}
+    >
+      <div className={scroll} ref={scrollRef}>
+        <div className={scrollContent}>
+          <div className={setup}>
+            <WorkspacePicker
+              recentWorkspaces={recentWorkspaces}
+              workspace={workspace}
+              onChange={onWorkspaceChange}
+              onPick={onPickWorkspace}
+            />
+          </div>
+          <div className={messageFlow}>
             <MessageStack
-              message={message}
               pairs={pairs}
               onAdd={() => {
                 setPairs((current) => [
@@ -124,7 +114,6 @@ export function NewSessionPage({
                   { id: crypto.randomUUID(), user: "", assistant: "" },
                 ]);
               }}
-              onMessageChange={setMessage}
               onPairChange={(id, next) => {
                 setPairs((current) =>
                   current.map((item) =>
@@ -139,15 +128,39 @@ export function NewSessionPage({
                 reportPromiseErrors(submit());
               }}
             />
-            <div className={actions}>
-              <Button disabled={!complete || submitting} type="submit">
-                <Send size={14} />{" "}
-                {submitting ? t("creating") : t("createAndSend")}
-              </Button>
+            <div className={composerFrame}>
+              <MarkdownEditor
+                disabled={submitting}
+                onChange={setMessage}
+                onSubmit={() => {
+                  reportPromiseErrors(submit());
+                }}
+                placeholder={t("messagePlaceholder")}
+                value={message}
+              />
+              <div className={composerActions}>
+                <div className={composerControls}>
+                  <span
+                    aria-label={t("user")}
+                    className={composerRole}
+                    title={t("user")}
+                  >
+                    <UserRound aria-hidden size={20} />
+                  </span>
+                  <Button
+                    disabled={!complete || submitting}
+                    type="submit"
+                    variant="outline"
+                  >
+                    <Send size={14} />
+                    {submitting ? t("creating") : t("createAndSend")}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </form>
   );
 }

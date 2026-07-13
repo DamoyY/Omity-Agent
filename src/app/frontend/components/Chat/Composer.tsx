@@ -1,7 +1,6 @@
 import { Pause, Play, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
 import {
   clearTemporaryComposerDraft,
   flushComposerDraft,
@@ -13,37 +12,13 @@ import { reportError, reportPromiseErrors } from "../../services/errors";
 import type { TokenUsage } from "../../../timeline";
 import { Button } from "../ParkUI";
 import { ContextUsage } from "./ContextUsage";
+import {
+  composerActions,
+  composerControls,
+  composerFrame,
+} from "./ComposerFrame";
 import { DeleteSessionButton } from "./DeleteSessionButton";
 import { MarkdownEditor } from "./MarkdownEditor";
-
-const form = css({
-  bg: "surface",
-  borderTopWidth: "1px",
-  borderTopColor: "line",
-  display: "grid",
-  gap: "3",
-  gridTemplateColumns: {
-    base: "minmax(0, 1fr)",
-    md: "minmax(0, 1fr) auto",
-  },
-  p: { base: "3", md: "6" },
-  w: "full",
-});
-
-const actions = css({
-  display: "flex",
-  flexDirection: { base: "row", md: "column" },
-  gap: { base: "3", md: "0" },
-  h: "full",
-  justifyContent: { base: "space-between", md: "initial" },
-  minW: { md: "controlColumn" },
-});
-
-const controls = css({
-  display: "grid",
-  gap: "2",
-  gridAutoFlow: { base: "column", md: "row" },
-});
 
 type ControlState = "pause" | "pausing" | "resume";
 
@@ -127,7 +102,7 @@ export function Composer({
   };
   return (
     <form
-      className={form}
+      className={composerFrame}
       onSubmit={(event) => {
         event.preventDefault();
         reportPromiseErrors(submit());
@@ -155,8 +130,8 @@ export function Composer({
         placeholder={t("messagePlaceholder")}
         value={content}
       />
-      <div className={actions}>
-        <div className={controls}>
+      <div className={composerActions}>
+        <div className={composerControls}>
           <Button
             disabled={disabled || loading || submitting}
             type="submit"

@@ -57,9 +57,7 @@ export function configureFreeformMcpTools(
       if (!parameters.has(tool.name)) return tool;
       return customTool(
         () =>
-          Promise.reject(
-            new Error(`模型工具定义 ${tool.name} 不能直接用于执行`),
-          ),
+          Promise.reject(new Error(`工具定义 ${tool.name} 不能直接用于执行`)),
         {
           name: tool.name,
           description: tool.description,

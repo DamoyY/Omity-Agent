@@ -34,7 +34,7 @@ test("creates a custom model tool from the only string parameter", () => {
     ["apply_patch"],
   );
   const modelTool = configured.modelTools[0];
-  if (!modelTool) throw new Error("缺少 apply_patch 模型工具");
+  if (!modelTool) throw new Error("缺少 apply_patch 工具");
 
   expect(configured.parameters).toEqual(new Map([["apply_patch", "patch"]]));
   expect(modelTool).not.toBe(original);

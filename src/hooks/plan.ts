@@ -56,7 +56,7 @@ export function agentPlan(
 }
 
 export function toolPlan(message: AIMessage): ToolHookPlan {
-  if (!message.id) throw new Error("模型工具调用消息缺少 ID");
+  if (!message.id) throw new Error("工具调用消息缺少 ID");
   return {
     kind: "tools",
     original: storeMessage(message),

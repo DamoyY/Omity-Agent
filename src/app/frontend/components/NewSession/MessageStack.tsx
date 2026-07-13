@@ -2,6 +2,12 @@ import { Bot, Plus, Trash2, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { InitialMessagePair } from "../../../initialState";
+import {
+  composerActions,
+  composerControls,
+  composerFrame,
+  composerRole,
+} from "../Chat/ComposerFrame";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { Button } from "../ParkUI";
 
@@ -9,63 +15,9 @@ export interface EditablePair extends InitialMessagePair {
   id: string;
 }
 
-const stream = css({
-  bg: "surface",
-  borderBottomColor: "lineStrong",
-  borderBottomWidth: "1px",
-});
-const pair = css({
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) 3rem",
-  minW: 0,
-});
-const pairMessages = css({ minW: 0 });
-const pairAction = css({
-  borderLeftColor: "lineStrong",
-  borderLeftWidth: "1px",
-  borderTopColor: "lineStrong",
-  borderTopWidth: "1px",
-  display: "grid",
-  placeItems: "center",
-});
-const row = css({
-  borderTopColor: "lineStrong",
-  borderTopWidth: "1px",
-  display: "grid",
-  gridTemplateColumns: {
-    base: "3rem minmax(0, 1fr)",
-    md: "3rem minmax(0, 1fr)",
-  },
-  minW: 0,
-});
-const meta = css({
-  alignItems: "center",
-  borderRightColor: "lineStrong",
-  borderRightWidth: "1px",
-  display: "flex",
-  justifyContent: "center",
-  minH: "10",
-});
-const role = css({
-  color: "mutedStrong",
-  display: "grid",
-  placeItems: "center",
-});
-const remove = css({
-  bg: "control",
-  borderColor: "lineStrong",
-  borderWidth: "1px",
-  color: "mutedStrong",
-  cursor: "pointer",
-  display: "grid",
-  p: "1",
-  placeItems: "center",
-  _hover: { color: "text" },
-  _focusVisible: { outlineColor: "mutedStrong", outlineStyle: "solid" },
-});
+const stack = css({ alignSelf: "end" });
 const insertion = css({
-  alignItems: "center",
-  borderTopColor: "lineStrong",
+  borderTopColor: "line",
   borderTopWidth: "1px",
   display: "flex",
   justifyContent: "center",
@@ -73,116 +25,94 @@ const insertion = css({
 });
 
 export function MessageStack({
-  message,
   pairs,
   onAdd,
-  onMessageChange,
   onPairChange,
   onRemove,
   onSubmit,
 }: {
-  message: string;
   pairs: EditablePair[];
   onAdd: () => void;
-  onMessageChange: (message: string) => void;
   onPairChange: (id: string, pair: InitialMessagePair) => void;
   onRemove: (id: string) => void;
   onSubmit: () => void;
 }) {
   const { t } = useTranslation();
   return (
-    <div className={stream}>
-      {pairs.map((item) => {
-        return (
-          <section className={pair} key={item.id}>
-            <div className={pairMessages}>
-              <MessageRow
-                label={t("user")}
-                role="user"
-                value={item.user}
-                placeholder=""
-                onChange={(user) => {
-                  onPairChange(item.id, { ...item, user });
-                }}
-                onSubmit={onSubmit}
-              />
-              <MessageRow
-                label={t("assistant")}
-                role="assistant"
-                value={item.assistant}
-                placeholder=""
-                onChange={(assistant) => {
-                  onPairChange(item.id, { ...item, assistant });
-                }}
-                onSubmit={onSubmit}
-              />
-            </div>
-            <div className={pairAction}>
-              <button
-                aria-label={t("removeMessagePair")}
-                className={remove}
-                onClick={() => {
-                  onRemove(item.id);
-                }}
-                title={t("removeMessagePair")}
-                type="button"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </section>
-        );
-      })}
+    <div className={stack}>
+      {pairs.map((item) => (
+        <section key={item.id}>
+          <MessageEditor
+            label={t("user")}
+            role="user"
+            value={item.user}
+            onChange={(user) => {
+              onPairChange(item.id, { ...item, user });
+            }}
+            onSubmit={onSubmit}
+          />
+          <MessageEditor
+            label={t("assistant")}
+            role="assistant"
+            value={item.assistant}
+            onChange={(assistant) => {
+              onPairChange(item.id, { ...item, assistant });
+            }}
+            onRemove={() => {
+              onRemove(item.id);
+            }}
+            onSubmit={onSubmit}
+          />
+        </section>
+      ))}
       <div className={insertion}>
         <Button onClick={onAdd} type="button" variant="ghost">
           <Plus size={14} /> {t("addMessagePair")}
         </Button>
       </div>
-      <MessageRow
-        label={t("user")}
-        role="user"
-        value={message}
-        placeholder={t("messagePlaceholder")}
-        onChange={onMessageChange}
-        onSubmit={onSubmit}
-      />
     </div>
   );
 }
 
-function MessageRow({
+function MessageEditor({
   label,
-  role: messageRole,
+  role,
   value,
-  placeholder,
   onChange,
+  onRemove,
   onSubmit,
 }: {
   label: string;
   role: "user" | "assistant";
   value: string;
-  placeholder: string;
   onChange: (value: string) => void;
+  onRemove?: () => void;
   onSubmit: () => void;
 }) {
-  const RoleIcon = messageRole === "user" ? UserRound : Bot;
+  const { t } = useTranslation();
+  const RoleIcon = role === "user" ? UserRound : Bot;
   return (
-    <section className={row}>
-      <div className={meta}>
-        <span aria-label={label} className={role} title={label}>
-          <RoleIcon aria-hidden size={15} />
-        </span>
-      </div>
+    <div className={composerFrame}>
       <MarkdownEditor
-        bare
         disabled={false}
-        fluid
         label={label}
         onChange={onChange}
         onSubmit={onSubmit}
-        placeholder={placeholder}
+        placeholder=""
         value={value}
       />
-    </section>
+      <div className={composerActions}>
+        <div className={composerControls}>
+          <span aria-label={label} className={composerRole} title={label}>
+            <RoleIcon aria-hidden size={20} />
+          </span>
+          {onRemove ? (
+            <Button onClick={onRemove} type="button" variant="outline">
+              <Trash2 size={14} /> {t("removeMessagePair")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
