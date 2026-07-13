@@ -144,6 +144,9 @@ export function ChatPage({
         draftSaveDelayMs={draftSaveDelayMs}
         draftTarget={{ kind: "session", sessionId: activeId }}
         key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
+        userMessages={view
+          .filter((item) => item.role === "user")
+          .map((item) => item.content)}
         usage={latestUsage}
         onControl={() => onControl(paused ? "running" : "pause")}
         onDelete={onDelete}

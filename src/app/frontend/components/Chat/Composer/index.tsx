@@ -1,4 +1,3 @@
-import { Pause, Play, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -6,19 +5,14 @@ import {
   flushComposerDraft,
   readComposerDraft,
   type ComposerDraftTarget,
-} from "../../services/composerDrafts";
-import { DraftSaver } from "../../services/scheduling/draftSaver";
-import { reportError, reportPromiseErrors } from "../../services/errors";
-import type { TokenUsage } from "../../../timeline";
-import { Button } from "../ParkUI";
-import { ContextUsage } from "./ContextUsage";
-import {
-  composerActions,
-  composerControls,
-  composerFrame,
-} from "./ComposerFrame";
-import { DeleteSessionButton } from "./DeleteSessionButton";
-import { MarkdownEditor } from "./MarkdownEditor";
+} from "../../../services/composerDrafts";
+import { reportError, reportPromiseErrors } from "../../../services/errors";
+import { DraftSaver } from "../../../services/scheduling/draftSaver";
+import type { TokenUsage } from "../../../../timeline";
+import { MarkdownEditor } from "../MarkdownEditor";
+import { Actions } from "./Actions";
+import { UserMessageHistory, type HistoryDirection } from "./history";
+import { composerFrame } from "./layout";
 
 type ControlState = "pause" | "pausing" | "resume";
 
@@ -27,6 +21,7 @@ export function Composer({
   draft,
   draftSaveDelayMs,
   draftTarget,
+  userMessages,
   controlDisabled = false,
   controlState,
   deleteDisabled = false,
@@ -39,6 +34,7 @@ export function Composer({
   draft?: string;
   draftSaveDelayMs?: number;
   draftTarget: ComposerDraftTarget;
+  userMessages: readonly string[];
   controlDisabled?: boolean;
   controlState?: ControlState;
   deleteDisabled?: boolean;
@@ -52,11 +48,13 @@ export function Composer({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const contentRef = useRef(content);
+  const historyRef = useRef(new UserMessageHistory());
   const revisionRef = useRef(0);
   const saverRef = useRef<DraftSaver | undefined>(undefined);
   const submittingRef = useRef(false);
   const sessionId =
     draftTarget.kind === "session" ? draftTarget.sessionId : undefined;
+
   useEffect(() => {
     let current = true;
     const target: ComposerDraftTarget = sessionId
@@ -67,6 +65,7 @@ export function Composer({
         if (!current) return;
         revisionRef.current = loaded.revision;
         contentRef.current = loaded.content;
+        historyRef.current.reset();
         setContent(loaded.content);
         setLoading(false);
       }),
@@ -75,6 +74,7 @@ export function Composer({
       current = false;
     };
   }, [draft, sessionId]);
+
   useEffect(() => {
     if (draftSaveDelayMs === undefined) return;
     const target: ComposerDraftTarget = sessionId
@@ -87,6 +87,7 @@ export function Composer({
       reportPromiseErrors(saver.flush());
     };
   }, [draftSaveDelayMs, sessionId]);
+
   useEffect(() => {
     const target: ComposerDraftTarget = sessionId
       ? { kind: "session", sessionId }
@@ -99,6 +100,26 @@ export function Composer({
       window.removeEventListener("pagehide", flush);
     };
   }, [sessionId]);
+
+  const updateContent = (nextContent: string) => {
+    if (nextContent === contentRef.current) return;
+    contentRef.current = nextContent;
+    setContent(nextContent);
+    revisionRef.current += 1;
+    saverRef.current?.schedule(nextContent, revisionRef.current);
+  };
+
+  const navigateHistory = (direction: HistoryDirection) => {
+    const nextContent = historyRef.current.navigate(
+      direction,
+      contentRef.current,
+      userMessages,
+    );
+    if (nextContent === undefined) return undefined;
+    updateContent(nextContent);
+    return nextContent;
+  };
+
   const submit = async () => {
     const submittedContent = contentRef.current;
     if (submittingRef.current || !submittedContent.trim()) return;
@@ -106,6 +127,7 @@ export function Composer({
     submittingRef.current = true;
     setSubmitting(true);
     saverRef.current?.discardPending();
+    historyRef.current.reset();
     if (draftTarget.kind === "new") clearTemporaryComposerDraft();
     contentRef.current = "";
     setContent("");
@@ -122,6 +144,8 @@ export function Composer({
       setSubmitting(false);
     }
   };
+
+  const editorDisabled = disabled || loading || submitting;
   return (
     <form
       className={composerFrame}
@@ -131,55 +155,28 @@ export function Composer({
       }}
     >
       <MarkdownEditor
-        disabled={disabled || loading || submitting}
+        disabled={editorDisabled}
         onChange={(nextContent) => {
           if (nextContent === contentRef.current) return;
-          contentRef.current = nextContent;
-          setContent(nextContent);
-          revisionRef.current += 1;
-          saverRef.current?.schedule(nextContent, revisionRef.current);
+          historyRef.current.reset();
+          updateContent(nextContent);
         }}
+        onHistoryNavigate={navigateHistory}
         onSubmit={() => {
           reportPromiseErrors(submit());
         }}
         placeholder={t("messagePlaceholder")}
         value={content}
       />
-      <div className={composerActions}>
-        <div className={composerControls}>
-          <Button
-            disabled={disabled || loading || submitting}
-            type="submit"
-            variant="outline"
-          >
-            <Send size={14} /> {t("send")}
-          </Button>
-          {controlState && onControl ? (
-            <Button
-              disabled={controlDisabled}
-              onClick={() => {
-                reportPromiseErrors(onControl());
-              }}
-              type="button"
-              variant="outline"
-            >
-              {controlState === "resume" ? (
-                <Play size={14} />
-              ) : (
-                <Pause size={14} />
-              )}
-              {t(controlState)}
-            </Button>
-          ) : null}
-          {onDelete ? (
-            <DeleteSessionButton
-              disabled={deleteDisabled}
-              onDelete={onDelete}
-            />
-          ) : null}
-        </div>
-        {usage !== undefined ? <ContextUsage usage={usage} /> : null}
-      </div>
+      <Actions
+        controlDisabled={controlDisabled}
+        controlState={controlState}
+        deleteDisabled={deleteDisabled}
+        submitDisabled={editorDisabled}
+        usage={usage}
+        onControl={onControl}
+        onDelete={onDelete}
+      />
     </form>
   );
 }

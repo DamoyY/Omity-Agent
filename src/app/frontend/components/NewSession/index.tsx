@@ -9,7 +9,7 @@ import {
   composerControls,
   composerFrame,
   composerRole,
-} from "../Chat/ComposerFrame";
+} from "../Chat/Composer/layout";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { Button } from "../ParkUI";
 import { MessageStack, type EditablePair } from "./MessageStack";

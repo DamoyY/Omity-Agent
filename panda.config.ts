@@ -44,6 +44,7 @@ export default defineConfig({
             orange: { value: "#ff9e64" },
             purple: { value: "#bb9af7" },
             red: { value: "#f7768e" },
+            selection: { value: "#405d9e" },
           },
         },
         fonts: {
@@ -70,11 +71,15 @@ export default defineConfig({
           surfaceInset: { value: "{colors.ink.990}" },
           control: { value: "{colors.ink.900}" },
           controlHover: { value: "{colors.ink.875}" },
+          activeLine: {
+            value: "color-mix(in srgb, {colors.ink.900} 20%, transparent)",
+          },
           line: { value: "{colors.ink.850}" },
           lineStrong: { value: "{colors.ink.800}" },
           text: { value: "{colors.ink.50}" },
           muted: { value: "{colors.ink.500}" },
           mutedStrong: { value: "{colors.ink.300}" },
+          selection: { value: "{colors.accent.selection}" },
           syntaxAddition: { value: "{colors.accent.green}" },
           syntaxComment: { value: "{colors.accent.indigo}" },
           syntaxDeletion: { value: "{colors.accent.red}" },
