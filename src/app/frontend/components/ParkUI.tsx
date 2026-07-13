@@ -62,6 +62,7 @@ const compactCode = css({
 });
 
 type ButtonProps = ComponentProps<"button"> & ButtonVariantProps;
+type LinkButtonProps = ComponentProps<"a"> & ButtonVariantProps;
 
 export function Button({
   className,
@@ -71,6 +72,25 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
+      className={cx(
+        buttonRecipe({ size, variant }),
+        compactControl,
+        variant !== "ghost" && surfacedControl,
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function LinkButton({
+  className,
+  size = "sm",
+  variant = "outline",
+  ...props
+}: LinkButtonProps) {
+  return (
+    <a
       className={cx(
         buttonRecipe({ size, variant }),
         compactControl,

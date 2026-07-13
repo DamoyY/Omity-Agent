@@ -32,6 +32,7 @@ const inlineCode = css({
 
 const components: Components = {
   pre: ({ children }) => <>{children}</>,
+  a: (props) => <a {...props} rel="noopener noreferrer" target="_blank" />,
   code: ({ children, className }) => {
     const raw = codeText(children);
     const code = raw.replace(/\n$/, "");

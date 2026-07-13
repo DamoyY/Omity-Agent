@@ -2,7 +2,8 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cx } from "styled-system/css";
-import { Button } from "../ParkUI";
+import { pagePath } from "../../route";
+import { Button, LinkButton } from "../ParkUI";
 import { Status } from "./Status";
 import * as styles from "./groupStyles";
 import {
@@ -72,15 +73,25 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
               )}
               key={session.id}
             >
-              <Button
+              <LinkButton
                 aria-current={session.id === activeId ? "page" : undefined}
                 aria-label={session.id}
                 className={styles.row}
-                onClick={() => {
+                href={pagePath({ kind: "session", id: session.id })}
+                onClick={(event) => {
+                  if (
+                    event.defaultPrevented ||
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
                   onSelect(session.id);
                 }}
                 title={session.id}
-                type="button"
                 variant="ghost"
               >
                 <span aria-hidden="true">#</span>
@@ -99,7 +110,7 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
                 >
                   {formatUpdatedAt(session.updatedAt, i18n.language)}
                 </time>
-              </Button>
+              </LinkButton>
             </div>
           ))}
           {runningSessions.length > 0 && hiddenHistoryCount > 0 && (
