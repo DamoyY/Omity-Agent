@@ -9,6 +9,7 @@ import {
   insertStreamToken,
   insertStreamToolCall,
   insertToolStarted,
+  type StreamEvent,
 } from "./records/streamEvents";
 import { loadMessages, syncMessages } from "./records/messages/history";
 import {
@@ -46,7 +47,7 @@ type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown
 
 export class AgentDatabase {
   readonly db: Database;
-  private notify?: () => void;
+  private notify?: (event: StreamEvent) => void;
 
   constructor(path: string) {
     this.db = new Database(path, { create: true, strict: true });
@@ -63,7 +64,7 @@ export class AgentDatabase {
     closeDatabase(this.db);
   }
 
-  onChange(notify: () => void) {
+  onChange(notify: (event: StreamEvent) => void) {
     this.notify = notify;
   }
 
@@ -172,23 +173,24 @@ export class AgentDatabase {
   }
 
   streamToken(...args: DatabaseArgs<typeof insertStreamToken>) {
-    insertStreamToken(this.db, ...args);
-    this.notify?.();
+    return this.notifyStream(insertStreamToken(this.db, ...args));
   }
 
   streamReasoning(...args: DatabaseArgs<typeof insertStreamReasoning>) {
-    insertStreamReasoning(this.db, ...args);
-    this.notify?.();
+    return this.notifyStream(insertStreamReasoning(this.db, ...args));
   }
 
   streamToolCall(...args: DatabaseArgs<typeof insertStreamToolCall>) {
-    insertStreamToolCall(this.db, ...args);
-    this.notify?.();
+    return this.notifyStream(insertStreamToolCall(this.db, ...args));
   }
 
   toolStarted(...args: DatabaseArgs<typeof insertToolStarted>) {
-    insertToolStarted(this.db, ...args);
-    this.notify?.();
+    return this.notifyStream(insertToolStarted(this.db, ...args));
+  }
+
+  private notifyStream<T extends StreamEvent>(event: T) {
+    this.notify?.(event);
+    return event;
   }
 
   private requireSession(sessionId: string) {

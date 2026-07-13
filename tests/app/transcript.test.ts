@@ -1,6 +1,8 @@
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { loadTranscript } from "../../src/app/transcript";
+import { buildTimeline, displayStreamEvent } from "../../src/app/timeline";
+import type { StreamEvent } from "../../src/infrastructure/database/records/streamEvents";
 import { countTokens } from "../../src/runtime/tokenizer";
 import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 
@@ -24,7 +26,7 @@ test("transcript exposes Responses API token and cache usage", () => {
 
   const transcript = loadTranscript(db, "usage-session");
 
-  expect(transcript.view.at(-1)?.usage).toEqual({
+  expect(view(transcript).at(-1)?.usage).toEqual({
     inputTokens: 1200,
     outputTokens: 300,
     cacheReadTokens: 900,
@@ -47,7 +49,7 @@ test("transcript counts raw tool input and output text", () => {
   ]);
 
   const transcript = loadTranscript(db, "tool-token-session");
-  const part = transcript.view
+  const part = view(transcript)
     .flatMap((message) => message.parts)
     .find((item) => item.type === "tool");
 
@@ -73,10 +75,42 @@ test("transcript keeps the original token count for redirected output", () => {
     }),
   ]);
 
-  const part = loadTranscript(db, "large-output-session")
-    .view.flatMap((message) => message.parts)
+  const part = view(loadTranscript(db, "large-output-session"))
+    .flatMap((message) => message.parts)
     .find((item) => item.type === "tool");
 
   expect(part?.output?.outputTokens).toBe(12_345);
   db.close();
 });
+
+test("live stream events match persisted snapshots and keep their cursor", () => {
+  const db = makeDb();
+  db.resetSession("stream-session", workspace);
+  const queueId = db.appendUser("stream-session", "question");
+  const emitted: StreamEvent[] = [];
+  db.onChange((event) => emitted.push(event));
+
+  const event = db.streamToken("stream-session", queueId, "hello", "message-1");
+  const streaming = loadTranscript(db, "stream-session");
+
+  expect(emitted).toEqual([event]);
+  expect(streaming.events).toEqual([displayStreamEvent(event)]);
+  expect(streaming.eventCursor).toBe(event.id);
+
+  db.syncHistory("stream-session", [
+    new HumanMessage("question"),
+    new AIMessage("hello"),
+  ]);
+  const completed = loadTranscript(db, "stream-session");
+  expect(completed.events).toEqual([]);
+  expect(completed.eventCursor).toBe(event.id);
+  db.close();
+});
+
+function view(transcript: ReturnType<typeof loadTranscript>) {
+  return buildTimeline(
+    transcript.messages,
+    transcript.queue,
+    transcript.events,
+  );
+}

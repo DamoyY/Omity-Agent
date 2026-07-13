@@ -1,5 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { transcriptKey, type TranscriptData } from "../queries";
+import {
+  emptyTranscriptData,
+  rebuildTranscript,
+  withoutOptimistic,
+} from "./cache";
 
 export function addOptimisticUser(
   queryClient: QueryClient,
@@ -10,11 +15,7 @@ export function addOptimisticUser(
   queryClient.setQueryData<TranscriptData>(
     transcriptKey(sessionId),
     (current) => {
-      const transcript = current ?? {
-        control: "running",
-        queue: [],
-        view: [],
-      };
+      const transcript = current ?? emptyTranscriptData();
       return {
         ...transcript,
         view: [
@@ -41,37 +42,24 @@ export function confirmOptimisticUser(
   queueId: number,
   content: string,
 ) {
-  const pendingKey = `queue-${queueId.toString()}`;
   queryClient.setQueryData<TranscriptData>(
     transcriptKey(sessionId),
     (current) => {
       if (!current) return current;
       const queueItem = current.queue.find(({ id }) => id === queueId);
-      const userPersisted = queueItem?.userMessageId != null;
-      const pendingVisible = current.view.some(({ key: itemKey }) => {
-        return itemKey === pendingKey;
-      });
-      return {
-        ...current,
-        queue: queueItem
-          ? current.queue
-          : [
-              ...current.queue,
-              {
-                id: queueId,
-                content,
-                status: "pending",
-                error: null,
-                userMessageId: null,
-              },
-            ],
-        view: current.view.flatMap((item) => {
-          if (item.key !== key) return [item];
-          return userPersisted || pendingVisible
-            ? []
-            : [{ ...item, key: pendingKey }];
-        }),
-      };
+      const queue = queueItem
+        ? current.queue
+        : [
+            ...current.queue,
+            {
+              id: queueId,
+              content,
+              status: "pending",
+              error: null,
+              userMessageId: null,
+            },
+          ];
+      return rebuildTranscript(withoutOptimistic(current, key), { queue });
     },
   );
 }
@@ -83,12 +71,6 @@ export function removeOptimisticUser(
 ) {
   queryClient.setQueryData<TranscriptData>(
     transcriptKey(sessionId),
-    (current) =>
-      current
-        ? {
-            ...current,
-            view: current.view.filter((item) => item.key !== key),
-          }
-        : current,
+    (current) => (current ? withoutOptimistic(current, key) : current),
   );
 }

@@ -4,19 +4,20 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import type { Control } from "../../../types";
-import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import {
   bootstrap,
   appEvents,
-  loadTranscript,
-  sessionEvents,
   type FrontendSettings,
   type SessionInfo,
 } from "./client";
-import { reportError, reportPromiseErrors } from "./errors";
-import { RefreshScheduler } from "./scheduling/refreshScheduler";
-import { reportSessionErrors } from "./sessionErrors";
+import {
+  readDeletedEvent,
+  readSessionEvent,
+  readSessionsEvent,
+} from "./events/data";
+import { reportError } from "./errors";
+import { reportSessionErrors } from "./events/reporting";
+import { transcriptKey } from "./transcript/query";
 
 export interface BootstrapData {
   cwd: string;
@@ -24,37 +25,75 @@ export interface BootstrapData {
   sessions: SessionInfo[];
 }
 
-export interface TranscriptData {
-  control: Control;
-  queue: DisplayQueue[];
-  view: TimelineMessage[];
-}
+export {
+  transcriptKey,
+  useSessionTranscript,
+  type TranscriptData,
+} from "./transcript/query";
 
 export const bootstrapKey = ["bootstrap"] as const;
-export const transcriptKey = (sessionId: string) =>
-  ["transcript", sessionId] as const;
-
-const emptyTranscript: TranscriptData = {
-  control: "running",
-  queue: [],
-  view: [],
-};
-
 export function useBootstrap() {
   const queryClient = useQueryClient();
   const reportedErrors = useRef(new Set<string>());
+  const streamedSessions = useRef<SessionInfo[] | undefined>(undefined);
   const query = useQuery({
     queryKey: bootstrapKey,
-    queryFn: ({ signal }) => bootstrap(signal),
+    queryFn: async ({ signal }) => {
+      const data = await bootstrap(signal);
+      return streamedSessions.current
+        ? { ...data, sessions: streamedSessions.current }
+        : data;
+    },
   });
   useEffect(() => {
     const events = appEvents();
-    const refresh = () => {
-      reportPromiseErrors(
-        queryClient.invalidateQueries({ queryKey: bootstrapKey }),
-      );
+    const replace = (event: Event) => {
+      try {
+        const sessions = readSessionsEvent(event);
+        streamedSessions.current = sessions;
+        if (!replaceCachedSessions(queryClient, sessions)) {
+          streamedSessions.current = sessions;
+        }
+      } catch (error) {
+        reportError(error);
+      }
     };
-    events.addEventListener("changed", refresh);
+    const upsert = (event: Event) => {
+      try {
+        const session = readSessionEvent(event);
+        if (streamedSessions.current) {
+          streamedSessions.current = upsertSessionList(
+            streamedSessions.current,
+            session,
+          );
+        }
+        updateCachedSessions(queryClient, (sessions) =>
+          upsertSessionList(sessions, session),
+        );
+      } catch (error) {
+        reportError(error);
+      }
+    };
+    const remove = (event: Event) => {
+      try {
+        const sessionId = readDeletedEvent(event);
+        if (streamedSessions.current) {
+          streamedSessions.current = withoutSession(
+            streamedSessions.current,
+            sessionId,
+          );
+        }
+        updateCachedSessions(queryClient, (sessions) =>
+          withoutSession(sessions, sessionId),
+        );
+        queryClient.removeQueries({ queryKey: transcriptKey(sessionId) });
+      } catch (error) {
+        reportError(error);
+      }
+    };
+    events.addEventListener("sessions", replace);
+    events.addEventListener("session", upsert);
+    events.addEventListener("deleted", remove);
     return () => {
       events.close();
     };
@@ -66,45 +105,10 @@ export function useBootstrap() {
   return query;
 }
 
-export function useSessionTranscript(
-  sessionId: string | undefined,
-  refreshIntervalMs: number | undefined,
-) {
-  const queryClient = useQueryClient();
-  const query = useQuery({
-    queryKey: transcriptKey(sessionId ?? ""),
-    queryFn: ({ signal }) => loadTranscript(requiredId(sessionId), signal),
-    enabled: sessionId !== undefined,
-  });
-
-  useEffect(() => {
-    if (!sessionId || refreshIntervalMs === undefined) return;
-    const events = sessionEvents(sessionId);
-    const scheduler = new RefreshScheduler(
-      refreshIntervalMs,
-      () =>
-        queryClient.invalidateQueries({
-          queryKey: transcriptKey(sessionId),
-        }),
-      reportError,
-    );
-    const refresh = () => {
-      scheduler.request();
-    };
-    events.addEventListener("changed", refresh);
-    return () => {
-      scheduler.dispose();
-      events.close();
-    };
-  }, [queryClient, refreshIntervalMs, sessionId]);
-
-  return query.data ?? emptyTranscript;
-}
-
 export function addSession(queryClient: QueryClient, session: SessionInfo) {
   queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) =>
     current
-      ? { ...current, sessions: [session, ...current.sessions] }
+      ? { ...current, sessions: upsertSessionList(current.sessions, session) }
       : current,
   );
 }
@@ -114,14 +118,45 @@ export function removeSession(queryClient: QueryClient, sessionId: string) {
     current
       ? {
           ...current,
-          sessions: current.sessions.filter(({ id }) => id !== sessionId),
+          sessions: withoutSession(current.sessions, sessionId),
         }
       : current,
   );
   queryClient.removeQueries({ queryKey: transcriptKey(sessionId) });
 }
 
-function requiredId(sessionId: string | undefined) {
-  if (!sessionId) throw new Error("Transcript 查询缺少 sessionId");
-  return sessionId;
+function replaceCachedSessions(
+  queryClient: QueryClient,
+  sessions: SessionInfo[],
+) {
+  let replaced = false;
+  queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) => {
+    if (!current) return current;
+    replaced = true;
+    return { ...current, sessions };
+  });
+  return replaced;
+}
+
+function updateCachedSessions(
+  queryClient: QueryClient,
+  update: (sessions: SessionInfo[]) => SessionInfo[],
+) {
+  queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) =>
+    current ? { ...current, sessions: update(current.sessions) } : current,
+  );
+}
+
+export function upsertSessionList(
+  sessions: SessionInfo[],
+  session: SessionInfo,
+) {
+  return [session, ...sessions.filter(({ id }) => id !== session.id)].sort(
+    (left, right) =>
+      right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
+  );
+}
+
+export function withoutSession(sessions: SessionInfo[], sessionId: string) {
+  return sessions.filter(({ id }) => id !== sessionId);
 }

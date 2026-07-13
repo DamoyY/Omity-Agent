@@ -49,7 +49,9 @@ export function createApi(controller: ApiController) {
 
   app.get("/api/bootstrap", (c) => c.json(controller.bootstrap()));
   app.get("/api/sessions", (c) => c.json({ sessions: controller.sessions() }));
-  app.get("/api/events", (c) => controller.events.stream(c));
+  app.get("/api/events", (c) =>
+    controller.events.streamSessions(c, () => controller.sessions()),
+  );
   app.post("/api/workspace-picker", async (c) =>
     c.json({ workspace: await controller.pickWorkspace() }),
   );
@@ -73,7 +75,7 @@ export function createApi(controller: ApiController) {
   app.get("/api/sessions/:sessionId/events", (c) => {
     const id = sessionId(c);
     controller.assertSession(id);
-    return controller.events.stream(c, id);
+    return controller.events.streamTranscript(c, id);
   });
   app.get("/api/sessions/:sessionId/composer-draft", (c) =>
     c.json(controller.composerDraft(sessionId(c))),

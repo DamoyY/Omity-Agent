@@ -6,6 +6,8 @@ import { AppController } from "./controller";
 import { errorResponse } from "./http/errors";
 import { createApi } from "./http/handler";
 import { appUrl } from "./launch";
+import { loadSettings } from "../infrastructure/configuration/loadSettings";
+import { AppInstanceLock } from "./runtime/instanceLock";
 
 export interface AppServerOptions {
   root: string;
@@ -15,29 +17,41 @@ export interface AppServerOptions {
 }
 
 export async function startAppServer(options: AppServerOptions) {
-  const controller = new AppController(options.root);
-  const vite = await createViteServer({
-    logLevel: "silent",
-    server: { hmr: false, middlewareMode: true },
-    appType: "spa",
-  });
-  const handleApi = getRequestListener(createApi(controller).fetch);
-  const server = createServer((req, res) => {
-    if (req.url?.startsWith("/api/")) {
-      void handleApi(req, res);
-      return;
-    }
-    vite.middlewares(req, res, (error: unknown) => {
-      if (error) sendViteError(res, error);
+  const lock = AppInstanceLock.acquire(
+    loadSettings(options.root).paths.dataDir,
+  );
+  try {
+    const controller = new AppController(options.root);
+    const server = createServer();
+    const vite = await createViteServer({
+      logLevel: "silent",
+      server: {
+        hmr: true,
+        middlewareMode: true,
+        ws: { server },
+      },
+      appType: "spa",
     });
-  });
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(options.port, options.host, resolve);
-  });
-  const url = appUrl(options.host, listeningPort(server.address()));
-  options.onReady?.(url);
-  await waitForShutdown(controller, vite, server);
+    const handleApi = getRequestListener(createApi(controller).fetch);
+    server.on("request", (req, res) => {
+      if (req.url?.startsWith("/api/")) {
+        void handleApi(req, res);
+        return;
+      }
+      vite.middlewares(req, res, (error: unknown) => {
+        if (error) sendViteError(res, error);
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(options.port, options.host, resolve);
+    });
+    const url = appUrl(options.host, listeningPort(server.address()));
+    options.onReady?.(url);
+    await waitForShutdown(controller, vite, server);
+  } finally {
+    lock.release();
+  }
 }
 
 function listeningPort(address: string | AddressInfo | null) {
@@ -65,11 +79,11 @@ async function waitForShutdown(
     process.once("SIGTERM", resolve);
   });
   await controller.close();
+  await vite.close();
   await new Promise<void>((resolve, reject) => {
     server.close((error) => {
       if (error) reject(error);
       else resolve();
     });
   });
-  await vite.close();
 }

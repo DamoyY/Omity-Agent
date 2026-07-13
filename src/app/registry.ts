@@ -5,9 +5,9 @@ import { sessionNotFound } from "../errors";
 import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import {
   closeDatabase,
-  configureDatabase,
+  configureReadonlyDatabase,
 } from "../infrastructure/database/connection";
-import { applySchema } from "../infrastructure/database/schema";
+import { assertCoreSchema } from "../infrastructure/database/validateSchema";
 import type { Control, Settings } from "../types";
 import { parseError, type ErrorDetails } from "../failures/details";
 
@@ -47,44 +47,77 @@ const sessionSelect = `
 
 export class AppRegistry {
   private readonly sessionsDir: string;
+  private readonly sessions = new Map<string, RegisteredSession>();
 
   constructor(private readonly settings: Settings) {
     this.sessionsDir = resolve(settings.paths.dataDir, "sessions");
+    for (const session of scanSessions(this.settings, this.sessionsDir)) {
+      this.sessions.set(session.id, session);
+    }
   }
 
   list() {
-    if (!existsSync(this.sessionsDir)) return [];
-    return readdirSync(this.sessionsDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) =>
-        readSession(resolveSessionPaths(this.settings, entry.name).dbPath),
-      )
-      .sort(
-        (left, right) =>
-          right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
-      );
+    return [...this.sessions.values()].sort(compareSessions);
   }
 
   require(id: string) {
-    const paths = resolveSessionPaths(this.settings, id);
-    return readSession(paths.dbPath, id);
+    const session = this.sessions.get(id);
+    if (!session) throw sessionNotFound(id);
+    return session;
+  }
+
+  refresh(id: string) {
+    const session = readSession(
+      resolveSessionPaths(this.settings, id).dbPath,
+      id,
+      false,
+    );
+    this.sessions.set(id, session);
+    return session;
+  }
+
+  remove(id: string) {
+    if (!this.sessions.delete(id)) throw sessionNotFound(id);
   }
 }
 
-function readSession(dbPath: string, id?: string) {
+function scanSessions(settings: Settings, sessionsDir: string) {
+  if (!existsSync(sessionsDir)) return [];
+  return readdirSync(sessionsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) =>
+      readSession(
+        resolveSessionPaths(settings, entry.name).dbPath,
+        undefined,
+        true,
+      ),
+    );
+}
+
+function compareSessions(left: RegisteredSession, right: RegisteredSession) {
+  return right.updatedAt - left.updatedAt || right.createdAt - left.createdAt;
+}
+
+function readSession(dbPath: string, id?: string, validate = false) {
   if (!existsSync(dbPath)) throw sessionNotFound(id ?? dbPath);
-  const db = new Database(dbPath, { create: false, strict: true });
+  const db = new Database(dbPath, {
+    create: false,
+    readonly: true,
+    strict: true,
+  });
   try {
-    configureDatabase(db);
-    try {
-      applySchema(db);
-    } catch (error) {
-      console.error(
-        `无法读取会话数据库 ${dbPath}：${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      throw error;
+    configureReadonlyDatabase(db);
+    if (validate) {
+      try {
+        assertCoreSchema(db);
+      } catch (error) {
+        console.error(
+          `无法读取会话数据库 ${dbPath}：${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        throw error;
+      }
     }
     const row = id
       ? db

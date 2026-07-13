@@ -32,7 +32,6 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
   try {
     if (!(await waitIfPaused(ctx, run))) return;
     for (const runItem of run.items) ctx.db.startQueue(ctx.sessionId, runItem);
-    ctx.observer?.changed?.(ctx.sessionId);
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
     if (error instanceof CanceledRun) return;
@@ -44,9 +43,8 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
       return;
     }
     const details = captureError(error);
-    setRunStatus(ctx, run, "paused", details);
     ctx.db.setControl(ctx.sessionId, "pause");
-    ctx.observer?.changed?.(ctx.sessionId);
+    setRunStatus(ctx, run, "paused", details);
     ctx.logger.error("队列异常，已暂停", { queueId: item.id, error: details });
   } finally {
     end();
@@ -126,6 +124,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     const messages = state.values.messages;
     if (messages.length > 0) {
       ctx.db.syncHistory(ctx.sessionId, messages);
+      ctx.observer?.changed?.(ctx.sessionId);
       ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
     }
     ctx.logger.debug("LangGraph 边界", {
@@ -133,8 +132,6 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       tasks: state.tasks.map((task) => task.name),
     });
     if (control === "pause" || control === "pause_cancel") {
-      setRunStatus(ctx, run, "paused");
-      ctx.observer?.changed?.(ctx.sessionId);
       ctx.logger.warn("已在节点边界暂停", {
         queueId: item.id,
         next: state.next,
@@ -188,8 +185,8 @@ async function waitIfPaused(ctx: HostContext, run: QueueRun) {
       setRunStatus(ctx, run, "running");
       return true;
     }
-    setRunStatus(ctx, run, "paused");
     if (!pauseLogged) {
+      setRunStatus(ctx, run, "paused");
       ctx.logger.info("暂停中，等待 resume 或 cancel", {
         queueId: run.items[0].id,
       });

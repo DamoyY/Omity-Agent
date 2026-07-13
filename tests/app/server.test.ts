@@ -12,6 +12,7 @@ import { loadSettings } from "../../src/infrastructure/configuration/loadSetting
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { captureError } from "../../src/failures/details";
+import { AppInstanceLock } from "../../src/app/runtime/instanceLock";
 import { required } from "../support/database";
 import { writeTestConfiguration } from "../support/configuration";
 
@@ -47,7 +48,7 @@ test("app session summaries expose paused queue errors", async () => {
   await controller.close();
 });
 
-test("app registry scans session databases without creating a global db", () => {
+test("app registry serves a memory projection refreshed one session at a time", () => {
   const root = makeRoot();
   const workspace = join(root, "workspace");
   mkdirSync(workspace);
@@ -57,14 +58,45 @@ test("app registry scans session databases without creating a global db", () => 
   db.createSession("cli-session", workspace);
   db.close();
 
-  const sessions = new AppRegistry(settings).list();
+  const registry = new AppRegistry(settings);
+  const sessions = registry.list();
   expect(sessions).toHaveLength(1);
   const session = required(sessions[0]);
   expect(session.id).toBe("cli-session");
   expect(session.workspace).toBe(workspace);
   expect(typeof session.createdAt).toBe("number");
   expect(typeof session.updatedAt).toBe("number");
+
+  const secondPaths = sessionPaths(settings, "second-session");
+  const second = new AgentDatabase(secondPaths.dbPath);
+  second.createSession("second-session", workspace);
+  second.close();
+  expect(registry.list()).toHaveLength(1);
+
+  expect(registry.refresh("second-session").control).toBe("running");
+  const changed = new AgentDatabase(secondPaths.dbPath);
+  changed.setControl("second-session", "pause");
+  changed.close();
+  expect(registry.require("second-session").control).toBe("running");
+  expect(registry.refresh("second-session").control).toBe("pause");
+
+  rmSync(secondPaths.dir, { recursive: true, force: true });
+  registry.remove("second-session");
+  expect(() => registry.require("second-session")).toThrow("会话不存在");
   expect(existsSync(join(settings.paths.dataDir, "app.sqlite"))).toBe(false);
+});
+
+test("app instance lock rejects a second server for the same data directory", () => {
+  const root = makeRoot();
+  const dataDir = loadSettings(root).paths.dataDir;
+  const lock = AppInstanceLock.acquire(dataDir);
+
+  expect(() => AppInstanceLock.acquire(dataDir)).toThrow(
+    "数据目录已有 App 在运行",
+  );
+
+  lock.release();
+  expect(existsSync(join(dataDir, "app.lock"))).toBe(false);
 });
 
 test("session status prioritizes errors and pauses over host activity", () => {

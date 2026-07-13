@@ -1,5 +1,25 @@
 import type { DisplayEvent, DisplayToolCall } from "./types";
 import { countTokens } from "../../runtime/tokenizer";
+import type { StreamEvent } from "../../infrastructure/database/records/streamEvents";
+
+export function displayStreamEvent(event: StreamEvent): DisplayEvent {
+  const payload =
+    event.kind === "tool_call_delta"
+      ? { call: event.value }
+      : event.kind === "tool_started"
+        ? { callId: event.value }
+        : { text: event.value };
+  return {
+    id: event.id,
+    message: event.kind,
+    payload: {
+      kind: event.kind,
+      queueId: event.queueId,
+      ...payload,
+      ...(event.messageId ? { messageId: event.messageId } : {}),
+    },
+  };
+}
 
 interface ToolCallAccumulator {
   id?: string;

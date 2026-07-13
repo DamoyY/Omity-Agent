@@ -1,7 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import type { SessionInfo } from "../../src/app/frontend/services/client";
 import { reportError } from "../../src/app/frontend/services/errors";
-import { reportSessionErrors } from "../../src/app/frontend/services/sessionErrors";
+import { reportSessionErrors } from "../../src/app/frontend/services/events/reporting";
 import {
   captureError,
   parseError,

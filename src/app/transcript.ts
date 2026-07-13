@@ -8,13 +8,7 @@ import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import { contentToText, messageReasoning } from "../runtime/content";
 import { extractToolImages } from "../runtime/modelImages";
 import { parseError } from "../failures/details";
-import type { StreamEventKind } from "../infrastructure/database/records/streamEvents";
-import {
-  buildTimeline,
-  type DisplayEvent,
-  type DisplayMessage,
-  type DisplayToolCall,
-} from "./timeline";
+import { type DisplayMessage, type DisplayToolCall } from "./timeline";
 import {
   modelTokenUsage,
   toolInputTokens,
@@ -37,25 +31,17 @@ interface QueueRow {
   user_message_id: number | null;
   root_id: number | null;
 }
-interface EventRow {
-  id: number;
-  queue_id: number;
-  message_id: string | null;
-  kind: StreamEventKind;
-  payload_json: string;
+import {
+  persistedDisplayEvent,
+  type PersistedEventRow,
+} from "./timeline/persistedEvent";
+interface SequenceRow {
+  seq: number;
 }
 const storedMessageSchema = z.looseObject({
   type: z.string(),
   data: z.record(z.string(), z.unknown()),
 });
-const streamPayloadSchema = z.discriminatedUnion("kind", [
-  z.looseObject({
-    kind: z.enum(["assistant_reasoning_delta", "assistant_text_delta"]),
-    value: z.string(),
-  }),
-  z.looseObject({ kind: z.literal("tool_call_delta"), value: z.unknown() }),
-  z.looseObject({ kind: z.literal("tool_started"), value: z.string() }),
-]);
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const control = db.control(sessionId);
   const messages = db.db
@@ -85,13 +71,22 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
       root: row.root_id === row.id,
     }));
   const events = db.db
-    .query<EventRow, [string]>(
+    .query<PersistedEventRow, [string]>(
       `SELECT id, queue_id, message_id, kind, payload_json
        FROM events WHERE session_id = ? ORDER BY id`,
     )
     .all(sessionId)
-    .map(toDisplayEvent);
-  return { control, queue, view: buildTimeline(messages, queue, events) };
+    .map(persistedDisplayEvent);
+  const eventCursor =
+    db.db
+      .query<SequenceRow, []>(
+        "SELECT seq FROM sqlite_sequence WHERE name = 'events'",
+      )
+      .get()?.seq ?? 0;
+  if (!Number.isSafeInteger(eventCursor)) {
+    throw new Error(`流式事件游标超出安全整数范围：${String(eventCursor)}`);
+  }
+  return { control, queue, messages, events, eventCursor };
 }
 
 function toDisplayMessage(row: MessageRow): DisplayMessage {
@@ -122,30 +117,6 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
   };
 }
 
-function toDisplayEvent(row: EventRow): DisplayEvent {
-  const parsed = streamPayloadSchema.safeParse({
-    kind: row.kind,
-    value: JSON.parse(row.payload_json) as unknown,
-  });
-  if (!parsed.success) throw new Error("stream 文本增量无效");
-  const { kind, value } = parsed.data;
-  const payload =
-    kind === "tool_call_delta"
-      ? { call: value }
-      : kind === "tool_started"
-        ? { callId: value }
-        : { text: value };
-  return {
-    id: row.id,
-    message: kind,
-    payload: {
-      kind,
-      queueId: row.queue_id,
-      ...payload,
-      ...(row.message_id ? { messageId: row.message_id } : {}),
-    },
-  };
-}
 function parseStored(value: string): StoredMessage {
   const parsed: unknown = JSON.parse(value);
   const result = storedMessageSchema.safeParse(parsed);

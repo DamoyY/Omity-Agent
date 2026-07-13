@@ -1,7 +1,7 @@
 import { runHostSession, type HostMode } from "../host";
 import type { SessionStatus } from "../types";
-import { AppEvents } from "./events";
 import { captureError, type ErrorDetails } from "../failures/details";
+import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 
 type HostActivity = Extract<SessionStatus, "tool" | "model" | "idle">;
 
@@ -12,6 +12,13 @@ interface RunningHost {
   activity: HostActivity;
 }
 
+export interface AppHostEvents {
+  activity(sessionId: string): void;
+  changed(sessionId: string): void;
+  transcript(sessionId: string, event: StreamEvent): void;
+  wait(sessionId: string, delayMs: number): Promise<void>;
+}
+
 export class AppHosts {
   private readonly running = new Map<string, RunningHost>();
   private readonly errors = new Map<string, ErrorDetails>();
@@ -19,7 +26,7 @@ export class AppHosts {
 
   constructor(
     private readonly appRoot: string,
-    private readonly events: AppEvents,
+    private readonly events: AppHostEvents,
   ) {}
 
   has(sessionId: string) {
@@ -58,13 +65,13 @@ export class AppHosts {
           if (host?.controller !== controller) return;
           if (host.activity === activity) return;
           host.activity = activity;
-          this.events.notify(changedSessionId);
+          this.events.activity(changedSessionId);
         },
         changed: (changedSessionId) => {
-          this.events.notify(changedSessionId);
+          this.events.changed(changedSessionId);
         },
-        transcript: (changedSessionId) => {
-          this.events.notifyTranscript(changedSessionId);
+        transcript: (changedSessionId, event) => {
+          this.events.transcript(changedSessionId, event);
         },
         token: () => undefined,
       },
@@ -76,7 +83,7 @@ export class AppHosts {
         if (this.running.get(sessionId)?.controller === controller) {
           this.running.delete(sessionId);
         }
-        this.events.notify(sessionId);
+        this.events.changed(sessionId);
       });
     this.running.set(sessionId, {
       root,
@@ -90,7 +97,7 @@ export class AppHosts {
     const host = this.running.get(sessionId);
     if (!host) return;
     host.controller.abort(new Error("App 请求停止 Host"));
-    this.events.notify(sessionId);
+    this.events.changed(sessionId);
     await host.done;
   }
 
@@ -99,7 +106,7 @@ export class AppHosts {
     const hosts = [...this.running.entries()];
     for (const [sessionId, host] of hosts) {
       host.controller.abort(new Error("App 正在关闭"));
-      this.events.notify(sessionId);
+      this.events.changed(sessionId);
     }
     await Promise.all(hosts.map(([, host]) => host.done));
   }

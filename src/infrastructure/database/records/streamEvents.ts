@@ -10,6 +10,22 @@ export type StreamEventKind =
   | "tool_call_delta"
   | "tool_started";
 
+interface StreamEventBase {
+  id: number;
+  queueId: number;
+  messageId?: string;
+}
+
+export type StreamEvent = StreamEventBase &
+  (
+    | {
+        kind: "assistant_reasoning_delta" | "assistant_text_delta";
+        value: string;
+      }
+    | { kind: "tool_call_delta"; value: StreamToolCallDelta }
+    | { kind: "tool_started"; value: string }
+  );
+
 function insertStreamEvent(
   db: Database,
   sessionId: string,
@@ -18,9 +34,24 @@ function insertStreamEvent(
   payload: unknown,
   messageId?: string,
 ) {
-  db.query(
-    "INSERT INTO events (session_id, queue_id, message_id, kind, payload_json) VALUES (?, ?, ?, ?, ?)",
-  ).run(sessionId, queueId, messageId ?? null, kind, JSON.stringify(payload));
+  const result = db
+    .query(
+      "INSERT INTO events (session_id, queue_id, message_id, kind, payload_json) VALUES (?, ?, ?, ?, ?)",
+    )
+    .run(sessionId, queueId, messageId ?? null, kind, JSON.stringify(payload));
+  const id = Number(result.lastInsertRowid);
+  if (!Number.isSafeInteger(id)) {
+    throw new Error(
+      `流式事件 ID 超出安全整数范围：${String(result.lastInsertRowid)}`,
+    );
+  }
+  return {
+    id,
+    queueId,
+    kind,
+    value: payload,
+    ...(messageId ? { messageId } : {}),
+  };
 }
 
 export function insertStreamToken(
@@ -30,14 +61,14 @@ export function insertStreamToken(
   text: string,
   messageId?: string,
 ) {
-  insertStreamEvent(
+  return insertStreamEvent(
     db,
     sessionId,
     queueId,
     "assistant_text_delta",
     text,
     messageId,
-  );
+  ) as StreamEvent & { kind: "assistant_text_delta"; value: string };
 }
 
 export function insertStreamReasoning(
@@ -47,14 +78,14 @@ export function insertStreamReasoning(
   text: string,
   messageId?: string,
 ) {
-  insertStreamEvent(
+  return insertStreamEvent(
     db,
     sessionId,
     queueId,
     "assistant_reasoning_delta",
     text,
     messageId,
-  );
+  ) as StreamEvent & { kind: "assistant_reasoning_delta"; value: string };
 }
 
 export function insertStreamToolCall(
@@ -64,7 +95,14 @@ export function insertStreamToolCall(
   call: StreamToolCallDelta,
   messageId?: string,
 ) {
-  insertStreamEvent(db, sessionId, queueId, "tool_call_delta", call, messageId);
+  return insertStreamEvent(
+    db,
+    sessionId,
+    queueId,
+    "tool_call_delta",
+    call,
+    messageId,
+  ) as StreamEvent & { kind: "tool_call_delta"; value: StreamToolCallDelta };
 }
 
 export function insertToolStarted(
@@ -73,7 +111,13 @@ export function insertToolStarted(
   queueId: number,
   callId: string,
 ) {
-  insertStreamEvent(db, sessionId, queueId, "tool_started", callId);
+  return insertStreamEvent(
+    db,
+    sessionId,
+    queueId,
+    "tool_started",
+    callId,
+  ) as StreamEvent & { kind: "tool_started"; value: string };
 }
 
 export function clearStreamEvents(db: Database, sessionId: string) {

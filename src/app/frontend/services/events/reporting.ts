@@ -1,4 +1,4 @@
-import type { SessionInfo } from "./client";
+import type { SessionInfo } from "../client";
 
 export function reportSessionErrors(
   sessions: SessionInfo[],

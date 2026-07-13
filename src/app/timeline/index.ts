@@ -29,6 +29,7 @@ export type {
   TimelineMessage,
   TimelinePart,
 } from "./types";
+export { displayStreamEvent } from "./streamEvents";
 
 export function buildTimeline(
   messages: DisplayMessage[],

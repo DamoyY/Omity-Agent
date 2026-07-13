@@ -1,10 +1,9 @@
-import type { DisplayQueue, TimelineMessage } from "../../timeline";
 import type { Control } from "../../../types";
-import type { SessionStatus } from "../../../types";
 import { z } from "zod";
 import { reportError } from "./errors";
-import type { ErrorDetails } from "../../../failures/details";
 import type { InitialSessionState } from "../../initialState";
+import type { SessionInfo } from "../../sessionState";
+import type { TranscriptSnapshot } from "./transcript/cache";
 
 const errorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
@@ -20,14 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-export interface SessionInfo {
-  id: string;
-  workspace: string;
-  createdAt: number;
-  updatedAt: number;
-  status: SessionStatus;
-  error: ErrorDetails | null;
-}
+export type { SessionInfo } from "../../sessionState";
 
 export interface FrontendSettings {
   draftSaveDelayMs: number;
@@ -68,11 +60,10 @@ export async function pickWorkspace() {
 }
 
 export async function loadTranscript(sessionId: string, signal?: AbortSignal) {
-  return request<{
-    control: Control;
-    queue: DisplayQueue[];
-    view: TimelineMessage[];
-  }>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`, { signal });
+  return request<TranscriptSnapshot>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/transcript`,
+    { signal },
+  );
 }
 
 export function sessionEvents(sessionId: string) {

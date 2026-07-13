@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { DomainError } from "../errors";
 import type { BunSqliteSaver } from "../checkpointer";
 import type { AgentDatabase } from "../infrastructure/database/agentDatabase";
+import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { SessionStatus, Settings } from "../types";
 import type { buildGraph } from "../agent";
@@ -19,7 +20,7 @@ export interface HostObserver {
     status: Extract<SessionStatus, "tool" | "model" | "idle">,
   ): void;
   changed?(sessionId: string): void;
-  transcript?(sessionId: string): void;
+  transcript?(sessionId: string, event: StreamEvent): void;
   token(sessionId: string, queueId: number, text: string): void;
 }
 

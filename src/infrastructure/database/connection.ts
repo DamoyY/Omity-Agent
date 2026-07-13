@@ -14,6 +14,11 @@ export function configureDatabase(db: Database) {
   db.run("PRAGMA foreign_keys = ON");
 }
 
+export function configureReadonlyDatabase(db: Database) {
+  db.run(`PRAGMA busy_timeout = ${sqliteBusyTimeoutMs.toString()}`);
+  db.run("PRAGMA foreign_keys = ON");
+}
+
 export function closeDatabase(db: Database) {
   const current = db as QueryCacheDatabase;
   current.clearQueryCache();

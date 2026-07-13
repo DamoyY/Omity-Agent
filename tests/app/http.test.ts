@@ -76,23 +76,6 @@ test("API returns the existing JSON 404 contract", async () => {
   });
 });
 
-test("SSE sends changed immediately with the existing frame", async () => {
-  const abort = new AbortController();
-  const response = await createApi(apiController()).request("/api/events", {
-    signal: abort.signal,
-  });
-  expect(response.headers.get("content-type")).toBe(
-    "text/event-stream; charset=utf-8",
-  );
-  const reader = response.body?.getReader();
-  const first = await reader?.read();
-  expect(new TextDecoder().decode(first?.value)).toBe(
-    "event: changed\ndata: {}\n\n",
-  );
-  abort.abort();
-  await reader?.cancel();
-});
-
 test("API validates encoded session IDs without path normalization", () => {
   expect(decodeSessionId("web-123")).toBe("web-123");
   expect(() => decodeSessionId("abc%2Fdef")).toThrow("路径 ID 无效");

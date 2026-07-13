@@ -4,31 +4,32 @@ import { runClient } from "../client";
 import { sessionNotFound } from "../errors";
 import { deleteHostSession } from "../host";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
-import {
-  resolveSessionPaths,
-  sessionPaths,
-} from "../infrastructure/configuration/sessionPaths";
+import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import { normalizeWorkspacePath } from "../infrastructure/configuration/workspacePath";
 import { AgentDatabase } from "../infrastructure/database/agentDatabase";
-import { removeDatabaseDirectory } from "../infrastructure/database/connection";
-import { initializeConversation } from "../infrastructure/database/initialConversation";
 import type { Control, Settings } from "../types";
-import { initialHistory, type InitialMessagePair } from "./initialState";
+import type { InitialMessagePair } from "./initialState";
 import {
   clearSessionDraft,
   readSessionDraft,
   writeSessionDraft,
 } from "./composerDraft";
 import { AppEvents } from "./events";
-import { forkDatabaseBeforeMessage } from "./fork";
 import { AppHosts } from "./hosts";
 import { AppRegistry, type RegisteredSession } from "./registry";
-import { resolveSessionState } from "./sessionState";
+import { projectSession, type SessionInfo } from "./sessionState";
 import { loadTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
+import { displayStreamEvent } from "./timeline";
+import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
+import {
+  createSessionStorage,
+  forkSessionStorage,
+  removeSessionStorage,
+} from "./runtime/sessionStorage";
 
 export class AppController {
-  readonly events = new AppEvents();
+  readonly events: AppEvents;
   private readonly settings: Settings;
   private readonly registry: AppRegistry;
   private readonly hosts: AppHosts;
@@ -36,7 +37,19 @@ export class AppController {
   constructor(private readonly appRoot: string) {
     this.settings = loadSettings(appRoot);
     this.registry = new AppRegistry(this.settings);
-    this.hosts = new AppHosts(appRoot, this.events);
+    this.events = new AppEvents();
+    this.hosts = new AppHosts(appRoot, {
+      activity: (sessionId) => {
+        this.publishActivity(sessionId);
+      },
+      changed: (sessionId) => {
+        this.publishChange(sessionId);
+      },
+      transcript: (sessionId, event) => {
+        this.publishTranscript(sessionId, event);
+      },
+      wait: (sessionId, delayMs) => this.events.wait(sessionId, delayMs),
+    });
   }
 
   close() {
@@ -71,27 +84,12 @@ export class AppController {
     const root = normalizeWorkspacePath(workspace, this.appRoot);
     const settings = loadSettings(this.appRoot, { cwd: root });
     const id = `web-${randomUUID()}`;
-    const paths = sessionPaths(settings, id);
-    const db = new AgentDatabase(paths.dbPath);
-    let initialized = false;
-    try {
-      db.createSession(id, root);
-      initializeConversation(db.db, id, initialHistory(history), message);
-      initialized = true;
-    } finally {
-      db.close();
-      if (!initialized) removeDatabaseDirectory(paths.dir);
-    }
+    createSessionStorage(settings, id, root, history, message);
+    const session = this.registry.refresh(id);
     this.hosts.start(id, root, "load");
-    const now = Math.floor(Date.now() / 1000);
-    return {
-      id,
-      workspace: root,
-      createdAt: now,
-      updatedAt: now,
-      status: "idle" as const,
-      error: null,
-    };
+    const info = this.sessionInfo(session);
+    this.events.notifySession(info);
+    return info;
   }
 
   sendMessage(sessionId: string, content: string, draftRevision: number) {
@@ -99,8 +97,8 @@ export class AppController {
     this.hosts.ensure(session.id, session.workspace);
     const result = runClient({ sessionId, append: content }, this.appRoot);
     clearSessionDraft(this.settings, sessionId, draftRevision);
-    this.events.notify(sessionId);
     this.hosts.clearError(sessionId);
+    this.publishChange(sessionId);
     return result;
   }
 
@@ -118,47 +116,33 @@ export class AppController {
     const session = this.registry.require(sessionId);
     const result = runClient({ sessionId, control }, this.appRoot);
     if (control === "running") this.hosts.ensure(session.id, session.workspace);
-    this.events.notify(sessionId);
+    this.publishChange(sessionId);
     return result;
   }
 
   forkSession(sessionId: string, beforeMessageId: number) {
     const session = this.registry.require(sessionId);
     const id = `web-${randomUUID()}`;
-    const sourcePaths = resolveSessionPaths(this.settings, sessionId);
-    const targetPaths = sessionPaths(this.settings, id);
-    let created = false;
-    let source: AgentDatabase | undefined;
-    let target: AgentDatabase | undefined;
+    let targetCreated = false;
     try {
-      source = new AgentDatabase(sourcePaths.dbPath);
-      target = new AgentDatabase(targetPaths.dbPath);
-      forkDatabaseBeforeMessage({
-        source,
-        target,
+      forkSessionStorage({
+        settings: this.settings,
         sourceSessionId: sessionId,
         targetSessionId: id,
         workspace: session.workspace,
         beforeMessageId,
       });
+      targetCreated = true;
       this.control(sessionId, "pause");
-      created = true;
-    } finally {
-      try {
-        try {
-          target?.close();
-        } finally {
-          source?.close();
-        }
-      } finally {
-        if (!created) {
-          removeDatabaseDirectory(targetPaths.dir);
-        }
-      }
+    } catch (error) {
+      if (targetCreated) removeSessionStorage(this.settings, id);
+      throw error;
     }
+    const targetSession = this.registry.refresh(id);
     this.hosts.clearError(id);
-    this.events.notify(sessionId);
-    return this.sessionInfo(this.registry.require(id));
+    const info = this.sessionInfo(targetSession);
+    this.events.notifySession(info);
+    return info;
   }
 
   async deleteSession(sessionId: string) {
@@ -166,6 +150,8 @@ export class AppController {
     await this.hosts.stop(sessionId);
     deleteHostSession(sessionId, this.appRoot);
     this.hosts.clearError(sessionId);
+    this.registry.remove(sessionId);
+    this.events.notifyDeleted(sessionId);
     return { deleted: sessionId };
   }
 
@@ -181,19 +167,27 @@ export class AppController {
     }
   }
 
-  private sessionInfo(session: RegisteredSession) {
-    const hostError = this.hosts.error(session.id);
-    const state = resolveSessionState(
+  private publishActivity(sessionId: string) {
+    const info = this.sessionInfo(this.registry.require(sessionId));
+    this.events.notifySession(info);
+  }
+
+  private publishChange(sessionId: string) {
+    this.events.wake(sessionId);
+    const info = this.sessionInfo(this.registry.refresh(sessionId));
+    this.events.notifySession(info);
+    this.events.invalidateTranscript(sessionId);
+  }
+
+  private publishTranscript(sessionId: string, event: StreamEvent) {
+    this.events.notifyTranscript(sessionId, displayStreamEvent(event));
+  }
+
+  private sessionInfo(session: RegisteredSession): SessionInfo {
+    return projectSession(
       session,
       this.hosts.activity(session.id),
-      hostError,
+      this.hosts.error(session.id),
     );
-    return {
-      id: session.id,
-      workspace: session.workspace,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-      ...state,
-    };
   }
 }

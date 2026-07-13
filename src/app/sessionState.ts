@@ -2,6 +2,29 @@ import type { ErrorDetails } from "../failures/details";
 import type { SessionStatus } from "../types";
 import type { RegisteredSession } from "./registry";
 
+export interface SessionInfo {
+  id: string;
+  workspace: string;
+  createdAt: number;
+  updatedAt: number;
+  status: SessionStatus;
+  error: ErrorDetails | null;
+}
+
+export function projectSession(
+  session: RegisteredSession,
+  activity: Extract<SessionStatus, "tool" | "model" | "idle">,
+  hostError: ErrorDetails | null,
+): SessionInfo {
+  return {
+    id: session.id,
+    workspace: session.workspace,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    ...resolveSessionState(session, activity, hostError),
+  };
+}
+
 export function resolveSessionState(
   session: Pick<RegisteredSession, "control" | "paused" | "error">,
   activity: Extract<SessionStatus, "tool" | "model" | "idle">,
