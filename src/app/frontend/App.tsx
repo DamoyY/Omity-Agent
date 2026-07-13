@@ -119,10 +119,7 @@ export function App() {
             if (!activeSession) return;
             await deleteSession(activeSession.id);
             removeSession(queryClient, activeSession.id);
-            const next = sessions.find(
-              (session) => session.id !== activeSession.id,
-            );
-            navigate(next ? sessionPage(next.id) : { kind: "new" });
+            navigate({ kind: "new" });
           }}
           onFork={async (messageId) => {
             if (!activeSession) return;
