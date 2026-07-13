@@ -35,6 +35,7 @@ import {
   modelMessages,
   resolveModelApi,
 } from "./model";
+import { normalizeTaskConfig } from "./taskConfig";
 import { createToolInvoker } from "./toolExecution";
 
 const AgentState = Annotation.Root({
@@ -112,7 +113,10 @@ export function createAgentGraph(options: AgentGraphOptions) {
   const requestModel = task(
     "request_model",
     async (messages: BaseMessage[]) => {
-      const response = await model.invoke(messages, getConfig());
+      const response = await model.invoke(
+        messages,
+        normalizeTaskConfig(getConfig()),
+      );
       if (!AIMessage.isInstance(response))
         throw new Error("没有返回 AIMessage");
       if (!response.tool_calls?.length && !contentToText(response.content)) {
@@ -125,7 +129,7 @@ export function createAgentGraph(options: AgentGraphOptions) {
   const runTool = task(
     "invoke_tool",
     async (call: ToolCall): Promise<ToolMessage> =>
-      invokeTool(call, getConfig()),
+      invokeTool(call, normalizeTaskConfig(getConfig())),
   ) as unknown as (call: ToolCall) => Promise<ToolMessage>;
   const consumeHookTask = task(
     "consume_hook_usage",
