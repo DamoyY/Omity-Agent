@@ -36,6 +36,7 @@ import {
   buildModel,
   buildResponsesInstructions,
   modelMessages,
+  resolveModelApi,
 } from "./model";
 import { createToolInvoker } from "./toolExecution";
 
@@ -87,7 +88,7 @@ export function buildGraph(
   const model = buildModel(
     settings,
     hooks.sessionId,
-    settings.model.api === "responses" ? instructions : undefined,
+    resolveModelApi(settings.model) === "responses" ? instructions : undefined,
   );
   const graph = createAgentGraph({
     settings,

@@ -3,32 +3,29 @@ import type { BaseMessage } from "@langchain/core/messages";
 import { AIMessage, SystemMessage } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { ChatOpenAICompletions } from "@langchain/openai";
+import { codexClientFields } from "../infrastructure/openai/codexAuthentication";
 import { CompatibleChatOpenAIResponses } from "../infrastructure/openai/compatibleResponses";
 import { prepareModelImageMessages } from "../runtime/modelImages";
-import type { Settings } from "../types";
+import type { ModelApi, ModelSettings, Settings } from "../types";
 
 export function buildModel(
   settings: Settings,
   sessionId: string,
   instructions?: string,
 ) {
-  const apiKey = process.env[settings.model.apiKeyEnv];
-  if (!apiKey) throw new Error(`缺少环境变量 ${settings.model.apiKeyEnv}`);
+  const api = resolveModelApi(settings.model);
   const fields = {
     model: settings.model.model,
-    apiKey,
+    ...modelClientFields(settings.model),
     maxRetries: settings.model.maxRetries,
     timeout: settings.model.timeoutMs,
     promptCacheKey: sessionId,
     streaming: true,
-    configuration: settings.model.baseURL
-      ? { baseURL: settings.model.baseURL }
-      : undefined,
     ...(settings.model.temperature === undefined
       ? {}
       : { temperature: settings.model.temperature }),
   };
-  return settings.model.api === "responses"
+  return api === "responses"
     ? new CompatibleChatOpenAIResponses({
         ...fields,
         reasoning: {
@@ -64,8 +61,9 @@ export function modelMessages(
   skillsMessage: string | null | undefined,
   messages: BaseMessage[],
 ) {
-  const prepared = prepareModelImageMessages(messages, settings.model.api);
-  if (settings.model.api === "responses") {
+  const api = resolveModelApi(settings.model);
+  const prepared = prepareModelImageMessages(messages, api);
+  if (api === "responses") {
     return restoreResponsesCustomToolCalls(prepared);
   }
   return [
@@ -113,6 +111,20 @@ export function buildResponsesInstructions(
   skillsMessage: string | null | undefined,
 ) {
   return [systemPrompt, skillsMessage].filter(Boolean).join("\n\n");
+}
+
+export function resolveModelApi(model: ModelSettings): ModelApi {
+  return model.provider === "codex" ? "responses" : model.api;
+}
+
+function modelClientFields(model: ModelSettings) {
+  if (model.provider === "codex") return codexClientFields();
+  const apiKey = process.env[model.apiKeyEnv];
+  if (!apiKey) throw new Error(`缺少环境变量 ${model.apiKeyEnv}`);
+  return {
+    apiKey,
+    configuration: model.baseURL ? { baseURL: model.baseURL } : undefined,
+  };
 }
 
 function isCustomToolCallItem(

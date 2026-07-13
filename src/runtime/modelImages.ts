@@ -4,14 +4,12 @@ import {
   type ContentBlock,
 } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
-import type { Settings } from "../types";
+import type { ModelApi } from "../types";
 
 export interface ToolImage {
   src: string;
   mimeType: string;
 }
-
-type ModelApi = Settings["model"]["api"];
 
 export function createModelImageMiddleware(api: ModelApi) {
   return createMiddleware({

@@ -3,6 +3,7 @@ export {
   buildModel,
   buildResponsesInstructions,
   modelMessages,
+  resolveModelApi,
 } from "./agent/model";
 export {
   normalizeResponsesPayload,

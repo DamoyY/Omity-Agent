@@ -5,7 +5,7 @@ import {
   normalizeResponsesPayload,
   normalizeResponsesStreamEvent,
 } from "../../src/agent";
-import type { Settings } from "../../src/types";
+import type { ModelApi, Settings } from "../../src/types";
 
 const savedEnv = new Map<string, string | undefined>();
 
@@ -27,7 +27,7 @@ function setEnv(key: string, value: string) {
   process.env[key] = value;
 }
 
-function makeSettings(api: Settings["model"]["api"]): Settings {
+function makeSettings(api: ModelApi): Settings {
   return {
     paths: { dataDir: "data" },
     model: {

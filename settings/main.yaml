@@ -2,7 +2,8 @@
 paths:
   dataDir: ${appData}/omity-agent
 
-# 模型配置；默认兼容 OpenAI 与 OpenAI-compatible 网关。
+# 模型配置；provider 为 codex 时固定使用 Responses API，并从
+# ~/.codex/auth.json 读取认证，此时省略 api、apiKeyEnv 和 baseURL。
 model:
   provider: openai-compatible
   # 可选 responses 或 completions；OpenAI-compatible 网关通常使用 completions。

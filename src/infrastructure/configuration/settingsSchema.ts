@@ -9,21 +9,33 @@ const reasoningEffortSchema = z.enum([
   "xhigh",
 ]);
 
+const sharedModelSettings = {
+  model: z.string().min(1),
+  temperature: z.number().optional(),
+  reasoning_effort: reasoningEffortSchema.optional(),
+  maxRetries: z.number().int().nonnegative(),
+  timeoutMs: z.number().int().positive(),
+};
+
+const modelSettingsSchema = z.discriminatedUnion("provider", [
+  z.object({
+    provider: z.literal("openai-compatible"),
+    api: z.enum(["responses", "completions"]),
+    apiKeyEnv: z.string().min(1),
+    baseURL: z.url().nullable(),
+    ...sharedModelSettings,
+  }),
+  z.object({
+    provider: z.literal("codex"),
+    ...sharedModelSettings,
+  }),
+]);
+
 const mainSettingsSchema = z.object({
   paths: z.object({
     dataDir: z.string().min(1),
   }),
-  model: z.object({
-    provider: z.literal("openai-compatible"),
-    api: z.enum(["responses", "completions"]),
-    model: z.string().min(1),
-    apiKeyEnv: z.string().min(1),
-    baseURL: z.url().nullable(),
-    temperature: z.number().optional(),
-    reasoning_effort: reasoningEffortSchema.optional(),
-    maxRetries: z.number().int().nonnegative(),
-    timeoutMs: z.number().int().positive(),
-  }),
+  model: modelSettingsSchema,
   host: z.object({
     pollMs: z.number().int().positive(),
     pausePollMs: z.number().int().positive(),

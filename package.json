@@ -45,6 +45,8 @@
     "vite": "latest"
   },
   "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "@ai-sdk/provider": "latest",
     "@codemirror/lang-markdown": "latest",
     "@codemirror/language": "latest",
     "@codemirror/state": "latest",
@@ -62,6 +64,7 @@
     "@replit/codemirror-indentation-markers": "latest",
     "@tanstack/react-query": "latest",
     "@uiw/react-codemirror": "latest",
+    "ai": "latest",
     "ajv": "latest",
     "dompurify": "latest",
     "fast-json-stable-stringify": "latest",
@@ -75,6 +78,7 @@
     "langchain": "latest",
     "lucide-react": "latest",
     "mitt": "latest",
+    "openai-codex-oauth": "latest",
     "react": "latest",
     "react-dom": "latest",
     "react-i18next": "latest",

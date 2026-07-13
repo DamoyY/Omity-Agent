@@ -10,6 +10,32 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 export type ReasoningEffort =
   "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
+export type ModelApi = "responses" | "completions";
+
+interface SharedModelSettings {
+  model: string;
+  temperature?: number;
+  reasoning_effort?: ReasoningEffort;
+  maxRetries: number;
+  timeoutMs: number;
+}
+
+export type ModelSettings = SharedModelSettings &
+  (
+    | {
+        provider: "openai-compatible";
+        api: ModelApi;
+        apiKeyEnv: string;
+        baseURL: string | null;
+      }
+    | {
+        provider: "codex";
+        api?: never;
+        apiKeyEnv?: never;
+        baseURL?: never;
+      }
+  );
+
 export type HookMode = "silent" | "takeover";
 
 export type HookWhen = "before" | "after";
@@ -30,17 +56,7 @@ export interface Settings {
   paths: {
     dataDir: string;
   };
-  model: {
-    provider: "openai-compatible";
-    api: "responses" | "completions";
-    model: string;
-    apiKeyEnv: string;
-    baseURL: string | null;
-    temperature?: number;
-    reasoning_effort?: ReasoningEffort;
-    maxRetries: number;
-    timeoutMs: number;
-  };
+  model: ModelSettings;
   host: {
     pollMs: number;
     pausePollMs: number;
