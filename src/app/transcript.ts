@@ -1,10 +1,14 @@
+import { existsSync } from "node:fs";
 import {
   mapStoredMessagesToChatMessages,
   ToolMessage,
   type BaseMessage,
   type StoredMessage,
 } from "@langchain/core/messages";
+import { sessionNotFound } from "../errors";
+import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../infrastructure/database/agentDatabase";
+import type { Settings } from "../types";
 import { contentToText, messageReasoning } from "../runtime/content";
 import { extractToolImages } from "../runtime/modelImages";
 import { parseError } from "../failures/details";
@@ -42,6 +46,18 @@ const storedMessageSchema = z.looseObject({
   type: z.string(),
   data: z.record(z.string(), z.unknown()),
 });
+
+export function loadSessionTranscript(settings: Settings, sessionId: string) {
+  const paths = resolveSessionPaths(settings, sessionId);
+  if (!existsSync(paths.dbPath)) throw sessionNotFound(sessionId);
+  const db = new AgentDatabase(paths.dbPath);
+  try {
+    return loadTranscript(db, sessionId);
+  } finally {
+    db.close();
+  }
+}
+
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const control = db.control(sessionId);
   const messages = db.db

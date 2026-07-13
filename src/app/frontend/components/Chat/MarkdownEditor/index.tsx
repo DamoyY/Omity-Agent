@@ -56,6 +56,7 @@ export function MarkdownEditor({
   fluid = false,
   label,
   onChange,
+  onPasteFiles,
   onHistoryNavigate,
   onSubmit,
   placeholder,
@@ -66,6 +67,7 @@ export function MarkdownEditor({
   fluid?: boolean;
   label?: string;
   onChange: (value: string) => void;
+  onPasteFiles?: (files: File[]) => string | undefined;
   onHistoryNavigate?: (direction: HistoryDirection) => string | undefined;
   onSubmit: () => void;
   placeholder: string;
@@ -107,6 +109,32 @@ export function MarkdownEditor({
           markdownSyntax,
           editorTheme,
           fluid ? fluidTheme : fixedTheme,
+          EditorView.domEventHandlers({
+            paste: (event, view) => {
+              if (disabled || !onPasteFiles) return false;
+              const files = [...(event.clipboardData?.files ?? [])];
+              if (files.length === 0) return false;
+              event.preventDefault();
+              const insert = onPasteFiles(files);
+              if (!insert) return true;
+              const selection = view.state.selection.main;
+              const before = view.state.doc.sliceString(0, selection.from);
+              const after = view.state.doc.sliceString(selection.to);
+              const text =
+                (before && !before.endsWith("\n") ? "\n" : "") +
+                insert +
+                (after && !after.startsWith("\n") ? "\n" : "");
+              view.dispatch({
+                changes: {
+                  from: selection.from,
+                  to: selection.to,
+                  insert: text,
+                },
+                selection: { anchor: selection.from + text.length },
+              });
+              return true;
+            },
+          }),
           Prec.highest(
             keymap.of([
               historyBinding(

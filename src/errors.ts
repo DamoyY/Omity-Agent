@@ -3,7 +3,9 @@ export type DomainErrorCode =
   | "SESSION_CONFLICT"
   | "HOST_LEASE_CONFLICT"
   | "QUEUE_CLAIM_CONFLICT"
-  | "FORK_MESSAGE_NOT_FOUND";
+  | "FORK_MESSAGE_NOT_FOUND"
+  | "ATTACHMENT_INVALID"
+  | "ATTACHMENT_TOO_LARGE";
 
 export class DomainError extends Error {
   override readonly name = "DomainError";

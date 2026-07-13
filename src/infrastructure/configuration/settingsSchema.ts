@@ -41,11 +41,39 @@ const modelFileSchema = z
   })
   .strict();
 
+const suffixSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(2)
+  .max(32)
+  .regex(/^\.[a-z0-9][a-z0-9_+-]*$/u);
+
 const mainSettingsSchema = z
   .object({
     paths: z.object({
       dataDir: z.string().min(1),
     }),
+    attachments: z
+      .object({
+        allowedSuffixes: z
+          .array(suffixSchema)
+          .min(1)
+          .superRefine((suffixes, context) => {
+            if (new Set(suffixes).size !== suffixes.length) {
+              context.addIssue({
+                code: "custom",
+                message: "附件后缀白名单不能包含重复项",
+              });
+            }
+          }),
+        maxSizeBytes: z
+          .number()
+          .int()
+          .positive()
+          .max(Number.MAX_SAFE_INTEGER - 1024 * 1024),
+      })
+      .strict(),
     frontend: z.object({
       draftSaveDelayMs: z.number().int().positive(),
       transcriptRefreshIntervalMs: z.number().int().positive(),

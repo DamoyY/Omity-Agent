@@ -60,7 +60,9 @@ test("session SSE sends ordered deltas only for the target session", async () =>
 
 function apiController() {
   return {
-    bootstrap: () => ({}),
+    bootstrap: () => ({
+      attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
+    }),
     sessions: () => [],
     pickWorkspace: () => null,
     createSession: () => ({}),

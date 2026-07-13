@@ -2,6 +2,23 @@
 paths:
   dataDir: ${appData}/omity-agent
 
+# 粘贴到消息输入框的文件限制；后缀匹配不区分大小写，大小限制同时约束单个文件和单次发送总量。
+attachments:
+  allowedSuffixes:
+    - .txt
+    - .md
+    - .json
+    - .yaml
+    - .yml
+    - .csv
+    - .log
+    - .pdf
+    - .png
+    - .jpg
+    - .jpeg
+    - .webp
+  maxSizeBytes: 10485760
+
 # 输入草稿保存防抖，以及流式事件触发 Transcript 刷新的最小间隔。
 frontend:
   draftSaveDelayMs: 500
@@ -26,7 +43,7 @@ leases:
 
 # 工具输出超过该 token 数时写入文件，仅把文件路径发送回模型。
 toolOutput:
-  maxTokens: 8192
+  maxTokens: 10000
 
 # 自动工具调用规则位于 settings/hooks.yaml。
 

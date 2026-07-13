@@ -1,27 +1,35 @@
 import type { HonoRequest } from "hono/request";
 import { z } from "zod";
 import { safeId } from "../../infrastructure/configuration/sessionPaths";
+import type {
+  MessageSubmission,
+  PendingAttachment,
+  SessionSubmission,
+} from "../attachments/contract";
 import { HttpError } from "./errors";
 
 export const requestBodyLimit = 1024 * 1024;
 
 const nonEmptyMessage = z.string().refine((value) => value.trim().length > 0);
 
-export const createSessionBody = z
-  .object({
-    workspace: z.string().trim().min(1).max(32_767),
-    history: z.array(
-      z.object({ user: nonEmptyMessage, assistant: nonEmptyMessage }).strict(),
-    ),
-    message: nonEmptyMessage,
-  })
-  .strict();
-export const messageBody = z
-  .object({
-    content: nonEmptyMessage,
-    draftRevision: z.number().int().nonnegative(),
-  })
-  .strict();
+const historySchema = z.array(
+  z.object({ user: nonEmptyMessage, assistant: nonEmptyMessage }).strict(),
+);
+
+const messageFieldsSchema = z.object({
+  content: nonEmptyMessage,
+  draftRevision: z
+    .string()
+    .regex(/^(0|[1-9]\d*)$/u)
+    .transform(Number)
+    .pipe(z.number().int().nonnegative()),
+});
+
+const sessionFieldsSchema = z.object({
+  workspace: z.string().trim().min(1).max(32_767),
+  message: nonEmptyMessage,
+  history: historySchema,
+});
 export const composerDraftBody = z
   .object({
     content: z.string(),
@@ -53,6 +61,77 @@ export async function readJson<T>(
     throw new HttpError(400, `请求参数无效：${details}`);
   }
   return result.data;
+}
+
+export async function readMessageForm(
+  request: HonoRequest,
+): Promise<MessageSubmission> {
+  const form = await readFormData(request);
+  const fields = {
+    content: singleText(form, "content"),
+    draftRevision: singleText(form, "draftRevision"),
+  };
+  const result = messageFieldsSchema.safeParse(fields);
+  if (!result.success) {
+    throw new HttpError(400, `消息参数无效：${result.error.message}`);
+  }
+  const attachments = readAttachments(form, new Set(Object.keys(fields)));
+  return { ...result.data, attachments };
+}
+
+export async function readSessionForm(
+  request: HonoRequest,
+): Promise<SessionSubmission> {
+  const form = await readFormData(request);
+  const fields = {
+    workspace: singleText(form, "workspace"),
+    message: singleText(form, "message"),
+  };
+  let history: unknown;
+  try {
+    history = JSON.parse(singleText(form, "history")) as unknown;
+  } catch {
+    throw new HttpError(400, "初始历史消息不是有效的 JSON");
+  }
+  const result = sessionFieldsSchema.safeParse({ ...fields, history });
+  if (!result.success) {
+    throw new HttpError(400, `新建会话参数无效：${result.error.message}`);
+  }
+  const attachments = readAttachments(
+    form,
+    new Set(["workspace", "message", "history"]),
+  );
+  return { ...result.data, attachments };
+}
+
+async function readFormData(request: HonoRequest) {
+  try {
+    return await request.formData();
+  } catch {
+    throw new HttpError(400, "请求体不是有效的 multipart/form-data");
+  }
+}
+
+function readAttachments(form: FormData, fields: Set<string>) {
+  return [...form.entries()].flatMap(([key, value]): PendingAttachment[] => {
+    if (fields.has(key)) return [];
+    const match =
+      /^file:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u.exec(
+        key,
+      );
+    if (!match || typeof value === "string") {
+      throw new HttpError(400, `附件字段无效：${key}`);
+    }
+    return [{ id: match[1] ?? "", file: value }];
+  });
+}
+
+function singleText(form: FormData, name: string) {
+  const values = form.getAll(name);
+  if (values.length !== 1 || typeof values[0] !== "string") {
+    throw new HttpError(400, `消息字段必须是单个文本值：${name}`);
+  }
+  return values[0];
 }
 
 export function decodeSessionId(value: string) {

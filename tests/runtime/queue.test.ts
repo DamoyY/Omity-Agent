@@ -163,6 +163,7 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
 function makeSettings(): Settings {
   return {
     paths: { dataDir: "data" },
+    attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,

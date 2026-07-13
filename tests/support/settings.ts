@@ -3,6 +3,10 @@ import type { Settings } from "../../src/types";
 export function testSettings(dataDir: string): Settings {
   return {
     paths: { dataDir },
+    attachments: {
+      allowedSuffixes: [".txt", ".md"],
+      maxSizeBytes: 1024,
+    },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,

@@ -1,14 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
 import { runClient } from "../client";
-import { sessionNotFound } from "../errors";
+import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 import { deleteHostSession } from "../host";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
-import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import { normalizeWorkspacePath } from "../infrastructure/configuration/workspacePath";
-import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Control, Settings } from "../types";
-import type { InitialMessagePair } from "./initialState";
+import type {
+  MessageSubmission,
+  SessionSubmission,
+} from "./attachments/contract";
+import { enqueueMessageWithAttachments } from "./attachments/message";
+import { createSessionWithAttachments } from "./attachments/session";
 import {
   clearSessionDraft,
   readSessionDraft,
@@ -18,12 +20,10 @@ import { AppEvents } from "./events";
 import { AppHosts } from "./hosts";
 import { AppRegistry, type RegisteredSession } from "./registry";
 import { projectSession, type SessionInfo } from "./sessionState";
-import { loadTranscript } from "./transcript";
+import { loadSessionTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
 import { displayStreamEvent } from "./timeline";
-import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 import {
-  createSessionStorage,
   forkSessionStorage,
   removeSessionStorage,
 } from "./runtime/sessionStorage";
@@ -58,6 +58,7 @@ export class AppController {
 
   bootstrap() {
     return {
+      attachments: this.settings.attachments,
       cwd: this.appRoot,
       frontend: this.settings.frontend,
       sessions: this.sessions(),
@@ -76,15 +77,18 @@ export class AppController {
     return pickWorkspaceDirectory();
   }
 
-  createSession(
-    workspace: string,
-    history: InitialMessagePair[],
-    message: string,
-  ) {
-    const root = normalizeWorkspacePath(workspace, this.appRoot);
+  async createSession(submission: SessionSubmission) {
+    const root = normalizeWorkspacePath(submission.workspace, this.appRoot);
     const settings = loadSettings(this.appRoot, { cwd: root });
     const id = `web-${randomUUID()}`;
-    createSessionStorage(settings, id, root, history, message);
+    await createSessionWithAttachments({
+      settings,
+      sessionId: id,
+      workspace: root,
+      history: submission.history,
+      message: submission.message,
+      attachments: submission.attachments,
+    });
     const session = this.registry.refresh(id);
     this.hosts.start(id, root, "load");
     const info = this.sessionInfo(session);
@@ -92,11 +96,19 @@ export class AppController {
     return info;
   }
 
-  sendMessage(sessionId: string, content: string, draftRevision: number) {
+  async sendMessage(sessionId: string, submission: MessageSubmission) {
     const session = this.registry.require(sessionId);
-    this.hosts.ensure(session.id, session.workspace);
-    const result = runClient({ sessionId, append: content }, this.appRoot);
-    clearSessionDraft(this.settings, sessionId, draftRevision);
+    const result = await enqueueMessageWithAttachments(
+      this.settings,
+      this.appRoot,
+      sessionId,
+      submission.content,
+      submission.attachments,
+      () => {
+        this.hosts.ensure(session.id, session.workspace);
+      },
+    );
+    clearSessionDraft(this.settings, sessionId, submission.draftRevision);
     this.hosts.clearError(sessionId);
     this.publishChange(sessionId);
     return result;
@@ -157,14 +169,7 @@ export class AppController {
 
   transcript(sessionId: string) {
     this.registry.require(sessionId);
-    const paths = resolveSessionPaths(this.settings, sessionId);
-    if (!existsSync(paths.dbPath)) throw sessionNotFound(sessionId);
-    const db = new AgentDatabase(paths.dbPath);
-    try {
-      return loadTranscript(db, sessionId);
-    } finally {
-      db.close();
-    }
+    return loadSessionTranscript(this.settings, sessionId);
   }
 
   private publishActivity(sessionId: string) {

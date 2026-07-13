@@ -4,6 +4,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import type { AttachmentSettings } from "../../attachments/contract";
 import {
   bootstrap,
   appEvents,
@@ -20,6 +21,7 @@ import { reportSessionErrors } from "./events/reporting";
 import { transcriptKey } from "./transcript/query";
 
 export interface BootstrapData {
+  attachments: AttachmentSettings;
   cwd: string;
   frontend: FrontendSettings;
   sessions: SessionInfo[];

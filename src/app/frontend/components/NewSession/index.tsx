@@ -1,8 +1,12 @@
 import { Plus, Send, UserRound } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { InitialSessionState } from "../../../initialState";
+import type {
+  AttachmentSettings,
+  PendingAttachment,
+} from "../../../attachments/contract";
 import { reportPromiseErrors } from "../../services/errors";
 import {
   composerActions,
@@ -12,6 +16,7 @@ import {
 } from "../Chat/Composer/layout";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { Button } from "../ParkUI";
+import { PendingAttachments } from "../Chat/Composer/attachments";
 import { MessageStack, type EditablePair } from "./MessageStack";
 import { WorkspacePicker } from "./WorkspacePicker";
 
@@ -34,6 +39,7 @@ const setup = css({
 const messageFlow = css({ alignSelf: "end" });
 
 export function NewSessionPage({
+  attachmentSettings,
   pageClassName,
   recentWorkspaces,
   workspace,
@@ -41,10 +47,14 @@ export function NewSessionPage({
   onPickWorkspace,
   onWorkspaceChange,
 }: {
+  attachmentSettings?: AttachmentSettings;
   pageClassName: string;
   recentWorkspaces: string[];
   workspace: string;
-  onCreate: (state: InitialSessionState) => Promise<void>;
+  onCreate: (
+    state: InitialSessionState,
+    attachments: PendingAttachment[],
+  ) => Promise<void>;
   onPickWorkspace: () => Promise<string | null>;
   onWorkspaceChange: (workspace: string) => void;
 }) {
@@ -53,7 +63,11 @@ export function NewSessionPage({
   const [pairs, setPairs] = useState<EditablePair[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const attachmentsRef = useRef(new PendingAttachments(attachmentSettings));
   const previousPairCountRef = useRef(pairs.length);
+  useEffect(() => {
+    attachmentsRef.current.configure(attachmentSettings);
+  }, [attachmentSettings]);
   useLayoutEffect(() => {
     const pairAdded = pairs.length > previousPairCountRef.current;
     previousPairCountRef.current = pairs.length;
@@ -79,10 +93,13 @@ export function NewSessionPage({
     if (!complete || submitting) return;
     setSubmitting(true);
     try {
-      await onCreate({
-        history: pairs.map(({ user, assistant }) => ({ user, assistant })),
-        message,
-      });
+      await onCreate(
+        {
+          history: pairs.map(({ user, assistant }) => ({ user, assistant })),
+          message,
+        },
+        attachmentsRef.current.values(message),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -126,6 +143,11 @@ export function NewSessionPage({
               <MarkdownEditor
                 disabled={submitting}
                 onChange={setMessage}
+                onPasteFiles={
+                  attachmentSettings
+                    ? (files) => attachmentsRef.current.paste(files, message)
+                    : undefined
+                }
                 onSubmit={() => {
                   reportPromiseErrors(submit());
                 }}

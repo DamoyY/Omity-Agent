@@ -118,6 +118,7 @@ interface CapturedRequest {
 function codexSettings(): Settings {
   const main = parseMainSettings({
     paths: { dataDir: "./data" },
+    attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,

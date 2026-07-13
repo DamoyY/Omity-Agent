@@ -8,16 +8,16 @@ import {
 } from "../../../services/composerDrafts";
 import { reportError, reportPromiseErrors } from "../../../services/errors";
 import { DraftSaver } from "../../../services/scheduling/draftSaver";
-import type { TokenUsage } from "../../../../timeline";
 import { MarkdownEditor } from "../MarkdownEditor";
 import { Actions } from "./Actions";
+import { PendingAttachments } from "./attachments";
 import { UserMessageHistory, type HistoryDirection } from "./history";
 import { composerFrame } from "./layout";
-
-type ControlState = "pause" | "pausing" | "resume";
+import type { ComposerProps } from "./props";
 
 export function Composer({
   disabled,
+  attachmentSettings,
   draft,
   draftSaveDelayMs,
   draftTarget,
@@ -29,31 +29,23 @@ export function Composer({
   onControl,
   onDelete,
   onSend,
-}: {
-  disabled: boolean;
-  draft?: string;
-  draftSaveDelayMs?: number;
-  draftTarget: ComposerDraftTarget;
-  userMessages: readonly string[];
-  controlDisabled?: boolean;
-  controlState?: ControlState;
-  deleteDisabled?: boolean;
-  usage?: TokenUsage | null;
-  onControl?: () => Promise<void>;
-  onDelete?: () => Promise<void>;
-  onSend: (content: string, draftRevision: number) => Promise<void>;
-}) {
+}: ComposerProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState(draft ?? "");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const contentRef = useRef(content);
+  const attachmentsRef = useRef(new PendingAttachments(attachmentSettings));
   const historyRef = useRef(new UserMessageHistory());
   const revisionRef = useRef(0);
   const saverRef = useRef<DraftSaver | undefined>(undefined);
   const submittingRef = useRef(false);
   const sessionId =
     draftTarget.kind === "session" ? draftTarget.sessionId : undefined;
+
+  useEffect(() => {
+    attachmentsRef.current.configure(attachmentSettings);
+  }, [attachmentSettings]);
 
   useEffect(() => {
     let current = true;
@@ -132,7 +124,12 @@ export function Composer({
     contentRef.current = "";
     setContent("");
     try {
-      await onSend(submittedContent, submittedRevision);
+      await onSend(
+        submittedContent,
+        submittedRevision,
+        attachmentsRef.current.values(submittedContent),
+      );
+      attachmentsRef.current.clear();
     } catch (error) {
       revisionRef.current += 1;
       contentRef.current = submittedContent;
@@ -162,6 +159,11 @@ export function Composer({
           updateContent(nextContent);
         }}
         onHistoryNavigate={navigateHistory}
+        onPasteFiles={
+          attachmentSettings
+            ? (files) => attachmentsRef.current.paste(files, contentRef.current)
+            : undefined
+        }
         onSubmit={() => {
           reportPromiseErrors(submit());
         }}

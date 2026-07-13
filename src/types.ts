@@ -54,6 +54,10 @@ export interface Settings {
   paths: {
     dataDir: string;
   };
+  attachments: {
+    allowedSuffixes: string[];
+    maxSizeBytes: number;
+  };
   frontend: {
     draftSaveDelayMs: number;
     transcriptRefreshIntervalMs: number;

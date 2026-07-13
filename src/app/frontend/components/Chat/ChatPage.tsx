@@ -7,6 +7,10 @@ import { NewSessionPage } from "../NewSession";
 import { TranscriptScroll } from "../TranscriptScroll";
 import { Message } from "./Message";
 import type { InitialSessionState } from "../../../initialState";
+import type {
+  AttachmentSettings,
+  PendingAttachment,
+} from "../../../attachments/contract";
 
 const page = css({
   display: "grid",
@@ -42,6 +46,7 @@ function findLatestDetail(view: TimelineMessage[]) {
 
 export function ChatPage({
   activeId,
+  attachmentSettings,
   control,
   draftSaveDelayMs,
   newSession,
@@ -60,6 +65,7 @@ export function ChatPage({
   onWorkspaceChange,
 }: {
   activeId?: string;
+  attachmentSettings?: AttachmentSettings;
   control: Control;
   draftSaveDelayMs?: number;
   newSession: boolean;
@@ -69,8 +75,15 @@ export function ChatPage({
   sessionStatus?: SessionStatus;
   view: TimelineMessage[];
   workspace?: string;
-  onCreate: (state: InitialSessionState) => Promise<void>;
-  onSend: (content: string, draftRevision: number) => Promise<void>;
+  onCreate: (
+    state: InitialSessionState,
+    attachments: PendingAttachment[],
+  ) => Promise<void>;
+  onSend: (
+    content: string,
+    draftRevision: number,
+    attachments: PendingAttachment[],
+  ) => Promise<void>;
   onControl: (control: Extract<Control, "running" | "pause">) => Promise<void>;
   onDelete: () => Promise<void>;
   onFork: (messageId: number) => Promise<void>;
@@ -91,6 +104,7 @@ export function ChatPage({
     if (newSession) {
       return (
         <NewSessionPage
+          attachmentSettings={attachmentSettings}
           pageClassName={page}
           recentWorkspaces={recentWorkspaces}
           workspace={workspace ?? ""}
@@ -132,6 +146,7 @@ export function ChatPage({
         ))}
       </TranscriptScroll>
       <Composer
+        attachmentSettings={attachmentSettings}
         controlDisabled={
           waitingForPause || (!paused && sessionStatus === "idle")
         }

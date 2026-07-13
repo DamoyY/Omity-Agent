@@ -25,7 +25,6 @@ import {
   removeOptimisticUser,
 } from "./services/transcript/optimistic";
 import { recentWorkspaces } from "./services/recentWorkspaces";
-import type { InitialSessionState } from "../initialState";
 
 export function App() {
   const queryClient = useQueryClient();
@@ -89,6 +88,7 @@ export function App() {
       <main className={main}>
         <ChatPage
           activeId={activeSession?.id}
+          attachmentSettings={bootstrap.data?.attachments}
           draftSaveDelayMs={bootstrap.data?.frontend.draftSaveDelayMs}
           newSession={currentPage.kind === "new"}
           pausing={pausing}
@@ -98,10 +98,11 @@ export function App() {
           sessionStatus={activeSession?.status}
           view={transcript.view}
           workspace={newWorkspace ?? cwd}
-          onCreate={async (initialState: InitialSessionState) => {
+          onCreate={async (initialState, attachments) => {
             const { session } = await createSession(
               newWorkspace ?? cwd,
               initialState,
+              attachments,
             );
             addSession(queryClient, session);
             navigate(sessionPage(session.id));
@@ -139,7 +140,7 @@ export function App() {
             const result = await pickWorkspace();
             return result.workspace;
           }}
-          onSend={async (content, draftRevision) => {
+          onSend={async (content, draftRevision, attachments) => {
             if (!activeSession) return;
             const optimisticKey = addOptimisticUser(
               queryClient,
@@ -147,17 +148,18 @@ export function App() {
               content,
             );
             try {
-              const { queueId } = await sendMessage(
+              const { content: sentContent, queueId } = await sendMessage(
                 activeSession.id,
                 content,
                 draftRevision,
+                attachments,
               );
               confirmOptimisticUser(
                 queryClient,
                 activeSession.id,
                 optimisticKey,
                 queueId,
-                content,
+                sentContent,
               );
             } catch (error) {
               removeOptimisticUser(

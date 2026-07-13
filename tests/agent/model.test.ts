@@ -30,6 +30,7 @@ function setEnv(key: string, value: string) {
 function makeSettings(api: ModelApi): Settings {
   return {
     paths: { dataDir: "data" },
+    attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,

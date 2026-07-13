@@ -32,6 +32,11 @@ export function writeTestConfiguration(
     join(settingsDir, "main.yaml"),
     `paths:
   dataDir: ${options.dataDir ?? "./data"}
+attachments:
+  allowedSuffixes:
+    - .txt
+    - .md
+  maxSizeBytes: 1024
 frontend:
   draftSaveDelayMs: 1
   transcriptRefreshIntervalMs: 1

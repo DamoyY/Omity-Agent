@@ -4,6 +4,11 @@ import { reportError } from "./errors";
 import type { InitialSessionState } from "../../initialState";
 import type { SessionInfo } from "../../sessionState";
 import type { TranscriptSnapshot } from "./transcript/cache";
+import type {
+  AttachmentSettings,
+  PendingAttachment,
+} from "../../attachments/contract";
+import { appendAttachments } from "../../attachments/contract";
 
 const errorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
@@ -28,6 +33,7 @@ export interface FrontendSettings {
 
 export async function bootstrap(signal?: AbortSignal) {
   return request<{
+    attachments: AttachmentSettings;
     cwd: string;
     frontend: FrontendSettings;
     sessions: SessionInfo[];
@@ -37,10 +43,16 @@ export async function bootstrap(signal?: AbortSignal) {
 export async function createSession(
   workspace: string,
   initialState: InitialSessionState,
+  attachments: PendingAttachment[],
 ) {
+  const body = new FormData();
+  body.set("workspace", workspace);
+  body.set("history", JSON.stringify(initialState.history));
+  body.set("message", initialState.message);
+  appendAttachments(body, attachments);
   return request<{ session: SessionInfo }>("/api/sessions", {
     method: "POST",
-    body: JSON.stringify({ workspace, ...initialState }),
+    body,
   });
 }
 
@@ -112,12 +124,17 @@ export async function sendMessage(
   sessionId: string,
   content: string,
   draftRevision: number,
+  attachments: PendingAttachment[],
 ) {
-  return request<{ queueId: number }>(
+  const body = new FormData();
+  body.set("content", content);
+  body.set("draftRevision", draftRevision.toString());
+  appendAttachments(body, attachments);
+  return request<{ content: string; queueId: number }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "POST",
-      body: JSON.stringify({ content, draftRevision }),
+      body,
     },
   );
 }
@@ -145,7 +162,10 @@ export async function forkSession(sessionId: string, beforeMessageId: number) {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     const response = await fetch(path, {
-      headers: { "content-type": "application/json" },
+      headers:
+        init?.body instanceof FormData
+          ? undefined
+          : { "content-type": "application/json" },
       ...init,
     });
     const json = (await response.json()) as unknown;
