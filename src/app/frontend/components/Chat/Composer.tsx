@@ -5,9 +5,9 @@ import {
   clearTemporaryComposerDraft,
   flushComposerDraft,
   readComposerDraft,
-  writeComposerDraft,
   type ComposerDraftTarget,
 } from "../../services/composerDrafts";
+import { DraftSaver } from "../../services/scheduling/draftSaver";
 import { reportError, reportPromiseErrors } from "../../services/errors";
 import type { TokenUsage } from "../../../timeline";
 import { Button } from "../ParkUI";
@@ -25,6 +25,7 @@ type ControlState = "pause" | "pausing" | "resume";
 export function Composer({
   disabled,
   draft,
+  draftSaveDelayMs,
   draftTarget,
   controlDisabled = false,
   controlState,
@@ -36,6 +37,7 @@ export function Composer({
 }: {
   disabled: boolean;
   draft?: string;
+  draftSaveDelayMs?: number;
   draftTarget: ComposerDraftTarget;
   controlDisabled?: boolean;
   controlState?: ControlState;
@@ -51,7 +53,7 @@ export function Composer({
   const [submitting, setSubmitting] = useState(false);
   const contentRef = useRef(content);
   const revisionRef = useRef(0);
-  const saveRef = useRef(Promise.resolve());
+  const saverRef = useRef<DraftSaver | undefined>(undefined);
   const submittingRef = useRef(false);
   const sessionId =
     draftTarget.kind === "session" ? draftTarget.sessionId : undefined;
@@ -74,6 +76,18 @@ export function Composer({
     };
   }, [draft, sessionId]);
   useEffect(() => {
+    if (draftSaveDelayMs === undefined) return;
+    const target: ComposerDraftTarget = sessionId
+      ? { kind: "session", sessionId }
+      : { kind: "new" };
+    const saver = new DraftSaver(target, draftSaveDelayMs, reportError);
+    saverRef.current = saver;
+    return () => {
+      if (saverRef.current === saver) saverRef.current = undefined;
+      reportPromiseErrors(saver.flush());
+    };
+  }, [draftSaveDelayMs, sessionId]);
+  useEffect(() => {
     const target: ComposerDraftTarget = sessionId
       ? { kind: "session", sessionId }
       : { kind: "new" };
@@ -86,15 +100,23 @@ export function Composer({
     };
   }, [sessionId]);
   const submit = async () => {
-    if (submittingRef.current || !content.trim()) return;
+    const submittedContent = contentRef.current;
+    if (submittingRef.current || !submittedContent.trim()) return;
+    const submittedRevision = revisionRef.current;
     submittingRef.current = true;
     setSubmitting(true);
+    saverRef.current?.discardPending();
+    if (draftTarget.kind === "new") clearTemporaryComposerDraft();
+    contentRef.current = "";
+    setContent("");
     try {
-      await saveRef.current;
-      await onSend(content, revisionRef.current);
-      if (draftTarget.kind === "new") clearTemporaryComposerDraft();
-      contentRef.current = "";
-      setContent("");
+      await onSend(submittedContent, submittedRevision);
+    } catch (error) {
+      revisionRef.current += 1;
+      contentRef.current = submittedContent;
+      setContent(submittedContent);
+      saverRef.current?.schedule(submittedContent, revisionRef.current);
+      throw error;
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -111,18 +133,11 @@ export function Composer({
       <MarkdownEditor
         disabled={disabled || loading || submitting}
         onChange={(nextContent) => {
+          if (nextContent === contentRef.current) return;
           contentRef.current = nextContent;
           setContent(nextContent);
           revisionRef.current += 1;
-          const revision = revisionRef.current;
-          saveRef.current = saveRef.current
-            .catch((error: unknown) => {
-              reportError(error);
-            })
-            .then(async () => {
-              await writeComposerDraft(draftTarget, nextContent, revision);
-            });
-          reportPromiseErrors(saveRef.current);
+          saverRef.current?.schedule(nextContent, revisionRef.current);
         }}
         onSubmit={() => {
           reportPromiseErrors(submit());

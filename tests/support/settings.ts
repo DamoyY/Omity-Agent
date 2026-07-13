@@ -3,6 +3,10 @@ import type { Settings } from "../../src/types";
 export function testSettings(dataDir: string): Settings {
   return {
     paths: { dataDir },
+    frontend: {
+      draftSaveDelayMs: 1,
+      transcriptRefreshIntervalMs: 1,
+    },
     model: {
       adapter: "completions",
       model: "test",

@@ -30,6 +30,10 @@ function setEnv(key: string, value: string) {
 function makeSettings(api: ModelApi): Settings {
   return {
     paths: { dataDir: "data" },
+    frontend: {
+      draftSaveDelayMs: 1,
+      transcriptRefreshIntervalMs: 1,
+    },
     model: {
       adapter: api,
       model: "test-model",

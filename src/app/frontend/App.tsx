@@ -16,10 +16,14 @@ import {
 import {
   addSession,
   removeSession,
-  transcriptKey,
   useBootstrap,
   useSessionTranscript,
 } from "./services/queries";
+import {
+  addOptimisticUser,
+  confirmOptimisticUser,
+  removeOptimisticUser,
+} from "./services/transcript/optimistic";
 import { recentWorkspaces } from "./services/recentWorkspaces";
 import type { InitialSessionState } from "../initialState";
 
@@ -36,8 +40,10 @@ export function App() {
     currentPage.kind === "session"
       ? sessions.find((session) => session.id === currentPage.id)
       : undefined;
-  const transcript = useSessionTranscript(activeSession?.id);
-  const forkDraft = transcript.queue.find((item) => item.status === "draft");
+  const transcript = useSessionTranscript(
+    activeSession?.id,
+    bootstrap.data?.frontend.transcriptRefreshIntervalMs,
+  );
 
   const navigate = useCallback((nextPage: Page, replace = false) => {
     writePage(nextPage, replace);
@@ -83,6 +89,7 @@ export function App() {
       <main className={main}>
         <ChatPage
           activeId={activeSession?.id}
+          draftSaveDelayMs={bootstrap.data?.frontend.draftSaveDelayMs}
           newSession={currentPage.kind === "new"}
           pausing={pausing}
           control={transcript.control}
@@ -133,15 +140,33 @@ export function App() {
             return result.workspace;
           }}
           onSend={async (content, draftRevision) => {
-            if (forkDraft && activeSession) {
-              await sendMessage(activeSession.id, content, draftRevision);
-              return;
-            }
             if (!activeSession) return;
-            await sendMessage(activeSession.id, content, draftRevision);
-            await queryClient.invalidateQueries({
-              queryKey: transcriptKey(activeSession.id),
-            });
+            const optimisticKey = addOptimisticUser(
+              queryClient,
+              activeSession.id,
+              content,
+            );
+            try {
+              const { queueId } = await sendMessage(
+                activeSession.id,
+                content,
+                draftRevision,
+              );
+              confirmOptimisticUser(
+                queryClient,
+                activeSession.id,
+                optimisticKey,
+                queueId,
+                content,
+              );
+            } catch (error) {
+              removeOptimisticUser(
+                queryClient,
+                activeSession.id,
+                optimisticKey,
+              );
+              throw error;
+            }
           }}
           onWorkspaceChange={setNewWorkspace}
         />

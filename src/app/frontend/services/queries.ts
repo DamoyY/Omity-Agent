@@ -11,13 +11,16 @@ import {
   appEvents,
   loadTranscript,
   sessionEvents,
+  type FrontendSettings,
   type SessionInfo,
 } from "./client";
-import { reportPromiseErrors } from "./errors";
+import { reportError, reportPromiseErrors } from "./errors";
+import { RefreshScheduler } from "./scheduling/refreshScheduler";
 import { reportSessionErrors } from "./sessionErrors";
 
 export interface BootstrapData {
   cwd: string;
+  frontend: FrontendSettings;
   sessions: SessionInfo[];
 }
 
@@ -63,7 +66,10 @@ export function useBootstrap() {
   return query;
 }
 
-export function useSessionTranscript(sessionId: string | undefined) {
+export function useSessionTranscript(
+  sessionId: string | undefined,
+  refreshIntervalMs: number | undefined,
+) {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: transcriptKey(sessionId ?? ""),
@@ -72,20 +78,25 @@ export function useSessionTranscript(sessionId: string | undefined) {
   });
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || refreshIntervalMs === undefined) return;
     const events = sessionEvents(sessionId);
-    const refresh = () => {
-      reportPromiseErrors(
+    const scheduler = new RefreshScheduler(
+      refreshIntervalMs,
+      () =>
         queryClient.invalidateQueries({
           queryKey: transcriptKey(sessionId),
         }),
-      );
+      reportError,
+    );
+    const refresh = () => {
+      scheduler.request();
     };
     events.addEventListener("changed", refresh);
     return () => {
+      scheduler.dispose();
       events.close();
     };
-  }, [queryClient, sessionId]);
+  }, [queryClient, refreshIntervalMs, sessionId]);
 
   return query.data ?? emptyTranscript;
 }

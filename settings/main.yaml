@@ -2,6 +2,11 @@
 paths:
   dataDir: ${appData}/omity-agent
 
+# 输入草稿保存防抖，以及流式事件触发 Transcript 刷新的最小间隔。
+frontend:
+  draftSaveDelayMs: 500
+  transcriptRefreshIntervalMs: 75
+
 # Host 轮询、暂停与 LangGraph 运行边界。
 host:
   pollMs: 300

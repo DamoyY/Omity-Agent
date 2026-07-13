@@ -43,6 +43,7 @@ function findLatestDetail(view: TimelineMessage[]) {
 export function ChatPage({
   activeId,
   control,
+  draftSaveDelayMs,
   newSession,
   pausing,
   queue,
@@ -60,6 +61,7 @@ export function ChatPage({
 }: {
   activeId?: string;
   control: Control;
+  draftSaveDelayMs?: number;
   newSession: boolean;
   pausing: boolean;
   queue: DisplayQueue[];
@@ -139,6 +141,7 @@ export function ChatPage({
         }
         disabled={!activeId}
         draft={forkDraft}
+        draftSaveDelayMs={draftSaveDelayMs}
         draftTarget={{ kind: "session", sessionId: activeId }}
         key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
         usage={latestUsage}

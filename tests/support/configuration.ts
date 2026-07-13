@@ -32,6 +32,9 @@ export function writeTestConfiguration(
     join(settingsDir, "main.yaml"),
     `paths:
   dataDir: ${options.dataDir ?? "./data"}
+frontend:
+  draftSaveDelayMs: 1
+  transcriptRefreshIntervalMs: 1
 host:
   pollMs: 1
   pausePollMs: 1

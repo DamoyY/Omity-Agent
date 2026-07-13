@@ -29,10 +29,17 @@ export interface SessionInfo {
   error: ErrorDetails | null;
 }
 
+export interface FrontendSettings {
+  draftSaveDelayMs: number;
+  transcriptRefreshIntervalMs: number;
+}
+
 export async function bootstrap(signal?: AbortSignal) {
-  return request<{ cwd: string; sessions: SessionInfo[] }>("/api/bootstrap", {
-    signal,
-  });
+  return request<{
+    cwd: string;
+    frontend: FrontendSettings;
+    sessions: SessionInfo[];
+  }>("/api/bootstrap", { signal });
 }
 
 export async function createSession(
@@ -115,10 +122,13 @@ export async function sendMessage(
   content: string,
   draftRevision: number,
 ) {
-  return request(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
-    method: "POST",
-    body: JSON.stringify({ content, draftRevision }),
-  });
+  return request<{ queueId: number }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify({ content, draftRevision }),
+    },
+  );
 }
 
 export async function setControl(

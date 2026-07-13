@@ -118,6 +118,10 @@ interface CapturedRequest {
 function codexSettings(): Settings {
   const main = parseMainSettings({
     paths: { dataDir: "./data" },
+    frontend: {
+      draftSaveDelayMs: 1,
+      transcriptRefreshIntervalMs: 1,
+    },
     host: {
       pollMs: 1,
       pausePollMs: 1,

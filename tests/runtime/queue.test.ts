@@ -163,6 +163,10 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
 function makeSettings(): Settings {
   return {
     paths: { dataDir: "data" },
+    frontend: {
+      draftSaveDelayMs: 1,
+      transcriptRefreshIntervalMs: 1,
+    },
     model: {
       adapter: "completions",
       model: "test-model",

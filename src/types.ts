@@ -54,6 +54,10 @@ export interface Settings {
   paths: {
     dataDir: string;
   };
+  frontend: {
+    draftSaveDelayMs: number;
+    transcriptRefreshIntervalMs: number;
+  };
   model: ModelSettings;
   host: {
     pollMs: number;

@@ -46,6 +46,7 @@ export class AppController {
   bootstrap() {
     return {
       cwd: this.appRoot,
+      frontend: this.settings.frontend,
       sessions: this.sessions(),
     };
   }

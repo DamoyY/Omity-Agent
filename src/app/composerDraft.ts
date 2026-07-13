@@ -10,7 +10,11 @@ export function readSessionDraft(settings: Settings, sessionId: string) {
         "SELECT content, revision FROM composer_drafts WHERE session_id = ?",
       )
       .get(sessionId);
-    return row ?? { content: null, revision: 0 };
+    if (!row) return { content: null, revision: 0 };
+    return {
+      content: row.content.length > 0 ? row.content : null,
+      revision: row.revision,
+    };
   });
 }
 
@@ -29,7 +33,7 @@ export function writeSessionDraft(
            content = excluded.content,
            revision = excluded.revision,
            updated_at = excluded.updated_at
-         WHERE excluded.revision >= composer_drafts.revision`,
+         WHERE excluded.revision > composer_drafts.revision`,
         [sessionId, content, revision],
       );
       const row = db
@@ -50,9 +54,16 @@ export function clearSessionDraft(
   revision: number,
 ) {
   withSessionDatabase(settings, sessionId, (db) => {
-    db.query(
-      "DELETE FROM composer_drafts WHERE session_id = ? AND revision <= ?",
-    ).run(sessionId, revision);
+    db.run(
+      `INSERT INTO composer_drafts (session_id, content, revision, updated_at)
+       VALUES (?, '', ?, unixepoch())
+       ON CONFLICT(session_id) DO UPDATE SET
+         content = '',
+         revision = excluded.revision,
+         updated_at = excluded.updated_at
+       WHERE excluded.revision >= composer_drafts.revision`,
+      [sessionId, revision],
+    );
   });
 }
 

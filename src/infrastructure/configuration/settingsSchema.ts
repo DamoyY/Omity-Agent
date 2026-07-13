@@ -46,6 +46,10 @@ const mainSettingsSchema = z
     paths: z.object({
       dataDir: z.string().min(1),
     }),
+    frontend: z.object({
+      draftSaveDelayMs: z.number().int().positive(),
+      transcriptRefreshIntervalMs: z.number().int().positive(),
+    }),
     host: z.object({
       pollMs: z.number().int().positive(),
       pausePollMs: z.number().int().positive(),

@@ -56,7 +56,24 @@ test("sending clears only the composer revision it submitted", () => {
   clearSessionDraft(fixture.settings, "session", 2);
   expect(readSessionDraft(fixture.settings, "session")).toEqual({
     content: null,
-    revision: 0,
+    revision: 2,
+  });
+});
+
+test("a late save cannot restore a draft after sending", () => {
+  const fixture = createSession();
+
+  clearSessionDraft(fixture.settings, "session", 3);
+  writeSessionDraft(fixture.settings, "session", "stale", 3);
+  expect(readSessionDraft(fixture.settings, "session")).toEqual({
+    content: null,
+    revision: 3,
+  });
+
+  writeSessionDraft(fixture.settings, "session", "next message", 4);
+  expect(readSessionDraft(fixture.settings, "session")).toEqual({
+    content: "next message",
+    revision: 4,
   });
 });
 
