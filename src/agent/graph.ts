@@ -11,22 +11,19 @@ import type { Database } from "bun:sqlite";
 import {
   Annotation,
   END,
+  getConfig,
   MessagesAnnotation,
   START,
   StateGraph,
+  task,
   type BaseCheckpointSaver,
-  type LangGraphRunnableConfig,
 } from "@langchain/langgraph";
 import { BunSqliteSaver } from "../checkpointer";
 import { hookNode, modelNode, toolsNode } from "../hooks/graph/commands";
-import { createHookNode, requireThreadId } from "../hooks/graph/node";
-import {
-  agentPlan,
-  requireCallId,
-  toolPlan,
-  type HookPlan,
-} from "../hooks/plan";
+import { createHookNode } from "../hooks/graph/node";
+import { agentPlan, toolPlan, type HookPlan } from "../hooks/plan";
 import type { HookRuntime } from "../hooks/runtime";
+import type { HookToolOutput } from "../hooks/storage/outputs";
 import { contentToText } from "../runtime/content";
 import { ModelEmptyResponseError } from "../runtime/network";
 import { buildSkillsMessage } from "../skills";
@@ -50,7 +47,7 @@ const AgentState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => null,
   }),
-  hookPreviousInvocationKey: Annotation<string | undefined>({
+  hookPreviousOutput: Annotation<HookToolOutput | undefined>({
     reducer: (_left, right) => right,
     default: () => undefined,
   }),
@@ -112,41 +109,49 @@ export function createAgentGraph(options: AgentGraphOptions) {
     sessionId: options.hooks.sessionId,
     freeformToolParameters: options.freeformToolParameters ?? new Map(),
   });
-  const runHooks = createHookNode(options.hooks, invokeTool);
+  const requestModel = task(
+    "request_model",
+    async (messages: BaseMessage[]) => {
+      const response = await model.invoke(messages, getConfig());
+      if (!AIMessage.isInstance(response))
+        throw new Error("没有返回 AIMessage");
+      if (!response.tool_calls?.length && !contentToText(response.content)) {
+        throw new ModelEmptyResponseError();
+      }
+      response.id ??= randomUUID();
+      return response as AIMessage & { id: string };
+    },
+  );
+  const runTool = task(
+    "invoke_tool",
+    async (call: ToolCall): Promise<ToolMessage> =>
+      invokeTool(call, getConfig()),
+  ) as unknown as (call: ToolCall) => Promise<ToolMessage>;
+  const consumeHookTask = task(
+    "consume_hook_usage",
+    (hookId: string, limit: number) => ({
+      consumed: options.hooks.consume(hookId, limit),
+    }),
+  );
+  const consumeHook = async (hookId: string, limit: number) =>
+    (await consumeHookTask(hookId, limit)).consumed;
+  const runHooks = createHookNode(options.hooks, consumeHook, runTool);
 
-  const callModel = async (
-    state: GraphState,
-    config: LangGraphRunnableConfig,
-  ) => {
-    const response = await model.invoke(
+  const callModel = async (state: GraphState) => {
+    const response = await requestModel(
       modelMessages(options.settings, options.skillsMessage, state.messages),
-      config,
     );
-    if (!AIMessage.isInstance(response)) throw new Error("没有返回 AIMessage");
-    if (!response.tool_calls?.length && !contentToText(response.content)) {
-      throw new ModelEmptyResponseError();
-    }
-    response.id ??= randomUUID();
     return {
       messages: [response],
       hookPlan: response.tool_calls?.length
         ? toolPlan(response)
-        : agentPlan("after", [response.id], state.hookPreviousInvocationKey),
+        : agentPlan("after", [response.id], state.hookPreviousOutput),
     };
   };
 
-  const callTool = async (
-    state: GraphState,
-    config: LangGraphRunnableConfig,
-  ) => {
+  const callTool = async (state: GraphState) => {
     const call = pendingToolCall(state.messages);
-    const output = await options.hooks.runAgentTool(
-      call.name,
-      requireCallId(call),
-      requireThreadId(config.configurable),
-      () => invokeTool(call, state, config),
-    );
-    return { messages: [output] };
+    return { messages: [await runTool(call)] };
   };
 
   return new StateGraph(AgentState)

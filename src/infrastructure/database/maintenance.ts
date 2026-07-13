@@ -9,7 +9,6 @@ export function resetSessionStorage(
 ) {
   db.query("DELETE FROM writes").run();
   db.query("DELETE FROM checkpoints").run();
-  db.query("DELETE FROM invocations").run();
   db.query("DELETE FROM hook_usage").run();
   db.query("DELETE FROM host_leases").run();
   clearStreamEvents(db, sessionId);

@@ -94,11 +94,9 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
     sessionId: "test-session",
     freeformToolParameters: configured.parameters,
   });
-  const output = await invokeTool(
-    call,
-    { messages: [human, hydrated] } as never,
-    { configurable: { thread_id: "test-thread" } } as never,
-  );
+  const output = await invokeTool(call, {
+    configurable: { thread_id: "test-thread" },
+  } as never);
 
   const final = await model.invoke(
     modelMessages(responsesSettings(), null, [human, hydrated, output]),

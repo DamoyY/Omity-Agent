@@ -13,7 +13,6 @@ import { Logger } from "./infrastructure/logging/logger";
 import { loadMcp } from "./infrastructure/mcp/loadTools";
 import { hostLoop } from "./runtime/loop";
 import { HostLease, type HostObserver } from "./runtime/context";
-import { HookLedger } from "./hooks/ledger";
 import { HookRuntime } from "./hooks/runtime";
 
 export interface HostMode {
@@ -88,13 +87,10 @@ export async function runHostSession(
   let mcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
   try {
     mcp = await loadMcp(root, logger);
-    const hookLedger = new HookLedger(db.db, {
-      leaseMs: settings.leases.hookTtlMs,
-    });
     const hooks = new HookRuntime(
       settings.hooks,
       mcp.tools,
-      hookLedger,
+      db.db,
       logger,
       mode.sessionId,
       db.workspace(mode.sessionId),

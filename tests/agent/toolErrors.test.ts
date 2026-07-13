@@ -66,7 +66,6 @@ async function invokeMcpTool(callTool: () => Promise<unknown>) {
       args: {},
       type: "tool_call",
     },
-    { messages: [] } as never,
     { configurable: { thread_id: "test-thread" } } as never,
   );
 }

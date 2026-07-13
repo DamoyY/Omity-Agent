@@ -8,14 +8,12 @@ import { z } from "zod";
 import { expect, test } from "bun:test";
 import { createAgentGraph } from "../../src/agent";
 import { BunSqliteSaver } from "../../src/checkpointer";
-import { HookLedger } from "../../src/hooks/ledger";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import { required } from "../support/database";
-import { testLeaseOptions } from "../support/leases";
 import { testSettings } from "../support/settings";
 
 test("host restart resumes after one committed hook boundary", async () => {
@@ -41,8 +39,7 @@ test("host restart resumes after one committed hook boundary", async () => {
       },
     );
     const checkpointer = new BunSqliteSaver(db.db, "session");
-    const firstLedger = new HookLedger(db.db, testLeaseOptions);
-    const firstHooks = runtime(firstLedger, hookTool, dir);
+    const firstHooks = runtime(db, hookTool, dir);
     const firstGraph = createAgentGraph({
       settings: testSettings(dir),
       model: fakeModel(),
@@ -75,8 +72,7 @@ test("host restart resumes after one committed hook boundary", async () => {
     ]);
     db.close();
     db = new AgentDatabase(path);
-    const recoveredLedger = new HookLedger(db.db, testLeaseOptions);
-    const recoveredHooks = runtime(recoveredLedger, hookTool, dir);
+    const recoveredHooks = runtime(db, hookTool, dir);
     const recoveredCheckpointer = new BunSqliteSaver(db.db, "session");
     const recoveredGraph = createAgentGraph({
       settings: testSettings(dir),
@@ -128,7 +124,7 @@ async function removeDirectory(dir: string) {
 }
 
 function runtime(
-  ledger: HookLedger,
+  db: AgentDatabase,
   hookTool: StructuredToolInterface,
   dir: string,
 ) {
@@ -154,7 +150,7 @@ function runtime(
       },
     ],
     [hookTool],
-    ledger,
+    db.db,
     new Logger("error", true),
     "session",
     dir,

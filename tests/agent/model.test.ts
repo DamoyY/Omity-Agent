@@ -54,7 +54,7 @@ function makeSettings(api: ModelApi): Settings {
       level: "debug",
       streamTokens: false,
     },
-    leases: { hostTtlMs: 30_000, hookTtlMs: 30_000 },
+    leases: { hostTtlMs: 30_000 },
     toolOutput: {
       maxTokens: 8192,
     },

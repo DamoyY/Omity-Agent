@@ -3,6 +3,7 @@ import { Command, END } from "@langchain/langgraph";
 import type { HookRule } from "../../types";
 import type { AgentHookPlan, HookPlan, ToolHookPlan } from "../plan";
 import type { HookRuntime } from "../runtime";
+import { partitionToolResponse } from "./responsePartition";
 
 export const hookNode = "hooks";
 export const modelNode = "model_request";
@@ -18,7 +19,7 @@ export function hookCommand(
 ) {
   const advancedPlan = {
     ...plan,
-    previousInvocationKey: result.invocationKey,
+    previousOutput: result.value,
   };
   const nextPlan =
     rule.mode === "takeover" &&
@@ -40,7 +41,7 @@ export function hookCommand(
   return new Command({
     update: {
       hookPlan: nextPlan,
-      hookPreviousInvocationKey: result.invocationKey,
+      hookPreviousOutput: result.value,
       ...(clearPending ? { hookPendingUserIds: [] } : {}),
       ...(messages ? { messages } : {}),
     },
@@ -52,29 +53,24 @@ export function originalToolCommand(
   plan: ToolHookPlan,
   original: AIMessage,
   call: ToolCall,
-  hooks: HookRuntime,
-  threadId: string,
 ) {
   if (!call.id) throw new Error(`工具调用缺少 ID：${call.name}`);
+  const includeResponse = !plan.responseEmitted;
   return new Command({
     update: {
       messages: [
         new AIMessage({
           id: plan.replaceMessageId,
-          content: plan.contentEmitted ? "" : original.content,
           tool_calls: [call],
-          additional_kwargs: original.additional_kwargs,
-          response_metadata: original.response_metadata,
-          usage_metadata: original.usage_metadata,
+          ...partitionToolResponse(original, call.id, includeResponse),
         }),
       ],
       hookPlan: {
         ...plan,
         replaceMessageId: undefined,
-        contentEmitted: true,
+        responseEmitted: true,
         awaiting: {
           callId: call.id,
-          invocationKey: hooks.agentToolKey(call.name, call.id, threadId),
         },
       },
     },
@@ -84,7 +80,7 @@ export function originalToolCommand(
 
 export function finishAgent(plan: AgentHookPlan, clearPending: boolean) {
   if (plan.when === "before") {
-    return command(null, modelNode, clearPending, plan.previousInvocationKey);
+    return command(null, modelNode, clearPending, plan.previousOutput);
   }
   const finalMessageId = plan.sources.at(-1);
   if (!finalMessageId) throw new Error("Agent after Hook 缺少最终消息 ID");
@@ -92,7 +88,7 @@ export function finishAgent(plan: AgentHookPlan, clearPending: boolean) {
     { kind: "done", finalMessageId },
     END,
     clearPending,
-    plan.previousInvocationKey,
+    plan.previousOutput,
   );
 }
 
@@ -100,12 +96,12 @@ export function command(
   plan: HookPlan | null,
   goto: string,
   clearPending: boolean,
-  previousInvocationKey?: string,
+  previousOutput?: unknown,
 ) {
   return new Command({
     update: {
       hookPlan: plan,
-      hookPreviousInvocationKey: previousInvocationKey,
+      hookPreviousOutput: previousOutput,
       ...(clearPending ? { hookPendingUserIds: [] } : {}),
     },
     goto,

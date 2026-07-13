@@ -1,6 +1,11 @@
 import type { ToolMessage } from "@langchain/core/messages";
 
-export function readToolOutput(message: ToolMessage) {
+export interface HookToolOutput {
+  output: unknown;
+  structuredOutput?: unknown;
+}
+
+export function readToolOutput(message: ToolMessage): HookToolOutput {
   const structuredOutput = extractStructuredOutput(message.artifact);
   return {
     output: message.content,

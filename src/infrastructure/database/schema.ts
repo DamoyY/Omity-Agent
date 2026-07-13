@@ -76,19 +76,6 @@ export const migrationSql = [
     )
   `,
   `
-    CREATE TABLE IF NOT EXISTS invocations (
-      invocation_key TEXT PRIMARY KEY,
-      session_id TEXT NOT NULL,
-      thread_id TEXT NOT NULL,
-      owner_id TEXT,
-      lease_expires_at INTEGER,
-      output_message_id INTEGER,
-      error TEXT,
-      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-      FOREIGN KEY (output_message_id) REFERENCES messages(id)
-    )
-  `,
-  `
     CREATE TABLE IF NOT EXISTS hook_usage (
       session_id TEXT NOT NULL,
       hook_id TEXT NOT NULL,
@@ -97,7 +84,6 @@ export const migrationSql = [
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     )
   `,
-  "CREATE INDEX IF NOT EXISTS invocations_thread_id ON invocations(thread_id)",
   `
     CREATE TABLE IF NOT EXISTS checkpoints (
       thread_id TEXT NOT NULL,

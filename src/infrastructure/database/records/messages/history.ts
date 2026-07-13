@@ -97,19 +97,6 @@ export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   return messageRowsToChatMessages(rows);
 }
 
-export function loadMessage(db: Database, id: number) {
-  const row = db
-    .query<MessageRow, [number]>(
-      `SELECT ${messageColumns} FROM messages m
-       JOIN message_blobs b ON b.digest = m.blob_digest WHERE m.id = ?`,
-    )
-    .get(id);
-  if (!row) throw new Error(`消息记录不存在：${id.toString()}`);
-  const [message] = messageRowsToChatMessages([row]);
-  if (!message) throw new Error(`无法还原消息：${id.toString()}`);
-  return message;
-}
-
 export function storeMessage(
   db: Database,
   sessionId: string,
@@ -148,11 +135,7 @@ export function storeMessage(
 export function pruneUnreferencedMessages(db: Database, sessionId: string) {
   db.run(
     `DELETE FROM messages
-     WHERE session_id = ? AND position IS NULL
-       AND id NOT IN (
-         SELECT output_message_id FROM invocations
-         WHERE output_message_id IS NOT NULL
-       )`,
+     WHERE session_id = ? AND position IS NULL`,
     [sessionId],
   );
   pruneMessageBlobs(db);

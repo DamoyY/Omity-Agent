@@ -90,7 +90,6 @@ const mainSettingsSchema = z
     }),
     leases: z.object({
       hostTtlMs: z.number().int().positive(),
-      hookTtlMs: z.number().int().positive(),
     }),
     toolOutput: z.object({
       maxTokens: z.number().int().positive(),

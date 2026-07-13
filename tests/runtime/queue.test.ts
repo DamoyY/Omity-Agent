@@ -184,7 +184,7 @@ function makeSettings(): Settings {
       recursionLimit: 10,
     },
     logging: { level: "error", streamTokens: false },
-    leases: { hostTtlMs: 30_000, hookTtlMs: 30_000 },
+    leases: { hostTtlMs: 30_000 },
     toolOutput: { maxTokens: 8192 },
     hooks: [],
     agent: { systemPrompt: "test" },

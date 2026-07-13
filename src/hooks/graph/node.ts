@@ -21,14 +21,12 @@ import {
   originalToolCommand,
 } from "./commands";
 
-export type InvokeGraphTool = (
-  call: ToolCall,
-  state: HookState,
-  config: LangGraphRunnableConfig,
-) => Promise<ToolMessage>;
+type ConsumeHook = (hookId: string, limit: number) => Promise<boolean>;
+type InvokeGraphTool = (call: ToolCall) => Promise<ToolMessage>;
 
 export function createHookNode(
   hooks: HookRuntime,
+  consumeHook: ConsumeHook,
   invokeTool: InvokeGraphTool,
 ) {
   return async (state: HookState, config: LangGraphRunnableConfig) => {
@@ -40,11 +38,7 @@ export function createHookNode(
       plan.when === "after" &&
       state.hookPendingUserIds.length > 0
     ) {
-      plan = agentPlan(
-        "before",
-        state.hookPendingUserIds,
-        plan.previousInvocationKey,
-      );
+      plan = agentPlan("before", state.hookPendingUserIds, plan.previousOutput);
       clearPending = true;
     }
     if (!plan) return command(null, modelNode, clearPending);
@@ -64,10 +58,9 @@ export function createHookNode(
           plan,
           rule,
           sourceId,
-          state,
           hooks,
           threadId,
-          config,
+          consumeHook,
           invokeTool,
         );
         plan = { ...plan, hookIndex: plan.hookIndex + 1 };
@@ -78,15 +71,10 @@ export function createHookNode(
       const original = restoreOriginal(plan.original);
       const call = original.tool_calls?.[plan.toolIndex];
       if (!call) {
-        return command(
-          null,
-          modelNode,
-          clearPending,
-          plan.previousInvocationKey,
-        );
+        return command(null, modelNode, clearPending, plan.previousOutput);
       }
       if (plan.stage === "original") {
-        return originalToolCommand(plan, original, call, hooks, threadId);
+        return originalToolCommand(plan, original, call);
       }
       const rule = hooks.matching(call.name, plan.stage)[plan.hookIndex];
       if (!rule) {
@@ -97,10 +85,9 @@ export function createHookNode(
         plan,
         rule,
         requireCallId(call),
-        state,
         hooks,
         threadId,
-        config,
+        consumeHook,
         invokeTool,
       );
       plan = { ...plan, hookIndex: plan.hookIndex + 1 };
@@ -121,15 +108,15 @@ function executeHook(
   plan: AgentHookPlan | ToolHookPlan,
   rule: HookRule,
   sourceId: string,
-  state: HookState,
   hooks: HookRuntime,
   threadId: string,
-  config: LangGraphRunnableConfig,
+  consumeHook: ConsumeHook,
   invokeTool: InvokeGraphTool,
 ) {
   return hooks.run(rule, sourceId, threadId, {
-    previousInvocationKey: plan.previousInvocationKey,
-    invoke: (call) => invokeTool(call, state, config),
+    previousOutput: plan.previousOutput,
+    consume: consumeHook,
+    invoke: invokeTool,
   });
 }
 

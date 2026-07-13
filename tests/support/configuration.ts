@@ -50,7 +50,6 @@ logging:
   streamTokens: false
 leases:
   hostTtlMs: 30000
-  hookTtlMs: 30000
 toolOutput:
   maxTokens: 8192
 skills:

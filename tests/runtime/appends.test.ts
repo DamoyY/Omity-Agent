@@ -5,7 +5,6 @@ import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
 import { z } from "zod";
 import { createAgentGraph } from "../../src/agent";
-import { HookLedger } from "../../src/hooks/ledger";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
@@ -17,7 +16,6 @@ import {
   required,
   workspace,
 } from "../support/database";
-import { testLeaseOptions } from "../support/leases";
 import { testSettings } from "../support/settings";
 
 afterEach(cleanupDatabaseDirs);
@@ -26,7 +24,6 @@ test("append during model execution continues after the agent boundary", async (
   const db = makeDb();
   db.resetSession("session", workspace);
   db.appendUser("session", "first");
-  const ledger = new HookLedger(db.db, testLeaseOptions);
   let afterCalls = 0;
   const afterTool = tool(
     () => {
@@ -48,7 +45,7 @@ test("append during model execution continues after the agent boundary", async (
       },
     ],
     [afterTool],
-    ledger,
+    db.db,
     new Logger("error", true),
     "session",
     workspace,
@@ -92,7 +89,6 @@ test("append before a pending model replaces its scheduled route", async () => {
   const db = makeDb();
   db.resetSession("session", workspace);
   db.appendUser("session", "first");
-  const ledger = new HookLedger(db.db, testLeaseOptions);
   let beforeCalls = 0;
   const beforeTool = tool(
     () => {
@@ -119,7 +115,7 @@ test("append before a pending model replaces its scheduled route", async () => {
       },
     ],
     [beforeTool],
-    ledger,
+    db.db,
     new Logger("error", true),
     "session",
     workspace,

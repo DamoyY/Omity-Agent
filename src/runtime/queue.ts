@@ -70,11 +70,8 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     configurable: { thread_id: run.threadId },
     context: { sessionId: ctx.sessionId },
     recursionLimit: ctx.settings.host.recursionLimit,
-    interruptAfter: ["hooks", "model_request", "tools"] as [
-      "hooks",
-      "model_request",
-      "tools",
-    ],
+    interruptBefore: ["model_request", "tools"] as ["model_request", "tools"],
+    interruptAfter: ["request_model", "invoke_tool"] as never,
   };
   let modelNetworkRetry = 0;
   const streamLogState = createStreamLogState();

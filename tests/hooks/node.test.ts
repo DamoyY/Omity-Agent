@@ -12,14 +12,12 @@ import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { z } from "zod";
 import { afterEach, expect, test } from "bun:test";
 import { createAgentGraph } from "../../src/agent";
-import { HookLedger } from "../../src/hooks/ledger";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { isHookCallId } from "../../src/hooks/storage/calls";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HookRule } from "../../src/types";
 import { required } from "../support/database";
-import { testLeaseOptions } from "../support/leases";
 import { testSettings } from "../support/settings";
 
 const dirs: string[] = [];
@@ -105,10 +103,11 @@ test("each hook execution commits one hooks node boundary", async () => {
   });
   const config = {
     configurable: { thread_id: "boundaries" },
-    interruptAfter: ["hooks"] as ["hooks"],
+    interruptAfter: ["invoke_tool"] as never,
   };
 
-  await graph.invoke(
+  await invokeBoundary(
+    graph,
     {
       messages: [{ role: "user", content: "run" }],
       hookPendingUserIds: ["queue:1"],
@@ -119,10 +118,23 @@ test("each hook execution commits one hooks node boundary", async () => {
   expect(model.callCount).toBe(0);
   expect((await graph.getState(config)).next).toEqual(["hooks"]);
 
-  await graph.invoke(null, config);
+  await invokeBoundary(graph, null, config);
   expect(calls).toEqual(["call-1", "call-2"]);
   expect(model.callCount).toBe(0);
 });
+
+async function invokeBoundary(
+  graph: ReturnType<typeof createAgentGraph>,
+  input: Parameters<typeof graph.invoke>[0],
+  config: NonNullable<Parameters<typeof graph.invoke>[1]>,
+) {
+  await graph.invoke(input, config);
+  for (;;) {
+    const state = await graph.getState(config);
+    if (state.next.length > 0 || state.tasks.length === 0) return;
+    await graph.invoke(null, config);
+  }
+}
 
 function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const dir = mkdtempSync(join(tmpdir(), "agent-hooks-"));
@@ -130,11 +142,10 @@ function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
   databases.push(db);
-  const ledger = new HookLedger(db.db, testLeaseOptions);
   return new HookRuntime(
     rules,
     tools,
-    ledger,
+    db.db,
     new Logger("error", true),
     "session",
     dir,

@@ -143,6 +143,19 @@ test("repeated assistant content and tool inputs remain visible", () => {
   ]);
 });
 
+test("equal reasoning from distinct model responses remains visible", () => {
+  const messages: DisplayMessage[] = [
+    assistant({ id: 1, reasoning: "独立分析", call: call("call-1") }),
+    assistant({ id: 2, reasoning: "独立分析", call: call("call-2") }),
+  ];
+
+  const reasoning = buildTimeline(messages, [], [])[0]?.parts.flatMap((part) =>
+    part.type === "reasoning" ? [part.content] : [],
+  );
+
+  expect(reasoning).toEqual(["独立分析", "独立分析"]);
+});
+
 function assistant(options: {
   id: number;
   content?: string;

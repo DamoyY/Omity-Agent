@@ -75,7 +75,6 @@ export interface Settings {
   };
   leases: {
     hostTtlMs: number;
-    hookTtlMs: number;
   };
   toolOutput: {
     maxTokens: number;

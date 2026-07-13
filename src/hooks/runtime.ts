@@ -1,14 +1,16 @@
 import type { ToolMessage } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import type { Database } from "bun:sqlite";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { HookRule, HookWhen } from "../types";
-import { executeRecorded, restoreInvocation } from "./execution";
-import { HookLedger } from "./ledger";
 import * as callStorage from "./storage/calls";
+import { readToolOutput, type HookToolOutput } from "./storage/outputs";
+import { consumeHookUsage } from "./storage/usage";
 import { resolveHookArgs } from "./variables";
 
 interface RunOptions {
-  previousInvocationKey?: string;
+  previousOutput?: HookToolOutput;
+  consume: (hookId: string, limit: number) => Promise<boolean>;
   invoke: (
     call: ReturnType<HookRuntime["resolvedCall"]>,
   ) => Promise<ToolMessage>;
@@ -20,7 +22,7 @@ export class HookRuntime {
   constructor(
     readonly rules: HookRule[],
     tools: StructuredToolInterface[],
-    private readonly ledger: HookLedger,
+    private readonly db: Database,
     private readonly logger: Logger,
     readonly sessionId: string,
     readonly workspace: string,
@@ -43,12 +45,8 @@ export class HookRuntime {
     );
   }
 
-  agentToolKey(toolName: string, callId: string, threadId: string) {
-    return this.ledger.invocationKey(this.sessionId, threadId, {
-      trigger: "agent_tool",
-      sourceId: callId,
-      hookId: toolName,
-    });
+  consume(hookId: string, limit: number) {
+    return consumeHookUsage(this.db, this.sessionId, hookId, limit);
   }
 
   async run(
@@ -57,95 +55,42 @@ export class HookRuntime {
     threadId: string,
     options: RunOptions,
   ) {
-    const details = callStorage.hookCallDetails(rule, sourceId);
-    const claim = this.ledger.claim(
-      this.sessionId,
-      threadId,
-      details,
-      rule.runLimit,
-    );
-    if (claim.kind === "skip") return null;
-    let call: ReturnType<HookRuntime["resolvedCall"]>;
-    try {
-      call = this.resolvedCall(
-        rule,
-        sourceId,
-        threadId,
-        options.previousInvocationKey,
-      );
-    } catch (error) {
-      if (claim.kind === "execute") this.ledger.fail(claim.key, error);
-      throw error;
+    if (!(await options.consume(rule.id, rule.runLimit))) {
+      return null;
     }
-    const output =
-      claim.kind === "restore"
-        ? restoreInvocation(this.ledger, claim.row, claim.key)
-        : await this.execute(
-            rule,
-            details.trigger,
-            sourceId,
-            claim.key,
-            call,
-            options,
-          );
-    return { call, output, invocationKey: claim.key };
+    const details = callStorage.hookCallDetails(rule, sourceId);
+    const call = this.resolvedCall(
+      rule,
+      sourceId,
+      threadId,
+      options.previousOutput,
+    );
+    this.logger.debug("执行 Hook 节点", {
+      hookId: rule.id,
+      mode: rule.mode,
+      trigger: details.trigger,
+      sourceId,
+    });
+    const output = await options.invoke(call);
+    return { call, output, value: readToolOutput(output) };
   }
 
   resolvedCall(
     rule: HookRule,
     sourceId: string,
     threadId: string,
-    previousInvocationKey?: string,
+    previousOutput?: HookToolOutput,
   ) {
     const details = callStorage.hookCallDetails(rule, sourceId);
     return {
       name: rule.tool,
       args: resolveHookArgs(rule.args, {
         cwd: this.workspace,
-        previousTool: previousInvocationKey
-          ? this.ledger.output(previousInvocationKey)
-          : undefined,
+        previousTool: previousOutput,
       }),
       id: callStorage.createHookCallId(this.sessionId, threadId, details),
       type: "tool_call" as const,
     };
-  }
-
-  async runAgentTool(
-    toolName: string,
-    callId: string,
-    threadId: string,
-    invoke: () => Promise<ToolMessage>,
-  ) {
-    const claim = this.ledger.claim(
-      this.sessionId,
-      threadId,
-      { trigger: "agent_tool", sourceId: callId, hookId: toolName },
-      -1,
-    );
-    if (claim.kind === "skip") {
-      throw new Error(`Agent 工具调用无法取得执行权：${callId}`);
-    }
-    return claim.kind === "restore"
-      ? restoreInvocation(this.ledger, claim.row, claim.key)
-      : executeRecorded(this.ledger, claim.key, invoke);
-  }
-
-  private execute(
-    rule: HookRule,
-    trigger: string,
-    sourceId: string,
-    key: string,
-    call: ReturnType<HookRuntime["resolvedCall"]>,
-    options: RunOptions,
-  ) {
-    this.logger.debug("执行 Hook 节点", {
-      hookId: rule.id,
-      mode: rule.mode,
-      trigger,
-      sourceId,
-    });
-    return executeRecorded(this.ledger, key, () => options.invoke(call));
   }
 
   private requireTool(name: string, description: string) {

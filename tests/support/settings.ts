@@ -27,7 +27,7 @@ export function testSettings(dataDir: string): Settings {
       recursionLimit: 50,
     },
     logging: { level: "error", streamTokens: false },
-    leases: { hostTtlMs: 30_000, hookTtlMs: 30_000 },
+    leases: { hostTtlMs: 30_000 },
     toolOutput: { maxTokens: 8_192 },
     hooks: [],
     agent: { systemPrompt: "test" },

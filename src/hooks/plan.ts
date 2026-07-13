@@ -8,6 +8,7 @@ import {
   type ToolCall,
 } from "@langchain/core/messages";
 import type { HookWhen } from "../types";
+import { readToolOutput, type HookToolOutput } from "./storage/outputs";
 
 export interface AgentHookPlan {
   kind: "agent";
@@ -15,7 +16,7 @@ export interface AgentHookPlan {
   sources: string[];
   sourceIndex: number;
   hookIndex: number;
-  previousInvocationKey?: string;
+  previousOutput?: HookToolOutput;
 }
 
 export interface ToolHookPlan {
@@ -24,10 +25,10 @@ export interface ToolHookPlan {
   toolIndex: number;
   stage: "before" | "original" | "after";
   hookIndex: number;
-  previousInvocationKey?: string;
-  contentEmitted: boolean;
+  previousOutput?: HookToolOutput;
+  responseEmitted: boolean;
   replaceMessageId?: string;
-  awaiting?: { callId: string; invocationKey: string };
+  awaiting?: { callId: string };
 }
 
 export type HookPlan =
@@ -37,13 +38,13 @@ export interface HookState {
   messages: BaseMessage[];
   hookPendingUserIds: string[];
   hookPlan: HookPlan | null;
-  hookPreviousInvocationKey?: string;
+  hookPreviousOutput?: HookToolOutput;
 }
 
 export function agentPlan(
   when: HookWhen,
   sources: string[],
-  previousInvocationKey?: string,
+  previousOutput?: HookToolOutput,
 ): AgentHookPlan {
   return {
     kind: "agent",
@@ -51,7 +52,7 @@ export function agentPlan(
     sources,
     sourceIndex: 0,
     hookIndex: 0,
-    previousInvocationKey,
+    previousOutput,
   };
 }
 
@@ -63,7 +64,7 @@ export function toolPlan(message: AIMessage): ToolHookPlan {
     toolIndex: 0,
     stage: "before",
     hookIndex: 0,
-    contentEmitted: false,
+    responseEmitted: false,
     replaceMessageId: message.id,
   };
 }
@@ -78,14 +79,15 @@ export function finishAwaited(
   plan: ToolHookPlan,
   messages: BaseMessage[],
 ): ToolHookPlan {
-  if (!plan.awaiting || !isCompleted(messages, plan.awaiting.callId))
-    return plan;
+  if (!plan.awaiting) return plan;
+  const output = completedOutput(messages, plan.awaiting.callId);
+  if (!output) return plan;
   return {
     ...plan,
     stage: "after",
     hookIndex: 0,
     awaiting: undefined,
-    previousInvocationKey: plan.awaiting.invocationKey,
+    previousOutput: readToolOutput(output),
   };
 }
 
@@ -106,10 +108,10 @@ export function requireCallId(call: ToolCall) {
   return call.id;
 }
 
-function isCompleted(messages: BaseMessage[], id: string) {
-  return messages.some(
+function completedOutput(messages: BaseMessage[], id: string) {
+  return messages.findLast(
     (message) => ToolMessage.isInstance(message) && message.tool_call_id === id,
-  );
+  ) as ToolMessage | undefined;
 }
 
 function storeMessage(message: BaseMessage) {

@@ -5,14 +5,12 @@ import {
 } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { BunSqliteSaver } from "../../src/checkpointer";
-import { HookLedger } from "../../src/hooks/ledger";
 import {
   cleanupDatabaseDirs,
   makeDb,
   required,
   workspace,
 } from "../support/database";
-import { testLeaseOptions } from "../support/leases";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -22,28 +20,14 @@ test("one database stores each message body once and clears terminal recovery da
   const userText = "unique-user-body-4f18";
   const assistantText = "unique-assistant-body-72cd";
   const toolText = "unique-tool-body-a913";
-  const queueId = db.appendUser("session", userText);
+  db.appendUser("session", userText);
   db.startQueue("session", required(db.nextQueue("session")));
 
-  const ledger = new HookLedger(db.db, testLeaseOptions);
-  const claim = ledger.claim(
-    "session",
-    "session:1",
-    {
-      trigger: "agent:before",
-      sourceId: `queue:session:${queueId.toString()}`,
-      hookId: "test-hook",
-    },
-    -1,
-  );
-  if (claim.kind !== "execute") throw new Error("Hook claim 失败");
   const toolOutput = new ToolMessage({
     id: "hook-output",
     content: toolText,
     tool_call_id: "hook-call",
   });
-  ledger.complete(claim.key, toolOutput);
-
   const assistant = new AIMessage({
     id: "assistant-output",
     content: assistantText,
@@ -91,7 +75,6 @@ test("one database stores each message body once and clears terminal recovery da
     "messages",
     "checkpoints",
     "writes",
-    "invocations",
     "hook_usage",
   ]) {
     expect(tables.has(table)).toBe(true);
@@ -119,8 +102,7 @@ test("one database stores each message body once and clears terminal recovery da
 
   expect(rowCount(db.db, "checkpoints")).toBe(0);
   expect(rowCount(db.db, "writes")).toBe(0);
-  expect(rowCount(db.db, "invocations")).toBe(0);
-  expect(rowCount(db.db, "hook_usage")).toBe(1);
+  expect(rowCount(db.db, "hook_usage")).toBe(0);
   expect(storedOccurrences(db.db, toolText)).toBe(0);
   expect(storedOccurrences(db.db, userText)).toBe(1);
   expect(storedOccurrences(db.db, assistantText)).toBe(1);

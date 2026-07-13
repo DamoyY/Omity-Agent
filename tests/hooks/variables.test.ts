@@ -8,19 +8,16 @@ import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { z } from "zod";
 import { expect, test } from "bun:test";
 import { createAgentGraph } from "../../src/agent";
-import { HookLedger } from "../../src/hooks/ledger";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HookRule } from "../../src/types";
-import { testLeaseOptions } from "../support/leases";
 import { testSettings } from "../support/settings";
 
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
-  const ledger = new HookLedger(db.db, testLeaseOptions);
   const received: Record<string, unknown>[] = [];
   const hookTool = tool(
     (args) => {
@@ -46,7 +43,7 @@ test("mixed hook modes resolve variables in config order", async () => {
   const hooks = new HookRuntime(
     rules(),
     [hookTool, originalTool],
-    ledger,
+    db.db,
     new Logger("error", true),
     "session",
     dir,
@@ -92,7 +89,6 @@ test("user takeover receives the preceding silent hook output", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-user-hook-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
-  const ledger = new HookLedger(db.db, testLeaseOptions);
   const received: unknown[] = [];
   const hookTool = tool(
     ({ previous }) => {
@@ -127,7 +123,7 @@ test("user takeover receives the preceding silent hook output", async () => {
       },
     ],
     [hookTool],
-    ledger,
+    db.db,
     new Logger("error", true),
     "session",
     dir,

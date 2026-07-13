@@ -4,9 +4,11 @@ import {
   type ToolCall,
 } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
-import { isGraphInterrupt } from "@langchain/langgraph";
+import {
+  isGraphInterrupt,
+  type LangGraphRunnableConfig,
+} from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
-import type { InvokeGraphTool } from "../hooks/graph/node";
 import { requireCallId } from "../hooks/plan";
 import { redirectLargeToolOutput } from "../runtime/largeOutput";
 import type { Settings } from "../types";
@@ -17,12 +19,17 @@ interface ToolInvokerOptions {
   freeformToolParameters: ReadonlyMap<string, string>;
 }
 
+type ToolInvoker = (
+  call: ToolCall,
+  config: LangGraphRunnableConfig,
+) => Promise<ToolMessage>;
+
 export function createToolInvoker(
   tools: StructuredToolInterface[],
   options: ToolInvokerOptions,
-): InvokeGraphTool {
+): ToolInvoker {
   const toolNode = new ToolNode(tools, { handleToolErrors: false });
-  return async (call, state, config) => {
+  return async (call, config) => {
     const callId = requireCallId(call);
     const customToolCall = isFreeformModelToolCall(
       call,
@@ -39,7 +46,7 @@ export function createToolInvoker(
     let output: ToolMessage;
     try {
       const result: unknown = await toolNode.invoke(
-        { ...state, messages: [...state.messages, synthetic] },
+        { messages: [synthetic] },
         config,
       );
       output = singleToolOutput(result, callId);
