@@ -4,11 +4,11 @@ import type { StructuredToolInterface } from "@langchain/core/tools";
 import { loadMcpTools, MultiServerMCPClient } from "@langchain/mcp-adapters";
 import type { Logger } from "../logging/logger";
 import { readMcpConfiguration } from "./config";
-import { createMcpErrorOutputClient } from "./errorOutput";
 import { configureFreeformMcpTools } from "./freeformInputs";
 import { renameMcpTools } from "./nameOverrides";
 import { disableMcpRequestTimeout } from "./requestTimeout";
 import { collectReadableZodIssues } from "./schemaIssues";
+import { createMcpToolFailureClient } from "./toolFailures";
 
 interface LoadedMcp {
   tools: StructuredToolInterface[];
@@ -99,15 +99,11 @@ async function loadServerTools(client: MultiServerMCPClient, names: string[]) {
         if (serverClient === undefined) {
           throw new Error(`MCP 服务器客户端未建立：${name}`);
         }
-        return loadMcpTools(
-          name,
-          createMcpErrorOutputClient(serverClient, name),
-          {
-            throwOnLoadError: false,
-            prefixToolNameWithServerName: true,
-            useStandardContentBlocks: true,
-          },
-        );
+        return loadMcpTools(name, createMcpToolFailureClient(serverClient), {
+          throwOnLoadError: false,
+          prefixToolNameWithServerName: true,
+          useStandardContentBlocks: true,
+        });
       }),
     )
   ).flat();

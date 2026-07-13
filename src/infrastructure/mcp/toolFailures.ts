@@ -2,10 +2,7 @@ import type { loadMcpTools } from "@langchain/mcp-adapters";
 
 type McpClient = Parameters<typeof loadMcpTools>[1];
 
-export function createMcpErrorOutputClient(
-  client: McpClient,
-  serverName: string,
-): McpClient {
+export function createMcpToolFailureClient(client: McpClient): McpClient {
   return new Proxy(client, {
     get(target, property, receiver): unknown {
       const value: unknown = Reflect.get(target, property, receiver);
@@ -13,15 +10,27 @@ export function createMcpErrorOutputClient(
         return value;
       }
       return async (...args: unknown[]) => {
-        const result: unknown = await Reflect.apply(value, target, args);
-        return mcpErrorResultAsOutput(
-          result,
-          serverName,
-          extractToolName(args[0]),
-        );
+        try {
+          const result: unknown = await Reflect.apply(value, target, args);
+          if (isRecord(result) && result["isError"] === true) {
+            throw new McpToolFailure(formatMcpContent(result["content"]));
+          }
+          return result;
+        } catch (error) {
+          if (error instanceof McpToolFailure) throw error;
+          throw new McpToolFailure(errorMessage(error), error);
+        }
       };
     },
   });
+}
+
+class McpToolFailure extends Error {
+  override readonly name = "ToolException";
+
+  constructor(message: string, cause?: unknown) {
+    super(message, cause === undefined ? undefined : { cause });
+  }
 }
 
 function isCallable(
@@ -30,28 +39,9 @@ function isCallable(
   return typeof value === "function";
 }
 
-export function mcpErrorResultAsOutput(
-  result: unknown,
-  serverName: string,
-  toolName: string,
-): unknown {
-  if (!isRecord(result) || result["isError"] !== true) return result;
-  return {
-    ...result,
-    content: [
-      {
-        type: "text",
-        text: `MCP tool '${toolName}' on server '${serverName}' returned an error: ${formatMcpContent(result["content"])}`,
-      },
-    ],
-  };
-}
-
-function extractToolName(request: unknown) {
-  if (isRecord(request) && typeof request["name"] === "string") {
-    return request["name"];
-  }
-  return "unknown";
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message || error.name;
+  return String(error);
 }
 
 function formatMcpContent(content: unknown) {

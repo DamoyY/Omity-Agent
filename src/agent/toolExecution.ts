@@ -4,6 +4,7 @@ import {
   type ToolCall,
 } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import { isGraphInterrupt } from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import type { InvokeGraphTool } from "../hooks/graph/node";
 import { requireCallId } from "../hooks/plan";
@@ -20,7 +21,7 @@ export function createToolInvoker(
   tools: StructuredToolInterface[],
   options: ToolInvokerOptions,
 ): InvokeGraphTool {
-  const toolNode = new ToolNode(tools);
+  const toolNode = new ToolNode(tools, { handleToolErrors: false });
   return async (call, state, config) => {
     const callId = requireCallId(call);
     const customToolCall = isFreeformModelToolCall(
@@ -35,21 +36,37 @@ export function createToolInvoker(
       content: "",
       tool_calls: [executableCall],
     });
-    const result: unknown = await toolNode.invoke(
-      { ...state, messages: [...state.messages, synthetic] },
-      config,
-    );
-    const output = await redirectLargeToolOutput(
-      singleToolOutput(result, callId),
-      {
-        dataDir: options.settings.paths.dataDir,
-        maxTokens: options.settings.toolOutput.maxTokens,
-        sessionId: options.sessionId,
-        outputId: callId,
-      },
-    );
-    return customToolCall ? markCustomToolOutput(output) : output;
+    let output: ToolMessage;
+    try {
+      const result: unknown = await toolNode.invoke(
+        { ...state, messages: [...state.messages, synthetic] },
+        config,
+      );
+      output = singleToolOutput(result, callId);
+    } catch (error) {
+      if (isGraphInterrupt(error) || config.signal?.aborted) throw error;
+      output = toolErrorOutput(call, callId, error);
+    }
+    const normalizedOutput = await redirectLargeToolOutput(output, {
+      dataDir: options.settings.paths.dataDir,
+      maxTokens: options.settings.toolOutput.maxTokens,
+      sessionId: options.sessionId,
+      outputId: callId,
+    });
+    return customToolCall
+      ? markCustomToolOutput(normalizedOutput)
+      : normalizedOutput;
   };
+}
+
+function toolErrorOutput(call: ToolCall, callId: string, error: unknown) {
+  return new ToolMessage({
+    status: "error",
+    name: call.name,
+    tool_call_id: callId,
+    content:
+      error instanceof Error ? error.message || error.name : String(error),
+  });
 }
 
 export function materializeFreeformToolCall(
