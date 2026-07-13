@@ -1,12 +1,12 @@
 import { Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
-import { stringify } from "yaml";
 import type { DisplayMessage, DisplayToolCall } from "../../../timeline";
 import { formatTokens } from "../../tokenUnits";
 import { HighlightedCode } from "../HighlightedCode";
 import { Badge } from "../ParkUI";
 import { Frame } from "./Frame";
+import { formatToolInput } from "./toolInput";
 const ioGrid = css({
   borderTopColor: "line",
   borderTopWidth: "1px",
@@ -116,17 +116,4 @@ export function ToolCall({
       </div>
     </Frame>
   );
-}
-function formatToolInput(call: DisplayToolCall) {
-  return stringify(parseInputText(call.inputText) ?? call.input, {
-    lineWidth: 0,
-  });
-}
-function parseInputText(text?: string) {
-  if (!text) return undefined;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
-  }
 }
