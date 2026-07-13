@@ -21,6 +21,8 @@ export function buildModel(
     timeout: settings.model.timeoutMs,
     promptCacheKey: sessionId,
     streaming: true,
+    zdrEnabled: true,
+    modelKwargs: { store: false },
     ...(settings.model.temperature === undefined
       ? {}
       : { temperature: settings.model.temperature }),
@@ -35,6 +37,7 @@ export function buildModel(
           summary: "detailed",
         },
         modelKwargs: {
+          ...fields.modelKwargs,
           include: ["reasoning.encrypted_content"],
           ...(instructions ? { instructions } : {}),
         },

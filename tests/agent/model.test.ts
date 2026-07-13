@@ -93,6 +93,21 @@ test("buildModel passes reasoning_effort to OpenAI Responses API", () => {
   });
 });
 
+test("buildModel disables remote storage and enables ZDR for all APIs", () => {
+  setEnv("TEST_OPENAI_KEY", "test-key");
+  const completions = buildModel(makeSettings("completions"), "session-1");
+  const responses = buildModel(makeSettings("responses"), "session-1");
+
+  expect((completions as ChatOpenAICompletions).zdrEnabled).toBeTrue();
+  expect(
+    (completions as ChatOpenAICompletions).invocationParams().store,
+  ).toBeFalse();
+  expect((responses as ChatOpenAIResponses).zdrEnabled).toBeTrue();
+  expect(
+    (responses as ChatOpenAIResponses).invocationParams().store,
+  ).toBeFalse();
+});
+
 test("buildModel requests encrypted reasoning from OpenAI Responses API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const settings = makeSettings("responses");

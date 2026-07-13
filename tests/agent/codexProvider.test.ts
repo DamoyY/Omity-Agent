@@ -41,6 +41,8 @@ test("codex adapter builds a Responses API model without an API key env", () => 
 
   expect(resolveModelApi(settings.model)).toBe("responses");
   expect(model).toBeInstanceOf(ChatOpenAIResponses);
+  expect((model as ChatOpenAIResponses).zdrEnabled).toBeTrue();
+  expect((model as ChatOpenAIResponses).invocationParams().store).toBeFalse();
   expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe(
     "system instructions",
   );
