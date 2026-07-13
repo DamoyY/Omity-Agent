@@ -9,6 +9,7 @@ export class CanceledRun extends Error {}
 
 export interface QueueRun {
   items: [QueueItem, ...QueueItem[]];
+  rootId: number;
   threadId: string;
 }
 
@@ -71,6 +72,13 @@ export function setRunStatus(
   status: QueueItem["status"],
   error?: ErrorDetails,
 ) {
-  for (const item of run.items) ctx.db.setQueueStatus(item.id, status, error);
+  if (status === "paused") {
+    ctx.db.pauseRun(ctx.sessionId, run.rootId, error);
+  } else {
+    ctx.db.db.transaction(() => {
+      for (const item of run.items)
+        ctx.db.setQueueStatus(item.id, status, error);
+    })();
+  }
   ctx.observer?.changed?.(ctx.sessionId);
 }

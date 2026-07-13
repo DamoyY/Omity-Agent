@@ -30,6 +30,8 @@ host:
   pausePollMs: 500
   idleLogMs: 25000
   recursionLimit: 25
+  # 收到关闭信号后等待当前模型或工具到达可恢复边界的最长时间。
+  shutdownTimeoutMs: 10000
 
 # 控制台日志层级。
 logging:

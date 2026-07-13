@@ -25,12 +25,7 @@ import {
 import { applySchema } from "./schema";
 import { closeDatabase, configureDatabase } from "./connection";
 import { resetSessionStorage } from "./maintenance";
-import {
-  acquireHostLeaseRecord,
-  releaseHostLeaseRecord,
-  renewHostLeaseRecord,
-  type HostLeaseClaim,
-} from "./records/hostLeases";
+import { RecoverableDatabase } from "./records/recovery";
 import {
   createSessionRecord,
   hasSessionRecord,
@@ -45,19 +40,19 @@ type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown
   ? Args
   : never;
 
-export class AgentDatabase {
-  readonly db: Database;
+export class AgentDatabase extends RecoverableDatabase {
   private notify?: (event: StreamEvent) => void;
 
   constructor(path: string) {
-    this.db = new Database(path, { create: true, strict: true });
+    const db = new Database(path, { create: true, strict: true });
     try {
-      configureDatabase(this.db);
-      applySchema(this.db);
+      configureDatabase(db);
+      applySchema(db);
     } catch (error) {
-      closeDatabase(this.db);
+      closeDatabase(db);
       throw error;
     }
+    super(db);
   }
 
   close() {
@@ -158,18 +153,6 @@ export class AgentDatabase {
 
   setControl(sessionId: string, control: Control) {
     writeControlRecord(this.db, sessionId, control);
-  }
-
-  acquireHostLease(claim: HostLeaseClaim) {
-    return acquireHostLeaseRecord(this.db, claim);
-  }
-
-  renewHostLease(claim: HostLeaseClaim) {
-    return renewHostLeaseRecord(this.db, claim);
-  }
-
-  releaseHostLease(sessionId: string, ownerId: string) {
-    return releaseHostLeaseRecord(this.db, sessionId, ownerId);
   }
 
   streamToken(...args: DatabaseArgs<typeof insertStreamToken>) {

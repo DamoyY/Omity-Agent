@@ -1,5 +1,6 @@
 import type { QueueItem } from "../types";
-import { readGraphState, waitForWake, type HostContext } from "./context";
+import { readGraphState, type HostContext } from "./context";
+import { HostLeaseLostError } from "./execution/lease";
 import { isModelNetworkError } from "./network";
 import { waitBeforeModelNetworkRetry } from "./retry";
 import {
@@ -15,8 +16,9 @@ import {
   recordToolExecutionStarted,
 } from "./stream";
 import { queueMessageId } from "../infrastructure/database/records/messages/history";
-import { consumeBoundaryAppends } from "./appends";
+import { consumeBoundaryAppends, recoverConsumedAppends } from "./appends";
 import { captureError } from "../failures/details";
+import { pauseForStop, waitIfPaused } from "./execution/pause";
 
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id.toString()}`);
@@ -27,23 +29,29 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
   const root = items.find(({ root }) => root) ?? item;
   const run: QueueRun = {
     items,
+    rootId: root.id,
     threadId: `${ctx.sessionId}:${root.id.toString()}`,
   };
   try {
+    ctx.assertLease?.();
+    if (pauseForStop(ctx, run)) return;
     if (!(await waitIfPaused(ctx, run))) return;
+    if (pauseForStop(ctx, run)) return;
     for (const runItem of run.items) ctx.db.startQueue(ctx.sessionId, runItem);
+    if (pauseForStop(ctx, run)) return;
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
     if (error instanceof CanceledRun) return;
+    if (error instanceof HostLeaseLostError) throw error;
+    ctx.assertLease?.();
     if (run.items.every(({ id }) => isTerminal(ctx.db.queueStatus(id)))) {
       throw error;
     }
-    if (ctx.controller.signal.aborted) {
+    if (ctx.controller.signal.aborted || ctx.stopping?.aborted) {
       setRunStatus(ctx, run, "paused");
       return;
     }
     const details = captureError(error);
-    ctx.db.setControl(ctx.sessionId, "pause");
     setRunStatus(ctx, run, "paused", details);
     ctx.logger.error("队列异常，已暂停", { queueId: item.id, error: details });
   } finally {
@@ -57,15 +65,6 @@ function isTerminal(status: QueueItem["status"]) {
 
 async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
   const [item] = run.items;
-  const checkpoint = await ctx.checkpointer.getTuple({
-    configurable: { thread_id: run.threadId },
-  });
-  let input: Parameters<HostContext["graph"]["stream"]>[0] = checkpoint
-    ? null
-    : {
-        messages: ctx.db.history(ctx.sessionId),
-        hookPendingUserIds: [queueMessageId(ctx.sessionId, item.id)],
-      };
   const config = {
     configurable: { thread_id: run.threadId },
     context: { sessionId: ctx.sessionId },
@@ -73,9 +72,22 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     interruptBefore: ["model_request", "tools"] as ["model_request", "tools"],
     interruptAfter: ["request_model", "invoke_tool"] as never,
   };
+  const checkpoint = await ctx.checkpointer.getTuple(config);
+  let input: Parameters<HostContext["graph"]["stream"]>[0];
+  if (checkpoint) {
+    const state = readGraphState(await ctx.graph.getState(config));
+    input = recoverConsumedAppends(ctx, run, state);
+  } else {
+    input = {
+      messages: ctx.db.history(ctx.sessionId),
+      hookPendingUserIds: [queueMessageId(ctx.sessionId, item.id)],
+    };
+  }
   let modelNetworkRetry = 0;
   const streamLogState = createStreamLogState();
-  while (!ctx.controller.signal.aborted) {
+  for (;;) {
+    ctx.assertLease?.();
+    if (pauseForStop(ctx, run)) return;
     try {
       const stream = await ctx.graph.stream(input, {
         ...config,
@@ -112,6 +124,8 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       if (!shouldRetry) return;
       continue;
     }
+    ctx.assertLease?.();
+    if (pauseForStop(ctx, run)) return;
     const control = ctx.db.control(ctx.sessionId);
     if (control === "cancel") {
       cancelRun(ctx, run);
@@ -128,6 +142,10 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       next: state.next,
       tasks: state.tasks.map((task) => task.name),
     });
+    if (ctx.stopping?.aborted) {
+      setRunStatus(ctx, run, "paused");
+      return;
+    }
     if (control === "pause" || control === "pause_cancel") {
       ctx.logger.warn("已在节点边界暂停", {
         queueId: item.id,
@@ -154,41 +172,5 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     if (nextActivity === "tool")
       recordToolExecutionStarted(ctx, messages, item.id);
     input = null;
-  }
-}
-
-async function waitIfPaused(ctx: HostContext, run: QueueRun) {
-  let pauseLogged = false;
-  for (;;) {
-    if (ctx.controller.signal.aborted) {
-      setRunStatus(ctx, run, "paused");
-      return false;
-    }
-    const control = ctx.db.control(ctx.sessionId);
-    if (control === "pause_cancel") {
-      setRunStatus(ctx, run, "paused");
-      ctx.db.setControl(ctx.sessionId, "pause");
-      ctx.controller.abort(new CanceledRun("暂停状态收到 cancel"));
-      ctx.logger.warn("暂停状态收到 cancel，Host 已关闭", {
-        queueId: run.items[0].id,
-      });
-      return false;
-    }
-    if (control === "cancel") {
-      cancelRun(ctx, run);
-      throw new CanceledRun("运行已取消");
-    }
-    if (control === "running") {
-      setRunStatus(ctx, run, "running");
-      return true;
-    }
-    if (!pauseLogged) {
-      setRunStatus(ctx, run, "paused");
-      ctx.logger.info("暂停中，等待 resume 或 cancel", {
-        queueId: run.items[0].id,
-      });
-      pauseLogged = true;
-    }
-    await waitForWake(ctx, ctx.settings.host.pausePollMs);
   }
 }

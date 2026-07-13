@@ -10,40 +10,41 @@ import {
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { z } from "zod";
+import { isProcessRunning } from "../../infrastructure/process/ownership";
 
 const ownerSchema = z.object({
   pid: z.number().int().positive(),
   token: z.uuid(),
 });
 
+export type AppInstanceOwner = z.infer<typeof ownerSchema>;
+
 export class AppInstanceLock {
   private released = false;
 
   private constructor(
     private readonly path: string,
-    private readonly token: string,
+    readonly owner: AppInstanceOwner,
+    readonly abandonedOwner?: AppInstanceOwner,
   ) {}
 
   static acquire(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
     const path = resolve(dataDir, "app.lock");
+    let abandonedOwner: AppInstanceOwner | undefined;
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const token = randomUUID();
+      const owner = { pid: process.pid, token: randomUUID() };
       try {
         const descriptor = openSync(path, "wx");
         try {
-          writeFileSync(
-            descriptor,
-            JSON.stringify({ pid: process.pid, token }),
-            "utf8",
-          );
+          writeFileSync(descriptor, JSON.stringify(owner), "utf8");
         } catch (error) {
           closeSync(descriptor);
           unlinkSync(path);
           throw error;
         }
         closeSync(descriptor);
-        return new AppInstanceLock(path, token);
+        return new AppInstanceLock(path, owner, abandonedOwner);
       } catch (error) {
         if (!isExistsError(error)) throw error;
         const owner = readOwner(path);
@@ -53,6 +54,7 @@ export class AppInstanceLock {
             { cause: error },
           );
         }
+        abandonedOwner = owner;
         unlinkSync(path);
       }
     }
@@ -62,7 +64,7 @@ export class AppInstanceLock {
   release() {
     if (this.released) return;
     const owner = readOwner(this.path);
-    if (owner.token !== this.token) {
+    if (owner.token !== this.owner.token) {
       throw new Error(`App 实例锁所有者已变化：${this.path}`);
     }
     unlinkSync(this.path);
@@ -76,17 +78,6 @@ function readOwner(path: string) {
   const parsed = ownerSchema.safeParse(value);
   if (!parsed.success) throw new Error(`App 实例锁内容无效：${path}`);
   return parsed.data;
-}
-
-function isProcessRunning(pid: number) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    if (isErrorCode(error, "ESRCH")) return false;
-    if (isErrorCode(error, "EPERM")) return true;
-    throw error;
-  }
 }
 
 function isExistsError(error: unknown) {

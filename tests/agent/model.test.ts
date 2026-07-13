@@ -49,6 +49,7 @@ function makeSettings(api: ModelApi): Settings {
       pausePollMs: 1,
       idleLogMs: 1,
       recursionLimit: 1,
+      shutdownTimeoutMs: 1_000,
     },
     logging: {
       level: "debug",

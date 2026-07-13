@@ -1,21 +1,16 @@
-import { randomUUID } from "node:crypto";
 import { runClient } from "../client";
 import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 import { deleteHostSession } from "../host";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
-import { normalizeWorkspacePath } from "../infrastructure/configuration/workspacePath";
+import { appOwner } from "../infrastructure/process/ownership";
+import type { ProcessOwner } from "../infrastructure/process/ownership";
 import type { Control, Settings } from "../types";
-import type {
-  MessageSubmission,
-  SessionSubmission,
-} from "./attachments/contract";
+import type { MessageSubmission } from "./attachments/contract";
+import type { SessionSubmission } from "./attachments/contract";
 import { enqueueMessageWithAttachments } from "./attachments/message";
-import { createSessionWithAttachments } from "./attachments/session";
-import {
-  clearSessionDraft,
-  readSessionDraft,
-  writeSessionDraft,
-} from "./composerDraft";
+import { clearSessionDraft } from "./composerDraft";
+import { readSessionDraft } from "./composerDraft";
+import { writeSessionDraft } from "./composerDraft";
 import { AppEvents } from "./events";
 import { AppHosts } from "./hosts";
 import { AppRegistry, type RegisteredSession } from "./registry";
@@ -23,10 +18,14 @@ import { projectSession, type SessionInfo } from "./sessionState";
 import { loadSessionTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
 import { displayStreamEvent } from "./timeline";
-import {
-  forkSessionStorage,
-  removeSessionStorage,
-} from "./runtime/sessionStorage";
+import type { AppInstanceOwner } from "./runtime/instanceLock";
+import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
+import { createAppFork, createAppSession } from "./runtime/sessionActions";
+
+interface AppControllerOptions {
+  abandonedOwner?: AppInstanceOwner;
+  owner?: ProcessOwner;
+}
 
 export class AppController {
   readonly events: AppEvents;
@@ -34,27 +33,40 @@ export class AppController {
   private readonly registry: AppRegistry;
   private readonly hosts: AppHosts;
 
-  constructor(private readonly appRoot: string) {
+  constructor(
+    private readonly appRoot: string,
+    options: AppControllerOptions = {},
+  ) {
     this.settings = loadSettings(appRoot);
+    const discovered = new AppRegistry(this.settings);
+    recoverAppSessions(
+      this.settings,
+      discovered.list(),
+      options.abandonedOwner,
+    );
     this.registry = new AppRegistry(this.settings);
     this.events = new AppEvents();
-    this.hosts = new AppHosts(appRoot, {
-      activity: (sessionId) => {
-        this.publishActivity(sessionId);
+    const owner = options.owner ?? appOwner();
+    this.hosts = new AppHosts(
+      appRoot,
+      {
+        activity: (sessionId) => {
+          this.publishActivity(sessionId);
+        },
+        changed: (sessionId) => {
+          this.publishChange(sessionId);
+        },
+        transcript: (sessionId, event) => {
+          this.publishTranscript(sessionId, event);
+        },
+        wait: (sessionId, delayMs) => this.events.wait(sessionId, delayMs),
       },
-      changed: (sessionId) => {
-        this.publishChange(sessionId);
-      },
-      transcript: (sessionId, event) => {
-        this.publishTranscript(sessionId, event);
-      },
-      wait: (sessionId, delayMs) => this.events.wait(sessionId, delayMs),
-    });
+      owner,
+      this.settings.host.shutdownTimeoutMs,
+    );
   }
 
-  close() {
-    return this.hosts.close();
-  }
+  close = () => this.hosts.close();
 
   bootstrap() {
     return {
@@ -73,24 +85,12 @@ export class AppController {
     this.registry.require(sessionId);
   }
 
-  pickWorkspace() {
-    return pickWorkspaceDirectory();
-  }
+  pickWorkspace = () => pickWorkspaceDirectory();
 
   async createSession(submission: SessionSubmission) {
-    const root = normalizeWorkspacePath(submission.workspace, this.appRoot);
-    const settings = loadSettings(this.appRoot, { cwd: root });
-    const id = `web-${randomUUID()}`;
-    await createSessionWithAttachments({
-      settings,
-      sessionId: id,
-      workspace: root,
-      history: submission.history,
-      message: submission.message,
-      attachments: submission.attachments,
-    });
-    const session = this.registry.refresh(id);
-    this.hosts.start(id, root, "load");
+    const created = await createAppSession(this.appRoot, submission);
+    const session = this.registry.refresh(created.sessionId);
+    await this.hosts.start(created.sessionId, created.workspace, "load");
     const info = this.sessionInfo(session);
     this.events.notifySession(info);
     return info;
@@ -104,9 +104,7 @@ export class AppController {
       sessionId,
       submission.content,
       submission.attachments,
-      () => {
-        this.hosts.ensure(session.id, session.workspace);
-      },
+      () => this.ensureHost(session),
     );
     clearSessionDraft(this.settings, sessionId, submission.draftRevision);
     this.hosts.clearError(sessionId);
@@ -124,32 +122,25 @@ export class AppController {
     return writeSessionDraft(this.settings, sessionId, content, revision);
   }
 
-  control(sessionId: string, control: Control) {
+  async control(sessionId: string, control: Control) {
     const session = this.registry.require(sessionId);
+    if (control === "running") {
+      await this.ensureHost(session);
+    }
     const result = runClient({ sessionId, control }, this.appRoot);
-    if (control === "running") this.hosts.ensure(session.id, session.workspace);
     this.publishChange(sessionId);
     return result;
   }
 
-  forkSession(sessionId: string, beforeMessageId: number) {
+  async forkSession(sessionId: string, beforeMessageId: number) {
     const session = this.registry.require(sessionId);
-    const id = `web-${randomUUID()}`;
-    let targetCreated = false;
-    try {
-      forkSessionStorage({
-        settings: this.settings,
-        sourceSessionId: sessionId,
-        targetSessionId: id,
-        workspace: session.workspace,
-        beforeMessageId,
-      });
-      targetCreated = true;
-      this.control(sessionId, "pause");
-    } catch (error) {
-      if (targetCreated) removeSessionStorage(this.settings, id);
-      throw error;
-    }
+    const id = await createAppFork({
+      settings: this.settings,
+      sourceSessionId: sessionId,
+      workspace: session.workspace,
+      beforeMessageId,
+      pauseSource: () => this.control(sessionId, "pause"),
+    });
     const targetSession = this.registry.refresh(id);
     this.hosts.clearError(id);
     const info = this.sessionInfo(targetSession);
@@ -175,6 +166,16 @@ export class AppController {
   private publishActivity(sessionId: string) {
     const info = this.sessionInfo(this.registry.require(sessionId));
     this.events.notifySession(info);
+  }
+
+  private ensureHost(session: RegisteredSession) {
+    if (
+      !this.hosts.has(session.id) &&
+      hasLiveHostLease(this.settings, session.id)
+    ) {
+      return Promise.resolve();
+    }
+    return this.hosts.ensure(session.id, session.workspace);
   }
 
   private publishChange(sessionId: string) {

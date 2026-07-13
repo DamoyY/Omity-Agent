@@ -145,6 +145,7 @@ test("host abort cancels an active graph stream", async () => {
   await processing;
 
   expect(db.nextQueue("123")?.status).toBe("paused");
+  expect(db.control("123")).toBe("pause");
   db.close();
 });
 
@@ -182,6 +183,7 @@ function makeSettings(): Settings {
       pausePollMs: 1,
       idleLogMs: 1,
       recursionLimit: 10,
+      shutdownTimeoutMs: 1_000,
     },
     logging: { level: "error", streamTokens: false },
     leases: { hostTtlMs: 30_000 },

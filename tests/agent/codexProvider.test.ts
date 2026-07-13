@@ -128,6 +128,7 @@ function codexSettings(): Settings {
       pausePollMs: 1,
       idleLogMs: 1,
       recursionLimit: 1,
+      shutdownTimeoutMs: 1_000,
     },
     logging: { level: "debug", streamTokens: false },
     leases: { hostTtlMs: 30_000 },

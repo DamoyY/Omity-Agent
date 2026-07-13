@@ -25,6 +25,7 @@ export function testSettings(dataDir: string): Settings {
       pausePollMs: 1,
       idleLogMs: 1,
       recursionLimit: 50,
+      shutdownTimeoutMs: 1_000,
     },
     logging: { level: "error", streamTokens: false },
     leases: { hostTtlMs: 30_000 },

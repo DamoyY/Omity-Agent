@@ -12,22 +12,12 @@ import { removeDatabaseDirectory } from "./infrastructure/database/connection";
 import { Logger } from "./infrastructure/logging/logger";
 import { loadMcp } from "./infrastructure/mcp/loadTools";
 import { hostLoop } from "./runtime/loop";
-import { HostLease, type HostObserver } from "./runtime/context";
+import type { HostRunOptions } from "./runtime/execution/hostOptions";
+import { HostLease } from "./runtime/execution/lease";
+import { recoverHostSession } from "./runtime/execution/recovery";
+import { wireHostSignals } from "./runtime/execution/signals";
 import { HookRuntime } from "./hooks/runtime";
-
-export interface HostMode {
-  kind: "new" | "load" | "overwrite";
-  sessionId: string;
-}
-
-export interface HostRunOptions {
-  cwd?: string;
-  controller?: AbortController;
-  observer?: HostObserver;
-  quiet?: boolean;
-  wake?: (delayMs: number) => Promise<void>;
-  wireSigint?: boolean;
-}
+import type { HostMode } from "./types";
 
 export async function runHost(
   mode: HostMode,
@@ -36,6 +26,7 @@ export async function runHost(
 ) {
   await runHostSession(mode, root, {
     ...options,
+    recoverInterrupted: options.recoverInterrupted ?? mode.kind === "load",
     wireSigint: options.wireSigint ?? true,
   });
 }
@@ -58,8 +49,15 @@ export async function runHostSession(
     mode.kind === "load"
       ? resolveSessionPaths(settings, mode.sessionId)
       : prepareWritableSession(settings, mode);
-  const db = openHostDatabase(paths.dbPath, mode, workspace);
+  const db = openHostDatabase(
+    paths.dbPath,
+    mode,
+    workspace,
+    options.recoverInterrupted ?? false,
+  );
   const controller = options.controller ?? new AbortController();
+  const stoppingController =
+    options.stoppingController ?? new AbortController();
   let lease: HostLease;
   try {
     lease = new HostLease(
@@ -68,6 +66,7 @@ export async function runHostSession(
       mode.sessionId,
       controller,
       settings.leases.hostTtlMs,
+      options.owner,
     );
   } catch (error) {
     db.close();
@@ -85,6 +84,13 @@ export async function runHostSession(
     logger.info("已覆盖会话", { sessionId: mode.sessionId, db: paths.dbPath });
   }
   let mcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
+  const unwireSignals = wireHostSignals({
+    enabled: options.wireSigint ?? false,
+    force: controller,
+    logger,
+    stopping: stoppingController,
+    timeoutMs: settings.host.shutdownTimeoutMs,
+  });
   try {
     mcp = await loadMcp(root, logger);
     const hooks = new HookRuntime(
@@ -105,28 +111,25 @@ export async function runHostSession(
         freeformToolParameters: mcp.freeformToolParameters,
       },
     );
-    const stopOnSigint = () => {
-      controller.abort(new Error("收到 Ctrl+C"));
-      logger.warn("收到 Ctrl+C，Host 正在停止");
-    };
-    try {
-      if (options.wireSigint ?? false) process.once("SIGINT", stopOnSigint);
-      await hostLoop({
-        settings,
-        logger,
-        db,
-        graph,
-        checkpointer,
-        sessionId: mode.sessionId,
-        controller,
-        wake: options.wake,
-        observer: options.observer,
-      });
-      lease.assertOwned();
-    } finally {
-      process.removeListener("SIGINT", stopOnSigint);
-    }
+    options.onReady?.();
+    await hostLoop({
+      settings,
+      logger,
+      db,
+      graph,
+      checkpointer,
+      sessionId: mode.sessionId,
+      controller,
+      stopping: stoppingController.signal,
+      assertLease: () => {
+        lease.assertOwned();
+      },
+      wake: options.wake,
+      observer: options.observer,
+    });
+    lease.assertOwned();
   } finally {
+    unwireSignals();
     try {
       await mcp?.close();
     } finally {
@@ -166,7 +169,12 @@ function prepareWritableSession(
   return sessionPaths(settings, mode.sessionId);
 }
 
-function openHostDatabase(path: string, mode: HostMode, workspace: string) {
+function openHostDatabase(
+  path: string,
+  mode: HostMode,
+  workspace: string,
+  recoverInterrupted: boolean,
+) {
   if (mode.kind === "load" && !existsSync(path)) {
     throw sessionNotFound(mode.sessionId);
   }
@@ -176,6 +184,7 @@ function openHostDatabase(path: string, mode: HostMode, workspace: string) {
       if (!db.hasSession(mode.sessionId)) {
         throw sessionNotFound(mode.sessionId);
       }
+      if (recoverInterrupted) recoverHostSession(db, mode.sessionId);
       return db;
     }
     db.createSession(mode.sessionId, workspace);

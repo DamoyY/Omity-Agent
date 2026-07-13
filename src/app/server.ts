@@ -1,7 +1,7 @@
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { getRequestListener } from "@hono/node-server";
-import { createServer as createViteServer, type ViteDevServer } from "vite";
+import { createServer as createViteServer } from "vite";
 import { AppController } from "./controller";
 import { errorResponse } from "./http/errors";
 import { createApi } from "./http/handler";
@@ -20,8 +20,16 @@ export async function startAppServer(options: AppServerOptions) {
   const lock = AppInstanceLock.acquire(
     loadSettings(options.root).paths.dataDir,
   );
+  const shutdown = waitForShutdownSignal();
   try {
-    const controller = new AppController(options.root);
+    const controller = new AppController(options.root, {
+      abandonedOwner: lock.abandonedOwner,
+      owner: {
+        instanceId: lock.owner.token,
+        kind: "app",
+        pid: lock.owner.pid,
+      },
+    });
     const server = createServer();
     const vite = await createViteServer({
       logLevel: "silent",
@@ -48,7 +56,10 @@ export async function startAppServer(options: AppServerOptions) {
     });
     const url = appUrl(options.host, listeningPort(server.address()));
     options.onReady?.(url);
-    await waitForShutdown(controller, vite, server);
+    await shutdown;
+    await closeServer(server);
+    await controller.close();
+    await vite.close();
   } finally {
     lock.release();
   }
@@ -69,21 +80,24 @@ function sendViteError(res: ServerResponse, error: unknown) {
   res.end(JSON.stringify(normalized.body));
 }
 
-async function waitForShutdown(
-  controller: AppController,
-  vite: ViteDevServer,
-  server: ReturnType<typeof createServer>,
-) {
-  await new Promise<void>((resolve) => {
-    process.once("SIGINT", resolve);
-    process.once("SIGTERM", resolve);
+function waitForShutdownSignal() {
+  return new Promise<void>((resolve) => {
+    const stop = () => {
+      process.removeListener("SIGINT", stop);
+      process.removeListener("SIGTERM", stop);
+      resolve();
+    };
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
   });
-  await controller.close();
-  await vite.close();
-  await new Promise<void>((resolve, reject) => {
+}
+
+function closeServer(server: ReturnType<typeof createServer>) {
+  return new Promise<void>((resolve, reject) => {
     server.close((error) => {
       if (error) reject(error);
       else resolve();
     });
+    server.closeAllConnections();
   });
 }

@@ -2,6 +2,11 @@ export type Control = "running" | "pause" | "cancel" | "pause_cancel";
 
 export type SessionStatus = "tool" | "model" | "idle" | "paused" | "error";
 
+export interface HostMode {
+  kind: "new" | "load" | "overwrite";
+  sessionId: string;
+}
+
 export type QueueStatus =
   "draft" | "pending" | "running" | "paused" | "done" | "canceled";
 
@@ -68,6 +73,7 @@ export interface Settings {
     pausePollMs: number;
     idleLogMs: number;
     recursionLimit: number;
+    shutdownTimeoutMs: number;
   };
   logging: {
     level: LogLevel;

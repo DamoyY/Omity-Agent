@@ -29,7 +29,7 @@ export async function waitBeforeModelNetworkRetry(
   });
   const deadline = Date.now() + delayMs;
   while (Date.now() < deadline) {
-    if (ctx.controller.signal.aborted) {
+    if (ctx.controller.signal.aborted || ctx.stopping?.aborted) {
       controls.stop();
       return false;
     }

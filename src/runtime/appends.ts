@@ -34,6 +34,47 @@ export function consumeBoundaryAppends(
   };
 }
 
+export function recoverConsumedAppends(
+  ctx: HostContext,
+  run: QueueRun,
+  state: BoundaryState,
+) {
+  const consumedIds = new Set(
+    run.items.map((item) => queueMessageId(ctx.sessionId, item.id)),
+  );
+  for (const message of state.values?.messages ?? []) {
+    if (HumanMessage.isInstance(message) && message.id) {
+      consumedIds.delete(message.id);
+    }
+  }
+  if (consumedIds.size === 0) return null;
+
+  const messages = ctx.db
+    .history(ctx.sessionId)
+    .filter(
+      (message) =>
+        HumanMessage.isInstance(message) &&
+        message.id !== undefined &&
+        consumedIds.has(message.id),
+    );
+  const recoveredIds = new Set(messages.map((message) => message.id));
+  const absentIds = [...consumedIds].filter((id) => !recoveredIds.has(id));
+  if (absentIds.length > 0) {
+    throw new Error(`已消费的用户消息不存在：${absentIds.join(", ")}`);
+  }
+  ctx.logger.warn("恢复 checkpoint 后尚未提交的追加输入", {
+    queueIds: run.items
+      .filter((item) => consumedIds.has(queueMessageId(ctx.sessionId, item.id)))
+      .map((item) => item.id),
+  });
+  return {
+    messages,
+    hookPendingUserIds: [
+      ...new Set([...pendingUserIds(state), ...consumedIds]),
+    ],
+  };
+}
+
 interface BoundaryState {
   values?: {
     messages?: unknown[];

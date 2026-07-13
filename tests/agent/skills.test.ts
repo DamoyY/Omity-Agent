@@ -90,6 +90,7 @@ function makeSettings(
       pausePollMs: 1,
       idleLogMs: 1,
       recursionLimit: 10,
+      shutdownTimeoutMs: 1_000,
     },
     logging: {
       level: "error",

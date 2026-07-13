@@ -11,6 +11,7 @@ import type {
   AttachmentSettings,
   PendingAttachment,
 } from "../../../attachments/contract";
+import { deriveChatActionState } from "./actionState";
 
 const page = css({
   display: "grid",
@@ -91,9 +92,12 @@ export function ChatPage({
   onWorkspaceChange: (workspace: string) => void;
 }) {
   const { t } = useTranslation();
-  const paused = control === "pause" || control === "pause_cancel";
-  const waitingForPause = pausing && !paused;
-  const loopRunning = queue.some((item) => item.status === "running");
+  const actionState = deriveChatActionState({
+    control,
+    pausing,
+    queue,
+    sessionStatus,
+  });
   const firstUserMessageId = view.find((item) => item.role === "user")?.id;
   const forkDraft = queue.find((item) => item.status === "draft")?.content;
   const latestDetail = findLatestDetail(view);
@@ -133,7 +137,7 @@ export function ChatPage({
               item.id > 0 &&
               item.id !== firstUserMessageId
             }
-            forkDisabled={loopRunning}
+            forkDisabled={actionState.queueRunning}
             item={item}
             key={item.key}
             latestDetailIndex={
@@ -147,13 +151,9 @@ export function ChatPage({
       </TranscriptScroll>
       <Composer
         attachmentSettings={attachmentSettings}
-        controlDisabled={
-          waitingForPause || (!paused && sessionStatus === "idle")
-        }
-        controlState={waitingForPause ? "pausing" : paused ? "resume" : "pause"}
-        deleteDisabled={
-          loopRunning || sessionStatus === "model" || sessionStatus === "tool"
-        }
+        controlDisabled={actionState.controlDisabled}
+        controlState={actionState.controlState}
+        deleteDisabled={actionState.deleteDisabled}
         disabled={!activeId}
         draft={forkDraft}
         draftSaveDelayMs={draftSaveDelayMs}
@@ -163,7 +163,7 @@ export function ChatPage({
           .filter((item) => item.role === "user")
           .map((item) => item.content)}
         usage={latestUsage}
-        onControl={() => onControl(paused ? "running" : "pause")}
+        onControl={() => onControl(actionState.nextControl)}
         onDelete={onDelete}
         onSend={onSend}
       />

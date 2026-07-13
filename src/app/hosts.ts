@@ -1,15 +1,17 @@
-import { runHostSession, type HostMode } from "../host";
-import type { SessionStatus } from "../types";
+import { runHostSession } from "../host";
+import type { HostMode, SessionStatus } from "../types";
 import { captureError, type ErrorDetails } from "../failures/details";
 import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
+import type { ProcessOwner } from "../infrastructure/process/ownership";
 
 type HostActivity = Extract<SessionStatus, "tool" | "model" | "idle">;
 
 interface RunningHost {
-  root: string;
-  controller: AbortController;
-  done: Promise<void>;
   activity: HostActivity;
+  done: Promise<void>;
+  force: AbortController;
+  ready: Promise<void>;
+  stopping: AbortController;
 }
 
 export interface AppHostEvents {
@@ -27,6 +29,8 @@ export class AppHosts {
   constructor(
     private readonly appRoot: string,
     private readonly events: AppHostEvents,
+    private readonly owner: ProcessOwner,
+    private readonly shutdownTimeoutMs: number,
   ) {}
 
   has(sessionId: string) {
@@ -46,57 +50,58 @@ export class AppHosts {
   }
 
   ensure(sessionId: string, root: string) {
-    if (!this.running.has(sessionId)) this.start(sessionId, root, "load");
+    return (
+      this.running.get(sessionId)?.ready ?? this.start(sessionId, root, "load")
+    );
   }
 
   start(sessionId: string, root: string, kind: HostMode["kind"]) {
-    if (this.closing) throw new Error("App 正在关闭，不能启动 Host");
-    if (this.running.has(sessionId)) return;
+    if (this.closing)
+      return Promise.reject(new Error("App 正在关闭，不能启动 Host"));
+    const existing = this.running.get(sessionId);
+    if (existing) return existing.ready;
     this.errors.delete(sessionId);
-    const controller = new AbortController();
+    const force = new AbortController();
+    const stopping = new AbortController();
+    const ready = Promise.withResolvers<undefined>();
+    let initialized = false;
     const done = runHostSession({ kind, sessionId }, this.appRoot, {
-      controller,
+      controller: force,
+      stoppingController: stopping,
       cwd: root,
+      owner: this.owner,
       quiet: true,
       wake: (delayMs) => this.events.wait(sessionId, delayMs),
-      observer: {
-        activity: (changedSessionId, activity) => {
-          const host = this.running.get(changedSessionId);
-          if (host?.controller !== controller) return;
-          if (host.activity === activity) return;
-          host.activity = activity;
-          this.events.activity(changedSessionId);
-        },
-        changed: (changedSessionId) => {
-          this.events.changed(changedSessionId);
-        },
-        transcript: (changedSessionId, event) => {
-          this.events.transcript(changedSessionId, event);
-        },
-        token: () => undefined,
+      onReady: () => {
+        initialized = true;
+        ready.resolve(undefined);
       },
+      observer: this.observer(force),
     })
       .catch((error: unknown) => {
         this.errors.set(sessionId, captureError(error));
+        if (!initialized) ready.reject(error);
       })
       .finally(() => {
-        if (this.running.get(sessionId)?.controller === controller) {
+        if (this.running.get(sessionId)?.force === force) {
           this.running.delete(sessionId);
         }
         this.events.changed(sessionId);
       });
     this.running.set(sessionId, {
-      root,
-      controller,
-      done,
       activity: "idle",
+      done,
+      force,
+      ready: ready.promise,
+      stopping,
     });
+    return ready.promise;
   }
 
   async stop(sessionId: string) {
     const host = this.running.get(sessionId);
     if (!host) return;
-    host.controller.abort(new Error("App 请求停止 Host"));
+    host.force.abort(new Error("App 请求停止 Host"));
     this.events.changed(sessionId);
     await host.done;
   }
@@ -105,9 +110,37 @@ export class AppHosts {
     this.closing = true;
     const hosts = [...this.running.entries()];
     for (const [sessionId, host] of hosts) {
-      host.controller.abort(new Error("App 正在关闭"));
+      host.stopping.abort(new Error("App 正在关闭"));
       this.events.changed(sessionId);
     }
-    await Promise.all(hosts.map(([, host]) => host.done));
+    await Promise.all(hosts.map(([, host]) => this.stopAtDeadline(host)));
+  }
+
+  private observer(force: AbortController) {
+    return {
+      activity: (changedSessionId: string, activity: HostActivity) => {
+        const host = this.running.get(changedSessionId);
+        if (host?.force !== force || host.activity === activity) return;
+        host.activity = activity;
+        this.events.activity(changedSessionId);
+      },
+      changed: (changedSessionId: string) => {
+        this.events.changed(changedSessionId);
+      },
+      transcript: (changedSessionId: string, event: StreamEvent) => {
+        this.events.transcript(changedSessionId, event);
+      },
+      token: () => undefined,
+    };
+  }
+
+  private async stopAtDeadline(host: RunningHost) {
+    const stopped = await Promise.race([
+      host.done.then(() => true),
+      Bun.sleep(this.shutdownTimeoutMs).then(() => false),
+    ]);
+    if (!stopped)
+      host.force.abort(new Error("Host 未在关闭期限内到达恢复边界"));
+    await host.done;
   }
 }

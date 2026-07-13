@@ -99,12 +99,12 @@ export function createApi(controller: ApiController) {
   });
   app.post("/api/sessions/:sessionId/control", regularBodyLimit, async (c) => {
     const body = await readJson(c.req, controlBody);
-    return c.json(controller.control(sessionId(c), body.control));
+    return c.json(await controller.control(sessionId(c), body.control));
   });
   app.post("/api/sessions/:sessionId/fork", regularBodyLimit, async (c) => {
     const body = await readJson(c.req, forkBody);
     return c.json({
-      session: controller.forkSession(sessionId(c), body.beforeMessageId),
+      session: await controller.forkSession(sessionId(c), body.beforeMessageId),
     });
   });
 

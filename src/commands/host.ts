@@ -1,5 +1,6 @@
 import { Args, Command } from "@oclif/core";
-import { deleteHostSession, runHost, type HostMode } from "../host";
+import { deleteHostSession, runHost } from "../host";
+import type { HostMode } from "../types";
 
 const hostActions = ["new", "load", "delete", "overwrite"] as const;
 type HostAction = (typeof hostActions)[number];

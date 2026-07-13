@@ -1,6 +1,4 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { randomUUID } from "node:crypto";
-import { DomainError } from "../errors";
 import type { BunSqliteSaver } from "../checkpointer";
 import type { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
@@ -32,6 +30,8 @@ export interface HostContext {
   checkpointer: BunSqliteSaver;
   sessionId: string;
   controller: AbortController;
+  stopping?: AbortSignal;
+  assertLease?: () => void;
   wake?: (delayMs: number) => Promise<void>;
   observer?: HostObserver;
 }
@@ -104,70 +104,4 @@ export function readGraphState(value: unknown): RuntimeGraphState {
     throw new Error("LangGraph 消息状态无效");
   }
   return parsed.data;
-}
-
-export class HostLease {
-  private readonly ownerId = randomUUID();
-  private readonly timer: ReturnType<typeof setInterval>;
-  private error?: Error;
-
-  constructor(
-    private readonly db: AgentDatabase,
-    private readonly logger: Logger,
-    private readonly sessionId: string,
-    private readonly controller: AbortController,
-    private readonly ttlMs: number,
-  ) {
-    if (
-      !db.acquireHostLease({
-        sessionId,
-        ownerId: this.ownerId,
-        now: Date.now(),
-        ttlMs: this.ttlMs,
-      })
-    ) {
-      throw new DomainError(
-        "HOST_LEASE_CONFLICT",
-        `会话已有 Host 正在运行：${sessionId}`,
-      );
-    }
-    this.timer = setInterval(
-      () => {
-        this.renew();
-      },
-      Math.max(1, Math.floor(this.ttlMs / 3)),
-    );
-    this.timer.unref();
-  }
-
-  assertOwned() {
-    if (this.error) throw this.error;
-  }
-
-  close() {
-    clearInterval(this.timer);
-    this.db.releaseHostLease(this.sessionId, this.ownerId);
-  }
-
-  private renew() {
-    try {
-      if (
-        !this.db.renewHostLease({
-          sessionId: this.sessionId,
-          ownerId: this.ownerId,
-          now: Date.now(),
-          ttlMs: this.ttlMs,
-        })
-      ) {
-        throw new Error(`Host Lease 已丢失：${this.sessionId}`);
-      }
-    } catch (error) {
-      this.error = error instanceof Error ? error : new Error(String(error));
-      this.controller.abort(this.error);
-      this.logger.error("Host Lease 续租失败", {
-        sessionId: this.sessionId,
-        error: this.error.message,
-      });
-    }
-  }
 }

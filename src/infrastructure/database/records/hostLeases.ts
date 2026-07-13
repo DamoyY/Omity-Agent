@@ -8,6 +8,38 @@ export interface HostLeaseClaim {
   ttlMs: number;
 }
 
+export interface HostLeaseRecord {
+  sessionId: string;
+  ownerId: string;
+  expiresAt: number;
+}
+
+interface HostLeaseRow {
+  session_id: string;
+  owner_id: string;
+  expires_at: number;
+}
+
+export function readHostLeaseRecord(
+  db: Database,
+  sessionId: string,
+): HostLeaseRecord | null {
+  requireSessionRecord(db, sessionId);
+  const row = db
+    .query<HostLeaseRow, [string]>(
+      `SELECT session_id, owner_id, expires_at
+       FROM host_leases WHERE session_id = ?`,
+    )
+    .get(sessionId);
+  return row
+    ? {
+        sessionId: row.session_id,
+        ownerId: row.owner_id,
+        expiresAt: row.expires_at,
+      }
+    : null;
+}
+
 export function acquireHostLeaseRecord(db: Database, claim: HostLeaseClaim) {
   requireSessionRecord(db, claim.sessionId);
   const result = db.run(

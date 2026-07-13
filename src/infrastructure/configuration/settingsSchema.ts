@@ -83,6 +83,7 @@ const mainSettingsSchema = z
       pausePollMs: z.number().int().positive(),
       idleLogMs: z.number().int().positive(),
       recursionLimit: z.number().int().positive(),
+      shutdownTimeoutMs: z.number().int().positive(),
     }),
     logging: z.object({
       level: z.enum(["debug", "info", "warn", "error"]),
