@@ -1,4 +1,4 @@
-import { Bot, Plus, Trash2, UserRound } from "lucide-react";
+import { Bot, Trash2, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { InitialMessagePair } from "../../../initialState";
@@ -16,23 +16,13 @@ export interface EditablePair extends InitialMessagePair {
 }
 
 const stack = css({ alignSelf: "end" });
-const insertion = css({
-  borderTopColor: "line",
-  borderTopWidth: "1px",
-  display: "flex",
-  justifyContent: "center",
-  py: "3",
-});
-
 export function MessageStack({
   pairs,
-  onAdd,
   onPairChange,
   onRemove,
   onSubmit,
 }: {
   pairs: EditablePair[];
-  onAdd: () => void;
   onPairChange: (id: string, pair: InitialMessagePair) => void;
   onRemove: (id: string) => void;
   onSubmit: () => void;
@@ -65,11 +55,6 @@ export function MessageStack({
           />
         </section>
       ))}
-      <div className={insertion}>
-        <Button onClick={onAdd} type="button" variant="ghost">
-          <Plus size={14} /> {t("addMessagePair")}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -103,15 +88,15 @@ function MessageEditor({
       />
       <div className={composerActions}>
         <div className={composerControls}>
-          <span aria-label={label} className={composerRole} title={label}>
-            <RoleIcon aria-hidden size={20} />
-          </span>
           {onRemove ? (
             <Button onClick={onRemove} type="button" variant="outline">
               <Trash2 size={14} /> {t("removeMessagePair")}
             </Button>
           ) : null}
         </div>
+        <span aria-label={label} className={composerRole} title={label}>
+          <RoleIcon aria-hidden size={20} />
+        </span>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { Send, UserRound } from "lucide-react";
+import { Plus, Send, UserRound } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
@@ -108,12 +108,6 @@ export function NewSessionPage({
           <div className={messageFlow}>
             <MessageStack
               pairs={pairs}
-              onAdd={() => {
-                setPairs((current) => [
-                  ...current,
-                  { id: crypto.randomUUID(), user: "", assistant: "" },
-                ]);
-              }}
               onPairChange={(id, next) => {
                 setPairs((current) =>
                   current.map((item) =>
@@ -140,13 +134,6 @@ export function NewSessionPage({
               />
               <div className={composerActions}>
                 <div className={composerControls}>
-                  <span
-                    aria-label={t("user")}
-                    className={composerRole}
-                    title={t("user")}
-                  >
-                    <UserRound aria-hidden size={20} />
-                  </span>
                   <Button
                     disabled={!complete || submitting}
                     type="submit"
@@ -155,7 +142,31 @@ export function NewSessionPage({
                     <Send size={14} />
                     {submitting ? t("creating") : t("createAndSend")}
                   </Button>
+                  <Button
+                    disabled={submitting}
+                    onClick={() => {
+                      setPairs((current) => [
+                        ...current,
+                        {
+                          id: crypto.randomUUID(),
+                          user: "",
+                          assistant: "",
+                        },
+                      ]);
+                    }}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Plus size={14} /> {t("addMessagePair")}
+                  </Button>
                 </div>
+                <span
+                  aria-label={t("user")}
+                  className={composerRole}
+                  title={t("user")}
+                >
+                  <UserRound aria-hidden size={20} />
+                </span>
               </div>
             </div>
           </div>

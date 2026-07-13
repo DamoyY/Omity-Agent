@@ -34,5 +34,6 @@ export const composerRole = css({
   color: "mutedStrong",
   display: "flex",
   justifyContent: "center",
+  mt: { md: "auto" },
   minH: "8",
 });
