@@ -39,11 +39,12 @@ const message = cva({
   },
   variants: {
     role: {
-      assistant: {},
+      assistant: { maxW: "2/3" },
       tool: {},
       user: {
         bg: "surfaceRaised",
         borderColor: "lineStrong",
+        maxW: "2/3",
       },
     },
   },
