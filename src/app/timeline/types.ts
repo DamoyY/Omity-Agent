@@ -1,3 +1,5 @@
+import type { ErrorDetails } from "../../failures/details";
+
 export type DisplayRole = "user" | "assistant" | "tool";
 export interface DisplayImage {
   src: string;
@@ -64,4 +66,3 @@ export type TimelinePart =
       output?: DisplayMessage;
       started?: boolean;
     };
-import type { ErrorDetails } from "../../failures/details";

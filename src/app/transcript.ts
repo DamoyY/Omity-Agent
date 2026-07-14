@@ -1,5 +1,6 @@
 import { type BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { type DisplayMessage, type DisplayToolCall } from "./timeline";
+import { type PersistedEventRow, persistedDisplayEvent } from "./timeline/persistedEvent";
 import { contentToText, messageReasoning } from "../runtime/content";
 import { freeformCallIds, rawFreeformInput } from "./timeline/freeform";
 import { modelTokenUsage, toolInputTokens, toolOutputTokens } from "./timeline/tokenCounts";
@@ -27,7 +28,6 @@ interface QueueRow {
   user_message_id: number | null;
   root_id: number | null;
 }
-import { type PersistedEventRow, persistedDisplayEvent } from "./timeline/persistedEvent";
 
 interface SequenceRow {
   seq: number;

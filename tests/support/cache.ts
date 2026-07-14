@@ -1,17 +1,14 @@
 import { type BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { DynamicStructuredTool } from "@langchain/core/tools";
-import { afterEach } from "bun:test";
 
 const servers: ReturnType<typeof Bun.serve>[] = [];
 const databases: AgentDatabase[] = [];
-export function cacheTestCleanup() {
-  afterEach(async () => {
-    for (const database of databases.splice(0)) {
-      database.close();
-    }
-    await Promise.all(servers.splice(0).map((server) => server.stop(true)));
-  });
+export async function cleanupCacheTests() {
+  for (const database of databases.splice(0)) {
+    database.close();
+  }
+  await Promise.all(servers.splice(0).map((server) => server.stop(true)));
 }
 export function persist(messages: BaseMessage[]) {
   const database = new AgentDatabase(":memory:");

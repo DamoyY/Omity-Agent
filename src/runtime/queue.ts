@@ -169,9 +169,9 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       } else {
         const nextActivity = state.next.includes("tools")
           ? "tool"
-          : (state.next.includes("model_request")
+          : state.next.includes("model_request")
             ? "model"
-            : undefined);
+            : undefined;
         if (nextActivity) {
           ctx.observer?.activity?.(ctx.sessionId, nextActivity);
         }

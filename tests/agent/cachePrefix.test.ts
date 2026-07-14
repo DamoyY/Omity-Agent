@@ -1,6 +1,7 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { afterEach, expect, test } from "bun:test";
 import {
-  cacheTestCleanup,
+  cleanupCacheTests,
   imageToolOutput,
   lookupTool,
   mockCompletions,
@@ -8,14 +9,13 @@ import {
   persist,
   requiredArray,
 } from "../support/cache";
-import { expect, test } from "bun:test";
 import { ChatOpenAICompletions } from "@langchain/openai";
 import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
 import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
 import { modelMessages } from "../../src/agent/model";
 import { testSettings } from "../support/settings";
 
-cacheTestCleanup();
+afterEach(cleanupCacheTests);
 test("Completions 请求在追加历史和 SQLite 恢复后保持缓存前缀", async () => {
   const requests: Record<string, unknown>[] = [];
   const server = mockCompletions(requests);

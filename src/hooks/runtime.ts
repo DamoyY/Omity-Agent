@@ -1,6 +1,6 @@
-import * as callStorage from "./storage/calls";
 import type { HookRule, HookWhen } from "../types";
 import { type HookToolOutput, readToolOutput } from "./storage/outputs";
+import { createHookCallId, hookCallDetails } from "./storage/calls";
 import type { Database } from "bun:sqlite";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { StructuredToolInterface } from "@langchain/core/tools";
@@ -47,7 +47,7 @@ export class HookRuntime {
     if (!(await options.consume(rule.id, rule.runLimit))) {
       return null;
     }
-    const details = callStorage.hookCallDetails(rule, sourceId);
+    const details = hookCallDetails(rule, sourceId);
     const call = this.resolvedCall(rule, sourceId, threadId, options.previousOutput);
     this.logger.debug("执行 Hook 节点", {
       hookId: rule.id,
@@ -64,13 +64,13 @@ export class HookRuntime {
     threadId: string,
     previousOutput?: HookToolOutput,
   ) {
-    const details = callStorage.hookCallDetails(rule, sourceId);
+    const details = hookCallDetails(rule, sourceId);
     return {
       args: resolveHookArgs(rule.args, {
         cwd: this.workspace,
         previousTool: previousOutput,
       }),
-      id: callStorage.createHookCallId(this.sessionId, threadId, details),
+      id: createHookCallId(this.sessionId, threadId, details),
       name: rule.tool,
       type: "tool_call" as const,
     };

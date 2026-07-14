@@ -47,8 +47,8 @@ export function persistedDisplayEvent(row: PersistedEventRow): DisplayEvent {
   const event: StreamEvent =
     value.kind === "tool_call_delta"
       ? { ...base, kind: value.kind, value: value.value }
-      : (value.kind === "tool_started"
+      : value.kind === "tool_started"
         ? { ...base, kind: value.kind, value: value.value }
-        : { ...base, kind: value.kind, value: value.value });
+        : { ...base, kind: value.kind, value: value.value };
   return displayStreamEvent(event);
 }

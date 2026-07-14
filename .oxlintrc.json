@@ -34,6 +34,14 @@
     "id-length": "allow",
     "jsx-max-depth": "allow",
     "init-declarations": "allow",
+    "import/no-unassigned-import": [
+      "warn",
+      {
+        "allow": [
+          "**/*.css"
+        ]
+      }
+    ],
     "max-lines-per-function": "allow",
     "max-nested-calls": "allow",
     "max-params": "allow",
@@ -42,7 +50,8 @@
     "no-await-in-loop": "allow",
     "no-magic-numbers": "allow",
     "no-named-export": "allow",
-    "no-nested-ternary": "allow",
+    "eslint/no-nested-ternary": "allow",
+    "unicorn/no-nested-ternary": "allow",
     "no-nodejs-modules": "allow",
     "no-null": "allow",
     "no-ternary": "allow",
@@ -51,6 +60,7 @@
     "parameter-properties": "allow",
     "prefer-readonly-parameter-types": "allow",
     "prefer-default-export": "allow",
-    "react-in-jsx-scope": "allow"
+    "react-in-jsx-scope": "allow",
+    "require-hook": "allow"
   }
 }
