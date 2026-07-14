@@ -33,7 +33,7 @@ export function useSessionTranscript(
   });
   useEffect(() => {
     if (!sessionId || refreshIntervalMs === undefined) {
-      return;
+      return undefined;
     }
     const events = sessionEvents(sessionId);
     const refreshScheduler = new RefreshScheduler(

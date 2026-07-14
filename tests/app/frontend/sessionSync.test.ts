@@ -15,15 +15,25 @@ test("session deletion is idempotent", () => {
 test("SSE closes after the first network error instead of reconnecting", () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "EventSource");
   const log = spyOn(console, "error").mockImplementation(() => undefined);
+  const created: TestEventSource[] = [];
   class TestEventSource extends EventTarget {
     close = mock(() => undefined);
+
+    constructor() {
+      super();
+      created.push(this);
+    }
   }
   Object.defineProperty(globalThis, "EventSource", {
     configurable: true,
     value: TestEventSource,
   });
   try {
-    const events = appEvents() as unknown as TestEventSource;
+    appEvents();
+    const [events] = created;
+    if (!events) {
+      throw new Error("EventSource 替身未创建");
+    }
     events.dispatchEvent(new Event("error"));
     expect(events.close).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledTimes(1);

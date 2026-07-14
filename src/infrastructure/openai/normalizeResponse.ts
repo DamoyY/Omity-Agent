@@ -2,12 +2,19 @@ import type { OpenAI } from "openai";
 export function normalizeResponsesStreamEvent(
   event: OpenAI.Responses.ResponseStreamEvent,
 ): OpenAI.Responses.ResponseStreamEvent {
-  if (!isRecord(event) || !("response" in event)) {
+  if (!("response" in event)) {
     return event;
   }
-  const response = event.response as OpenAI.Responses.Response;
-  const normalized = normalizeResponsesPayload(response);
-  return normalized === response ? event : ({ ...event, response: normalized } as typeof event);
+  return normalizeResponseEvent(event);
+}
+function normalizeResponseEvent<
+  Event extends Extract<
+    OpenAI.Responses.ResponseStreamEvent,
+    { response: OpenAI.Responses.Response }
+  >,
+>(event: Event): Event {
+  const normalized = normalizeResponsesPayload(event.response);
+  return normalized === event.response ? event : { ...event, response: normalized };
 }
 export function normalizeResponsesPayload<T>(payload: T): T {
   if (!isRecord(payload) || !Array.isArray(payload["output"])) {

@@ -105,28 +105,30 @@ export function createAgentGraph(options: AgentGraphOptions) {
     if (!response.tool_calls?.length && !contentToText(response.content)) {
       throw new ModelEmptyResponseError();
     }
-    response.id ??= randomUUID();
-    return response as AIMessage & { id: string };
+    const id = response.id ?? randomUUID();
+    response.id = id;
+    return { id, message: response };
   });
-  const runTool = task(
-    "invoke_tool",
-    async (call: ToolCall): Promise<ToolMessage> =>
-      invokeTool(call, normalizeTaskConfig(getConfig())),
-  ) as unknown as (call: ToolCall) => Promise<ToolMessage>;
+  const runToolTask = task("invoke_tool", (call: ToolCall) =>
+    invokeTool(call, normalizeTaskConfig(getConfig())),
+  );
+  const runTool = (call: ToolCall): Promise<ToolMessage> => Promise.resolve(runToolTask(call));
   const consumeHookTask = task("consume_hook_usage", (hookId: string, limit: number) => ({
     consumed: options.hooks.consume(hookId, limit),
   }));
-  const consumeHook = async (hookId: string, limit: number) =>
-    (await consumeHookTask(hookId, limit)).consumed;
+  const consumeHook = async (hookId: string, limit: number) => {
+    const result = await consumeHookTask(hookId, limit);
+    return result.consumed;
+  };
   const runHooks = createHookNode(options.hooks, consumeHook, runTool);
   const callModel = async (state: GraphState) => {
-    const response = await requestModel(
+    const { id, message: response } = await requestModel(
       modelMessages(options.settings, options.skillsMessage, state.messages),
     );
     return {
       hookPlan: response.tool_calls?.length
         ? toolPlan(response)
-        : agentPlan("after", [response.id], state.hookPreviousOutput),
+        : agentPlan("after", [id], state.hookPreviousOutput),
       messages: [response],
     };
   };

@@ -1,7 +1,7 @@
 export interface ToolExecutionHandle {
   signal: AbortSignal;
-  cancellationDurationMs(): number | undefined;
-  complete(): void;
+  cancellationDurationMs: () => number | undefined;
+  complete: () => void;
 }
 interface ToolExecution {
   announcedAt: number;

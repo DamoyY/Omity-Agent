@@ -4,7 +4,9 @@ import type { HostContext } from "./context";
 import type { QueueItem } from "../types";
 import { contentToText } from "./content";
 import { deleteThreadData } from "../checkpointer/lifecycle";
-export class CanceledRun extends Error {}
+export class CanceledRunError extends Error {
+  override readonly name = "CanceledRunError";
+}
 export interface QueueRun {
   items: [QueueItem, ...QueueItem[]];
   rootId: number;
@@ -48,7 +50,7 @@ function requireFinalMessageId(plan: unknown) {
 }
 export function cancelRun(ctx: HostContext, run: QueueRun) {
   finalizeRun(ctx, run, "canceled");
-  ctx.controller.abort(new CanceledRun("运行已取消"));
+  ctx.controller.abort(new CanceledRunError("运行已取消"));
   ctx.observer?.changed?.(ctx.sessionId);
   ctx.logger.warn("队列已取消，Host 已关闭", { queueId: run.items[0].id });
 }

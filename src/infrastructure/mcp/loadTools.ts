@@ -1,4 +1,4 @@
-import { MultiServerMCPClient, loadMcpTools } from "@langchain/mcp-adapters";
+import { type Connection, MultiServerMCPClient, loadMcpTools } from "@langchain/mcp-adapters";
 import type { Logger } from "../logging/logger";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { collectReadableZodIssues } from "./schemaIssues";
@@ -50,10 +50,10 @@ async function connectMcp(
   try {
     disableMcpRequestTimeout();
     client = new MultiServerMCPClient({
-      mcpServers: configuration.mcpServers,
+      mcpServers: collectMcpConnections(configuration.mcpServers),
       prefixToolNameWithServerName: true,
       throwOnLoadError: false,
-    } as never);
+    });
     const tools = renameMcpTools(
       await loadServerTools(client, names),
       configuration.toolNameOverrides,
@@ -80,21 +80,46 @@ async function connectMcp(
   }
 }
 async function loadServerTools(client: MultiServerMCPClient, names: string[]) {
-  return (
-    await Promise.all(
-      names.map(async (name) => {
-        const serverClient = await client.getClient(name);
-        if (serverClient === undefined) {
-          throw new Error(`MCP 服务器客户端未建立：${name}`);
-        }
-        return loadMcpTools(name, createMcpToolFailureClient(serverClient), {
-          prefixToolNameWithServerName: true,
-          throwOnLoadError: false,
-          useStandardContentBlocks: true,
-        });
-      }),
-    )
-  ).flat();
+  const serverTools = await Promise.all(
+    names.map(async (name) => {
+      const serverClient = await client.getClient(name);
+      if (serverClient === undefined) {
+        throw new Error(`MCP 服务器客户端未建立：${name}`);
+      }
+      return loadMcpTools(name, createMcpToolFailureClient(serverClient), {
+        prefixToolNameWithServerName: true,
+        throwOnLoadError: false,
+        useStandardContentBlocks: true,
+      });
+    }),
+  );
+  return serverTools.flat();
+}
+function collectMcpConnections(mcpServers: Record<string, unknown>) {
+  const connections: Record<string, Connection> = {};
+  for (const [name, server] of Object.entries(mcpServers)) {
+    if (!isMcpConnection(server)) {
+      throw new Error(`MCP 服务器配置无法识别：${name}`);
+    }
+    connections[name] = server;
+  }
+  return connections;
+}
+function isMcpConnection(value: unknown): value is Connection {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if ("command" in value) {
+    return (
+      typeof value["command"] === "string" &&
+      Array.isArray(value["args"]) &&
+      value["args"].every((argument) => typeof argument === "string")
+    );
+  }
+  return typeof value["url"] === "string";
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function validateConfiguredServers(
   configuration: ReturnType<typeof readMcpConfiguration>,

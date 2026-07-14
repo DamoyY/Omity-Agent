@@ -37,8 +37,10 @@ test("aborting a cancellable MCP request sends notifications/cancelled", async (
     } catch (error) {
       rejection = error;
     }
-    expect(rejection).toBeInstanceOf(Error);
-    expect((rejection as Error).message).toContain("用户手动终止工具");
+    if (!(rejection instanceof Error)) {
+      throw new Error("MCP 请求未以错误结束");
+    }
+    expect(rejection.message).toContain("用户手动终止工具");
     expect(await cancellation.promise).toBe("Error: 用户手动终止工具");
     execution.complete();
   } finally {

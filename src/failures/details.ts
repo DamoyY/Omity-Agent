@@ -34,6 +34,7 @@ const errorDetailsSchema: z.ZodType<ErrorDetails> = z.lazy(() =>
     stack: z.string().optional(),
   }),
 );
+const errorValuesSchema = z.record(z.string(), errorValueSchema);
 export function captureError(error: unknown): ErrorDetails {
   const serializedError: unknown = serializeError(error);
   const json = JSON.stringify(serializedError);
@@ -68,6 +69,7 @@ function adaptSerializedError(serialized: Record<string, unknown>, source?: unkn
     }
   }
   const { cause } = serialized;
+  const parsedDetails = errorValuesSchema.parse(details);
   return {
     message: typeof serialized["message"] === "string" ? serialized["message"] : String(source),
     name: typeof serialized["name"] === "string" ? serialized["name"] : valueName(source),
@@ -80,7 +82,7 @@ function adaptSerializedError(serialized: Record<string, unknown>, source?: unkn
             source instanceof Error ? source.cause : undefined,
           ),
         }),
-    ...(Object.keys(details).length > 0 ? { details: details as Record<string, ErrorValue> } : {}),
+    ...(Object.keys(parsedDetails).length > 0 ? { details: parsedDetails } : {}),
   };
 }
 function sourceProperty(source: unknown, key: string, serialized: unknown) {

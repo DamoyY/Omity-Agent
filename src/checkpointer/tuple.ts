@@ -1,5 +1,6 @@
 import type {
   Checkpoint,
+  CheckpointMetadata,
   CheckpointPendingWrite,
   CheckpointTuple,
   SerializerProtocol,
@@ -21,6 +22,22 @@ const writeRowSchema = z.looseObject({
   type: z.string(),
   value: z.string(),
 });
+const channelVersionSchema = z.union([z.number(), z.string()]);
+const channelVersionsSchema = z.record(z.string(), channelVersionSchema);
+const checkpointSchema: z.ZodType<Checkpoint> = z.looseObject({
+  channel_values: z.record(z.string(), z.unknown()),
+  channel_versions: channelVersionsSchema,
+  id: z.string(),
+  ts: z.string(),
+  v: z.number(),
+  versions_seen: z.record(z.string(), channelVersionsSchema),
+});
+const checkpointMetadataSchema: z.ZodType<CheckpointMetadata> = z.looseObject({
+  counters_since_delta_snapshot: z.record(z.string(), z.tuple([z.number(), z.number()])).optional(),
+  parents: z.record(z.string(), z.string()),
+  source: z.enum(["input", "loop", "update", "fork"]),
+  step: z.number(),
+});
 export async function rowToTuple(
   row: CheckpointRow,
   config: RunnableConfig,
@@ -28,12 +45,12 @@ export async function rowToTuple(
 ): Promise<CheckpointTuple> {
   const checkpoint = hydrateCheckpoint(
     ctx.db,
-    await deserialize<Checkpoint>(ctx.serde, row.type, row.checkpoint),
+    parseCheckpoint(await deserialize(ctx.serde, row.type, row.checkpoint)),
   );
   return {
     checkpoint,
     config,
-    metadata: await deserialize(ctx.serde, row.type, row.metadata),
+    metadata: parseCheckpointMetadata(await deserialize(ctx.serde, row.type, row.metadata)),
     parentConfig: row.parent_checkpoint_id
       ? {
           configurable: {
@@ -45,6 +62,20 @@ export async function rowToTuple(
       : undefined,
     pendingWrites: await pendingWrites(row, ctx),
   };
+}
+function parseCheckpoint(value: unknown): Checkpoint {
+  const result = checkpointSchema.safeParse(value);
+  if (!result.success) {
+    throw new Error("checkpoint 记录无效");
+  }
+  return result.data;
+}
+function parseCheckpointMetadata(value: unknown): CheckpointMetadata {
+  const result = checkpointMetadataSchema.safeParse(value);
+  if (!result.success) {
+    throw new Error("checkpoint metadata 记录无效");
+  }
+  return result.data;
 }
 async function pendingWrites(
   row: CheckpointRow,

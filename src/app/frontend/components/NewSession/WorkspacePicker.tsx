@@ -64,16 +64,12 @@ export function WorkspacePicker({
     <Field.Root>
       <Field.Label>{t("workspace")}</Field.Label>
       <span className={row}>
-        <Input
-          className={pathInput}
-          value={workspace}
-          onChange={handleInputChange}
-        />
+        <Input className={pathInput} value={workspace} onChange={handleInputChange} />
         <Button disabled={picking} onClick={handlePick} type="button">
           <FolderOpen size={14} /> {t("chooseFolder")}
         </Button>
       </span>
-      {recentWorkspaces.length > 0 ?
+      {recentWorkspaces.length > 0 ? (
         <div className={recent}>
           <span className={recentLabel}>{t("recentWorkspaces")}</span>
           <div className={recentList}>
@@ -87,7 +83,7 @@ export function WorkspacePicker({
             ))}
           </div>
         </div>
-      : null}
+      ) : null}
     </Field.Root>
   );
 }
@@ -111,9 +107,7 @@ function RecentWorkspaceButton({
       title={item}
       type="button"
     >
-      {selected ?
-        <Check size={14} />
-      : <History size={14} />}
+      {selected ? <Check size={14} /> : <History size={14} />}
       <span className={recentPath}>{item}</span>
     </Button>
   );

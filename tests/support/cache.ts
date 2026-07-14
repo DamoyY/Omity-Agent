@@ -91,7 +91,10 @@ export function requiredArray(value: unknown): unknown[] {
 function mockOpenAI(requests: Record<string, unknown>[], response: () => unknown) {
   const server = Bun.serve({
     async fetch(request) {
-      const body = (await request.json()) as Record<string, unknown>;
+      const body: unknown = await request.json();
+      if (!isRecord(body)) {
+        throw new Error("模型请求必须是 JSON 对象");
+      }
       requests.push(body);
       return Response.json(response());
     },
@@ -99,4 +102,7 @@ function mockOpenAI(requests: Record<string, unknown>[], response: () => unknown
   });
   servers.push(server);
   return server;
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

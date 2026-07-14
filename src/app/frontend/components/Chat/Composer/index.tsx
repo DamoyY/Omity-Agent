@@ -4,8 +4,8 @@ import {
   flushComposerDraft,
   readComposerDraft,
 } from "../../../services/composerDrafts";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { type HistoryDirection, UserMessageHistory } from "./history";
+import { type SubmitEvent, useCallback, useEffect, useRef, useState } from "react";
 import { reportError, reportPromiseErrors } from "../../../services/errors";
 import { Actions } from "./Actions";
 import type { ComposerProps } from "./props";
@@ -66,7 +66,7 @@ export function Composer({
   }, [draft, sessionId]);
   useEffect(() => {
     if (draftSaveDelayMs === undefined) {
-      return;
+      return undefined;
     }
     const target: ComposerDraftTarget = sessionId
       ? { kind: "session", sessionId }
@@ -149,7 +149,7 @@ export function Composer({
     reportPromiseErrors(submit());
   }, [submit]);
   const handleFormSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
+    (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
       handleSubmit();
     },

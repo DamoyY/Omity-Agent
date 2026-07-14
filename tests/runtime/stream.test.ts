@@ -3,8 +3,25 @@ import {
   type RawInputToolCallChunk,
   ToolMessageChunk,
 } from "@langchain/core/messages";
+import { afterEach, expect, spyOn, test } from "bun:test";
+import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
-import { expect, test } from "bun:test";
+import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { BunSqliteSaver } from "../../src/checkpointer";
+import { HookRuntime } from "../../src/hooks/runtime";
+import type { HostContext } from "../../src/runtime/context";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { testSettings } from "../support/settings";
+const databases = new Set<AgentDatabase>();
+afterEach(async () => {
+  for (const db of databases) {
+    db.close();
+  }
+  databases.clear();
+  await cleanupDatabaseDirs();
+});
 test("stream messages persist only assistant text chunks", () => {
   const stream = makeStreamRecorder();
   handleStreamEvent(
@@ -103,6 +120,8 @@ test("stream messages preserve Freeform tool call markers", () => {
   });
 });
 function makeStreamRecorder() {
+  const db = makeDb();
+  databases.add(db);
   const tokens: {
     messageId?: string;
     queueId: number;
@@ -124,40 +143,53 @@ function makeStreamRecorder() {
     messageId?: string;
     queueId: number;
   }[] = [];
+  spyOn(db, "streamReasoning").mockImplementation((_sessionId, queueId, text, messageId) => {
+    reasoning.push({ queueId, text, ...(messageId ? { messageId } : {}) });
+    return {
+      id: reasoning.length,
+      kind: "assistant_reasoning_delta",
+      queueId,
+      value: text,
+      ...(messageId ? { messageId } : {}),
+    };
+  });
+  spyOn(db, "streamToken").mockImplementation((_sessionId, queueId, text, messageId) => {
+    tokens.push({ queueId, text, ...(messageId ? { messageId } : {}) });
+    return {
+      id: tokens.length,
+      kind: "assistant_text_delta",
+      queueId,
+      value: text,
+      ...(messageId ? { messageId } : {}),
+    };
+  });
+  spyOn(db, "streamToolCall").mockImplementation((_sessionId, queueId, call, messageId) => {
+    toolCalls.push({ call, queueId, ...(messageId ? { messageId } : {}) });
+    return {
+      id: toolCalls.length,
+      kind: "tool_call_delta",
+      queueId,
+      value: call,
+      ...(messageId ? { messageId } : {}),
+    };
+  });
+  const settings = testSettings(workspace);
+  const logger = new Logger("error", true);
+  const checkpointer = new BunSqliteSaver(db.db, "session");
+  const hooks = new HookRuntime([], [], db.db, logger, "session", workspace);
+  const graph = createAgentGraph({ checkpointer, hooks, model: fakeModel(), settings, tools: [] });
+  const ctx: HostContext = {
+    checkpointer,
+    controller: new AbortController(),
+    db,
+    graph,
+    logger,
+    observer: { token: () => undefined },
+    sessionId: "session",
+    settings,
+  };
   return {
-    ctx: {
-      db: {
-        streamReasoning: (_sessionId: string, queueId: number, text: string, messageId?: string) =>
-          reasoning.push({
-            queueId,
-            text,
-            ...(messageId ? { messageId } : {}),
-          }),
-        streamToken: (_sessionId: string, queueId: number, text: string, messageId?: string) =>
-          tokens.push({ queueId, text, ...(messageId ? { messageId } : {}) }),
-        streamToolCall: (
-          _sessionId: string,
-          queueId: number,
-          call: {
-            args?: string;
-            freeform?: boolean;
-            id?: string;
-            index?: number;
-            name?: string;
-          },
-          messageId?: string,
-        ) =>
-          toolCalls.push({
-            call,
-            queueId,
-            ...(messageId ? { messageId } : {}),
-          }),
-      },
-      logger: { debug: () => undefined, token: () => undefined },
-      observer: { token: () => undefined },
-      sessionId: "session",
-      settings: { logging: { streamTokens: false } },
-    } as never,
+    ctx,
     reasoning,
     tokens,
     toolCalls,

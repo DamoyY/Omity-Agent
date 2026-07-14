@@ -1,4 +1,4 @@
-import { CanceledRun, type QueueRun, cancelRun, setRunStatus } from "../run";
+import { CanceledRunError, type QueueRun, cancelRun, setRunStatus } from "../run";
 import { type HostContext, waitForWake } from "../context";
 export function pauseForStop(ctx: HostContext, run: QueueRun) {
   if (!ctx.stopping?.aborted && !ctx.controller.signal.aborted) {
@@ -16,7 +16,7 @@ export async function waitIfPaused(ctx: HostContext, run: QueueRun) {
     const control = ctx.db.control(ctx.sessionId);
     if (control === "pause_cancel") {
       setRunStatus(ctx, run, "paused");
-      ctx.controller.abort(new CanceledRun("暂停状态收到 cancel"));
+      ctx.controller.abort(new CanceledRunError("暂停状态收到 cancel"));
       ctx.logger.warn("暂停状态收到 cancel，Host 已关闭", {
         queueId: run.items[0].id,
       });
@@ -24,7 +24,7 @@ export async function waitIfPaused(ctx: HostContext, run: QueueRun) {
     }
     if (control === "cancel") {
       cancelRun(ctx, run);
-      throw new CanceledRun("运行已取消");
+      throw new CanceledRunError("运行已取消");
     }
     if (control === "running") {
       setRunStatus(ctx, run, "running");

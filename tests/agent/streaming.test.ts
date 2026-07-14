@@ -2,8 +2,10 @@ import { AIMessageChunk, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
+import { BunSqliteSaver } from "../../src/checkpointer";
 import { FakeStreamingChatModel } from "@langchain/core/utils/testing";
 import { HookRuntime } from "../../src/hooks/runtime";
+import type { HostContext } from "../../src/runtime/context";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import { createAgentGraph } from "../../src/agent";
 import { testSettings } from "../support/settings";
@@ -11,7 +13,9 @@ afterEach(cleanupDatabaseDirs);
 test("streams every model delta once across the recoverable task boundary", async () => {
   const db = makeDb();
   db.resetSession("session", workspace);
+  const queueId = db.appendUser("session", "开始");
   const logger = new Logger("error");
+  const settings = testSettings(workspace);
   const model = new FakeStreamingChatModel({
     chunks: [
       new AIMessageChunk({
@@ -28,25 +32,33 @@ test("streams every model delta once across the recoverable task boundary", asyn
     ],
   });
   const hooks = new HookRuntime([], [], db.db, logger, "session", workspace);
+  const checkpointer = new BunSqliteSaver(db.db, "session");
   const graph = createAgentGraph({
+    checkpointer,
     hooks,
     model,
-    settings: testSettings(workspace),
+    settings,
     tools: [],
   });
   const tokens: string[] = [];
   const reasoning: string[] = [];
-  const context = {
-    db: {
-      streamReasoning: (_sessionId: string, _queueId: number, text: string) => reasoning.push(text),
-      streamToken: (_sessionId: string, _queueId: number, text: string) => tokens.push(text),
-      streamToolCall: () => undefined,
-    },
+  db.onChange((event) => {
+    if (event.kind === "assistant_reasoning_delta") {
+      reasoning.push(event.value);
+    }
+    if (event.kind === "assistant_text_delta") {
+      tokens.push(event.value);
+    }
+  });
+  const context: HostContext = {
+    checkpointer,
+    controller: new AbortController(),
+    db,
+    graph,
     logger,
-    observer: { token: () => undefined },
     sessionId: "session",
-    settings: testSettings(workspace),
-  } as never;
+    settings,
+  };
   try {
     const stream = await graph.stream(
       { messages: [new HumanMessage("开始")] },
@@ -57,7 +69,7 @@ test("streams every model delta once across the recoverable task boundary", asyn
     );
     const state = createStreamLogState();
     for await (const event of stream) {
-      handleStreamEvent(context, event, state, 1);
+      handleStreamEvent(context, event, state, queueId);
     }
     expect(reasoning).toEqual(["分析"]);
     expect(tokens).toEqual(["重", "重"]);

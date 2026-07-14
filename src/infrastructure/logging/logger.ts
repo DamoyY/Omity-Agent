@@ -84,12 +84,11 @@ export function formatData(data: unknown): string[] {
       if (isScalar(value)) {
         return [`${styles.dim}${key}${styles.reset}: ${formatScalar(value)}`];
       }
-      return [
-        `${styles.dim}${key}${styles.reset}:`,
-        ...JSON.stringify(value, null, 2)
-          .split("\n")
-          .map((line) => `  ${line}`),
-      ];
+      const lines = [`${styles.dim}${key}${styles.reset}:`];
+      for (const line of JSON.stringify(value, null, 2).split("\n")) {
+        lines.push(`  ${line}`);
+      }
+      return lines;
     });
   }
   return JSON.stringify(data, null, 2).split("\n");

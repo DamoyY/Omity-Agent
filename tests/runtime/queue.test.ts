@@ -2,12 +2,15 @@ import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { AIMessage } from "@langchain/core/messages";
 import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { BunSqliteSaver } from "../../src/checkpointer";
+import { HookRuntime } from "../../src/hooks/runtime";
 import type { HostContext } from "../../src/runtime/context";
 import { Logger } from "../../src/infrastructure/logging/logger";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
-import type { Settings } from "../../src/types";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
 import { parseError } from "../../src/failures/details";
 import { processQueue } from "../../src/runtime/queue";
+import { testSettings } from "../support/settings";
 afterEach(cleanupDatabaseDirs);
 test("unexpected errors pause the queue", async () => {
   const db = makeDb();
@@ -126,50 +129,26 @@ test("host abort cancels an active graph stream", async () => {
   expect(db.control("123")).toBe("pause");
   db.close();
 });
-function makeContext(db: AgentDatabase, graph: unknown): HostContext {
+interface GraphFixture {
+  getState?: () => Promise<unknown>;
+  stream?: (_input: unknown, options: { signal: AbortSignal }) => unknown;
+}
+function makeContext(db: AgentDatabase, fixture: GraphFixture): HostContext {
+  const settings = testSettings(workspace);
+  const logger = new Logger("error");
+  const checkpointer = new BunSqliteSaver(db.db, "123");
+  const hooks = new HookRuntime([], [], db.db, logger, "123", workspace);
+  const graph = Object.assign(
+    createAgentGraph({ checkpointer, hooks, model: fakeModel(), settings, tools: [] }),
+    fixture,
+  );
   return {
-    checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
+    checkpointer,
     controller: new AbortController(),
     db,
-    graph: graph as HostContext["graph"],
-    logger: new Logger("error"),
+    graph,
+    logger,
     sessionId: "123",
-    settings: makeSettings(),
-  };
-}
-function makeSettings(): Settings {
-  return {
-    agent: { systemPrompt: "test" },
-    attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
-    frontend: {
-      draftSaveDelayMs: 1,
-      transcriptRefreshIntervalMs: 1,
-    },
-    hooks: [],
-    host: {
-      idleLogMs: 1,
-      pausePollMs: 1,
-      pollMs: 1,
-      recursionLimit: 10,
-      shutdownTimeoutMs: 1000,
-    },
-    leases: { hostTtlMs: 30_000 },
-    logging: { level: "error", streamTokens: false },
-    model: {
-      adapter: "completions",
-      apiKeyEnv: "TEST_OPENAI_KEY",
-      baseURL: null,
-      model: "test-model",
-      temperature: 0,
-      timeoutMs: 1000,
-    },
-    paths: { dataDir: "data" },
-    skills: {
-      directory: "~/.agents/skills",
-      enabled: false,
-      skillEnabled: {},
-      usagePrompt: "use skills",
-    },
-    toolOutput: { maxTokens: 8192 },
+    settings,
   };
 }

@@ -9,6 +9,7 @@ import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
 } from "../../src/infrastructure/mcp/nameOverrides";
+import { DynamicStructuredTool } from "@langchain/core/tools";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 const savedEnv = new Map<string, string | undefined>();
@@ -144,5 +145,17 @@ test("mcp tool name overrides report renamed conflicts", () => {
   ).toThrow("MCP 工具重命名后名称冲突：web__crawl");
 });
 function toolNames(names: string[]) {
-  return names.map((name) => ({ name })) as never;
+  return names.map(
+    (name) =>
+      new DynamicStructuredTool({
+        description: "test tool",
+        func: () => Promise.resolve("ok"),
+        name,
+        schema: {
+          additionalProperties: false,
+          properties: {},
+          type: "object" as const,
+        },
+      }),
+  );
 }

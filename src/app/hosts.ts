@@ -10,14 +10,15 @@ interface RunningHost {
   force: AbortController;
   ready: Promise<void>;
   stopping: AbortController;
-  cancelTool(callId: string): boolean;
+  cancelTool: (callId: string) => boolean;
 }
 export interface AppHostEvents {
-  activity(sessionId: string): void;
-  changed(sessionId: string): void;
-  transcript(sessionId: string, event: StreamEvent): void;
-  wait(sessionId: string, delayMs: number): Promise<void>;
+  activity: (sessionId: string) => void;
+  changed: (sessionId: string) => void;
+  transcript: (sessionId: string, event: StreamEvent) => void;
+  wait: (sessionId: string, delayMs: number) => Promise<void>;
 }
+const noToolCancellation: RunningHost["cancelTool"] = () => false;
 export class AppHosts {
   private readonly running = new Map<string, RunningHost>();
   private readonly errors = new Map<string, ErrorDetails>();
@@ -56,7 +57,7 @@ export class AppHosts {
     const stopping = new AbortController();
     const ready = Promise.withResolvers<undefined>();
     let initialized = false;
-    let cancelTool: RunningHost["cancelTool"] = () => false;
+    let cancelTool = noToolCancellation;
     const hostPromise = runHostSession({ kind, sessionId }, this.appRoot, {
       controller: force,
       cwd: root,

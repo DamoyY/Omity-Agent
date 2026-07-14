@@ -29,7 +29,10 @@ export default class Host extends Command {
   async run() {
     const { args } = await this.parse(Host);
     const { sessionId } = args;
-    const action = args.action as HostAction;
+    const { action } = args;
+    if (!isHostAction(action)) {
+      throw new Error(`未知 Host 操作：${action}`);
+    }
     if (action === "delete") {
       deleteHostSession(sessionId);
       this.log(`已删除会话 ${sessionId}`);
@@ -37,4 +40,7 @@ export default class Host extends Command {
     }
     await runHost({ kind: action, sessionId } satisfies HostMode);
   }
+}
+function isHostAction(value: string): value is HostAction {
+  return hostActions.some((action) => action === value);
 }

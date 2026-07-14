@@ -5,10 +5,11 @@ export async function serialize(
 ): Promise<[string, Uint8Array]> {
   return await serde.dumpsTyped(value);
 }
-export async function deserialize<T>(
+export async function deserialize(
   serde: SerializerProtocol,
   type: string,
   value: Uint8Array | string,
-): Promise<T> {
-  return (await serde.loadsTyped(type, value)) as T;
+): Promise<unknown> {
+  const deserialized: unknown = await serde.loadsTyped(type, value);
+  return deserialized;
 }

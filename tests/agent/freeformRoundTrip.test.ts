@@ -18,7 +18,11 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
   const requests: Record<string, unknown>[] = [];
   const server = Bun.serve({
     async fetch(request) {
-      const body = (await request.json()) as Record<string, unknown>;
+      const parsedBody: unknown = await request.json();
+      if (!isRecord(parsedBody)) {
+        throw new Error("mock upstream received a non-object request body");
+      }
+      const body = parsedBody;
       requests.push(body);
       if (requests.length === 1) {
         return Response.json(customToolResponse());
@@ -92,7 +96,7 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
   });
   const output = await invokeTool(call, {
     configurable: { thread_id: "test-thread" },
-  } as never);
+  });
   const final = await model.invoke(
     modelMessages(responsesSettings(), null, [human, hydrated, output]),
   );

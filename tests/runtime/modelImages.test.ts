@@ -41,8 +41,11 @@ test("prepares provider-native tool image output for Responses API", () => {
     { text: "result", type: "input_text" },
     { detail: "auto", image_url: src, type: "input_image" },
   ]);
-  expect((prepared as ToolMessage).tool_call_id).toBe("call-1");
-  expect((prepared as ToolMessage).name).toBe("screenshot");
+  if (!ToolMessage.isInstance(prepared)) {
+    throw new Error("模型图片消息不是工具消息");
+  }
+  expect(prepared.tool_call_id).toBe("call-1");
+  expect(prepared.name).toBe("screenshot");
   expect(
     convertMessagesToResponsesInput({
       messages: [prepared],

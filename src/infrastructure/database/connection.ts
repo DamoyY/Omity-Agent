@@ -2,9 +2,6 @@ import { parse, resolve } from "node:path";
 import type { Database } from "bun:sqlite";
 import { rmSync } from "node:fs";
 export const sqliteBusyTimeoutMs = 5000;
-interface QueryCacheDatabase extends Database {
-  clearQueryCache(): void;
-}
 export function configureDatabase(db: Database) {
   db.run(`PRAGMA busy_timeout = ${sqliteBusyTimeoutMs.toString()}`);
   db.run("PRAGMA journal_mode = WAL");
@@ -15,11 +12,14 @@ export function configureReadonlyDatabase(db: Database) {
   db.run("PRAGMA foreign_keys = ON");
 }
 export function closeDatabase(db: Database) {
-  const current = db as QueryCacheDatabase;
-  current.clearQueryCache();
+  const clearQueryCache: unknown = Reflect.get(db, "clearQueryCache");
+  if (typeof clearQueryCache !== "function") {
+    throw new Error("当前 Bun SQLite 不支持清理查询缓存");
+  }
+  Reflect.apply(clearQueryCache, db, []);
   // Bun keeps temporary query wrappers alive until GC, which blocks close(true).
   Bun.gc(true);
-  current.close(true);
+  db.close(true);
 }
 export function removeDatabaseDirectory(path: string) {
   const target = resolve(path);

@@ -143,8 +143,11 @@ export function buildListQuery(config: RunnableConfig, options?: CheckpointListO
   return { args, sql };
 }
 function requireRecord(value: unknown, name: string): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new Error(`${name} 必须是对象`);
   }
-  return value as Record<string, unknown>;
+  return value;
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -105,8 +105,9 @@ export function requireCallId(call: ToolCall) {
 }
 function completedOutput(messages: BaseMessage[], id: string) {
   return messages.findLast(
-    (message) => ToolMessage.isInstance(message) && message.tool_call_id === id,
-  ) as ToolMessage | undefined;
+    (message): message is ToolMessage =>
+      ToolMessage.isInstance(message) && message.tool_call_id === id,
+  );
 }
 function storeMessage(message: BaseMessage) {
   const [stored] = mapChatMessagesToStoredMessages([message]);

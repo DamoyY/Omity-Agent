@@ -1,11 +1,12 @@
 import { DomainError, type DomainErrorCode } from "../../errors";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 export type ApiErrorCode =
   | DomainErrorCode
   | "BAD_REQUEST"
   | "NOT_FOUND"
   | "PAYLOAD_TOO_LARGE"
   | "INTERNAL_ERROR";
-const domainStatuses: Record<DomainErrorCode, number> = {
+const domainStatuses: Record<DomainErrorCode, ContentfulStatusCode> = {
   ATTACHMENT_INVALID: 400,
   ATTACHMENT_TOO_LARGE: 413,
   FORK_MESSAGE_NOT_FOUND: 404,
@@ -18,11 +19,12 @@ const domainStatuses: Record<DomainErrorCode, number> = {
 export class HttpError extends Error {
   readonly code: ApiErrorCode;
   constructor(
-    readonly status: number,
+    readonly status: ContentfulStatusCode,
     message: string,
     code?: ApiErrorCode,
   ) {
     super(message);
+    this.name = "HttpError";
     this.code = code ?? httpCode(status);
   }
 }
@@ -53,7 +55,7 @@ function errorMessage(error: unknown) {
   }
   return String(error);
 }
-function httpCode(status: number): ApiErrorCode {
+function httpCode(status: ContentfulStatusCode): ApiErrorCode {
   if (status === 400) {
     return "BAD_REQUEST";
   }

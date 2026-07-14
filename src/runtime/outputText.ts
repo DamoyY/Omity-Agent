@@ -80,7 +80,18 @@ function isTextBlock(value: unknown): value is { text: string } {
   );
 }
 function asContentBlocks(value: unknown[]) {
-  return value as ContentBlock[];
+  return value.map((block): ContentBlock => {
+    if (typeof block === "string") {
+      return { text: block, type: "text" };
+    }
+    if (!isContentBlock(block)) {
+      throw new Error("MCP 内容块缺少字符串 type");
+    }
+    return block;
+  });
+}
+function isContentBlock(value: unknown): value is ContentBlock {
+  return isRecord(value) && typeof value["type"] === "string";
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import { ToolExecutions } from "../../src/agent/toolExecutions";
 import { createMcpToolFailureClient } from "../../src/infrastructure/mcp/toolFailures";
@@ -25,7 +26,7 @@ test("MCP error results reach the tool message without adapter wrappers", async 
 });
 test("manual cancellation stops the MCP request and returns elapsed time", async () => {
   let requestSignal: AbortSignal | undefined;
-  const pending = Promise.withResolvers<unknown>();
+  const pending = Promise.withResolvers<McpToolResult>();
   let now = 0;
   const executions = new ToolExecutions({ now: () => now });
   executions.announce("call-1");
@@ -44,34 +45,27 @@ test("manual cancellation stops the MCP request and returns elapsed time", async
   now = 5600;
   expect(executions.cancel("call-1")).toBe(true);
   expect(requestSignal?.aborted).toBe(true);
-  expect((await output).content).toBe("工具运行 5.6 秒 后被用户手动终止。");
+  const cancelled = await output;
+  expect(cancelled.content).toBe("工具运行 5.6 秒 后被用户手动终止。");
 });
-async function invokeMcpTool(
-  callTool: (
-    params?: unknown,
-    schema?: unknown,
-    options?: { signal?: AbortSignal },
-  ) => Promise<unknown>,
-  toolExecutions?: ToolExecutions,
-) {
-  const client = {
-    callTool,
-    listTools: () =>
-      Promise.resolve({
-        tools: [
-          {
-            description: "Search",
-            inputSchema: {
-              additionalProperties: false,
-              properties: {},
-              type: "object" as const,
-            },
-            name: "search_query",
+async function invokeMcpTool(callTool: McpCallTool, toolExecutions?: ToolExecutions) {
+  const client = new Client({ name: "test", version: "1.0.0" });
+  client.callTool = callTool;
+  client.listTools = () =>
+    Promise.resolve({
+      tools: [
+        {
+          description: "Search",
+          inputSchema: {
+            additionalProperties: false,
+            properties: {},
+            type: "object" as const,
           },
-        ],
-      }),
-  };
-  const tools = await loadMcpTools("web", createMcpToolFailureClient(client as never), {
+          name: "search_query",
+        },
+      ],
+    });
+  const tools = await loadMcpTools("web", createMcpToolFailureClient(client), {
     useStandardContentBlocks: true,
   });
   const invoke = createToolInvoker(tools, {
@@ -87,6 +81,8 @@ async function invokeMcpTool(
       name: "search_query",
       type: "tool_call",
     },
-    { configurable: { thread_id: "test-thread" } } as never,
+    { configurable: { thread_id: "test-thread" } },
   );
 }
+type McpCallTool = Client["callTool"];
+type McpToolResult = Awaited<ReturnType<McpCallTool>>;

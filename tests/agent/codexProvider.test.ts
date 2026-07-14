@@ -34,18 +34,13 @@ test("codex adapter builds a Responses API model without an API key env", () => 
   const model = buildModel(settings, "session-1", "system instructions");
   expect(resolveModelApi(settings.model)).toBe("responses");
   expect(model).toBeInstanceOf(ChatOpenAIResponses);
-  expect((model as ChatOpenAIResponses).zdrEnabled).toBeTrue();
-  expect(
-    (
-      model as unknown as {
-        clientConfig: { maxRetries: number };
-      }
-    ).clientConfig.maxRetries,
-  ).toBe(0);
-  expect((model as ChatOpenAIResponses).invocationParams().store).toBeFalse();
-  expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe(
-    "system instructions",
-  );
+  if (!(model instanceof ChatOpenAIResponses)) {
+    throw new Error("Codex adapter did not build a Responses model");
+  }
+  expect(model.zdrEnabled).toBeTrue();
+  expect(clientMaxRetries(model)).toBe(0);
+  expect(model.invocationParams().store).toBeFalse();
+  expect(model.invocationParams().instructions).toBe("system instructions");
 });
 test("codex client reads auth.json and authenticates the Codex endpoint", async () => {
   const root = mkdtempSync(join(tmpdir(), "omity-codex-auth-"));
@@ -62,19 +57,22 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
     }),
   );
   const requests: CapturedRequest[] = [];
-  const upstreamFetch = ((input, init) => {
-    requests.push({
-      body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
-      headers: new Headers(init?.headers),
-      url: input instanceof Request ? input.url : String(input),
-    });
-    return Promise.resolve(
-      new Response("{}", {
-        headers: { "content-type": "application/json" },
-        status: 200,
-      }),
-    );
-  }) as FetchLike;
+  const upstreamFetch = Object.assign(
+    (input: URL | RequestInfo, init?: BunFetchRequestInit | RequestInit) => {
+      requests.push({
+        body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+        headers: new Headers(init?.headers),
+        url: input instanceof Request ? input.url : String(input),
+      });
+      return Promise.resolve(
+        new Response("{}", {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        }),
+      );
+    },
+    { preconnect: () => undefined },
+  ) satisfies FetchLike;
   const fields = createCodexClientFields({
     authFilePath,
     fetch: upstreamFetch,
@@ -107,6 +105,19 @@ interface CapturedRequest {
   url: string;
   headers: Headers;
   body: unknown;
+}
+function clientMaxRetries(value: unknown) {
+  if (!isRecord(value) || !isRecord(value["clientConfig"])) {
+    throw new Error("Responses model client config is unavailable");
+  }
+  const { maxRetries } = value["clientConfig"];
+  if (typeof maxRetries !== "number") {
+    throw new Error("Responses model maxRetries is invalid");
+  }
+  return maxRetries;
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 function codexSettings(): Settings {
   const main = parseMainSettings({

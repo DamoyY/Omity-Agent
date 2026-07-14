@@ -2,10 +2,10 @@ import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { AIMessage } from "@langchain/core/messages";
 import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { BunSqliteSaver } from "../../src/checkpointer";
 import { HookRuntime } from "../../src/hooks/runtime";
 import type { HostContext } from "../../src/runtime/context";
 import { Logger } from "../../src/infrastructure/logging/logger";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createAgentGraph } from "../../src/agent";
 import { fakeModel } from "@langchain/core/testing";
 import { processQueue } from "../../src/runtime/queue";
@@ -57,7 +57,7 @@ test("append during model execution continues after the agent boundary", async (
       ]);
       return new AIMessage("final");
     });
-  const checkpointer = new MemorySaver();
+  const checkpointer = new BunSqliteSaver(db.db, "session");
   const graph = createAgentGraph({
     checkpointer,
     hooks,
@@ -117,7 +117,7 @@ test("append before a pending model replaces its scheduled route", async () => {
     return new AIMessage("final");
   };
   const model = fakeModel().respond(response).respond(response);
-  const checkpointer = new MemorySaver();
+  const checkpointer = new BunSqliteSaver(db.db, "session");
   const graph = createAgentGraph({
     checkpointer,
     hooks,
@@ -134,12 +134,16 @@ test("append before a pending model replaces its scheduled route", async () => {
     db.close();
   }
 });
-function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
+function context(
+  db: AgentDatabase,
+  graph: ReturnType<typeof createAgentGraph>,
+  checkpointer: BunSqliteSaver,
+): HostContext {
   return {
-    checkpointer: checkpointer as never,
+    checkpointer,
     controller: new AbortController(),
     db,
-    graph: graph as HostContext["graph"],
+    graph,
     logger: new Logger("error", true),
     sessionId: "session",
     settings: testSettings(workspace),

@@ -1,9 +1,4 @@
-import {
-  type BaseMessage,
-  type StoredMessage,
-  ToolMessage,
-  mapStoredMessagesToChatMessages,
-} from "@langchain/core/messages";
+import { type BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { type DisplayMessage, type DisplayToolCall } from "./timeline";
 import { contentToText, messageReasoning } from "../runtime/content";
 import { freeformCallIds, rawFreeformInput } from "./timeline/freeform";
@@ -12,10 +7,10 @@ import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Settings } from "../types";
 import { existsSync } from "node:fs";
 import { extractToolImages } from "../runtime/modelImages";
+import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { parseError } from "../failures/details";
 import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import { sessionNotFound } from "../errors";
-import { z } from "zod";
 interface MessageRow {
   id: number;
   source_id: string;
@@ -31,14 +26,10 @@ interface QueueRow {
   user_message_id: number | null;
   root_id: number | null;
 }
-import { persistedDisplayEvent, type PersistedEventRow } from "./timeline/persistedEvent";
+import { type PersistedEventRow, persistedDisplayEvent } from "./timeline/persistedEvent";
 interface SequenceRow {
   seq: number;
 }
-const storedMessageSchema = z.looseObject({
-  data: z.record(z.string(), z.unknown()),
-  type: z.string(),
-});
 export function loadSessionTranscript(settings: Settings, sessionId: string) {
   const paths = resolveSessionPaths(settings, sessionId);
   if (!existsSync(paths.dbPath)) {
@@ -95,9 +86,7 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
   return { control, eventCursor, events, messages, queue };
 }
 function toDisplayMessage(row: MessageRow): DisplayMessage {
-  const stored = parseStored(row.message_json);
-  stored.data.id = row.source_id;
-  const [message] = mapStoredMessagesToChatMessages([stored]);
+  const [message] = messageRowsToChatMessages([row]);
   if (!message) {
     throw new Error("无法还原消息");
   }
@@ -123,14 +112,6 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
     usage: modelTokenUsage(message),
   };
 }
-function parseStored(value: string): StoredMessage {
-  const parsed: unknown = JSON.parse(value);
-  const result = storedMessageSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new Error("消息记录无效");
-  }
-  return result.data as unknown as StoredMessage;
-}
 function messageRole(message: BaseMessage): DisplayMessage["role"] {
   if (message.type === "human") {
     return "user";
@@ -147,15 +128,20 @@ function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
     const input = call["args"] ?? call["input"] ?? call;
     const id = stringField(call, "id") ?? `tool-${index.toString()}`;
     const freeform = call["isCustomTool"] === true || freeformIds.has(id);
-    return {
+    const toolCall: DisplayToolCall = {
       id,
       index,
-      inputTokens: toolInputTokens(call, input),
-      ...(message.id ? { messageId: message.id } : {}),
       input,
+      inputTokens: toolInputTokens(call, input),
       name: stringField(call, "name") ?? "tool",
-      ...(freeform ? { rawInput: rawFreeformInput(input) } : {}),
     };
+    if (message.id) {
+      toolCall.messageId = message.id;
+    }
+    if (freeform) {
+      toolCall.rawInput = rawFreeformInput(input);
+    }
+    return toolCall;
   });
 }
 function extractToolCallId(message: BaseMessage) {
@@ -163,15 +149,21 @@ function extractToolCallId(message: BaseMessage) {
   return typeof value === "string" ? value : undefined;
 }
 function readRecordArray(message: BaseMessage, key: string) {
-  const value = (message as unknown as Record<string, unknown>)[key];
+  const value = hasProperty(message, key) ? message[key] : undefined;
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 function readRecord(message: BaseMessage, key: string) {
-  return (message as unknown as Record<string, unknown>)[key];
+  return hasProperty(message, key) ? message[key] : undefined;
 }
 function stringField(record: Record<string, unknown>, key: string) {
   return typeof record[key] === "string" ? record[key] : undefined;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+function hasProperty<Key extends PropertyKey>(
+  value: object,
+  key: Key,
+): value is object & Record<Key, unknown> {
+  return key in value;
 }

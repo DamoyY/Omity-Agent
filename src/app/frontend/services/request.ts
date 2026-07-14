@@ -10,15 +10,20 @@ export class ApiError extends Error {
     message: string,
   ) {
     super(message);
+    this.name = "ApiError";
   }
 }
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(
+  path: string,
+  schema: z.ZodType<T>,
+  init?: RequestInit,
+): Promise<T> {
   try {
     const response = await fetch(path, {
       headers: init?.body instanceof FormData ? undefined : { "content-type": "application/json" },
       ...init,
     });
-    const json = (await response.json()) as unknown;
+    const json: unknown = await response.json();
     if (!response.ok) {
       const parsed = errorResponse.safeParse(json);
       if (!parsed.success) {
@@ -26,7 +31,13 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       }
       throw new ApiError(response.status, parsed.data.error.code, parsed.data.error.message);
     }
-    return json as T;
+    const parsed = schema.safeParse(json);
+    if (!parsed.success) {
+      throw new Error(`API 成功响应结构无效：HTTP ${response.status.toString()}`, {
+        cause: parsed.error,
+      });
+    }
+    return parsed.data;
   } catch (error) {
     if (!init?.signal?.aborted) {
       reportError(error, { path });

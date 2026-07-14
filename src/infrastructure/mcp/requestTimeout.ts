@@ -4,8 +4,8 @@ function skipRequestTimeout() {
   return undefined;
 }
 export function disableMcpRequestTimeout() {
-  const prototype = Protocol.prototype as unknown as Record<string, unknown>;
-  const setupTimeout = prototype[setupTimeoutMethod];
+  const { prototype } = Protocol;
+  const setupTimeout: unknown = Reflect.get(prototype, setupTimeoutMethod);
   if (setupTimeout === skipRequestTimeout) {
     return;
   }

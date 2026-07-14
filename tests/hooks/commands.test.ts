@@ -10,10 +10,7 @@ test("parallel tool messages own response and provider metadata exactly once", (
   const calls = required(original.tool_calls);
   for (const [toolIndex, call] of calls.entries()) {
     const command = originalToolCommand({ ...plan, toolIndex }, original, call);
-    const update = command.update as {
-      messages: AIMessage[];
-      hookPlan: ToolHookPlan;
-    };
+    const update = requireToolUpdate(command.update);
     messages.push(required(update.messages[0]));
     plan = update.hookPlan;
   }
@@ -123,4 +120,29 @@ function required<T>(value: T | undefined): T {
     throw new Error("测试消息缺失");
   }
   return value;
+}
+function requireToolUpdate(value: unknown): { messages: AIMessage[]; hookPlan: ToolHookPlan } {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value["messages"]) ||
+    !value["messages"].every((message) => AIMessage.isInstance(message)) ||
+    !isToolHookPlan(value["hookPlan"])
+  ) {
+    throw new Error("原始工具命令更新无效");
+  }
+  return { hookPlan: value["hookPlan"], messages: value["messages"] };
+}
+function isToolHookPlan(value: unknown): value is ToolHookPlan {
+  return (
+    isRecord(value) &&
+    value["kind"] === "tools" &&
+    isRecord(value["original"]) &&
+    typeof value["toolIndex"] === "number" &&
+    typeof value["hookIndex"] === "number" &&
+    (value["stage"] === "before" || value["stage"] === "original" || value["stage"] === "after") &&
+    typeof value["responseEmitted"] === "boolean"
+  );
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

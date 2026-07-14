@@ -11,7 +11,7 @@ import {
   input as inputRecipe,
   textarea as textareaRecipe,
 } from "styled-system/recipes";
-import type { ComponentProps, ReactNode } from "react";
+import { type ComponentProps, type ReactNode, createElement } from "react";
 import { css, cx } from "styled-system/css";
 const fieldClasses = fieldRecipe();
 const compactControl = css({
@@ -58,17 +58,15 @@ const compactCode = css({
 type ButtonProps = ComponentProps<"button"> & ButtonVariantProps;
 type LinkButtonProps = ComponentProps<"a"> & ButtonVariantProps;
 export function Button({ className, size = "sm", variant = "outline", ...props }: ButtonProps) {
-  return (
-    <button
-      className={cx(
-        buttonRecipe({ size, variant }),
-        compactControl,
-        variant !== "ghost" && surfacedControl,
-        className,
-      )}
-      {...props}
-    />
-  );
+  return createElement("button", {
+    ...props,
+    className: cx(
+      buttonRecipe({ size, variant }),
+      compactControl,
+      variant !== "ghost" && surfacedControl,
+      className,
+    ),
+  });
 }
 export function LinkButton({
   className,
@@ -76,44 +74,38 @@ export function LinkButton({
   variant = "outline",
   ...props
 }: LinkButtonProps) {
-  return (
-    <a
-      className={cx(
-        buttonRecipe({ size, variant }),
-        compactControl,
-        variant !== "ghost" && surfacedControl,
-        className,
-      )}
-      {...props}
-    />
-  );
+  return createElement("a", {
+    ...props,
+    className: cx(
+      buttonRecipe({ size, variant }),
+      compactControl,
+      variant !== "ghost" && surfacedControl,
+      className,
+    ),
+  });
 }
 export function IconButton(props: ButtonProps) {
-  return <Button size="sm" variant="outline" {...props} />;
+  return createElement(Button, { size: "sm", variant: "outline", ...props });
 }
 type InputProps = Omit<ComponentProps<"input">, "size"> & InputVariantProps;
 export function Input({ className, size = "sm", ...props }: InputProps) {
-  return (
-    <input
-      className={cx(inputRecipe({ size }), compactControl, surfacedControl, className)}
-      {...props}
-    />
-  );
+  return createElement("input", {
+    ...props,
+    className: cx(inputRecipe({ size }), compactControl, surfacedControl, className),
+  });
 }
 type TextareaProps = ComponentProps<"textarea"> & TextareaVariantProps;
 export function Textarea({ className, size = "md", ...props }: TextareaProps) {
-  return (
-    <textarea
-      className={cx(textareaRecipe({ size }), compactControl, surfacedControl, className)}
-      {...props}
-    />
-  );
+  return createElement("textarea", {
+    ...props,
+    className: cx(textareaRecipe({ size }), compactControl, surfacedControl, className),
+  });
 }
 function FieldRoot({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cx(fieldClasses.root, className)} {...props} />;
+  return createElement("div", { ...props, className: cx(fieldClasses.root, className) });
 }
 function FieldLabel({ className, ...props }: ComponentProps<"span">) {
-  return <span className={cx(fieldClasses.label, className)} {...props} />;
+  return createElement("span", { ...props, className: cx(fieldClasses.label, className) });
 }
 export const Field = {
   Label: FieldLabel,
@@ -121,14 +113,18 @@ export const Field = {
 };
 type BadgeProps = ComponentProps<"span"> & BadgeVariantProps;
 export function Badge({ className, size = "sm", variant = "outline", ...props }: BadgeProps) {
-  return (
-    <span className={cx(badgeRecipe({ size, variant }), compactBadge, className)} {...props} />
-  );
+  return createElement("span", {
+    ...props,
+    className: cx(badgeRecipe({ size, variant }), compactBadge, className),
+  });
 }
 type CodeProps = ComponentProps<"code"> &
   CodeVariantProps & {
     children: ReactNode;
   };
 export function Code({ className, size = "sm", variant = "ghost", ...props }: CodeProps) {
-  return <code className={cx(codeRecipe({ size, variant }), compactCode, className)} {...props} />;
+  return createElement("code", {
+    ...props,
+    className: cx(codeRecipe({ size, variant }), compactCode, className),
+  });
 }

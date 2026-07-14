@@ -1,5 +1,5 @@
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../../src/infrastructure/database/agentDatabase";
 import { BunSqliteSaver } from "../../../src/checkpointer";
@@ -64,15 +64,13 @@ test("restart does not inject consumed messages already in the checkpoint", asyn
     db = new AgentDatabase(fixture.path);
     const recovered = graph(db, fixture.dir, fakeModel().respond(new AIMessage("done")));
     const inputs: unknown[] = [];
-    const observedGraph = {
-      getState: recovered.graph.getState.bind(recovered.graph),
-      stream: (input: unknown, options: unknown) => {
-        inputs.push(input);
-        return recovered.graph.stream(input as never, options as never);
-      },
-    };
+    const originalStream = recovered.graph.stream.bind(recovered.graph);
+    spyOn(recovered.graph, "stream").mockImplementation((input, options) => {
+      inputs.push(input);
+      return originalStream(input, options);
+    });
     await processQueue(
-      context(db, observedGraph, recovered.checkpointer, fixture.dir),
+      context(db, recovered.graph, recovered.checkpointer, fixture.dir),
       required(db.nextQueue("session")),
     );
     expect(inputs[0]).toBeNull();
@@ -118,13 +116,12 @@ async function commitModelBoundary(
   for await (const event of stream) {
     void event;
   }
-  expect((await agentGraph.getState({ configurable: { thread_id: "session:1" } })).next).toEqual([
-    "model_request",
-  ]);
+  const state = await agentGraph.getState({ configurable: { thread_id: "session:1" } });
+  expect(state.next).toEqual(["model_request"]);
 }
 function context(
   db: AgentDatabase,
-  graphValue: unknown,
+  graphValue: ReturnType<typeof createAgentGraph>,
   checkpointer: BunSqliteSaver,
   dir: string,
 ): HostContext {
@@ -132,7 +129,7 @@ function context(
     checkpointer,
     controller: new AbortController(),
     db,
-    graph: graphValue as HostContext["graph"],
+    graph: graphValue,
     logger: new Logger("error", true),
     sessionId: "session",
     settings: testSettings(dir),

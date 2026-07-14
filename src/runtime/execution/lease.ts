@@ -6,7 +6,9 @@ import {
 import type { AgentDatabase } from "../../infrastructure/database/agentDatabase";
 import { DomainError } from "../../errors";
 import type { Logger } from "../../infrastructure/logging/logger";
-export class HostLeaseLostError extends Error {}
+export class HostLeaseLostError extends Error {
+  override readonly name = "HostLeaseLostError";
+}
 export class HostLease {
   private readonly ownerId: string;
   private readonly timer: ReturnType<typeof setInterval>;

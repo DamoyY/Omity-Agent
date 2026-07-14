@@ -12,7 +12,6 @@ import {
   requestBodyLimit,
 } from "./request";
 import type { AppController } from "../controller";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { bodyLimit } from "hono/body-limit";
 export type ApiController = Pick<
   AppController,
@@ -98,11 +97,12 @@ export function createApi(controller: ApiController) {
   app.notFound((c) => {
     throw new HttpError(404, `未知 API：${c.req.path}`);
   });
-  app.onError((error, c) => {
-    const normalized = errorResponse(error);
-    return c.json(normalized.body, normalized.status as ContentfulStatusCode);
-  });
+  app.onError(handleApiError);
   return app;
+}
+function handleApiError(error: Error, c: Context) {
+  const normalized = errorResponse(error);
+  return c.json(normalized.body, normalized.status);
 }
 function sessionId(c: Context) {
   const value = c.req.param("sessionId");

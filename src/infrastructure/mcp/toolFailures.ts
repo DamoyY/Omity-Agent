@@ -1,6 +1,7 @@
 import { markMcpRequestCompleted, markMcpRequestStarted } from "../../agent/toolExecutions";
 import type { loadMcpTools } from "@langchain/mcp-adapters";
 type McpClient = Parameters<typeof loadMcpTools>[1];
+const mcpToolFailures = new WeakSet<object>();
 export function createMcpToolFailureClient(client: McpClient): McpClient {
   return new Proxy(client, {
     get(target, property, receiver): unknown {
@@ -11,18 +12,18 @@ export function createMcpToolFailureClient(client: McpClient): McpClient {
       return async (...args: unknown[]) => {
         const signal = requestSignal(args);
         try {
-          const request = Reflect.apply(value, target, args) as Promise<unknown>;
+          const request: unknown = Reflect.apply(value, target, args);
           markMcpRequestStarted(signal);
           const result: unknown = await request;
           if (isRecord(result) && result["isError"] === true) {
-            throw new McpToolFailure(formatMcpContent(result["content"]));
+            throw createMcpToolFailure(formatMcpContent(result["content"]));
           }
           return result;
         } catch (error) {
-          if (error instanceof McpToolFailure) {
+          if (isMcpToolFailure(error)) {
             throw error;
           }
-          throw new McpToolFailure(errorMessage(error), error);
+          throw createMcpToolFailure(errorMessage(error), error);
         } finally {
           markMcpRequestCompleted(signal);
         }
@@ -31,16 +32,20 @@ export function createMcpToolFailureClient(client: McpClient): McpClient {
   });
 }
 function requestSignal(args: unknown[]) {
-  const [, , options] = args;
+  const [, ...remainingArgs] = args;
+  const [, options] = remainingArgs;
   return isRecord(options) && options["signal"] instanceof AbortSignal
     ? options["signal"]
     : undefined;
 }
-class McpToolFailure extends Error {
-  override readonly name = "ToolException";
-  constructor(message: string, cause?: unknown) {
-    super(message, cause === undefined ? undefined : { cause });
-  }
+function createMcpToolFailure(message: string, cause?: unknown) {
+  const error = new Error(message, cause === undefined ? undefined : { cause });
+  error.name = "ToolException";
+  mcpToolFailures.add(error);
+  return error;
+}
+function isMcpToolFailure(error: unknown): error is Error {
+  return typeof error === "object" && error !== null && mcpToolFailures.has(error);
 }
 function isCallable(value: unknown): value is (this: unknown, ...args: unknown[]) => unknown {
   return typeof value === "function";

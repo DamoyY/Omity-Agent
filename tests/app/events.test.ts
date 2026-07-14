@@ -1,9 +1,9 @@
-import { type ApiController, createApi } from "../../src/app/http/handler";
 import { expect, test } from "bun:test";
-import { AppEvents } from "../../src/app/events";
+import { createApi } from "../../src/app/http/handler";
+import { createApiController } from "./support/apiController";
 test("global SSE starts with a full session snapshot and sends mutations", async () => {
   const abort = new AbortController();
-  const controller = apiController();
+  const controller = createApiController();
   const response = await createApi(controller).request("/api/events", {
     signal: abort.signal,
   });
@@ -27,7 +27,7 @@ test("global SSE starts with a full session snapshot and sends mutations", async
 });
 test("session SSE sends ordered deltas only for the target session", async () => {
   const abort = new AbortController();
-  const controller = apiController();
+  const controller = createApiController();
   const response = await createApi(controller).request("/api/sessions/test/events", {
     signal: abort.signal,
   });
@@ -44,25 +44,6 @@ test("session SSE sends ordered deltas only for the target session", async () =>
   abort.abort();
   await frames.cancel();
 });
-function apiController() {
-  return {
-    assertSession: () => undefined,
-    bootstrap: () => ({
-      attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
-    }),
-    composerDraft: () => ({}),
-    control: () => ({}),
-    createSession: () => ({}),
-    deleteSession: () => ({}),
-    events: new AppEvents(),
-    forkSession: () => ({}),
-    pickWorkspace: () => null,
-    saveComposerDraft: () => ({}),
-    sendMessage: () => ({}),
-    sessions: () => [],
-    transcript: () => ({}),
-  } as unknown as ApiController;
-}
 function sseFrames(response: Response) {
   const reader = response.body?.getReader();
   if (!reader) {

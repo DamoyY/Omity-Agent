@@ -1,8 +1,13 @@
 import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import { BunSqliteSaver } from "../../src/checkpointer";
+import { HookRuntime } from "../../src/hooks/runtime";
 import type { HostContext } from "../../src/runtime/context";
 import { Logger } from "../../src/infrastructure/logging/logger";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
 import { processQueue } from "../../src/runtime/queue";
+import { testSettings } from "../support/settings";
 afterEach(cleanupDatabaseDirs);
 test("paused polling publishes the state only once", async () => {
   const db = makeDb();
@@ -12,12 +17,18 @@ test("paused polling publishes the state only once", async () => {
   const item = required(db.nextQueue("123"));
   const controller = new AbortController();
   let changes = 0;
-  const context = {
-    checkpointer: {},
+  const settings = testSettings(workspace);
+  settings.host.pausePollMs = 1;
+  const logger = new Logger("error");
+  const checkpointer = new BunSqliteSaver(db.db, "123");
+  const hooks = new HookRuntime([], [], db.db, logger, "123", workspace);
+  const graph = createAgentGraph({ checkpointer, hooks, model: fakeModel(), settings, tools: [] });
+  const context: HostContext = {
+    checkpointer,
     controller,
     db,
-    graph: {},
-    logger: new Logger("error"),
+    graph,
+    logger,
     observer: {
       changed: () => {
         changes += 1;
@@ -25,8 +36,8 @@ test("paused polling publishes the state only once", async () => {
       token: () => undefined,
     },
     sessionId: "123",
-    settings: { host: { pausePollMs: 1 } },
-  } as unknown as HostContext;
+    settings,
+  };
   const running = processQueue(context, item);
   await Bun.sleep(10);
   expect(changes).toBe(1);

@@ -1,7 +1,7 @@
 import ReactMarkdown, { type Components } from "react-markdown";
+import { type ReactNode, createElement } from "react";
 import { Code } from "./ParkUI";
 import { HighlightedCode } from "./HighlightedCode";
-import type { ReactNode } from "react";
 import { css } from "styled-system/css";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -29,7 +29,7 @@ const inlineCode = css({
 const remarkPlugins = [remarkGfm];
 const remarkPluginsWithBreaks = [remarkGfm, remarkBreaks];
 const components: Components = {
-  a: (props) => <a {...props} rel="noopener noreferrer" target="_blank" />,
+  a: (props) => createElement("a", { ...props, rel: "noopener noreferrer", target: "_blank" }),
   code: ({ children, className }) => {
     const raw = codeText(children);
     const code = raw.replace(/\n$/, "");

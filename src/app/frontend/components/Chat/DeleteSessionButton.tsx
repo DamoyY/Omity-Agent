@@ -20,7 +20,7 @@ export function DeleteSessionButton({
   const [confirming, setConfirming] = useState(false);
   useEffect(() => {
     if (!confirming) {
-      return;
+      return undefined;
     }
     const timeout = globalThis.setTimeout(() => {
       setConfirming(false);

@@ -44,11 +44,7 @@ export async function startAppServer(options: AppServerOptions) {
         void handleApi(req, res);
         return;
       }
-      vite.middlewares(req, res, (error: unknown) => {
-        if (error) {
-          sendViteError(res, error);
-        }
-      });
+      vite.middlewares(req, res, handleViteResult.bind(undefined, res));
     });
     const listening = once(server, "listening");
     server.listen(options.port, options.host);
@@ -75,6 +71,11 @@ function sendViteError(res: ServerResponse, error: unknown) {
     "content-type": "application/json; charset=utf-8",
   });
   res.end(JSON.stringify(normalized.body));
+}
+function handleViteResult(res: ServerResponse, error?: unknown) {
+  if (error) {
+    sendViteError(res, error);
+  }
 }
 async function waitForShutdownSignal() {
   const controller = new AbortController();

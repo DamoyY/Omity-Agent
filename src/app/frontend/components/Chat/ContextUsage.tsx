@@ -32,9 +32,9 @@ export function ContextUsage({ usage }: { usage: TokenUsage | null }) {
   const cacheRate =
     usage && usage.inputTokens > 0
       ? `${((usage.cacheReadTokens / usage.inputTokens) * 100).toFixed(2)}%`
-      : (usage
+      : usage
         ? "0.00%"
-        : "—");
+        : "—";
   const description = `${t("contextUsage")}: ${totalTokens}; ${t("kvCache")}: ${cacheRate}`;
   return (
     <div aria-label={description} className={panel} title={description}>

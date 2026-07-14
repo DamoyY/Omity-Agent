@@ -9,14 +9,21 @@ import type { buildGraph } from "../agent";
 import { setTimeout as sleep } from "node:timers/promises";
 import { z } from "zod";
 type AgentGraph = ReturnType<typeof buildGraph>["graph"];
+type AgentGraphStream = AgentGraph["stream"];
+type GraphTaskStreamOptions = Omit<
+  NonNullable<Parameters<AgentGraphStream>[1]>,
+  "interruptAfter"
+> & {
+  interruptAfter: string[];
+};
 type HostGraph = Omit<AgentGraph, "getState"> & {
   getState: (...args: Parameters<AgentGraph["getState"]>) => Promise<unknown>;
 };
 export interface HostObserver {
-  activity?(sessionId: string, status: Extract<SessionStatus, "tool" | "model" | "idle">): void;
-  changed?(sessionId: string): void;
-  transcript?(sessionId: string, event: StreamEvent): void;
-  token(sessionId: string, queueId: number, text: string): void;
+  activity?: (sessionId: string, status: Extract<SessionStatus, "tool" | "model" | "idle">) => void;
+  changed?: (sessionId: string) => void;
+  transcript?: (sessionId: string, event: StreamEvent) => void;
+  token: (sessionId: string, queueId: number, text: string) => void;
 }
 export interface HostContext {
   settings: Settings;
@@ -31,6 +38,29 @@ export interface HostContext {
   assertLease?: () => void;
   wake?: (delayMs: number) => Promise<void>;
   observer?: HostObserver;
+}
+export async function streamGraphWithTaskInterrupts(
+  graph: Pick<AgentGraph, "stream">,
+  input: Parameters<AgentGraphStream>[0],
+  options: GraphTaskStreamOptions,
+): Promise<AsyncIterable<unknown> | Iterable<unknown>> {
+  const stream: unknown = Reflect.get(graph, "stream");
+  if (typeof stream !== "function") {
+    throw new Error("LangGraph 缺少 stream 方法");
+  }
+  const result: unknown = await Reflect.apply(stream, graph, [input, options]);
+  if (!isStreamIterable(result)) {
+    throw new Error("LangGraph stream 没有返回可迭代结果");
+  }
+  return result;
+}
+function isStreamIterable(value: unknown): value is AsyncIterable<unknown> | Iterable<unknown> {
+  return (
+    (typeof value === "object" || typeof value === "function") &&
+    value !== null &&
+    (typeof Reflect.get(value, Symbol.asyncIterator) === "function" ||
+      typeof Reflect.get(value, Symbol.iterator) === "function")
+  );
 }
 export function waitForWake(ctx: HostContext, delayMs: number) {
   if (!ctx.wake) {

@@ -8,7 +8,7 @@ export interface HookVariables {
   };
 }
 export function resolveHookArgs(args: Record<string, unknown>, variables: HookVariables) {
-  return resolveValue(args, variables) as Record<string, unknown>;
+  return resolveRecord(args, variables);
 }
 function resolveValue(value: unknown, variables: HookVariables): unknown {
   if (typeof value === "string") {
@@ -20,6 +20,9 @@ function resolveValue(value: unknown, variables: HookVariables): unknown {
   if (!isRecord(value)) {
     return value;
   }
+  return resolveRecord(value, variables);
+}
+function resolveRecord(value: Record<string, unknown>, variables: HookVariables) {
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [key, resolveValue(item, variables)]),
   );

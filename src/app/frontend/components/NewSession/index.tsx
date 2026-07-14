@@ -1,7 +1,7 @@
 import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
 import { type EditablePair, MessageStack } from "./MessageStack";
-import { type FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Plus, Send, UserRound } from "lucide-react";
+import { type SubmitEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   composerActions,
   composerControls,
@@ -68,7 +68,7 @@ export function NewSessionPage({
     const pairAdded = pairs.length > previousPairCountRef.current;
     previousPairCountRef.current = pairs.length;
     if (!pairAdded) {
-      return;
+      return undefined;
     }
     const keepLastMessageInPlace = () => {
       const node = scrollRef.current;
@@ -108,7 +108,7 @@ export function NewSessionPage({
     }
   }, [message, pairs, submitting, workspace]);
   const handleFormSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
+    (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
       reportPromiseErrors(submit());
     },

@@ -2,10 +2,10 @@ import { type ApiController, createApi } from "../../src/app/http/handler";
 import { DomainError, sessionNotFound } from "../../src/errors";
 import { decodeSessionId, requestBodyLimit } from "../../src/app/http/request";
 import { expect, test } from "bun:test";
-import { AppEvents } from "../../src/app/events";
+import { createApiController } from "./support/apiController";
 import { normalizeError } from "../../src/app/http/errors";
 test("API JSON validation rejects invalid controls and empty messages", async () => {
-  const api = createApi(apiController());
+  const api = createApi(createApiController());
   const invalidControl = await api.request(
     "/api/sessions/test/control",
     jsonRequest({ control: "invalid" }),
@@ -21,12 +21,13 @@ test("API JSON validation rejects invalid controls and empty messages", async ()
   expect(emptyMessage.status).toBe(400);
 });
 test("message multipart validation forwards placeholders and files", async () => {
-  const calls: unknown[] = [];
-  const controller = apiController();
-  controller.sendMessage = (...args: unknown[]) => {
-    calls.push(args);
-    return Promise.resolve({ content: "attachments/file.txt", queueId: 1 });
-  };
+  const calls: Parameters<ApiController["sendMessage"]>[] = [];
+  const controller = createApiController({
+    sendMessage: (...args) => {
+      calls.push(args);
+      return Promise.resolve({ content: "attachments/file.txt", queueId: 1 });
+    },
+  });
   const id = "123e4567-e89b-42d3-a456-426614174000";
   const body = messageForm(`查看 {{file:${id}:notes.txt}}`, 3);
   body.append(`file:${id}`, new File(["hello"], "notes.txt"));
@@ -46,19 +47,20 @@ test("message multipart validation forwards placeholders and files", async () =>
   ]);
 });
 test("session creation validates and forwards the complete initial state", async () => {
-  const calls: unknown[] = [];
-  const controller = apiController();
-  controller.createSession = (...args: unknown[]) => {
-    calls.push(args);
-    return Promise.resolve({
-      createdAt: 1,
-      error: null,
-      id: "new-session",
-      status: "idle",
-      updatedAt: 1,
-      workspace: "F:/workspace",
-    });
-  };
+  const calls: Parameters<ApiController["createSession"]>[] = [];
+  const controller = createApiController({
+    createSession: (...args) => {
+      calls.push(args);
+      return Promise.resolve({
+        createdAt: 1,
+        error: null,
+        id: "new-session",
+        status: "idle",
+        updatedAt: 1,
+        workspace: "F:/workspace",
+      });
+    },
+  });
   const api = createApi(controller);
   const body = sessionForm("F:/workspace", [{ assistant: "旧回答", user: "旧问题" }], "新问题");
   const response = await api.request("/api/sessions", {
@@ -85,7 +87,7 @@ test("session creation validates and forwards the complete initial state", async
 });
 test("API JSON reader enforces the body size limit", async () => {
   const body = `"${"x".repeat(requestBodyLimit)}"`;
-  const response = await createApi(apiController()).request("/api/sessions/test/control", {
+  const response = await createApi(createApiController()).request("/api/sessions/test/control", {
     body,
     method: "POST",
   });
@@ -98,7 +100,7 @@ test("API JSON reader enforces the body size limit", async () => {
   });
 });
 test("API returns the existing JSON 404 contract", async () => {
-  const response = await createApi(apiController()).request("/api/unknown");
+  const response = await createApi(createApiController()).request("/api/unknown");
   expect(response.status).toBe(404);
   expect(await response.json()).toEqual({
     error: { code: "NOT_FOUND", message: "未知 API：/api/unknown" },
@@ -148,24 +150,4 @@ function sessionForm(
   body.set("history", JSON.stringify(history));
   body.set("message", message);
   return body;
-}
-function apiController() {
-  return {
-    assertSession: () => undefined,
-    bootstrap: () => ({
-      attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
-    }),
-    cancelTool: () => ({}),
-    composerDraft: () => ({}),
-    control: () => ({}),
-    createSession: () => ({}),
-    deleteSession: () => ({}),
-    events: new AppEvents(),
-    forkSession: () => ({}),
-    pickWorkspace: () => null,
-    saveComposerDraft: () => ({}),
-    sendMessage: () => ({}),
-    sessions: () => [],
-    transcript: () => ({}),
-  } as unknown as ApiController;
 }

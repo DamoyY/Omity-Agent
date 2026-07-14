@@ -2,9 +2,12 @@ import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { BunSqliteSaver } from "../../src/checkpointer";
+import { HookRuntime } from "../../src/hooks/runtime";
 import type { HostContext } from "../../src/runtime/context";
 import { Logger } from "../../src/infrastructure/logging/logger";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
 import { processQueue } from "../../src/runtime/queue";
 import { testSettings } from "../support/settings";
 afterEach(cleanupDatabaseDirs);
@@ -12,7 +15,7 @@ test("restart completes every consumed queue item in the run", async () => {
   const db = pausedRunWithAppend();
   const messages = [...db.history("session"), new AIMessage({ content: "done", id: "final" })];
   await processQueue(
-    context(db, terminalGraph(messages, "final"), new MemorySaver()),
+    context(db, terminalGraph(messages, "final")),
     required(db.nextQueue("session")),
   );
   expect(db.nextQueue("session")).toBeNull();
@@ -27,7 +30,7 @@ test("an empty final response cannot reuse a previous answer", async () => {
     new AIMessage({ content: "", id: "current" }),
   ];
   await processQueue(
-    context(db, terminalGraph(messages, "current"), new MemorySaver()),
+    context(db, terminalGraph(messages, "current")),
     required(db.nextQueue("session")),
   );
   expect(db.nextQueue("session")?.status).toBe("paused");
@@ -65,14 +68,22 @@ function terminalGraph(messages: BaseMessage[], finalMessageId: string) {
     }),
   };
 }
-function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
+function context(db: AgentDatabase, fixture: ReturnType<typeof terminalGraph>): HostContext {
+  const settings = testSettings(workspace);
+  const logger = new Logger("error", true);
+  const checkpointer = new BunSqliteSaver(db.db, "session");
+  const hooks = new HookRuntime([], [], db.db, logger, "session", workspace);
+  const graph = Object.assign(
+    createAgentGraph({ checkpointer, hooks, model: fakeModel(), settings, tools: [] }),
+    fixture,
+  );
   return {
-    checkpointer: checkpointer as never,
+    checkpointer,
     controller: new AbortController(),
     db,
-    graph: graph as HostContext["graph"],
-    logger: new Logger("error", true),
+    graph,
+    logger,
     sessionId: "session",
-    settings: testSettings(workspace),
+    settings,
   };
 }

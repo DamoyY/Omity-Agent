@@ -1,5 +1,5 @@
-import { CanceledRun, type QueueRun, cancelRun, finishRun, setRunStatus } from "./run";
-import { type HostContext, readGraphState } from "./context";
+import { CanceledRunError, type QueueRun, cancelRun, finishRun, setRunStatus } from "./run";
+import { type HostContext, readGraphState, streamGraphWithTaskInterrupts } from "./context";
 import { consumeBoundaryAppends, recoverConsumedAppends } from "./appends";
 import { createStreamLogState, handleStreamEvent, recordToolExecutionStarted } from "./stream";
 import { pauseForStop, waitIfPaused } from "./execution/pause";
@@ -12,9 +12,8 @@ import { waitBeforeModelNetworkRetry } from "./retry";
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id.toString()}`);
   const resumed = ctx.db.consumedRunItems(ctx.sessionId, item.runId);
-  const items = [item, ...resumed.filter(({ id }) => id !== item.id)].toSorted(
-    (left, right) => left.id - right.id,
-  ) as [QueueItem, ...QueueItem[]];
+  const items: [QueueItem, ...QueueItem[]] = [item, ...resumed.filter(({ id }) => id !== item.id)];
+  items.sort((left, right) => left.id - right.id);
   const root = items.find(({ root: isRoot }) => isRoot) ?? item;
   const run: QueueRun = {
     items,
@@ -40,7 +39,7 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
     }
     await runGraphUntilBoundary(ctx, run);
   } catch (error) {
-    if (error instanceof CanceledRun) {
+    if (error instanceof CanceledRunError) {
       return;
     }
     if (error instanceof HostLeaseLostError) {
@@ -69,7 +68,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
   const config = {
     configurable: { thread_id: run.threadId },
     context: { sessionId: ctx.sessionId },
-    interruptAfter: ["request_model", "invoke_tool"] as never,
+    interruptAfter: ["request_model", "invoke_tool"],
     interruptBefore: ["model_request", "tools"] as ["model_request", "tools"],
     recursionLimit: ctx.settings.host.recursionLimit,
   };
@@ -93,7 +92,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     }
     let reachedBoundary = false;
     try {
-      const stream = await ctx.graph.stream(input, {
+      const stream = await streamGraphWithTaskInterrupts(ctx.graph, input, {
         ...config,
         signal: ctx.controller.signal,
         streamMode: ["messages", "updates", "debug"],
@@ -111,7 +110,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       const shouldRetry = await waitBeforeModelNetworkRetry(ctx, run, error, modelNetworkRetry, {
         cancel: () => {
           cancelRun(ctx, run);
-          return Promise.reject(new CanceledRun("运行已取消"));
+          return Promise.reject(new CanceledRunError("运行已取消"));
         },
         pause: async () => {
           setRunStatus(ctx, run, "paused");
@@ -169,9 +168,9 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       } else {
         const nextActivity = state.next.includes("tools")
           ? "tool"
-          : (state.next.includes("model_request")
+          : state.next.includes("model_request")
             ? "model"
-            : undefined);
+            : undefined;
         if (nextActivity) {
           ctx.observer?.activity?.(ctx.sessionId, nextActivity);
         }

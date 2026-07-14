@@ -26,16 +26,17 @@ describe("侧栏会话排序", () => {
     ]);
   });
   test("只有模型和工具状态属于运行中", () => {
-    expect(
-      ["model", "tool"].map((status) =>
-        isRunning(session("id", "F:/", status as SessionInfo["status"], 1)),
-      ),
-    ).toEqual([true, true]);
-    expect(
-      ["idle", "paused", "error"].map((status) =>
-        isRunning(session("id", "F:/", status as SessionInfo["status"], 1)),
-      ),
-    ).toEqual([false, false, false]);
+    const runningStatuses: SessionInfo["status"][] = ["model", "tool"];
+    expect(runningStatuses.map((status) => isRunning(session("id", "F:/", status, 1)))).toEqual([
+      true,
+      true,
+    ]);
+    const stoppedStatuses: SessionInfo["status"][] = ["idle", "paused", "error"];
+    expect(stoppedStatuses.map((status) => isRunning(session("id", "F:/", status, 1)))).toEqual([
+      false,
+      false,
+      false,
+    ]);
   });
   test("相同时间使用创建时间和 id 得到确定顺序", () => {
     const groups = groupSessions([

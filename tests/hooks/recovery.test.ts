@@ -146,7 +146,7 @@ function runtime(db: AgentDatabase, hookTool: StructuredToolInterface, dir: stri
 }
 function makeContext(
   db: AgentDatabase,
-  graph: unknown,
+  graph: HostContext["graph"],
   checkpointer: BunSqliteSaver,
   dataDir: string,
 ): HostContext {
@@ -154,7 +154,7 @@ function makeContext(
     checkpointer,
     controller: new AbortController(),
     db,
-    graph: graph as HostContext["graph"],
+    graph,
     logger: new Logger("error", true),
     sessionId: "session",
     settings: testSettings(dataDir),

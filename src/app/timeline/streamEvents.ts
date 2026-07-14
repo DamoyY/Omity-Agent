@@ -5,9 +5,9 @@ export function displayStreamEvent(event: StreamEvent): DisplayEvent {
   const payload =
     event.kind === "tool_call_delta"
       ? { call: event.value }
-      : (event.kind === "tool_started"
+      : event.kind === "tool_started"
         ? { callId: event.value }
-        : { text: event.value });
+        : { text: event.value };
   return {
     id: event.id,
     message: event.kind,
@@ -75,17 +75,24 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
       mergeDelta(current, delta);
     }
   }
-  return calls.map((call, order) => ({
-    id: call.id ?? `i:${(call.index ?? order).toString()}`,
-    index: call.index ?? order,
-    input: {},
-    inputText: call.inputText,
-    inputTokens: countTokens(call.inputText),
-    ...(call.messageId ? { messageId: call.messageId } : {}),
-    name: call.name || "tool",
-    ...(call.freeform ? { rawInput: call.inputText } : {}),
-    streaming: true,
-  }));
+  return calls.map((call, order) => {
+    const toolCall: DisplayToolCall = {
+      id: call.id ?? `i:${(call.index ?? order).toString()}`,
+      index: call.index ?? order,
+      input: {},
+      inputText: call.inputText,
+      inputTokens: countTokens(call.inputText),
+      name: call.name || "tool",
+      streaming: true,
+    };
+    if (call.messageId) {
+      toolCall.messageId = call.messageId;
+    }
+    if (call.freeform) {
+      toolCall.rawInput = call.inputText;
+    }
+    return toolCall;
+  });
 }
 function matchesDelta(
   call: ToolCallAccumulator,

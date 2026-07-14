@@ -92,9 +92,8 @@ test("each hook execution commits one hooks node boundary", async () => {
     settings: testSettings(hooks.workspace),
     tools: [hookTool],
   });
-  const config = {
+  const config: NonNullable<Parameters<typeof graph.invoke>[1]> = {
     configurable: { thread_id: "boundaries" },
-    interruptAfter: ["invoke_tool"] as never,
   };
   await invokeBoundary(
     graph,
@@ -106,7 +105,8 @@ test("each hook execution commits one hooks node boundary", async () => {
   );
   expect(calls).toEqual(["call-1"]);
   expect(model.callCount).toBe(0);
-  expect((await graph.getState(config)).next).toEqual(["hooks"]);
+  const state = await graph.getState(config);
+  expect(state.next).toEqual(["hooks"]);
   await invokeBoundary(graph, null, config);
   expect(calls).toEqual(["call-1", "call-2"]);
   expect(model.callCount).toBe(0);
@@ -116,14 +116,25 @@ async function invokeBoundary(
   input: Parameters<typeof graph.invoke>[0],
   config: NonNullable<Parameters<typeof graph.invoke>[1]>,
 ) {
-  await graph.invoke(input, config);
+  await invokeWithTaskInterrupt(graph, input, config);
   for (;;) {
     const state = await graph.getState(config);
     if (state.next.length > 0 || state.tasks.length === 0) {
       return;
     }
-    await graph.invoke(null, config);
+    await invokeWithTaskInterrupt(graph, null, config);
   }
+}
+async function invokeWithTaskInterrupt(
+  graph: ReturnType<typeof createAgentGraph>,
+  input: Parameters<typeof graph.invoke>[0],
+  config: NonNullable<Parameters<typeof graph.invoke>[1]>,
+) {
+  const invoke: unknown = Reflect.get(graph, "invoke");
+  if (typeof invoke !== "function") {
+    throw new Error("LangGraph 缺少 invoke 方法");
+  }
+  await Reflect.apply(invoke, graph, [input, { ...config, interruptAfter: ["invoke_tool"] }]);
 }
 function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const dir = mkdtempSync(join(tmpdir(), "agent-hooks-"));
@@ -168,7 +179,10 @@ function assertToolProtocol(messages: BaseMessage[]) {
       for (const call of message.tool_calls ?? []) {
         const next = messages[index + 1];
         expect(next).toBeInstanceOf(ToolMessage);
-        expect((next as ToolMessage).tool_call_id).toBe(required(call.id));
+        if (!ToolMessage.isInstance(next)) {
+          throw new Error("工具调用后缺少 ToolMessage");
+        }
+        expect(next.tool_call_id).toBe(required(call.id));
       }
     }
   }

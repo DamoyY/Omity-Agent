@@ -15,23 +15,27 @@ interface StreamEventBase {
   queueId: number;
   messageId?: string;
 }
-export type StreamEvent = StreamEventBase &
-  (
-    | {
-        kind: "assistant_reasoning_delta" | "assistant_text_delta";
-        value: string;
-      }
-    | { kind: "tool_call_delta"; value: StreamToolCallDelta }
-    | { kind: "tool_started"; value: string }
-  );
-function insertStreamEvent(
+interface StreamEventValues {
+  assistant_reasoning_delta: string;
+  assistant_text_delta: string;
+  tool_call_delta: StreamToolCallDelta;
+  tool_started: string;
+}
+type StreamEventOf<Kind extends StreamEventKind> = StreamEventBase & {
+  kind: Kind;
+  value: StreamEventValues[Kind];
+};
+export type StreamEvent = {
+  [Kind in StreamEventKind]: StreamEventOf<Kind>;
+}[StreamEventKind];
+function insertStreamEvent<Kind extends StreamEventKind>(
   db: Database,
   sessionId: string,
   queueId: number,
-  kind: StreamEventKind,
-  payload: unknown,
+  kind: Kind,
+  payload: StreamEventValues[Kind],
   messageId?: string,
-) {
+): StreamEventOf<Kind> {
   const result = db
     .query(
       "INSERT INTO events (session_id, queue_id, message_id, kind, payload_json) VALUES (?, ?, ?, ?, ?)",
@@ -56,14 +60,7 @@ export function insertStreamToken(
   text: string,
   messageId?: string,
 ) {
-  return insertStreamEvent(
-    db,
-    sessionId,
-    queueId,
-    "assistant_text_delta",
-    text,
-    messageId,
-  ) as StreamEvent & { kind: "assistant_text_delta"; value: string };
+  return insertStreamEvent(db, sessionId, queueId, "assistant_text_delta", text, messageId);
 }
 export function insertStreamReasoning(
   db: Database,
@@ -72,14 +69,7 @@ export function insertStreamReasoning(
   text: string,
   messageId?: string,
 ) {
-  return insertStreamEvent(
-    db,
-    sessionId,
-    queueId,
-    "assistant_reasoning_delta",
-    text,
-    messageId,
-  ) as StreamEvent & { kind: "assistant_reasoning_delta"; value: string };
+  return insertStreamEvent(db, sessionId, queueId, "assistant_reasoning_delta", text, messageId);
 }
 export function insertStreamToolCall(
   db: Database,
@@ -88,14 +78,7 @@ export function insertStreamToolCall(
   call: StreamToolCallDelta,
   messageId?: string,
 ) {
-  return insertStreamEvent(
-    db,
-    sessionId,
-    queueId,
-    "tool_call_delta",
-    call,
-    messageId,
-  ) as StreamEvent & { kind: "tool_call_delta"; value: StreamToolCallDelta };
+  return insertStreamEvent(db, sessionId, queueId, "tool_call_delta", call, messageId);
 }
 export function insertToolStarted(
   db: Database,
@@ -103,10 +86,7 @@ export function insertToolStarted(
   queueId: number,
   callId: string,
 ) {
-  return insertStreamEvent(db, sessionId, queueId, "tool_started", callId) as StreamEvent & {
-    kind: "tool_started";
-    value: string;
-  };
+  return insertStreamEvent(db, sessionId, queueId, "tool_started", callId);
 }
 export function clearStreamEvents(db: Database, sessionId: string) {
   db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);

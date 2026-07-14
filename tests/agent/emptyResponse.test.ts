@@ -1,6 +1,8 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { expect, test } from "bun:test";
-import type { HookRuntime } from "../../src/hooks/runtime";
+import { Database } from "bun:sqlite";
+import { HookRuntime } from "../../src/hooks/runtime";
+import { Logger } from "../../src/infrastructure/logging/logger";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { ModelEmptyResponseError } from "../../src/runtime/network";
 import { createAgentGraph } from "../../src/agent";
@@ -8,10 +10,11 @@ import { fakeModel } from "@langchain/core/testing";
 import { readGraphState } from "../../src/runtime/context";
 import { testSettings } from "../support/settings";
 test("rejects an empty model response before committing it", async () => {
+  const hookDatabase = new Database(":memory:");
   const model = fakeModel().respond(new AIMessage({ content: "", id: "empty" }));
   const graph = createAgentGraph({
     checkpointer: new MemorySaver(),
-    hooks: { sessionId: "session" } as HookRuntime,
+    hooks: new HookRuntime([], [], hookDatabase, new Logger("error", true), "session", "data"),
     model,
     settings: testSettings("data"),
     tools: [],
@@ -30,6 +33,7 @@ test("rejects an empty model response before committing it", async () => {
       AIMessage.isInstance(message),
     ),
   ).toHaveLength(0);
+  hookDatabase.close();
 });
 test("validates LangGraph state while retaining third-party task fields", () => {
   const message = new HumanMessage("question");

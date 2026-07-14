@@ -1,18 +1,14 @@
 import { type ApiController, createApi } from "../../src/app/http/handler";
 import { expect, test } from "bun:test";
-import { AppEvents } from "../../src/app/events";
+import { createApiController } from "./support/apiController";
 test("tool cancellation validates and forwards the tool call ID", async () => {
-  const calls: unknown[] = [];
-  const controller = {
-    bootstrap: () => ({
-      attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
-    }),
-    cancelTool: (...args: unknown[]) => {
+  const calls: Parameters<ApiController["cancelTool"]>[] = [];
+  const controller = createApiController({
+    cancelTool: (...args) => {
       calls.push(args);
-      return Promise.resolve({ toolCallId: "call-1" });
+      return { toolCallId: "call-1" };
     },
-    events: new AppEvents(),
-  } as unknown as ApiController;
+  });
   const api = createApi(controller);
   const response = await api.request("/api/sessions/test/tools/cancel", {
     body: JSON.stringify({ toolCallId: "call-1" }),
