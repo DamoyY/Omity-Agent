@@ -1,11 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
 import { parseClientIntent, runClient } from "../../src/client";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { join } from "node:path";
+import { createTestDirectory } from "../support/artifacts";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
+import { rmSync } from "node:fs";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
-import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 
 const dirs: string[] = [];
@@ -32,7 +31,7 @@ test("client cancel during pause preserves pause state", () => {
   reopened.close();
 });
 function makeSession(sessionId: string) {
-  const root = mkdtempSync(join(tmpdir(), "agent-client-"));
+  const root = createTestDirectory("client");
   dirs.push(root);
   writeTestConfiguration(root);
   const paths = sessionPaths(loadSettings(root), sessionId);

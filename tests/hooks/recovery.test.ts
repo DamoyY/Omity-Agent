@@ -1,23 +1,23 @@
 import { type StructuredToolInterface, tool } from "@langchain/core/tools";
 import { expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { AIMessage } from "@langchain/core/messages";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { AIMessage } from "@langchain/core/messages";
 import { BunSqliteSaver } from "../../src/checkpointer";
 import { HookRuntime } from "../../src/hooks/runtime";
 import type { HostContext } from "../../src/runtime/context";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import { createAgentGraph } from "../../src/agent";
+import { createTestDirectory } from "../support/artifacts";
 import { fakeModel } from "@langchain/core/testing";
 import { join } from "node:path";
 import { processQueue } from "../../src/runtime/queue";
 import { required } from "../support/database";
+import { rmSync } from "node:fs";
 import { testSettings } from "../support/settings";
-import { tmpdir } from "node:os";
 import { z } from "zod";
 
 test("host restart resumes after one committed hook boundary", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
+  const dir = createTestDirectory("hook-recovery");
   const path = join(dir, "agent.sqlite");
   let db = new AgentDatabase(path);
   let hookCalls = 0;

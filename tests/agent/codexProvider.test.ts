@@ -1,16 +1,16 @@
 import { afterEach, expect, test } from "bun:test";
 import { buildModel, resolveModelApi } from "../../src/agent";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import {
   parseMainSettings,
   parseModelSettings,
 } from "../../src/infrastructure/configuration/settingsSchema";
+import { rmSync, writeFileSync } from "node:fs";
 import { ChatOpenAIResponses } from "@langchain/openai";
 import type { FetchLike } from "openai-codex-oauth";
 import type { Settings } from "../../src/types";
 import { createCodexClientFields } from "../../src/infrastructure/openai/codexAuthentication";
+import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -44,7 +44,7 @@ test("codex adapter builds a Responses API model without an API key env", () => 
   expect(model.invocationParams().instructions).toBe("system instructions");
 });
 test("codex client reads auth.json and authenticates the Codex endpoint", async () => {
-  const root = mkdtempSync(join(tmpdir(), "omity-codex-auth-"));
+  const root = createTestDirectory("codex-auth");
   const authFilePath = join(root, "auth.json");
   dirs.push(root);
   writeFileSync(

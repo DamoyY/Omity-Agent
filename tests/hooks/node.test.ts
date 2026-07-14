@@ -1,18 +1,18 @@
 import { AIMessage, type BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import type { HookRule } from "../../src/types";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createAgentGraph } from "../../src/agent";
+import { createTestDirectory } from "../support/artifacts";
 import { fakeModel } from "@langchain/core/testing";
 import { isHookCallId } from "../../src/hooks/storage/calls";
 import { join } from "node:path";
 import { required } from "../support/database";
+import { rmSync } from "node:fs";
 import { testSettings } from "../support/settings";
-import { tmpdir } from "node:os";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
@@ -138,7 +138,7 @@ async function invokeWithTaskInterrupt(
   await Reflect.apply(invoke, graph, [input, { ...config, interruptAfter: ["invoke_tool"] }]);
 }
 function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
-  const dir = mkdtempSync(join(tmpdir(), "agent-hooks-"));
+  const dir = createTestDirectory("hooks");
   dirs.push(dir);
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);

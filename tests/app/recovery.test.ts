@@ -1,7 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { AppController } from "../../src/app/controller";
+import { createTestDirectory } from "../support/artifacts";
 import { hostOwnerId } from "../../src/infrastructure/process/ownership";
 import { join } from "node:path";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
@@ -9,7 +10,6 @@ import { randomUUID } from "node:crypto";
 import { recoverHostSession } from "../../src/runtime/execution/recovery";
 import { required } from "../support/database";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
-import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 
 const roots: string[] = [];
@@ -106,7 +106,7 @@ test("resume stays paused when Host initialization fails", async () => {
   await controller.close();
 });
 function interruptedSession(sessionId: string) {
-  const root = mkdtempSync(join(tmpdir(), "agent-app-recovery-"));
+  const root = createTestDirectory("app-recovery");
   roots.push(root);
   writeTestConfiguration(root);
   const workspace = join(root, "workspace");

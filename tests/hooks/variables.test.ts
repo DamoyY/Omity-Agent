@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
 import { AIMessage } from "@langchain/core/messages";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import type { HookRule } from "../../src/types";
@@ -7,15 +6,16 @@ import { HookRuntime } from "../../src/hooks/runtime";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createAgentGraph } from "../../src/agent";
+import { createTestDirectory } from "../support/artifacts";
 import { fakeModel } from "@langchain/core/testing";
 import { join } from "node:path";
+import { rmSync } from "node:fs";
 import { testSettings } from "../support/settings";
-import { tmpdir } from "node:os";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
 test("mixed hook modes resolve variables in config order", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
+  const dir = createTestDirectory("hook-variables");
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
   const received: Record<string, unknown>[] = [];
@@ -82,7 +82,7 @@ test("mixed hook modes resolve variables in config order", async () => {
   }
 });
 test("user takeover receives the preceding silent hook output", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "agent-user-hook-"));
+  const dir = createTestDirectory("user-hook");
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
   const received: unknown[] = [];

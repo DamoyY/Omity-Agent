@@ -1,11 +1,11 @@
 import { afterEach, expect, test } from "bun:test";
 import { buildSkillsMessage, loadSkills } from "../../src/skills";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { HumanMessage } from "@langchain/core/messages";
 import type { Settings } from "../../src/types";
+import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
 import { modelMessages } from "../../src/agent";
-import { tmpdir } from "node:os";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -39,7 +39,7 @@ test("puts skills message after the configured system prompt", () => {
   ).toEqual(["system prompt", skillsMessage, "hello"]);
 });
 function makeSkillsDir() {
-  const dir = mkdtempSync(join(tmpdir(), "agent-skills-"));
+  const dir = createTestDirectory("skills");
   dirs.push(dir);
   return dir;
 }

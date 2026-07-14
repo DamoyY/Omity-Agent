@@ -1,7 +1,7 @@
-import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { createTestDirectory } from "./artifacts";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
 
 const dirs: string[] = [];
 export const workspace = String.raw`F:\workspace\test`;
@@ -15,7 +15,7 @@ export function required<T>(value: T | null | undefined, message = "测试所需
   return value;
 }
 export function makeDatabases(count: number) {
-  const dir = mkdtempSync(join(tmpdir(), "agent-db-"));
+  const dir = createTestDirectory("database");
   dirs.push(dir);
   const path = join(dir, "app.sqlite");
   return Array.from({ length: count }, () => new AgentDatabase(path));

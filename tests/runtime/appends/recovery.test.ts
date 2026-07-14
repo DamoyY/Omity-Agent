@@ -1,19 +1,19 @@
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { expect, spyOn, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../../src/infrastructure/database/agentDatabase";
 import { BunSqliteSaver } from "../../../src/checkpointer";
 import { HookRuntime } from "../../../src/hooks/runtime";
 import type { HostContext } from "../../../src/runtime/context";
 import { Logger } from "../../../src/infrastructure/logging/logger";
 import { createAgentGraph } from "../../../src/agent";
+import { createTestDirectory } from "../../support/artifacts";
 import { fakeModel } from "@langchain/core/testing";
 import { join } from "node:path";
 import { processQueue } from "../../../src/runtime/queue";
 import { queueMessageId } from "../../../src/infrastructure/database/records/messages/history";
 import { required } from "../../support/database";
+import { rmSync } from "node:fs";
 import { testSettings } from "../../support/settings";
-import { tmpdir } from "node:os";
 
 test("restart injects a consumed append missing from the checkpoint", async () => {
   const fixture = createFixture();
@@ -147,7 +147,7 @@ function humanContents(messages: BaseMessage[]) {
     });
 }
 function createFixture() {
-  const dir = mkdtempSync(join(tmpdir(), "agent-append-recovery-"));
+  const dir = createTestDirectory("append-recovery");
   const path = join(dir, "agent.sqlite");
   return { db: new AgentDatabase(path), dir, path };
 }

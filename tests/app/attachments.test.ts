@@ -1,11 +1,11 @@
 import { afterEach, expect, test } from "bun:test";
 import { attachmentPlaceholder, validateAttachmentBatch } from "../../src/app/attachments/contract";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
 import { required } from "../support/database";
 import { saveMessageAttachments } from "../../src/app/attachments/storage";
 import { testSettings } from "../support/settings";
-import { tmpdir } from "node:os";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -58,7 +58,7 @@ test("attachment whitelist and combined size limit are enforced", () => {
   }).toThrow("附件总大小超过上限");
 });
 function temporaryDirectory() {
-  const directory = mkdtempSync(join(tmpdir(), "agent-attachments-"));
+  const directory = createTestDirectory("attachments");
   dirs.push(directory);
   return directory;
 }

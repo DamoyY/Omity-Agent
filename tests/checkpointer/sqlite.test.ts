@@ -1,9 +1,9 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { BunSqliteSaver } from "../../src/checkpointer";
+import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
 
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
@@ -16,7 +16,7 @@ afterEach(() => {
   }
 });
 function makePath() {
-  const dir = mkdtempSync(join(tmpdir(), "agent-checkpoint-"));
+  const dir = createTestDirectory("checkpoints");
   dirs.push(dir);
   return join(dir, "checkpoints.sqlite");
 }

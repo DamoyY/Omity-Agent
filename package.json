@@ -1,14 +1,12 @@
 {
   "name": "omity-agent",
   "private": true,
-  "bin": {
-    "omity": "src/cli.ts"
-  },
+  "bin": { "omity": "src/cli.ts" },
   "type": "module",
   "module": "src/cli.ts",
   "scripts": {
     "omity": "bun src/cli.ts",
-    "check": "oxlint --fix --fix-suggestions --format=agent && oxfmt && bun test"
+    "check": "oxlint --fix --fix-suggestions --format=agent && oxfmt && bun --config=settings/bunfig.toml test"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
@@ -75,15 +73,9 @@
     "dirname": "omity-agent",
     "topicSeparator": " ",
     "topics": {
-      "app": {
-        "description": "启动本地 WebUI"
-      },
-      "client": {
-        "description": "向 Host 发送消息或控制指令"
-      },
-      "host": {
-        "description": "管理 Host 会话"
-      }
+      "app": { "description": "启动本地 WebUI" },
+      "client": { "description": "向 Host 发送消息或控制指令" },
+      "host": { "description": "管理 Host 会话" }
     }
   }
 }

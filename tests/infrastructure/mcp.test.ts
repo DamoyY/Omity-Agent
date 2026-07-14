@@ -4,14 +4,14 @@ import {
   normalizeMcpServers,
   readMcpConfiguration,
 } from "../../src/infrastructure/mcp/config";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
 } from "../../src/infrastructure/mcp/nameOverrides";
+import { rmSync, writeFileSync } from "node:fs";
 import { DynamicStructuredTool } from "@langchain/core/tools";
+import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 
 const savedEnv = new Map<string, string | undefined>();
 afterEach(() => {
@@ -71,7 +71,7 @@ test("mcp config reports missing env placeholders", () => {
   );
 });
 test("mcp config rejects unknown top-level fields", () => {
-  const directory = mkdtempSync(join(tmpdir(), "omity-mcp-"));
+  const directory = createTestDirectory("mcp");
   const path = join(directory, "mcp.yaml");
   try {
     writeFileSync(path, "mcpServers: {}\nunknown: true\n");

@@ -1,11 +1,11 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { ToolMessage } from "@langchain/core/messages";
 import { countTokens } from "../../src/runtime/tokenizer";
 import { createHash } from "node:crypto";
+import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
 import { redirectLargeToolOutput } from "../../src/runtime/largeOutput";
-import { tmpdir } from "node:os";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -149,7 +149,7 @@ test("redirects mixed output text without removing its image", async () => {
   ]);
 });
 function makeDir() {
-  const dir = mkdtempSync(join(tmpdir(), "agent-large-output-"));
+  const dir = createTestDirectory("large-output");
   dirs.push(dir);
   return dir;
 }

@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
 import { AIMessage } from "@langchain/core/messages";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { BunSqliteSaver } from "../../src/checkpointer";
@@ -9,15 +8,16 @@ import { Logger } from "../../src/infrastructure/logging/logger";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { consumeHookUsage } from "../../src/hooks/storage/usage";
 import { createAgentGraph } from "../../src/agent";
+import { createTestDirectory } from "../support/artifacts";
 import { fakeModel } from "@langchain/core/testing";
 import { join } from "node:path";
+import { rmSync } from "node:fs";
 import { testSettings } from "../support/settings";
-import { tmpdir } from "node:os";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
 test("runLimit is enforced atomically across graph threads", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "agent-hook-limits-"));
+  const dir = createTestDirectory("hook-limits");
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
   const calls: string[] = [];
@@ -58,7 +58,7 @@ test("runLimit is enforced atomically across graph threads", async () => {
   }
 });
 test("thread cleanup retains session hook usage", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "agent-hook-usage-"));
+  const dir = createTestDirectory("hook-usage");
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
   try {

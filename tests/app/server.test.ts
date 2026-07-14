@@ -1,16 +1,16 @@
 import { afterEach, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolveSessionState, resolveSessionStatus } from "../../src/app/sessionState";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { AppController } from "../../src/app/controller";
 import { AppInstanceLock } from "../../src/app/runtime/instanceLock";
 import { AppRegistry } from "../../src/app/registry";
 import { captureError } from "../../src/failures/details";
+import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import { required } from "../support/database";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
-import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 
 const dirs: string[] = [];
@@ -104,7 +104,7 @@ test("session state exposes host errors before queue errors", () => {
   });
 });
 function makeRoot() {
-  const root = mkdtempSync(join(tmpdir(), "agent-registry-"));
+  const root = createTestDirectory("app-registry");
   dirs.push(root);
   writeTestConfiguration(root);
   return root;

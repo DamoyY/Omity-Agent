@@ -4,12 +4,11 @@ import {
   readSessionDraft,
   writeSessionDraft,
 } from "../../src/app/composerDraft";
-import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { join } from "node:path";
+import { createTestDirectory } from "../support/artifacts";
+import { rmSync } from "node:fs";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { testSettings } from "../support/settings";
-import { tmpdir } from "node:os";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -63,7 +62,7 @@ test("a late save cannot restore a draft after sending", () => {
   });
 });
 function createSession() {
-  const root = mkdtempSync(join(tmpdir(), "composer-draft-"));
+  const root = createTestDirectory("composer-drafts");
   dirs.push(root);
   const settings = testSettings(root);
   const database = new AgentDatabase(sessionPaths(settings, "session").dbPath);

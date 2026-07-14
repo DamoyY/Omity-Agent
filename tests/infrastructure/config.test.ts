@@ -1,13 +1,13 @@
 import { afterEach, expect, test } from "bun:test";
 import { join, resolve } from "node:path";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { safeId, sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { appDataRoot } from "../../src/infrastructure/configuration/configuredPath";
+import { createTestDirectory } from "../support/artifacts";
 import { loadHookRules } from "../../src/infrastructure/configuration/hookRules";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import { parseModelSettings } from "../../src/infrastructure/configuration/settingsSchema";
 import { resolveHookArgs } from "../../src/hooks/variables";
-import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 
 const dirs: string[] = [];
@@ -17,7 +17,7 @@ afterEach(() => {
   }
 });
 test("settings yaml resolves AppData data directory", () => {
-  const root = mkdtempSync(join(tmpdir(), "agent-config-"));
+  const root = createTestDirectory("configuration");
   const appData = join(root, "app-data");
   dirs.push(root);
   writeTestConfiguration(root, {
@@ -44,7 +44,7 @@ test("settings yaml resolves AppData data directory", () => {
   }
 });
 test("prompt files expand current working directory placeholder", () => {
-  const root = mkdtempSync(join(tmpdir(), "agent-config-"));
+  const root = createTestDirectory("configuration");
   const workspace = join(root, "workspace");
   dirs.push(root);
   mkdirSync(workspace);
@@ -58,7 +58,7 @@ test("prompt files expand current working directory placeholder", () => {
   expect(settings.skills.usagePrompt).toBe(`skills from ${workspace}`);
 });
 test("model yaml selects a named profile from multiple profiles", () => {
-  const root = mkdtempSync(join(tmpdir(), "agent-config-"));
+  const root = createTestDirectory("configuration");
   dirs.push(root);
   writeTestConfiguration(root, {
     modelYaml: `profile: codex
@@ -87,7 +87,7 @@ test("model yaml rejects an unknown profile", () => {
   );
 });
 test("hook config parses targets, timing, and modes", () => {
-  const root = mkdtempSync(join(tmpdir(), "agent-hooks-config-"));
+  const root = createTestDirectory("hook-configuration");
   const path = join(root, "hooks.yaml");
   dirs.push(root);
   writeFileSync(
