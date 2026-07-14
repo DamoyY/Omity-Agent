@@ -9,6 +9,7 @@ import { Button } from "../ParkUI";
 import type { InitialMessagePair } from "../../../initialState";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { css } from "styled-system/css";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 export interface EditablePair extends InitialMessagePair {
   id: string;
@@ -29,31 +30,67 @@ export function MessageStack({
   return (
     <div className={stack}>
       {pairs.map((item) => (
-        <section key={item.id}>
-          <MessageEditor
-            label={t("user")}
-            role="user"
-            value={item.user}
-            onChange={(user) => {
-              onPairChange(item.id, { ...item, user });
-            }}
-            onSubmit={onSubmit}
-          />
-          <MessageEditor
-            label={t("assistant")}
-            role="assistant"
-            value={item.assistant}
-            onChange={(assistant) => {
-              onPairChange(item.id, { ...item, assistant });
-            }}
-            onRemove={() => {
-              onRemove(item.id);
-            }}
-            onSubmit={onSubmit}
-          />
-        </section>
+        <MessagePairEditor
+          assistantLabel={t("assistant")}
+          item={item}
+          key={item.id}
+          userLabel={t("user")}
+          onPairChange={onPairChange}
+          onRemove={onRemove}
+          onSubmit={onSubmit}
+        />
       ))}
     </div>
+  );
+}
+function MessagePairEditor({
+  assistantLabel,
+  item,
+  userLabel,
+  onPairChange,
+  onRemove,
+  onSubmit,
+}: {
+  assistantLabel: string;
+  item: EditablePair;
+  userLabel: string;
+  onPairChange: (id: string, pair: InitialMessagePair) => void;
+  onRemove: (id: string) => void;
+  onSubmit: () => void;
+}) {
+  const changeUser = useCallback(
+    (user: string) => {
+      onPairChange(item.id, { ...item, user });
+    },
+    [item, onPairChange],
+  );
+  const changeAssistant = useCallback(
+    (assistant: string) => {
+      onPairChange(item.id, { ...item, assistant });
+    },
+    [item, onPairChange],
+  );
+  const remove = useCallback(() => {
+    onRemove(item.id);
+  }, [item.id, onRemove]);
+  return (
+    <section>
+      <MessageEditor
+        label={userLabel}
+        role="user"
+        value={item.user}
+        onChange={changeUser}
+        onSubmit={onSubmit}
+      />
+      <MessageEditor
+        label={assistantLabel}
+        role="assistant"
+        value={item.assistant}
+        onChange={changeAssistant}
+        onRemove={remove}
+        onSubmit={onSubmit}
+      />
+    </section>
   );
 }
 function MessageEditor({

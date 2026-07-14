@@ -1,9 +1,9 @@
 import { css, cx } from "styled-system/css";
+import { useMemo, useRef } from "react";
 import { CopyButton } from "./Chat/CopyButton";
 import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/common";
 import { useFollowBottom } from "./TranscriptScroll";
-import { useRef } from "react";
 const container = css({
   maxW: "full",
   minW: 0,
@@ -81,16 +81,15 @@ export function HighlightedCode({
     ref: blockRef,
     version: code,
   });
+  const highlightedHtml = useMemo(
+    () => ({ __html: DOMPurify.sanitize(highlight(code, language)) }),
+    [code, language],
+  );
   return (
     <div className={container}>
       <CopyButton className={copyButton} value={code} />
       <pre className={cx(block, className)} ref={blockRef} onScroll={onScroll}>
-        <code
-          className={codeElement}
-          dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(highlight(code, language)),
-          }}
-        />
+        <code className={codeElement} dangerouslySetInnerHTML={highlightedHtml} />
       </pre>
     </div>
   );

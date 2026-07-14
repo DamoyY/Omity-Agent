@@ -157,11 +157,15 @@ function toolCallDeltas(chunk: unknown) {
   if (!isRecord(chunk) || !Array.isArray(chunk["tool_call_chunks"])) {
     return [];
   }
-  return chunk["tool_call_chunks"].filter(isRecord).map((call) => ({
-    ...(typeof call["args"] === "string" ? { args: call["args"] } : {}),
-    ...(call["isCustomTool"] === true ? { freeform: true } : {}),
-    ...(typeof call["id"] === "string" ? { id: call["id"] } : {}),
-    ...(typeof call["index"] === "number" ? { index: call["index"] } : {}),
-    ...(typeof call["name"] === "string" ? { name: call["name"] } : {}),
-  }));
+  return chunk["tool_call_chunks"]
+    .filter(isRecord)
+    .map((call) =>
+      Object.assign(
+        typeof call["args"] === "string" ? { args: call["args"] } : {},
+        call["isCustomTool"] === true ? { freeform: true } : {},
+        typeof call["id"] === "string" ? { id: call["id"] } : {},
+        typeof call["index"] === "number" ? { index: call["index"] } : {},
+        typeof call["name"] === "string" ? { name: call["name"] } : {},
+      ),
+    );
 }

@@ -11,16 +11,14 @@ export function freeformCallIds(message: BaseMessage) {
     }
   }
   for (const value of [message.additional_kwargs["tool_outputs"], responseOutput]) {
-    if (!Array.isArray(value)) {
-      continue;
-    }
-    for (const item of value) {
-      if (!isRecord(item) || item["type"] !== "custom_tool_call") {
-        continue;
-      }
-      const id = item["call_id"];
-      if (typeof id === "string") {
-        ids.add(id);
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (isRecord(item) && item["type"] === "custom_tool_call") {
+          const id = item["call_id"];
+          if (typeof id === "string") {
+            ids.add(id);
+          }
+        }
       }
     }
   }

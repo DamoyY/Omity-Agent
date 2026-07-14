@@ -26,15 +26,19 @@ export async function cleanupDatabaseDirs() {
 }
 async function removeDatabaseDir(dir: string) {
   for (let attempt = 0; ; attempt++) {
+    let removed = false;
     try {
       rmSync(dir, { force: true, recursive: true });
-      return;
+      removed = true;
     } catch (error) {
       if (!isBusy(error) || attempt === 29) {
         throw error;
       }
-      await Bun.sleep(100);
     }
+    if (removed) {
+      return;
+    }
+    await Bun.sleep(100);
   }
 }
 function isBusy(error: unknown): error is NodeJS.ErrnoException {

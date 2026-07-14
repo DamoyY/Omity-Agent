@@ -2,19 +2,17 @@ import type { SessionInfo } from "../client";
 export function reportSessionErrors(sessions: SessionInfo[], reported: Set<string>) {
   const current = new Set<string>();
   for (const session of sessions) {
-    if (!session.error) {
-      continue;
+    if (session.error) {
+      const identity = `${session.id}:${JSON.stringify(session.error)}`;
+      current.add(identity);
+      if (!reported.has(identity)) {
+        reported.add(identity);
+        console.error(session.error.message, {
+          error: session.error,
+          sessionId: session.id,
+        });
+      }
     }
-    const identity = `${session.id}:${JSON.stringify(session.error)}`;
-    current.add(identity);
-    if (reported.has(identity)) {
-      continue;
-    }
-    reported.add(identity);
-    console.error(session.error.message, {
-      error: session.error,
-      sessionId: session.id,
-    });
   }
   for (const identity of reported) {
     if (!current.has(identity)) {

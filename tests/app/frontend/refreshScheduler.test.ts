@@ -2,15 +2,12 @@ import { expect, test } from "bun:test";
 import { RefreshScheduler } from "../../../src/app/frontend/services/scheduling/refreshScheduler";
 test("refresh scheduler coalesces events while a refresh is running", async () => {
   let runs = 0;
-  let releaseFirst: () => void = () => undefined;
-  const first = new Promise<void>((resolve) => {
-    releaseFirst = resolve;
-  });
+  const first = Promise.withResolvers<void>();
   const scheduler = new RefreshScheduler(
     1,
     () => {
       runs += 1;
-      return runs === 1 ? first : Promise.resolve();
+      return runs === 1 ? first.promise : Promise.resolve();
     },
     (error) => {
       throw error;
@@ -21,7 +18,7 @@ test("refresh scheduler coalesces events while a refresh is running", async () =
   scheduler.request();
   scheduler.request();
   expect(runs).toBe(1);
-  releaseFirst();
+  first.resolve();
   await Bun.sleep(10);
   expect(runs).toBe(2);
   scheduler.dispose();

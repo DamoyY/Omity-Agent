@@ -164,13 +164,12 @@ function silent(
 }
 function assertToolProtocol(messages: BaseMessage[]) {
   for (const [index, message] of messages.entries()) {
-    if (!AIMessage.isInstance(message)) {
-      continue;
-    }
-    for (const call of message.tool_calls ?? []) {
-      const next = messages[index + 1];
-      expect(next).toBeInstanceOf(ToolMessage);
-      expect((next as ToolMessage).tool_call_id).toBe(required(call.id));
+    if (AIMessage.isInstance(message)) {
+      for (const call of message.tool_calls ?? []) {
+        const next = messages[index + 1];
+        expect(next).toBeInstanceOf(ToolMessage);
+        expect((next as ToolMessage).tool_call_id).toBe(required(call.id));
+      }
     }
   }
 }

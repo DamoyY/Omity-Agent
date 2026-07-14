@@ -1,6 +1,7 @@
 import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
 import type { Control, SessionStatus } from "../../../../types";
 import type { DisplayQueue, TimelineMessage } from "../../../timeline";
+import { useCallback, useMemo } from "react";
 import { Composer } from "./Composer/index";
 import type { InitialSessionState } from "../../../initialState";
 import { Message } from "./Message";
@@ -26,12 +27,11 @@ const empty = css({
 function findLatestDetail(view: TimelineMessage[]) {
   for (let messageIndex = view.length - 1; messageIndex >= 0; messageIndex -= 1) {
     const item = view[messageIndex];
-    if (!item) {
-      continue;
-    }
-    const partIndex = item.parts.findLastIndex((part) => part.type !== "content");
-    if (partIndex !== -1) {
-      return { messageKey: item.key, partIndex };
+    if (item) {
+      const partIndex = item.parts.findLastIndex((part) => part.type !== "content");
+      if (partIndex !== -1) {
+        return { messageKey: item.key, partIndex };
+      }
     }
   }
   return undefined;
@@ -92,6 +92,19 @@ export function ChatPage({
   const forkDraft = queue.find((item) => item.status === "draft")?.content;
   const latestDetail = findLatestDetail(view);
   const latestUsage = view.findLast((item) => item.usage !== undefined)?.usage ?? null;
+  const draftTarget = useMemo(
+    () =>
+      activeId ? ({ kind: "session", sessionId: activeId } as const) : ({ kind: "new" } as const),
+    [activeId],
+  );
+  const userMessages = useMemo(
+    () => view.filter((item) => item.role === "user").map((item) => item.content),
+    [view],
+  );
+  const handleControl = useCallback(
+    () => onControl(actionState.nextControl),
+    [actionState.nextControl, onControl],
+  );
   if (!activeId) {
     if (newSession) {
       return (
@@ -138,11 +151,11 @@ export function ChatPage({
         disabled={!activeId}
         draft={forkDraft}
         draftSaveDelayMs={draftSaveDelayMs}
-        draftTarget={{ kind: "session", sessionId: activeId }}
+        draftTarget={draftTarget}
         key={forkDraft === undefined ? activeId : `draft:${forkDraft}`}
-        userMessages={view.filter((item) => item.role === "user").map((item) => item.content)}
+        userMessages={userMessages}
         usage={latestUsage}
-        onControl={() => onControl(actionState.nextControl)}
+        onControl={handleControl}
         onDelete={onDelete}
         onSend={onSend}
       />

@@ -102,19 +102,19 @@ test("host abort cancels an active graph stream", async () => {
   const graph = {
     stream: (_input: unknown, options: { signal: AbortSignal }) => {
       started.resolve(undefined);
-      return new Promise((_, reject) => {
-        options.signal.addEventListener(
-          "abort",
-          () => {
-            reject(
-              options.signal.reason instanceof Error
-                ? options.signal.reason
-                : new Error("graph stream aborted"),
-            );
-          },
-          { once: true },
-        );
-      });
+      const aborted = Promise.withResolvers<never>();
+      options.signal.addEventListener(
+        "abort",
+        () => {
+          aborted.reject(
+            options.signal.reason instanceof Error
+              ? options.signal.reason
+              : new Error("graph stream aborted"),
+          );
+        },
+        { once: true },
+      );
+      return aborted.promise;
     },
   };
   const context = makeContext(db, graph);

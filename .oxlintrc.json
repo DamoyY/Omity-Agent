@@ -11,25 +11,33 @@
     "typeAware": true,
     "typeCheck": true
   },
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "react",
+    "react-perf",
+    "oxc",
+    "promise"
+  ],
   "rules": {
+    "typescript/no-deprecated": "error",
+    "filename-case": "allow",
     "func-style": "allow",
     "jsx-max-depth": "allow",
     "id-length": "allow",
     "init-declarations": "allow",
+    "max-nested-calls": "allow",
     "max-params": "allow",
     "max-statements": "allow",
     "new-cap": "allow",
     "no-await-in-loop": "allow",
     "no-magic-numbers": "allow",
     "no-nested-ternary": "allow",
+    "no-null": "allow",
     "no-ternary": "allow",
     "no-undef": "allow",
-    "react-in-jsx-scope": "allow",
-    "typescript/no-deprecated": "warn"
-  },
-  "plugins": [
-    "react",
-    "react-perf",
-    "promise"
-  ]
+    "parameter-properties": "allow",
+    "react-in-jsx-scope": "allow"
+  }
 }

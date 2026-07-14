@@ -1,6 +1,6 @@
 import { Check, Copy } from "lucide-react";
 import { css, cx } from "styled-system/css";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IconButton } from "../ParkUI";
 import { reportPromiseErrors } from "../../services/errors";
 import { useTranslation } from "react-i18next";
@@ -21,7 +21,7 @@ export function CopyButton({ className, value }: { className?: string; value: st
     },
     [],
   );
-  const copy = async () => {
+  const copy = useCallback(async () => {
     await navigator.clipboard.writeText(value);
     setCopied(true);
     if (resetTimer.current) {
@@ -30,16 +30,17 @@ export function CopyButton({ className, value }: { className?: string; value: st
     resetTimer.current = setTimeout(() => {
       setCopied(false);
     }, copiedDurationMs);
-  };
+  }, [value]);
+  const handleCopy = useCallback(() => {
+    reportPromiseErrors(copy());
+  }, [copy]);
   const label = t(copied ? "copied" : "copy");
   return (
     <IconButton
       aria-label={label}
       className={cx(button, className)}
       disabled={!value}
-      onClick={() => {
-        reportPromiseErrors(copy());
-      }}
+      onClick={handleCopy}
       title={label}
       type="button"
       variant="ghost"

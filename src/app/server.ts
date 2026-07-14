@@ -8,6 +8,8 @@ import { createServer as createViteServer } from "vite";
 import { errorResponse } from "./http/errors";
 import { getRequestListener } from "@hono/node-server";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
+import { once } from "node:events";
+import { promisify } from "node:util";
 export interface AppServerOptions {
   root: string;
   host: string;
@@ -48,10 +50,9 @@ export async function startAppServer(options: AppServerOptions) {
         }
       });
     });
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(options.port, options.host, resolve);
-    });
+    const listening = once(server, "listening");
+    server.listen(options.port, options.host);
+    await listening;
     const url = appUrl(options.host, listeningPort(server.address()));
     options.onReady?.(url);
     await shutdown;
@@ -75,26 +76,20 @@ function sendViteError(res: ServerResponse, error: unknown) {
   });
   res.end(JSON.stringify(normalized.body));
 }
-function waitForShutdownSignal() {
-  return new Promise<void>((resolve) => {
-    const stop = () => {
-      process.removeListener("SIGINT", stop);
-      process.removeListener("SIGTERM", stop);
-      resolve();
-    };
-    process.once("SIGINT", stop);
-    process.once("SIGTERM", stop);
-  });
+async function waitForShutdownSignal() {
+  const controller = new AbortController();
+  try {
+    await Promise.race([
+      once(process, "SIGINT", { signal: controller.signal }),
+      once(process, "SIGTERM", { signal: controller.signal }),
+    ]);
+  } finally {
+    controller.abort();
+  }
 }
-function closeServer(server: ReturnType<typeof createServer>) {
-  return new Promise<void>((resolve, reject) => {
-    server.close((error) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    });
-    server.closeAllConnections();
-  });
+async function closeServer(server: ReturnType<typeof createServer>) {
+  const close = promisify(server.close.bind(server));
+  const closed = close();
+  server.closeAllConnections();
+  await closed;
 }

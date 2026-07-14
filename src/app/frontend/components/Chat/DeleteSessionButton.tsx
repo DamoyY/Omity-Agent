@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ParkUI";
 import { Trash2 } from "lucide-react";
 import { css } from "styled-system/css";
@@ -22,25 +22,26 @@ export function DeleteSessionButton({
     if (!confirming) {
       return;
     }
-    const timeout = window.setTimeout(() => {
+    const timeout = globalThis.setTimeout(() => {
       setConfirming(false);
     }, 2000);
     return () => {
-      window.clearTimeout(timeout);
+      globalThis.clearTimeout(timeout);
     };
   }, [confirming]);
+  const handleDelete = useCallback(() => {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setConfirming(false);
+    reportPromiseErrors(onDelete());
+  }, [confirming, onDelete]);
   return (
     <Button
       className={confirming ? armed : undefined}
       disabled={disabled}
-      onClick={() => {
-        if (!confirming) {
-          setConfirming(true);
-          return;
-        }
-        setConfirming(false);
-        reportPromiseErrors(onDelete());
-      }}
+      onClick={handleDelete}
       title={disabled ? t("runningDeleteDisabled") : undefined}
       type="button"
       variant="ghost"

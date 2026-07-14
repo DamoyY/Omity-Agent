@@ -134,13 +134,13 @@ function assistant(options: {
   return {
     id: options.id,
     ...(options.sourceId ? { sourceId: options.sourceId } : {}),
-    role: "assistant",
     content: options.content ?? "",
-    reasoning: options.reasoning ?? "",
+    createdAt: options.id,
     images: [],
     queueId: null,
+    reasoning: options.reasoning ?? "",
+    role: "assistant",
     toolCalls: options.call ? [options.call] : [],
-    createdAt: options.id,
   };
 }
 function toolCall(id: string) {

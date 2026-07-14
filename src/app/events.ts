@@ -36,28 +36,28 @@ export class AppEvents {
     this.bus.emit("wake", sessionId);
   }
   wait(sessionId: string, delayMs: number) {
-    return new Promise<void>((resolve) => {
-      let settled = false;
-      const handler = (changedSessionId: string) => {
-        if (changedSessionId !== sessionId) {
-          return;
-        }
-        done();
-      };
-      const done = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        this.bus.off("wake", handler);
-        resolve();
-      };
-      this.bus.on("wake", handler);
-      void (async () => {
-        await sleep(delayMs);
-        done();
-      })();
-    });
+    const waiting = Promise.withResolvers<void>();
+    let settled = false;
+    const handler = (changedSessionId: string) => {
+      if (changedSessionId !== sessionId) {
+        return;
+      }
+      done();
+    };
+    const done = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      this.bus.off("wake", handler);
+      waiting.resolve();
+    };
+    this.bus.on("wake", handler);
+    void (async () => {
+      await sleep(delayMs);
+      done();
+    })();
+    return waiting.promise;
   }
   streamSessions(c: Context, getSessions: () => SessionInfo[]) {
     return this.stream(c, (write) => {
@@ -100,27 +100,22 @@ export class AppEvents {
   private stream(c: Context, subscribe: (write: WriteEvent) => () => void) {
     const response = streamSSE(c, async (stream) => {
       let pending = Promise.resolve();
-      let resolveStream: () => void = () => undefined;
-      let rejectStream: (error: unknown) => void = () => undefined;
-      const disconnected = new Promise<void>((resolve, reject) => {
-        resolveStream = resolve;
-        rejectStream = reject;
-      });
+      const disconnected = Promise.withResolvers<void>();
       const write: WriteEvent = (event, data) => {
         pending = writePending(pending, stream, event, data);
-        void observePending(pending, rejectStream);
+        void observePending(pending, disconnected.reject);
       };
       const unsubscribe = subscribe(write);
       const abort = () => {
-        resolveStream();
+        disconnected.resolve();
       };
       try {
         if (c.req.raw.signal.aborted) {
-          resolveStream();
+          disconnected.resolve();
         } else {
           c.req.raw.signal.addEventListener("abort", abort, { once: true });
         }
-        await disconnected;
+        await disconnected.promise;
         await pending;
       } finally {
         unsubscribe();

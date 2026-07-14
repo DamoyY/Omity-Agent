@@ -79,12 +79,12 @@ export function buildGraph(
     resolveModelApi(settings.model) === "responses" ? instructions : undefined,
   );
   const graph = createAgentGraph({
-    settings,
     model,
+    settings,
     tools,
     ...toolOptions,
-    hooks,
     checkpointer,
+    hooks,
     skillsMessage,
   });
   return { checkpointer, graph };

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 export type Page = { kind: "new" } | { kind: "session"; id: string };
 const sessionPrefix = "/sessions/";
 export function readPage(): Page {
-  const { pathname } = window.location;
+  const { pathname } = globalThis.location;
   if (pathname === "/new") {
     return { kind: "new" };
   }
@@ -22,11 +22,11 @@ export function pagePath(page: Page) {
 }
 export function writePage(page: Page, replace = false) {
   const path = pagePath(page);
-  if (window.location.pathname === path) {
+  if (globalThis.location.pathname === path) {
     return;
   }
   const method = replace ? "replaceState" : "pushState";
-  window.history[method](null, "", path);
+  globalThis.history[method](null, "", path);
 }
 export function sessionPage(id: string): Page {
   return { id, kind: "session" };
@@ -45,9 +45,9 @@ export function usePageNavigation(page: Page, currentPage: Page, setPage: (page:
     const syncPage = () => {
       setPage(readPage());
     };
-    window.addEventListener("popstate", syncPage);
+    globalThis.addEventListener("popstate", syncPage);
     return () => {
-      window.removeEventListener("popstate", syncPage);
+      globalThis.removeEventListener("popstate", syncPage);
     };
   }, [setPage]);
   useEffect(() => {

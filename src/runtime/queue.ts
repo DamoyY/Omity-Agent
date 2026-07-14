@@ -91,6 +91,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
     if (pauseForStop(ctx, run)) {
       return;
     }
+    let reachedBoundary = false;
     try {
       const stream = await ctx.graph.stream(input, {
         ...config,
@@ -101,6 +102,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         handleStreamEvent(ctx, event, streamLogState, item.id);
       }
       modelNetworkRetry = 0;
+      reachedBoundary = true;
     } catch (error) {
       if (!isModelNetworkError(error)) {
         throw error;
@@ -122,62 +124,62 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       if (!shouldRetry) {
         return;
       }
-      continue;
     }
-    ctx.assertLease?.();
-    if (pauseForStop(ctx, run)) {
-      return;
-    }
-    const control = ctx.db.control(ctx.sessionId);
-    if (control === "cancel") {
-      cancelRun(ctx, run);
-      return;
-    }
-    const state = readGraphState(await ctx.graph.getState(config));
-    const { messages } = state.values;
-    if (messages.length > 0) {
-      ctx.db.syncHistory(ctx.sessionId, messages);
-      ctx.observer?.changed?.(ctx.sessionId);
-      ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
-    }
-    ctx.logger.debug("LangGraph 边界", {
-      next: state.next,
-      tasks: state.tasks.map((task) => task.name),
-    });
-    if (ctx.stopping?.aborted) {
-      setRunStatus(ctx, run, "paused");
-      return;
-    }
-    if (control === "pause" || control === "pause_cancel") {
-      ctx.logger.warn("已在节点边界暂停", {
-        next: state.next,
-        queueId: item.id,
-      });
-      if (!(await waitIfPaused(ctx, run))) {
+    if (reachedBoundary) {
+      ctx.assertLease?.();
+      if (pauseForStop(ctx, run)) {
         return;
       }
+      const control = ctx.db.control(ctx.sessionId);
+      if (control === "cancel") {
+        cancelRun(ctx, run);
+        return;
+      }
+      const state = readGraphState(await ctx.graph.getState(config));
+      const { messages } = state.values;
+      if (messages.length > 0) {
+        ctx.db.syncHistory(ctx.sessionId, messages);
+        ctx.observer?.changed?.(ctx.sessionId);
+        ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
+      }
+      ctx.logger.debug("LangGraph 边界", {
+        next: state.next,
+        tasks: state.tasks.map((task) => task.name),
+      });
+      if (ctx.stopping?.aborted) {
+        setRunStatus(ctx, run, "paused");
+        return;
+      }
+      if (control === "pause" || control === "pause_cancel") {
+        ctx.logger.warn("已在节点边界暂停", {
+          next: state.next,
+          queueId: item.id,
+        });
+        if (!(await waitIfPaused(ctx, run))) {
+          return;
+        }
+      }
+      const appendInput = consumeBoundaryAppends(ctx, run, state);
+      if (appendInput) {
+        input = appendInput;
+      } else if (state.next.length === 0) {
+        ctx.observer?.activity?.(ctx.sessionId, "idle");
+        finishRun(ctx, run, state.values.messages, state.values.hookPlan);
+        return;
+      } else {
+        const nextActivity = state.next.includes("tools")
+          ? "tool"
+          : (state.next.includes("model_request")
+            ? "model"
+            : undefined);
+        if (nextActivity) {
+          ctx.observer?.activity?.(ctx.sessionId, nextActivity);
+        }
+        if (nextActivity === "tool") {
+          recordToolExecutionStarted(ctx, messages, item.id);
+        }
+        input = null;
+      }
     }
-    const appendInput = consumeBoundaryAppends(ctx, run, state);
-    if (appendInput) {
-      input = appendInput;
-      continue;
-    }
-    if (state.next.length === 0) {
-      ctx.observer?.activity?.(ctx.sessionId, "idle");
-      finishRun(ctx, run, state.values.messages, state.values.hookPlan);
-      return;
-    }
-    const nextActivity = state.next.includes("tools")
-      ? "tool"
-      : state.next.includes("model_request")
-        ? "model"
-        : undefined;
-    if (nextActivity) {
-      ctx.observer?.activity?.(ctx.sessionId, nextActivity);
-    }
-    if (nextActivity === "tool") {
-      recordToolExecutionStarted(ctx, messages, item.id);
-    }
-    input = null;
   }
 }

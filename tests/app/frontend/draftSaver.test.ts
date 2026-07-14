@@ -40,10 +40,7 @@ test("discarding a pending draft does not wait for its debounce", async () => {
 });
 test("draft saver serializes a new save behind an in-flight save", async () => {
   const started: string[] = [];
-  let releaseFirst: () => void = () => undefined;
-  const first = new Promise<void>((resolve) => {
-    releaseFirst = resolve;
-  });
+  const first = Promise.withResolvers<void>();
   const saver = new DraftSaver(
     { kind: "session", sessionId: "session" },
     1,
@@ -52,7 +49,7 @@ test("draft saver serializes a new save behind an in-flight save", async () => {
     },
     (_target, content) => {
       started.push(content);
-      return content === "first" ? first : Promise.resolve();
+      return content === "first" ? first.promise : Promise.resolve();
     },
   );
   saver.schedule("first", 1);
@@ -60,7 +57,7 @@ test("draft saver serializes a new save behind an in-flight save", async () => {
   saver.schedule("second", 2);
   await Bun.sleep(5);
   expect(started).toEqual(["first"]);
-  releaseFirst();
+  first.resolve();
   await saver.flush();
   expect(started).toEqual(["first", "second"]);
 });

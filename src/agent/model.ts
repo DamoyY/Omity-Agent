@@ -12,11 +12,11 @@ export function buildModel(settings: Settings, sessionId: string, instructions?:
     model: settings.model.model,
     ...modelClientFields(settings.model),
     maxRetries: 0,
-    timeout: settings.model.timeoutMs,
+    modelKwargs: { store: false },
     promptCacheKey: sessionId,
     streaming: true,
+    timeout: settings.model.timeoutMs,
     zdrEnabled: true,
-    modelKwargs: { store: false },
     ...(settings.model.temperature === undefined
       ? {}
       : { temperature: settings.model.temperature }),

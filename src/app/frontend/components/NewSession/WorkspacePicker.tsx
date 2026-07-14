@@ -1,8 +1,8 @@
 import { Button, Field, Input } from "../ParkUI";
+import { type ChangeEvent, useCallback, useState } from "react";
 import { Check, FolderOpen, History } from "lucide-react";
 import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 const row = css({
   display: "grid",
@@ -23,6 +23,21 @@ const recentPath = css({
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 });
+async function pickWorkspace(
+  onPick: () => Promise<string | null>,
+  onChange: (workspace: string) => void,
+  setPicking: (picking: boolean) => void,
+) {
+  setPicking(true);
+  try {
+    const selected = await onPick();
+    if (selected) {
+      onChange(selected);
+    }
+  } finally {
+    setPicking(false);
+  }
+}
 export function WorkspacePicker({
   recentWorkspaces,
   workspace,
@@ -36,17 +51,15 @@ export function WorkspacePicker({
 }) {
   const { t } = useTranslation();
   const [picking, setPicking] = useState(false);
-  const pick = async () => {
-    setPicking(true);
-    try {
-      const selected = await onPick();
-      if (selected) {
-        onChange(selected);
-      }
-    } finally {
-      setPicking(false);
-    }
-  };
+  const handlePick = useCallback(() => {
+    reportPromiseErrors(pickWorkspace(onPick, onChange, setPicking));
+  }, [onChange, onPick]);
+  const handleInputChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onChange(event.currentTarget.value);
+    },
+    [onChange],
+  );
   return (
     <Field.Root>
       <Field.Label>{t("workspace")}</Field.Label>
@@ -54,42 +67,54 @@ export function WorkspacePicker({
         <Input
           className={pathInput}
           value={workspace}
-          onChange={(event) => {
-            onChange(event.currentTarget.value);
-          }}
+          onChange={handleInputChange}
         />
-        <Button
-          disabled={picking}
-          onClick={() => {
-            reportPromiseErrors(pick());
-          }}
-          type="button"
-        >
+        <Button disabled={picking} onClick={handlePick} type="button">
           <FolderOpen size={14} /> {t("chooseFolder")}
         </Button>
       </span>
-      {recentWorkspaces.length > 0 ? (
+      {recentWorkspaces.length > 0 ?
         <div className={recent}>
           <span className={recentLabel}>{t("recentWorkspaces")}</span>
           <div className={recentList}>
             {recentWorkspaces.map((item) => (
-              <Button
-                aria-pressed={item === workspace}
-                className={recentButton}
+              <RecentWorkspaceButton
+                item={item}
                 key={item}
-                onClick={() => {
-                  onChange(item);
-                }}
-                title={item}
-                type="button"
-              >
-                {item === workspace ? <Check size={14} /> : <History size={14} />}
-                <span className={recentPath}>{item}</span>
-              </Button>
+                selected={item === workspace}
+                onChange={onChange}
+              />
             ))}
           </div>
         </div>
-      ) : null}
+      : null}
     </Field.Root>
+  );
+}
+function RecentWorkspaceButton({
+  item,
+  selected,
+  onChange,
+}: {
+  item: string;
+  selected: boolean;
+  onChange: (workspace: string) => void;
+}) {
+  const select = useCallback(() => {
+    onChange(item);
+  }, [item, onChange]);
+  return (
+    <Button
+      aria-pressed={selected}
+      className={recentButton}
+      onClick={select}
+      title={item}
+      type="button"
+    >
+      {selected ?
+        <Check size={14} />
+      : <History size={14} />}
+      <span className={recentPath}>{item}</span>
+    </Button>
   );
 }

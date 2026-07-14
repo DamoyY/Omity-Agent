@@ -109,18 +109,18 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
   return {
     id: row.id,
     ...(message.id ? { sourceId: message.id } : {}),
-    role,
     content,
-    reasoning: messageReasoning(message),
     images: extractToolImages(message.content),
     queueId: row.queue_id,
-    toolCalls: extractToolCalls(message),
+    reasoning: messageReasoning(message),
+    role,
     toolCallId: extractToolCallId(message),
+    toolCalls: extractToolCalls(message),
     ...(ToolMessage.isInstance(message)
       ? { outputTokens: toolOutputTokens(message, content) }
       : {}),
-    usage: modelTokenUsage(message),
     createdAt: row.created_at,
+    usage: modelTokenUsage(message),
   };
 }
 function parseStored(value: string): StoredMessage {
@@ -152,8 +152,8 @@ function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
       index,
       inputTokens: toolInputTokens(call, input),
       ...(message.id ? { messageId: message.id } : {}),
-      name: stringField(call, "name") ?? "tool",
       input,
+      name: stringField(call, "name") ?? "tool",
       ...(freeform ? { rawInput: rawFreeformInput(input) } : {}),
     };
   });

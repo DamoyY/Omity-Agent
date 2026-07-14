@@ -5,9 +5,9 @@ export function displayStreamEvent(event: StreamEvent): DisplayEvent {
   const payload =
     event.kind === "tool_call_delta"
       ? { call: event.value }
-      : event.kind === "tool_started"
+      : (event.kind === "tool_started"
         ? { callId: event.value }
-        : { text: event.value };
+        : { text: event.value });
   return {
     id: event.id,
     message: event.kind,
@@ -61,27 +61,26 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
   const calls: ToolCallAccumulator[] = [];
   for (const event of events) {
     const delta = toolCallDelta(event);
-    if (!delta) {
-      continue;
+    if (delta) {
+      const matches = calls.filter((call) => matchesDelta(call, delta));
+      let current = matches.shift();
+      if (!current) {
+        current = { inputText: "", name: "" };
+        calls.push(current);
+      }
+      for (const duplicate of matches) {
+        mergeCall(current, duplicate);
+        calls.splice(calls.indexOf(duplicate), 1);
+      }
+      mergeDelta(current, delta);
     }
-    const matches = calls.filter((call) => matchesDelta(call, delta));
-    let current = matches.shift();
-    if (!current) {
-      current = { inputText: "", name: "" };
-      calls.push(current);
-    }
-    for (const duplicate of matches) {
-      mergeCall(current, duplicate);
-      calls.splice(calls.indexOf(duplicate), 1);
-    }
-    mergeDelta(current, delta);
   }
   return calls.map((call, order) => ({
     id: call.id ?? `i:${(call.index ?? order).toString()}`,
     index: call.index ?? order,
     input: {},
-    inputTokens: countTokens(call.inputText),
     inputText: call.inputText,
+    inputTokens: countTokens(call.inputText),
     ...(call.messageId ? { messageId: call.messageId } : {}),
     name: call.name || "tool",
     ...(call.freeform ? { rawInput: call.inputText } : {}),

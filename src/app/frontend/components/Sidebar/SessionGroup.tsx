@@ -7,21 +7,74 @@ import {
   sessionLabel,
   workspaceLabel,
 } from "./sessions";
+import { type MouseEvent, useCallback, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Status } from "./Status";
 import { cx } from "styled-system/css";
 import { pagePath } from "../../route";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 interface Props {
   group: Group;
   activeId?: string;
   onSelect: (id: string) => void;
 }
+interface SessionItemProps {
+  active: boolean;
+  language: string;
+  onSelect: Props["onSelect"];
+  session: Group["sessions"][number];
+}
+function SessionItem({ active, language, onSelect, session }: SessionItemProps) {
+  const handleSelect = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+      onSelect(session.id);
+    },
+    [onSelect, session.id],
+  );
+  return (
+    <div className={cx("group", styles.item, active && styles.selected)}>
+      <LinkButton
+        aria-current={active ? "page" : undefined}
+        aria-label={session.id}
+        className={styles.row}
+        href={pagePath({ id: session.id, kind: "session" })}
+        onClick={handleSelect}
+        title={session.id}
+        variant="ghost"
+      >
+        <span aria-hidden="true">#</span>
+        <span className={cx(styles.fingerprint, active && styles.selectedFingerprint)}>
+          {sessionLabel(session.id)}
+        </span>
+        <Status compact error={session.error} status={session.status} />
+        <time className={styles.time} dateTime={new Date(session.updatedAt * 1000).toISOString()}>
+          {formatUpdatedAt(session.updatedAt, language)}
+        </time>
+      </LinkButton>
+    </div>
+  );
+}
 export function SessionGroup({ group, activeId, onSelect }: Props) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => {
+    setExpanded((value) => !value);
+  }, []);
+  const toggleHistory = useCallback(() => {
+    setHistoryExpanded((value) => !value);
+  }, []);
   const runningSessions = group.sessions.filter(isRunning);
   const historySessions = group.sessions.filter((session) => !isRunning(session));
   const selectedHistory = historySessions.find(({ id }) => id === activeId);
@@ -35,9 +88,7 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
     <section className={styles.root}>
       <button
         className={styles.header}
-        onClick={() => {
-          setExpanded((value) => !value);
-        }}
+        onClick={toggleExpanded}
         title={group.workspace}
         type="button"
       >
@@ -56,57 +107,18 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
       {expanded && (
         <div className={styles.sessions}>
           {visibleSessions.map((session) => (
-            <div
-              className={cx("group", styles.item, session.id === activeId && styles.selected)}
+            <SessionItem
+              active={session.id === activeId}
               key={session.id}
-            >
-              <LinkButton
-                aria-current={session.id === activeId ? "page" : undefined}
-                aria-label={session.id}
-                className={styles.row}
-                href={pagePath({ id: session.id, kind: "session" })}
-                onClick={(event) => {
-                  if (
-                    event.defaultPrevented ||
-                    event.button !== 0 ||
-                    event.metaKey ||
-                    event.ctrlKey ||
-                    event.shiftKey ||
-                    event.altKey
-                  ) {
-                    return;
-                  }
-                  event.preventDefault();
-                  onSelect(session.id);
-                }}
-                title={session.id}
-                variant="ghost"
-              >
-                <span aria-hidden="true">#</span>
-                <span
-                  className={cx(
-                    styles.fingerprint,
-                    session.id === activeId && styles.selectedFingerprint,
-                  )}
-                >
-                  {sessionLabel(session.id)}
-                </span>
-                <Status compact error={session.error} status={session.status} />
-                <time
-                  className={styles.time}
-                  dateTime={new Date(session.updatedAt * 1000).toISOString()}
-                >
-                  {formatUpdatedAt(session.updatedAt, i18n.language)}
-                </time>
-              </LinkButton>
-            </div>
+              language={i18n.language}
+              onSelect={onSelect}
+              session={session}
+            />
           ))}
           {runningSessions.length > 0 && hiddenHistoryCount > 0 && (
             <Button
               className={styles.historyToggle}
-              onClick={() => {
-                setHistoryExpanded((value) => !value);
-              }}
+              onClick={toggleHistory}
               type="button"
               variant="ghost"
             >

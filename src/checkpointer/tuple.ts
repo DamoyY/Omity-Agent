@@ -1,8 +1,8 @@
-import {
-  type Checkpoint,
-  type CheckpointPendingWrite,
-  type CheckpointTuple,
-  type SerializerProtocol,
+import type {
+  Checkpoint,
+  CheckpointPendingWrite,
+  CheckpointTuple,
+  SerializerProtocol,
 } from "@langchain/langgraph-checkpoint";
 import type { CheckpointRow, WriteJson } from "./sql";
 import { hydrateCheckpoint, hydratePendingValue } from "./messageRefs";

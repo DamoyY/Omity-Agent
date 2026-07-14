@@ -1,5 +1,5 @@
 import { ChevronRight, type LucideIcon } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, type SyntheticEvent, useCallback, useState } from "react";
 import { sva } from "styled-system/css";
 const frame = sva({
   base: {
@@ -76,14 +76,11 @@ export function Frame({
 }) {
   const [expanded, setExpanded] = useState(expandedInitially);
   const classes = frame({ tone });
+  const handleToggle = useCallback((event: SyntheticEvent<HTMLDetailsElement>) => {
+    setExpanded(event.currentTarget.open);
+  }, []);
   return (
-    <details
-      className={classes.root}
-      onToggle={(event) => {
-        setExpanded(event.currentTarget.open);
-      }}
-      open={expanded}
-    >
+    <details className={classes.root} onToggle={handleToggle} open={expanded}>
       <summary aria-label={label} className={classes.summary}>
         <ChevronRight className={classes.disclosure} size={12} />
         <Icon className={classes.icon} size={13} />

@@ -7,6 +7,7 @@ import { Reasoning } from "../Details/Reasoning";
 import type { TimelineMessage } from "../../../timeline";
 import { ToolCall } from "../Details/ToolCall";
 import { reportPromiseErrors } from "../../services/errors";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 const row = css({
   alignItems: "start",
@@ -98,6 +99,9 @@ export function Message({
 }) {
   const { t } = useTranslation();
   const tone = roleTone({ role: item.role });
+  const handleFork = useCallback(() => {
+    reportPromiseErrors(onFork(item.id));
+  }, [item.id, onFork]);
   return (
     <div className={cx(row, item.role === "user" && userRow)}>
       <article className={message({ role: item.role })}>
@@ -108,9 +112,7 @@ export function Message({
                 aria-label={t("fork")}
                 className={cx(forkButton, tone)}
                 disabled={forkDisabled}
-                onClick={() => {
-                  reportPromiseErrors(onFork(item.id));
-                }}
+                onClick={handleFork}
                 title={t("fork")}
                 type="button"
                 variant="ghost"

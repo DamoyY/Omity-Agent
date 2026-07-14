@@ -97,9 +97,10 @@ test("host restart resumes after one committed hook boundary", async () => {
 });
 async function removeDirectory(dir: string) {
   for (let attempt = 0; ; attempt++) {
+    let removed = false;
     try {
       rmSync(dir, { force: true, recursive: true });
-      return;
+      removed = true;
     } catch (error) {
       if (
         !(error instanceof Error && "code" in error && error.code === "EBUSY") ||
@@ -107,8 +108,11 @@ async function removeDirectory(dir: string) {
       ) {
         throw error;
       }
-      await Bun.sleep(50);
     }
+    if (removed) {
+      return;
+    }
+    await Bun.sleep(50);
   }
 }
 function runtime(db: AgentDatabase, hookTool: StructuredToolInterface, dir: string) {

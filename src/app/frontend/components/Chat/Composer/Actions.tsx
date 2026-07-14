@@ -5,6 +5,7 @@ import { ContextUsage } from "../ContextUsage";
 import { DeleteSessionButton } from "../DeleteSessionButton";
 import type { TokenUsage } from "../../../../timeline";
 import { reportPromiseErrors } from "../../../services/errors";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 type ControlState = "pause" | "pausing" | "resume";
 export function Actions({
@@ -25,6 +26,11 @@ export function Actions({
   onDelete?: () => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const handleControl = useCallback(() => {
+    if (onControl) {
+      reportPromiseErrors(onControl());
+    }
+  }, [onControl]);
   return (
     <div className={composerActions}>
       <div className={composerControls}>
@@ -34,9 +40,7 @@ export function Actions({
         {controlState && onControl ? (
           <Button
             disabled={controlDisabled}
-            onClick={() => {
-              reportPromiseErrors(onControl());
-            }}
+            onClick={handleControl}
             type="button"
             variant="outline"
           >

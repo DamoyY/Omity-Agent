@@ -22,7 +22,8 @@ test("settings yaml resolves AppData data directory", () => {
   writeTestConfiguration(root, {
     dataDir: `\${appData}/omity-agent`,
   });
-  withAppDataRoot(appData, () => {
+  const restoreAppDataRoot = setAppDataRoot(appData);
+  try {
     const settings = loadSettings(root);
     mkdirSync(settings.paths.dataDir, { recursive: true });
     expect(settings.paths.dataDir).toBe(resolve(appDataRoot(), "omity-agent"));
@@ -37,7 +38,9 @@ test("settings yaml resolves AppData data directory", () => {
     });
     expect(() => sessionPaths(settings, "abc/def")).toThrow("路径 ID 无效");
     expect(() => sessionPaths(settings, "abc:def")).toThrow("路径 ID 无效");
-  });
+  } finally {
+    restoreAppDataRoot();
+  }
 });
 test("prompt files expand current working directory placeholder", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
@@ -144,7 +147,7 @@ test("hook variables preserve exact values and reject ambiguous output", () => {
     resolveHookArgs({ missing: `\${previousTool.output}` }, { cwd: "F:\\work" }),
   ).toThrow("没有可用的前序工具输出");
 });
-function withAppDataRoot(path: string, callback: () => void) {
+function setAppDataRoot(path: string) {
   const previous = {
     APPDATA: process.env["APPDATA"],
     HOME: process.env["HOME"],
@@ -153,13 +156,11 @@ function withAppDataRoot(path: string, callback: () => void) {
   process.env["APPDATA"] = path;
   process.env["HOME"] = path;
   process.env["XDG_DATA_HOME"] = path;
-  try {
-    callback();
-  } finally {
+  return () => {
     restoreEnv("APPDATA", previous.APPDATA);
     restoreEnv("HOME", previous.HOME);
     restoreEnv("XDG_DATA_HOME", previous.XDG_DATA_HOME);
-  }
+  };
 }
 function restoreEnv(name: string, value: string | undefined) {
   if (value === undefined) {

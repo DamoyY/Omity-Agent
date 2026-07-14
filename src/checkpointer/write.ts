@@ -6,13 +6,13 @@ import {
   WRITES_IDX_MAP,
   copyCheckpoint,
 } from "@langchain/langgraph-checkpoint";
+import { type SqlBinding, optionalConfigString, requiredConfigString } from "./sql";
 import {
   normalizeCheckpoint,
   normalizePendingValue,
   persistCheckpointMessages,
   persistPendingMessages,
 } from "./messageRefs";
-import { type SqlBinding, optionalConfigString, requiredConfigString } from "./sql";
 import {
   pruneMessageBlobs,
   replaceCheckpointBlobRefs,
@@ -154,7 +154,6 @@ async function pendingWriteRows(
       const [type, serialized] = await serialize(serde, normalized.value);
       const writeIndex = WRITES_IDX_MAP[channel] ?? idx;
       return {
-        replace: channel in WRITES_IDX_MAP,
         key: {
           checkpointId,
           checkpointNs,
@@ -162,6 +161,7 @@ async function pendingWriteRows(
           taskId,
           threadId,
         },
+        replace: channel in WRITES_IDX_MAP,
         ...(normalized.messages ? { messages: normalized.messages } : {}),
         bindings: [
           threadId,

@@ -1,13 +1,13 @@
 import { Badge, IconButton } from "../ParkUI";
 import { CircleStop, LoaderCircle, Wrench } from "lucide-react";
 import type { DisplayMessage, DisplayToolCall } from "../../../timeline";
+import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { Frame } from "./Frame";
 import { HighlightedCode } from "../HighlightedCode";
 import { css } from "styled-system/css";
 import { formatTokens } from "../../tokenUnits";
 import { formatToolInput } from "./toolInput";
 import { reportPromiseErrors } from "../../services/errors";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 const ioGrid = css({
   borderTopColor: "line",
@@ -74,45 +74,52 @@ export function ToolCall({
   const showOutputCode = output
     ? output.content.trim().length > 0 || output.images.length === 0
     : started;
+  const handleCancel = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setCancelling(true);
+      const cancel = async () => {
+        try {
+          await onCancel(call.id);
+        } catch (error: unknown) {
+          setCancelling(false);
+          throw error;
+        }
+      };
+      reportPromiseErrors(cancel());
+    },
+    [call.id, onCancel],
+  );
+  const frameAccessory = useMemo(
+    () =>
+      call.streaming || running ? (
+        <span className={accessory}>
+          {call.streaming ? <Badge>{t("streaming")}</Badge> : null}
+          {running ? (
+            <IconButton
+              aria-label={t("stopTool")}
+              className={stopButton}
+              disabled={cancelling}
+              onClick={handleCancel}
+              title={t("stopTool")}
+              type="button"
+              variant="ghost"
+            >
+              {cancelling ? (
+                <LoaderCircle aria-hidden size={14} />
+              ) : (
+                <CircleStop aria-hidden size={14} />
+              )}
+            </IconButton>
+          ) : null}
+        </span>
+      ) : undefined,
+    [call.streaming, cancelling, handleCancel, running, t],
+  );
   return (
     <Frame
-      accessory={
-        call.streaming || running ? (
-          <span className={accessory}>
-            {call.streaming ? <Badge>{t("streaming")}</Badge> : null}
-            {running ? (
-              <IconButton
-                aria-label={t("stopTool")}
-                className={stopButton}
-                disabled={cancelling}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setCancelling(true);
-                  const cancel = async () => {
-                    try {
-                      await onCancel(call.id);
-                    } catch (error: unknown) {
-                      setCancelling(false);
-                      throw error;
-                    }
-                  };
-                  reportPromiseErrors(cancel());
-                }}
-                title={t("stopTool")}
-                type="button"
-                variant="ghost"
-              >
-                {cancelling ? (
-                  <LoaderCircle aria-hidden size={14} />
-                ) : (
-                  <CircleStop aria-hidden size={14} />
-                )}
-              </IconButton>
-            ) : null}
-          </span>
-        ) : undefined
-      }
+      accessory={frameAccessory}
       expandedInitially={latest}
       icon={Wrench}
       label={`${t("toolCall")}: ${call.name}`}

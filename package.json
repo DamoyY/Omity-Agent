@@ -8,7 +8,7 @@
   "module": "src/cli.ts",
   "scripts": {
     "omity": "bun src/cli.ts",
-    "check": "oxlint --fix --format=agent && oxfmt && bun test"
+    "check": "oxlint --fix --fix-suggestions --format=agent && oxfmt && bun test"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",

@@ -113,11 +113,11 @@ function withParts(
   startedCallIds: Set<string>,
 ): TimelineMessage {
   return {
+    content: message.content,
+    createdAt: message.createdAt,
     id: message.id,
     key,
     role: message.role,
-    content: message.content,
-    createdAt: message.createdAt,
     ...(message.usage ? { usage: message.usage } : {}),
     parts: [
       ...(message.reasoning.trim()

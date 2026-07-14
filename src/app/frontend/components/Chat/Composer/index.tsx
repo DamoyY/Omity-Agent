@@ -4,9 +4,9 @@ import {
   flushComposerDraft,
   readComposerDraft,
 } from "../../../services/composerDrafts";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { type HistoryDirection, UserMessageHistory } from "./history";
 import { reportError, reportPromiseErrors } from "../../../services/errors";
-import { useEffect, useRef, useState } from "react";
 import { Actions } from "./Actions";
 import type { ComposerProps } from "./props";
 import { DraftSaver } from "../../../services/scheduling/draftSaver";
@@ -92,7 +92,7 @@ export function Composer({
       window.removeEventListener("pagehide", flush);
     };
   }, [sessionId]);
-  const updateContent = (nextContent: string) => {
+  const updateContent = useCallback((nextContent: string) => {
     if (nextContent === contentRef.current) {
       return;
     }
@@ -100,16 +100,19 @@ export function Composer({
     setContent(nextContent);
     revisionRef.current += 1;
     saverRef.current?.schedule(nextContent, revisionRef.current);
-  };
-  const navigateHistory = (direction: HistoryDirection) => {
-    const nextContent = historyRef.current.navigate(direction, contentRef.current, userMessages);
-    if (nextContent === undefined) {
-      return undefined;
-    }
-    updateContent(nextContent);
-    return nextContent;
-  };
-  const submit = async () => {
+  }, []);
+  const navigateHistory = useCallback(
+    (direction: HistoryDirection) => {
+      const nextContent = historyRef.current.navigate(direction, contentRef.current, userMessages);
+      if (nextContent === undefined) {
+        return undefined;
+      }
+      updateContent(nextContent);
+      return nextContent;
+    },
+    [updateContent, userMessages],
+  );
+  const submit = useCallback(async () => {
     const submittedContent = contentRef.current;
     if (submittingRef.current || !submittedContent.trim()) {
       return;
@@ -141,34 +144,40 @@ export function Composer({
       submittingRef.current = false;
       setSubmitting(false);
     }
-  };
+  }, [draftTarget.kind, onSend]);
+  const handleSubmit = useCallback(() => {
+    reportPromiseErrors(submit());
+  }, [submit]);
+  const handleFormSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      handleSubmit();
+    },
+    [handleSubmit],
+  );
+  const handleContentChange = useCallback(
+    (nextContent: string) => {
+      if (nextContent === contentRef.current) {
+        return;
+      }
+      historyRef.current.reset();
+      updateContent(nextContent);
+    },
+    [updateContent],
+  );
+  const handlePasteFiles = useCallback(
+    (files: File[]) => attachmentsRef.current.paste(files, contentRef.current),
+    [],
+  );
   const editorDisabled = disabled || loading || submitting;
   return (
-    <form
-      className={composerFrame}
-      onSubmit={(event) => {
-        event.preventDefault();
-        reportPromiseErrors(submit());
-      }}
-    >
+    <form className={composerFrame} onSubmit={handleFormSubmit}>
       <MarkdownEditor
         disabled={editorDisabled}
-        onChange={(nextContent) => {
-          if (nextContent === contentRef.current) {
-            return;
-          }
-          historyRef.current.reset();
-          updateContent(nextContent);
-        }}
+        onChange={handleContentChange}
         onHistoryNavigate={navigateHistory}
-        onPasteFiles={
-          attachmentSettings
-            ? (files) => attachmentsRef.current.paste(files, contentRef.current)
-            : undefined
-        }
-        onSubmit={() => {
-          reportPromiseErrors(submit());
-        }}
+        onPasteFiles={attachmentSettings ? handlePasteFiles : undefined}
+        onSubmit={handleSubmit}
         placeholder={t("messagePlaceholder")}
         value={content}
       />

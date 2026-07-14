@@ -14,7 +14,7 @@ export async function readComposerDraft(target: ComposerDraftTarget, fallback: s
     };
   }
   return {
-    content: window.sessionStorage.getItem(newSessionKey) ?? fallback,
+    content: globalThis.sessionStorage.getItem(newSessionKey) ?? fallback,
     revision: 0,
   };
 }
@@ -22,7 +22,7 @@ export function writeComposerDraft(target: ComposerDraftTarget, content: string,
   if (target.kind === "session") {
     return saveComposerDraft(target.sessionId, content, revision);
   }
-  window.sessionStorage.setItem(newSessionKey, content);
+  globalThis.sessionStorage.setItem(newSessionKey, content);
   return Promise.resolve({ revision: 0 });
 }
 export function flushComposerDraft(target: ComposerDraftTarget, content: string, revision: number) {
@@ -32,9 +32,9 @@ export function flushComposerDraft(target: ComposerDraftTarget, content: string,
     }
     return beaconComposerDraft(target.sessionId, content, revision);
   }
-  window.sessionStorage.setItem(newSessionKey, content);
+  globalThis.sessionStorage.setItem(newSessionKey, content);
   return true;
 }
 export function clearTemporaryComposerDraft() {
-  window.sessionStorage.removeItem(newSessionKey);
+  globalThis.sessionStorage.removeItem(newSessionKey);
 }

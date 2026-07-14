@@ -1,5 +1,6 @@
 import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
 import { type EditablePair, MessageStack } from "./MessageStack";
+import { type FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Plus, Send, UserRound } from "lucide-react";
 import {
   composerActions,
@@ -7,7 +8,6 @@ import {
   composerFrame,
   composerRole,
 } from "../Chat/Composer/layout";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../ParkUI";
 import type { InitialSessionState } from "../../../initialState";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
@@ -56,10 +56,14 @@ export function NewSessionPage({
   const [submitting, setSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const attachmentsRef = useRef(new PendingAttachments(attachmentSettings));
+  const createRef = useRef(onCreate);
   const previousPairCountRef = useRef(pairs.length);
   useEffect(() => {
     attachmentsRef.current.configure(attachmentSettings);
   }, [attachmentSettings]);
+  useLayoutEffect(() => {
+    createRef.current = onCreate;
+  }, [onCreate]);
   useLayoutEffect(() => {
     const pairAdded = pairs.length > previousPairCountRef.current;
     previousPairCountRef.current = pairs.length;
@@ -82,13 +86,17 @@ export function NewSessionPage({
     workspace.trim().length > 0 &&
     message.trim().length > 0 &&
     pairs.every(({ user, assistant }) => user.trim().length > 0 && assistant.trim().length > 0);
-  const submit = async () => {
-    if (!complete || submitting) {
+  const submit = useCallback(async () => {
+    const valid =
+      workspace.trim().length > 0 &&
+      message.trim().length > 0 &&
+      pairs.every(({ user, assistant }) => user.trim().length > 0 && assistant.trim().length > 0);
+    if (!valid || submitting) {
       return;
     }
     setSubmitting(true);
     try {
-      await onCreate(
+      await createRef.current(
         {
           history: pairs.map(({ user, assistant }) => ({ assistant, user })),
           message,
@@ -98,15 +106,39 @@ export function NewSessionPage({
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [message, pairs, submitting, workspace]);
+  const handleFormSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      reportPromiseErrors(submit());
+    },
+    [submit],
+  );
+  const changePair = useCallback((id: string, next: InitialSessionState["history"][number]) => {
+    setPairs((current) => current.map((item) => (item.id === id ? { id, ...next } : item)));
+  }, []);
+  const removePair = useCallback((id: string) => {
+    setPairs((current) => current.filter((item) => item.id !== id));
+  }, []);
+  const handleSubmit = useCallback(() => {
+    reportPromiseErrors(submit());
+  }, [submit]);
+  const pasteFiles = useCallback(
+    (files: File[]) => attachmentsRef.current.paste(files, message),
+    [message],
+  );
+  const addPair = useCallback(() => {
+    setPairs((current) => [
+      ...current,
+      {
+        assistant: "",
+        id: crypto.randomUUID(),
+        user: "",
+      },
+    ]);
+  }, []);
   return (
-    <form
-      className={pageClassName}
-      onSubmit={(event) => {
-        event.preventDefault();
-        reportPromiseErrors(submit());
-      }}
-    >
+    <form className={pageClassName} onSubmit={handleFormSubmit}>
       <div className={scroll} ref={scrollRef}>
         <div className={scrollContent}>
           <div className={setup}>
@@ -120,30 +152,16 @@ export function NewSessionPage({
           <div className={messageFlow}>
             <MessageStack
               pairs={pairs}
-              onPairChange={(id, next) => {
-                setPairs((current) =>
-                  current.map((item) => (item.id === id ? { id, ...next } : item)),
-                );
-              }}
-              onRemove={(id) => {
-                setPairs((current) => current.filter((item) => item.id !== id));
-              }}
-              onSubmit={() => {
-                reportPromiseErrors(submit());
-              }}
+              onPairChange={changePair}
+              onRemove={removePair}
+              onSubmit={handleSubmit}
             />
             <div className={composerFrame}>
               <MarkdownEditor
                 disabled={submitting}
                 onChange={setMessage}
-                onPasteFiles={
-                  attachmentSettings
-                    ? (files) => attachmentsRef.current.paste(files, message)
-                    : undefined
-                }
-                onSubmit={() => {
-                  reportPromiseErrors(submit());
-                }}
+                onPasteFiles={attachmentSettings ? pasteFiles : undefined}
+                onSubmit={handleSubmit}
                 placeholder={t("messagePlaceholder")}
                 value={message}
               />
@@ -153,21 +171,7 @@ export function NewSessionPage({
                     <Send size={14} />
                     {submitting ? t("creating") : t("createAndSend")}
                   </Button>
-                  <Button
-                    disabled={submitting}
-                    onClick={() => {
-                      setPairs((current) => [
-                        ...current,
-                        {
-                          assistant: "",
-                          id: crypto.randomUUID(),
-                          user: "",
-                        },
-                      ]);
-                    }}
-                    type="button"
-                    variant="outline"
-                  >
+                  <Button disabled={submitting} onClick={addPair} type="button" variant="outline">
                     <Plus size={14} /> {t("addMessagePair")}
                   </Button>
                 </div>

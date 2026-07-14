@@ -63,10 +63,9 @@ export function parseError(value: string): ErrorDetails {
 function adaptSerializedError(serialized: Record<string, unknown>, source?: unknown): ErrorDetails {
   const details: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(serialized)) {
-    if (["name", "message", "stack", "cause"].includes(key)) {
-      continue;
+    if (!["name", "message", "stack", "cause"].includes(key)) {
+      details[key] = sourceProperty(source, key, value);
     }
-    details[key] = sourceProperty(source, key, value);
   }
   const { cause } = serialized;
   return {

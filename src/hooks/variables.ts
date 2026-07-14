@@ -79,13 +79,11 @@ function readPath(value: unknown, path: string[], variable: string): unknown {
   for (const segment of path) {
     if (isRecord(current) && segment in current) {
       current = current[segment];
-      continue;
-    }
-    if (Array.isArray(current) && /^\d+$/.test(segment)) {
+    } else if (Array.isArray(current) && /^\d+$/.test(segment)) {
       current = current[Number(segment)];
-      continue;
+    } else {
+      throw new Error(`Hook 变量 \${${variable}} 的字段不存在：${segment}`);
     }
-    throw new Error(`Hook 变量 \${${variable}} 的字段不存在：${segment}`);
   }
   return current;
 }

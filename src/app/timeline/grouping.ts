@@ -7,15 +7,13 @@ export function groupAssistantMessages(messages: TimelineMessage[]) {
     if (item.role !== "assistant") {
       currentAssistant = undefined;
       result.push(item);
-      continue;
-    }
-    if (!currentAssistant) {
+    } else if (!currentAssistant) {
       currentAssistant = item;
       result.push(item);
-      continue;
+    } else {
+      mergeAssistant(currentAssistant, item);
+      currentAssistant.id = item.id;
     }
-    mergeAssistant(currentAssistant, item);
-    currentAssistant.id = item.id;
   }
   return result;
 }
@@ -24,14 +22,12 @@ function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
     .filter((content) => content.trim().length > 0)
     .join("\n\n");
   for (const part of source.parts) {
-    if (part.type !== "tool") {
+    if (
+      part.type !== "tool" ||
+      !toolParts(target).some((item) => sameToolCall(item.call, part.call))
+    ) {
       target.parts.push(part);
-      continue;
     }
-    if (toolParts(target).some((item) => sameToolCall(item.call, part.call))) {
-      continue;
-    }
-    target.parts.push(part);
   }
   if (source.usage) {
     target.usage = source.usage;

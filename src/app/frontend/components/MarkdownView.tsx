@@ -26,6 +26,8 @@ const inlineCode = css({
   py: "0.5",
   verticalAlign: "baseline",
 });
+const remarkPlugins = [remarkGfm];
+const remarkPluginsWithBreaks = [remarkGfm, remarkBreaks];
 const components: Components = {
   a: (props) => <a {...props} rel="noopener noreferrer" target="_blank" />,
   code: ({ children, className }) => {
@@ -66,7 +68,7 @@ export function MarkdownView({
     <div className={markdown}>
       <ReactMarkdown
         components={components}
-        remarkPlugins={preserveLineBreaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
+        remarkPlugins={preserveLineBreaks ? remarkPluginsWithBreaks : remarkPlugins}
       >
         {content}
       </ReactMarkdown>

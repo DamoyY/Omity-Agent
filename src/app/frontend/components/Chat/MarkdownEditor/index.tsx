@@ -18,6 +18,14 @@ import { cx } from "styled-system/css";
 import { indentUnit } from "@codemirror/language";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
 import { markdown } from "@codemirror/lang-markdown";
+import { useMemo } from "react";
+const basicSetup = {
+  autocompletion: false,
+  foldGutter: false,
+  highlightActiveLine: true,
+  highlightActiveLineGutter: true,
+  lineNumbers: true,
+};
 function historyBinding(
   key: "ArrowDown" | "ArrowUp",
   direction: HistoryDirection,
@@ -79,84 +87,82 @@ export function MarkdownEditor({
   placeholder: string;
   value: string;
 }) {
+  const extensions = useMemo(
+    () => [
+      markdown(),
+      EditorState.tabSize.of(2),
+      indentUnit.of("  "),
+      EditorView.lineWrapping,
+      indentationMarkers({
+        colors: {
+          activeDark: "var(--colors-muted-strong)",
+          dark: "var(--colors-line-strong)",
+        },
+        hideFirstIndent: false,
+        markerType: "fullScope",
+      }),
+      markdownSyntax,
+      editorTheme,
+      fluid ? fluidTheme : fixedTheme,
+      EditorView.domEventHandlers({
+        paste: (event, view) => {
+          if (disabled || !onPasteFiles) {
+            return false;
+          }
+          const files = [...(event.clipboardData?.files ?? [])];
+          if (files.length === 0) {
+            return false;
+          }
+          event.preventDefault();
+          const insert = onPasteFiles(files);
+          if (!insert) {
+            return true;
+          }
+          const selection = view.state.selection.main;
+          const before = view.state.doc.sliceString(0, selection.from);
+          const after = view.state.doc.sliceString(selection.to);
+          const text =
+            (before && !before.endsWith("\n") ? "\n" : "") +
+            insert +
+            (after && !after.startsWith("\n") ? "\n" : "");
+          view.dispatch({
+            changes: {
+              from: selection.from,
+              insert: text,
+              to: selection.to,
+            },
+            selection: { anchor: selection.from + text.length },
+          });
+          return true;
+        },
+      }),
+      Prec.highest(
+        keymap.of([
+          historyBinding("ArrowUp", "previous", disabled, onHistoryNavigate),
+          historyBinding("ArrowDown", "next", disabled, onHistoryNavigate),
+          {
+            key: "Ctrl-Enter",
+            run: (view) => {
+              if (view.composing || disabled) {
+                return false;
+              }
+              onSubmit();
+              return true;
+            },
+          },
+        ]),
+      ),
+    ],
+    [disabled, fluid, onHistoryNavigate, onPasteFiles, onSubmit],
+  );
   return (
     <div className={cx(root, !fluid && fixedRoot, bare && bareRoot, disabled && disabledRoot)}>
       <CodeMirror
         aria-label={label ?? placeholder}
-        basicSetup={{
-          autocompletion: false,
-          foldGutter: false,
-          highlightActiveLine: true,
-          highlightActiveLineGutter: true,
-          lineNumbers: true,
-        }}
+        basicSetup={basicSetup}
         className={cx(codeMirror, !fluid && fixedCodeMirror)}
         editable={!disabled}
-        extensions={[
-          markdown(),
-          EditorState.tabSize.of(2),
-          indentUnit.of("  "),
-          EditorView.lineWrapping,
-          indentationMarkers({
-            colors: {
-              activeDark: "var(--colors-muted-strong)",
-              dark: "var(--colors-line-strong)",
-            },
-            hideFirstIndent: false,
-            markerType: "fullScope",
-          }),
-          markdownSyntax,
-          editorTheme,
-          fluid ? fluidTheme : fixedTheme,
-          EditorView.domEventHandlers({
-            paste: (event, view) => {
-              if (disabled || !onPasteFiles) {
-                return false;
-              }
-              const files = [...(event.clipboardData?.files ?? [])];
-              if (files.length === 0) {
-                return false;
-              }
-              event.preventDefault();
-              const insert = onPasteFiles(files);
-              if (!insert) {
-                return true;
-              }
-              const selection = view.state.selection.main;
-              const before = view.state.doc.sliceString(0, selection.from);
-              const after = view.state.doc.sliceString(selection.to);
-              const text =
-                (before && !before.endsWith("\n") ? "\n" : "") +
-                insert +
-                (after && !after.startsWith("\n") ? "\n" : "");
-              view.dispatch({
-                changes: {
-                  from: selection.from,
-                  insert: text,
-                  to: selection.to,
-                },
-                selection: { anchor: selection.from + text.length },
-              });
-              return true;
-            },
-          }),
-          Prec.highest(
-            keymap.of([
-              historyBinding("ArrowUp", "previous", disabled, onHistoryNavigate),
-              historyBinding("ArrowDown", "next", disabled, onHistoryNavigate),
-              {
-                key: "Ctrl-Enter",
-                run: (view) => {
-                  if (view.composing || disabled) {
-                    return false;
-                  }
-                  onSubmit();
-                  return true;
-                },
-              },
-            ]),
-          ),
-        ]}
+        extensions={extensions}
         height={fluid ? "auto" : "100%"}
         indentWithTab
         onChange={onChange}

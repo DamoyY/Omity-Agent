@@ -47,50 +47,49 @@ export function createHookNode(
         const rule = hooks.matching("agent", plan.when)[plan.hookIndex];
         if (!rule) {
           plan = { ...plan, hookIndex: 0, sourceIndex: plan.sourceIndex + 1 };
-          continue;
+        } else {
+          const result = await executeHook(
+            plan,
+            rule,
+            sourceId,
+            hooks,
+            threadId,
+            consumeHook,
+            invokeTool,
+          );
+          plan = { ...plan, hookIndex: plan.hookIndex + 1 };
+          if (result) {
+            return hookCommand(plan, rule, result, clearPending);
+          }
         }
-        const result = await executeHook(
-          plan,
-          rule,
-          sourceId,
-          hooks,
-          threadId,
-          consumeHook,
-          invokeTool,
-        );
-        plan = { ...plan, hookIndex: plan.hookIndex + 1 };
-        if (!result) {
-          continue;
+      } else {
+        const original = restoreOriginal(plan.original);
+        const call = original.tool_calls?.[plan.toolIndex];
+        if (!call) {
+          return command(null, modelNode, clearPending, plan.previousOutput);
         }
-        return hookCommand(plan, rule, result, clearPending);
+        if (plan.stage === "original") {
+          return originalToolCommand(plan, original, call);
+        }
+        const rule = hooks.matching(call.name, plan.stage)[plan.hookIndex];
+        if (!rule) {
+          plan = nextToolStage(plan);
+        } else {
+          const result = await executeHook(
+            plan,
+            rule,
+            requireCallId(call),
+            hooks,
+            threadId,
+            consumeHook,
+            invokeTool,
+          );
+          plan = { ...plan, hookIndex: plan.hookIndex + 1 };
+          if (result) {
+            return hookCommand(plan, rule, result, clearPending);
+          }
+        }
       }
-      const original = restoreOriginal(plan.original);
-      const call = original.tool_calls?.[plan.toolIndex];
-      if (!call) {
-        return command(null, modelNode, clearPending, plan.previousOutput);
-      }
-      if (plan.stage === "original") {
-        return originalToolCommand(plan, original, call);
-      }
-      const rule = hooks.matching(call.name, plan.stage)[plan.hookIndex];
-      if (!rule) {
-        plan = nextToolStage(plan);
-        continue;
-      }
-      const result = await executeHook(
-        plan,
-        rule,
-        requireCallId(call),
-        hooks,
-        threadId,
-        consumeHook,
-        invokeTool,
-      );
-      plan = { ...plan, hookIndex: plan.hookIndex + 1 };
-      if (!result) {
-        continue;
-      }
-      return hookCommand(plan, rule, result, clearPending);
     }
   };
 }

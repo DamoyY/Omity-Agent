@@ -8,21 +8,18 @@ test("aborting a cancellable MCP request sends notifications/cancelled", async (
   const client = new Client({ name: "test-client", version: "1" });
   const server = new McpServer({ name: "test-server", version: "1" });
   const cancellation = Promise.withResolvers<unknown>();
-  server.registerTool(
-    "wait",
-    {},
-    (extra) =>
-      new Promise((_resolve, reject) => {
-        extra.signal.addEventListener(
-          "abort",
-          () => {
-            cancellation.resolve(extra.signal.reason);
-            reject(new Error("cancelled"));
-          },
-          { once: true },
-        );
-      }),
-  );
+  server.registerTool("wait", {}, (extra) => {
+    const aborted = Promise.withResolvers<never>();
+    extra.signal.addEventListener(
+      "abort",
+      () => {
+        cancellation.resolve(extra.signal.reason);
+        aborted.reject(new Error("cancelled"));
+      },
+      { once: true },
+    );
+    return aborted.promise;
+  });
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
   try {
     const executions = new ToolExecutions();
