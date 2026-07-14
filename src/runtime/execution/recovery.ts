@@ -1,9 +1,9 @@
-import type { AgentDatabase } from "../../infrastructure/database/agentDatabase";
 import {
+  type ProcessOwner,
   isProcessRunning,
   parseHostOwner,
-  type ProcessOwner,
 } from "../../infrastructure/process/ownership";
+import type { AgentDatabase } from "../../infrastructure/database/agentDatabase";
 export function recoverHostSession(
   db: AgentDatabase,
   sessionId: string,
@@ -13,8 +13,8 @@ export function recoverHostSession(
   const lease = db.hostLease(sessionId);
   const confirmedDeadOwnerId = confirmedDeadLease(lease, now, abandonedOwner);
   return db.recoverInterruptedSession({
-    sessionId,
     now,
+    sessionId,
     ...(confirmedDeadOwnerId ? { confirmedDeadOwnerId } : {}),
   });
 }
@@ -23,7 +23,9 @@ function confirmedDeadLease(
   now: number,
   abandonedOwner?: ProcessOwner,
 ) {
-  if (!lease || lease.expiresAt <= now) return undefined;
+  if (!lease || lease.expiresAt <= now) {
+    return undefined;
+  }
   const owner = parseHostOwner(lease.ownerId);
   const abandoned =
     owner.kind === abandonedOwner?.kind &&

@@ -1,17 +1,13 @@
-import { Database } from "bun:sqlite";
-import type { BaseMessage } from "@langchain/core/messages";
 import type { Control, QueueItem, QueueStatus } from "../../types";
-import type { ErrorDetails } from "../../failures/details";
 import {
+  type StreamEvent,
   clearQueueStreamEvents,
   clearStreamEvents,
   insertStreamReasoning,
   insertStreamToken,
   insertStreamToolCall,
   insertToolStarted,
-  type StreamEvent,
 } from "./records/streamEvents";
-import { loadMessages, syncMessages } from "./records/messages/history";
 import {
   appendDraftQueue,
   appendUserQueue,
@@ -22,10 +18,12 @@ import {
   setQueueStatusRecord,
   startQueueRecord,
 } from "./records/queue/operations";
-import { applySchema } from "./schema";
+import {
+  clearToolCancellations,
+  requestToolCancellation,
+  takeToolCancellation,
+} from "./records/toolCancellations";
 import { closeDatabase, configureDatabase } from "./connection";
-import { resetSessionStorage } from "./maintenance";
-import { RecoverableDatabase } from "./records/recovery";
 import {
   createSessionRecord,
   hasSessionRecord,
@@ -35,11 +33,13 @@ import {
   touchSessionRecord,
   writeControlRecord,
 } from "./records/sessions";
-import {
-  clearToolCancellations,
-  requestToolCancellation,
-  takeToolCancellation,
-} from "./records/toolCancellations";
+import { loadMessages, syncMessages } from "./records/messages/history";
+import type { BaseMessage } from "@langchain/core/messages";
+import { Database } from "bun:sqlite";
+import type { ErrorDetails } from "../../failures/details";
+import { RecoverableDatabase } from "./records/recovery";
+import { applySchema } from "./schema";
+import { resetSessionStorage } from "./maintenance";
 type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown ? Args : never;
 export class AgentDatabase extends RecoverableDatabase {
   private notify?: (event: StreamEvent) => void;

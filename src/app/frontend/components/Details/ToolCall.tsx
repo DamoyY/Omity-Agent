@@ -1,14 +1,14 @@
+import { Badge, IconButton } from "../ParkUI";
 import { CircleStop, LoaderCircle, Wrench } from "lucide-react";
+import type { DisplayMessage, DisplayToolCall } from "../../../timeline";
+import { Frame } from "./Frame";
+import { HighlightedCode } from "../HighlightedCode";
+import { css } from "styled-system/css";
+import { formatTokens } from "../../tokenUnits";
+import { formatToolInput } from "./toolInput";
+import { reportPromiseErrors } from "../../services/errors";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
-import type { DisplayMessage, DisplayToolCall } from "../../../timeline";
-import { formatTokens } from "../../tokenUnits";
-import { HighlightedCode } from "../HighlightedCode";
-import { Badge, IconButton } from "../ParkUI";
-import { reportPromiseErrors } from "../../services/errors";
-import { Frame } from "./Frame";
-import { formatToolInput } from "./toolInput";
 const ioGrid = css({
   borderTopColor: "line",
   borderTopWidth: "1px",
@@ -19,8 +19,8 @@ const ioGrid = css({
     xl: "repeat(2, minmax(0, 1fr))",
   },
   m: "3",
-  mt: 0,
   minW: 0,
+  mt: 0,
   pt: "3",
 });
 const ioPanel = css({

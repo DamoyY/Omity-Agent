@@ -1,9 +1,9 @@
+import { type ErrorDetails, stringifyError } from "../../../../failures/details";
+import type { QueueItem, QueueStatus } from "../../../../types";
+import { type QueueRow, toQueueItem } from "./rowMapping";
 import type { Database } from "bun:sqlite";
 import { DomainError } from "../../../../errors";
-import { stringifyError, type ErrorDetails } from "../../../../failures/details";
-import type { QueueItem, QueueStatus } from "../../../../types";
 import { insertUserMessage } from "../messages/history";
-import { toQueueItem, type QueueRow } from "./rowMapping";
 const queueSelect = `
   SELECT q.id, q.root_id, COALESCE(q.content, '') AS content,
     q.status, m.id AS user_message_id
@@ -19,7 +19,9 @@ export function appendUserQueue(db: Database, sessionId: string, content: string
        ORDER BY root_id LIMIT 1`,
     )
     .get(sessionId);
-  if (activeRun) return appendToRun(db, sessionId, activeRun.root_id, content);
+  if (activeRun) {
+    return appendToRun(db, sessionId, activeRun.root_id, content);
+  }
   const result = db
     .query("INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'pending')")
     .run(sessionId, content);
@@ -49,7 +51,9 @@ export function consumedRunRows(
   sessionId: string,
   runId: number | null,
 ): QueueItem[] {
-  if (runId === null) return [];
+  if (runId === null) {
+    return [];
+  }
   const query = db.prepare<QueueRow, [string, number]>(
     `${queueSelect}
      WHERE q.session_id = ? AND q.root_id = ?
@@ -128,7 +132,9 @@ export function queueStatusRecord(db: Database, queueId: number) {
   const row = db
     .query<{ status: QueueStatus }, [number]>("SELECT status FROM queue WHERE id = ?")
     .get(queueId);
-  if (!row) throw new Error(`队列不存在：${queueId.toString()}`);
+  if (!row) {
+    throw new Error(`队列不存在：${queueId.toString()}`);
+  }
   return row.status;
 }
 function appendToRun(db: Database, sessionId: string, rootId: number, content: string) {

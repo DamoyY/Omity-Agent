@@ -40,7 +40,9 @@ export function WorkspacePicker({
     setPicking(true);
     try {
       const selected = await onPick();
-      if (selected) onChange(selected);
+      if (selected) {
+        onChange(selected);
+      }
     } finally {
       setPicking(false);
     }

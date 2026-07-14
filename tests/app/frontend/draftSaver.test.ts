@@ -24,7 +24,7 @@ test("discarding a pending draft does not wait for its debounce", async () => {
   const saved: string[] = [];
   const saver = new DraftSaver(
     { kind: "session", sessionId: "session" },
-    1_000,
+    1000,
     (error) => {
       throw error;
     },

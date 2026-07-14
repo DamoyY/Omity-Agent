@@ -1,7 +1,7 @@
+import { parse, resolve } from "node:path";
 import type { Database } from "bun:sqlite";
 import { rmSync } from "node:fs";
-import { parse, resolve } from "node:path";
-export const sqliteBusyTimeoutMs = 5_000;
+export const sqliteBusyTimeoutMs = 5000;
 interface QueryCacheDatabase extends Database {
   clearQueryCache(): void;
 }
@@ -27,9 +27,9 @@ export function removeDatabaseDirectory(path: string) {
     throw new Error(`拒绝删除磁盘根目录：${target}`);
   }
   rmSync(target, {
-    recursive: true,
     force: true,
     maxRetries: 50,
+    recursive: true,
     retryDelay: 50,
   });
 }

@@ -1,13 +1,13 @@
+import { type MessageContent, ToolMessage } from "@langchain/core/messages";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { ToolMessage, type MessageContent } from "@langchain/core/messages";
-import { createMiddleware } from "langchain";
-import { safeId } from "../infrastructure/configuration/sessionPaths";
 import type { Settings } from "../types";
-import { inspectToolTextContent } from "./outputText";
 import { countTokens } from "./tokenizer";
+import { createMiddleware } from "langchain";
+import { inspectToolTextContent } from "./outputText";
+import { mkdirSync } from "node:fs";
+import { safeId } from "../infrastructure/configuration/sessionPaths";
+import { writeFile } from "node:fs/promises";
 const outputFileIdBytes = 16;
 interface LargeOutputRuntimeContext {
   sessionId: string;
@@ -23,12 +23,14 @@ export function createLargeToolOutputMiddleware(settings: Settings) {
     name: "large-tool-output",
     wrapToolCall: async (request, handler) => {
       const result = await handler(request);
-      if (!ToolMessage.isInstance(result)) return result;
+      if (!ToolMessage.isInstance(result)) {
+        return result;
+      }
       return redirectLargeToolOutput(result, {
         dataDir: settings.paths.dataDir,
         maxTokens: settings.toolOutput.maxTokens,
-        sessionId: getSessionId(request.runtime.context),
         outputId: request.toolCall.id,
+        sessionId: getSessionId(request.runtime.context),
       });
     },
   });
@@ -37,16 +39,22 @@ export async function redirectLargeToolOutput(
   message: ToolMessage,
   options: LargeToolOutputOptions,
 ) {
-  if (message.status === "error") return message;
+  if (message.status === "error") {
+    return message;
+  }
   const normalized = inspectToolTextContent(message.content);
-  if (normalized === null || normalized.isError) return message;
+  if (normalized === null || normalized.isError) {
+    return message;
+  }
   const original = normalized.text;
   const tokens = countTokens(original);
   const normalizedMessage =
     normalized.normalized === message.content
       ? message
       : copyToolMessage(message, normalized.normalized);
-  if (tokens <= options.maxTokens) return normalizedMessage;
+  if (tokens <= options.maxTokens) {
+    return normalizedMessage;
+  }
   const outputPath = await writeLargeToolOutput(
     original,
     options.dataDir,
@@ -64,17 +72,17 @@ function copyToolMessage(
   content: MessageContent,
   largeOutput?: { path: string; tokens: number },
 ) {
-  const artifact: unknown = message.artifact;
+  const { artifact } = message;
   return new ToolMessage({
-    content,
-    tool_call_id: message.tool_call_id,
-    name: message.name,
-    id: message.id,
     additional_kwargs: message.additional_kwargs,
-    response_metadata: message.response_metadata,
     artifact,
-    status: message.status,
+    content,
+    id: message.id,
     metadata: mergeMetadata(message.metadata, largeOutput),
+    name: message.name,
+    response_metadata: message.response_metadata,
+    status: message.status,
+    tool_call_id: message.tool_call_id,
   });
 }
 function getSessionId(context: unknown) {

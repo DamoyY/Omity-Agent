@@ -1,23 +1,23 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { BaseMessage } from "@langchain/core/messages";
-import { AIMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
 import { expect, test } from "bun:test";
-import { createAgentGraph } from "../../../src/agent";
+import { mkdtempSync, rmSync } from "node:fs";
+import { AIMessage } from "@langchain/core/messages";
+import { AgentDatabase } from "../../../src/infrastructure/database/agentDatabase";
+import type { BaseMessage } from "@langchain/core/messages";
 import { BunSqliteSaver } from "../../../src/checkpointer";
 import { HookRuntime } from "../../../src/hooks/runtime";
-import { AgentDatabase } from "../../../src/infrastructure/database/agentDatabase";
-import { queueMessageId } from "../../../src/infrastructure/database/records/messages/history";
-import { Logger } from "../../../src/infrastructure/logging/logger";
 import type { HostContext } from "../../../src/runtime/context";
+import { Logger } from "../../../src/infrastructure/logging/logger";
+import { createAgentGraph } from "../../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { join } from "node:path";
 import { processQueue } from "../../../src/runtime/queue";
+import { queueMessageId } from "../../../src/infrastructure/database/records/messages/history";
 import { required } from "../../support/database";
 import { testSettings } from "../../support/settings";
+import { tmpdir } from "node:os";
 test("restart injects a consumed append missing from the checkpoint", async () => {
   const fixture = createFixture();
-  let db = fixture.db;
+  let { db } = fixture;
   try {
     db.createSession("session", fixture.dir);
     const firstId = db.appendUser("session", "first");
@@ -52,7 +52,7 @@ test("restart injects a consumed append missing from the checkpoint", async () =
 });
 test("restart does not inject consumed messages already in the checkpoint", async () => {
   const fixture = createFixture();
-  let db = fixture.db;
+  let { db } = fixture;
   try {
     db.createSession("session", fixture.dir);
     const firstId = db.appendUser("session", "first");
@@ -93,11 +93,11 @@ function graph(
   return {
     checkpointer,
     graph: createAgentGraph({
-      settings: testSettings(dir),
-      model,
-      tools: [],
-      hooks,
       checkpointer,
+      hooks,
+      model,
+      settings: testSettings(dir),
+      tools: [],
     }),
   };
 }
@@ -108,15 +108,17 @@ async function commitModelBoundary(
 ) {
   const stream = await graph.stream(
     {
-      messages,
       hookPendingUserIds: queueIds.map((id) => queueMessageId("session", id)),
+      messages,
     },
     {
       configurable: { thread_id: "session:1" },
       interruptBefore: ["model_request"],
     },
   );
-  for await (const event of stream) void event;
+  for await (const event of stream) {
+    void event;
+  }
   expect((await graph.getState({ configurable: { thread_id: "session:1" } })).next).toEqual([
     "model_request",
   ]);
@@ -128,13 +130,13 @@ function context(
   dir: string,
 ): HostContext {
   return {
-    settings: testSettings(dir),
-    logger: new Logger("error", true),
+    checkpointer,
+    controller: new AbortController(),
     db,
     graph: graph as HostContext["graph"],
-    checkpointer,
+    logger: new Logger("error", true),
     sessionId: "session",
-    controller: new AbortController(),
+    settings: testSettings(dir),
   };
 }
 function humanContents(messages: BaseMessage[]) {
@@ -150,8 +152,8 @@ function humanContents(messages: BaseMessage[]) {
 function createFixture() {
   const dir = mkdtempSync(join(tmpdir(), "agent-append-recovery-"));
   const path = join(dir, "agent.sqlite");
-  return { dir, path, db: new AgentDatabase(path) };
+  return { db: new AgentDatabase(path), dir, path };
 }
 function removeFixture(dir: string) {
-  rmSync(dir, { recursive: true, force: true });
+  rmSync(dir, { force: true, recursive: true });
 }

@@ -1,9 +1,9 @@
-import { expect, test } from "bun:test";
 import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
+import { expect, test } from "bun:test";
 import { buildTimeline } from "../../../src/app/timeline";
-const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
+const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
 test("persisted content hides only its identified stream", () => {
-  const messages: DisplayMessage[] = [assistant({ id: 1, sourceId: "message-1", content: "完成" })];
+  const messages: DisplayMessage[] = [assistant({ content: "完成", id: 1, sourceId: "message-1" })];
   const events = [
     event("token", {
       kind: "assistant_text_delta",
@@ -13,11 +13,11 @@ test("persisted content hides only its identified stream", () => {
   ];
   const view = buildTimeline(messages, queue, events);
   expect(view[0]?.content).toBe("完成");
-  expect(view[0]?.parts).toEqual([{ type: "content", content: "完成" }]);
+  expect(view[0]?.parts).toEqual([{ content: "完成", type: "content" }]);
 });
 test("persisted reasoning hides its identified stream", () => {
   const messages: DisplayMessage[] = [
-    assistant({ id: 1, sourceId: "message-1", reasoning: "已思考" }),
+    assistant({ id: 1, reasoning: "已思考", sourceId: "message-1" }),
   ];
   const events = [
     event("reasoning", {
@@ -27,7 +27,7 @@ test("persisted reasoning hides its identified stream", () => {
     }),
   ];
   const view = buildTimeline(messages, queue, events);
-  expect(view[0]?.parts).toEqual([{ type: "reasoning", content: "已思考" }]);
+  expect(view[0]?.parts).toEqual([{ content: "已思考", type: "reasoning" }]);
 });
 test("streamed reasoning is shown before answer text", () => {
   const events = [
@@ -39,15 +39,15 @@ test("streamed reasoning is shown before answer text", () => {
   ];
   const view = buildTimeline([], queue, events);
   expect(view[0]?.parts).toEqual([
-    { type: "reasoning", content: "分析" },
-    { type: "content", content: "答案" },
+    { content: "分析", type: "reasoning" },
+    { content: "答案", type: "content" },
   ]);
 });
 test("old tool stream is hidden after answer text starts", () => {
   const events = [
     event("tool_call", {
+      call: { args: "{}", id: "call-1", index: 0, name: "open" },
       kind: "tool_call_delta",
-      call: { args: "{}", id: "call-1", name: "open", index: 0 },
     }),
     event("token", { kind: "assistant_text_delta", text: "done" }, 2),
   ];
@@ -58,23 +58,23 @@ test("old tool stream is hidden after answer text starts", () => {
 test("tool stream reconciles by message identity and index", () => {
   const messages: DisplayMessage[] = [
     assistant({
-      id: 1,
-      sourceId: "message-1",
       call: {
         id: "call-1",
         index: 0,
+        input: {},
         inputTokens: 1,
         messageId: "message-1",
         name: "open",
-        input: {},
       },
+      id: 1,
+      sourceId: "message-1",
     }),
   ];
   const events = [
     event("tool_call", {
+      call: { args: '{"cmd":', index: 0 },
       kind: "tool_call_delta",
       messageId: "message-1",
-      call: { args: '{"cmd":', index: 0 },
     }),
   ];
   expect(toolCalls(buildTimeline(messages, queue, events)[0])).toHaveLength(1);
@@ -82,20 +82,20 @@ test("tool stream reconciles by message identity and index", () => {
 test("equal tool inputs do not hide unidentified calls", () => {
   const messages: DisplayMessage[] = [
     assistant({
-      id: 1,
       call: {
         id: "call-1",
         index: 0,
+        input: { command: "pwd" },
         inputTokens: 5,
         name: "send",
-        input: { command: "pwd" },
       },
+      id: 1,
     }),
   ];
   const events = [
     event("tool_call", {
-      kind: "tool_call_delta",
       call: { args: '{"command":"pwd"}', index: 0, name: "send" },
+      kind: "tool_call_delta",
     }),
   ];
   const calls = toolCalls(buildTimeline(messages, queue, events)[0]);
@@ -103,8 +103,8 @@ test("equal tool inputs do not hide unidentified calls", () => {
 });
 test("repeated assistant content and tool inputs remain visible", () => {
   const messages: DisplayMessage[] = [
-    assistant({ id: 1, content: "完成", call: call("call-1") }),
-    assistant({ id: 2, content: "完成", call: call("call-2") }),
+    assistant({ call: call("call-1"), content: "完成", id: 1 }),
+    assistant({ call: call("call-2"), content: "完成", id: 2 }),
   ];
   const view = buildTimeline(messages, [], []);
   expect(view[0]?.content).toBe("完成\n\n完成");
@@ -112,8 +112,8 @@ test("repeated assistant content and tool inputs remain visible", () => {
 });
 test("equal reasoning from distinct model responses remains visible", () => {
   const messages: DisplayMessage[] = [
-    assistant({ id: 1, reasoning: "独立分析", call: call("call-1") }),
-    assistant({ id: 2, reasoning: "独立分析", call: call("call-2") }),
+    assistant({ call: call("call-1"), id: 1, reasoning: "独立分析" }),
+    assistant({ call: call("call-2"), id: 2, reasoning: "独立分析" }),
   ];
   const reasoning = buildTimeline(messages, [], [])[0]?.parts.flatMap((part) =>
     part.type === "reasoning" ? [part.content] : [],
@@ -140,7 +140,7 @@ function assistant(options: {
   };
 }
 function call(id: string) {
-  return { id, index: 0, inputTokens: 1, name: "read", input: {} };
+  return { id, index: 0, input: {}, inputTokens: 1, name: "read" };
 }
 function event(message: string, payload: Record<string, unknown>, id = 1): DisplayEvent {
   return { id, message, payload: { ...payload, queueId: 1 } };

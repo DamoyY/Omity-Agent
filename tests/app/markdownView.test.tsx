@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { renderToStaticMarkup } from "react-dom/server";
 import { MarkdownView } from "../../src/app/frontend/components/MarkdownView";
+import { renderToStaticMarkup } from "react-dom/server";
 describe("MarkdownView", () => {
   test("按用户输入语义保留段落内的单个换行", () => {
     const html = renderToStaticMarkup(

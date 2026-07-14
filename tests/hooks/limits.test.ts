@@ -1,20 +1,20 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { AIMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { tool } from "@langchain/core/tools";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
-import { z } from "zod";
 import { expect, test } from "bun:test";
-import { createAgentGraph } from "../../src/agent";
-import { BunSqliteSaver } from "../../src/checkpointer";
-import { HookRuntime } from "../../src/hooks/runtime";
-import { consumeHookUsage } from "../../src/hooks/storage/usage";
+import { mkdtempSync, rmSync } from "node:fs";
+import { AIMessage } from "@langchain/core/messages";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { Logger } from "../../src/infrastructure/logging/logger";
+import { BunSqliteSaver } from "../../src/checkpointer";
 import type { HookRule } from "../../src/types";
+import { HookRuntime } from "../../src/hooks/runtime";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
+import { consumeHookUsage } from "../../src/hooks/storage/usage";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { join } from "node:path";
 import { testSettings } from "../support/settings";
+import { tmpdir } from "node:os";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
 test("runLimit is enforced atomically across graph threads", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-limits-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
@@ -32,20 +32,20 @@ test("runLimit is enforced atomically across graph threads", async () => {
   );
   try {
     const graph = createAgentGraph({
-      settings: testSettings(dir),
+      checkpointer: new MemorySaver(),
+      hooks,
       model: fakeModel()
         .respond(new AIMessage("one"))
         .respond(new AIMessage("two"))
         .respond(new AIMessage("three")),
+      settings: testSettings(dir),
       tools: [disabled, limited],
-      hooks,
-      checkpointer: new MemorySaver(),
     });
     for (let index = 0; index < 3; index++) {
       await graph.invoke(
         {
-          messages: [{ role: "user", content: "run" }],
           hookPendingUserIds: [`queue:${index.toString()}`],
+          messages: [{ content: "run", role: "user" }],
         },
         { configurable: { thread_id: `thread:${index.toString()}` } },
       );
@@ -53,7 +53,7 @@ test("runLimit is enforced atomically across graph threads", async () => {
     expect(calls).toEqual(["limited", "limited"]);
   } finally {
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("thread cleanup retains session hook usage", async () => {
@@ -70,7 +70,7 @@ test("thread cleanup retains session hook usage", async () => {
     ).toBe(1);
   } finally {
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 function makeTool(name: string, record: () => void) {
@@ -79,17 +79,17 @@ function makeTool(name: string, record: () => void) {
       record();
       return Promise.resolve(`${name}-result`);
     },
-    { name, description: name, schema: z.object({}) },
+    { description: name, name, schema: z.object({}) },
   );
 }
 function silent(id: string, toolName: string, runLimit: number): HookRule {
   return {
-    id,
-    target: "agent",
-    when: "before",
-    runLimit,
-    mode: "silent",
-    tool: toolName,
     args: {},
+    id,
+    mode: "silent",
+    runLimit,
+    target: "agent",
+    tool: toolName,
+    when: "before",
   };
 }

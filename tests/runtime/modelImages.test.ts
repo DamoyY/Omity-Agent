@@ -13,48 +13,50 @@ test("extracts unbounded MCP base64 images and their text", () => {
   const data = "A".repeat(1024 * 1024);
   const content = JSON.stringify({
     content: [
-      { type: "text", text: "screenshot" },
-      { type: "image", data, mimeType: "image/png" },
+      { text: "screenshot", type: "text" },
+      { data, mimeType: "image/png", type: "image" },
     ],
   });
   expect(toolContentText(content)).toBe("screenshot");
   expect(extractToolImages(content)).toEqual([
-    { src: `data:image/png;base64,${data}`, mimeType: "image/png" },
+    { mimeType: "image/png", src: `data:image/png;base64,${data}` },
   ]);
 });
 test("prepares provider-native tool image output for Responses API", () => {
   const src = "data:image/webp;base64,AAAA";
   const message = new ToolMessage({
     content: [
-      { type: "text", text: "result" },
-      { type: "image_url", image_url: { url: src } },
+      { text: "result", type: "text" },
+      { image_url: { url: src }, type: "image_url" },
     ],
-    tool_call_id: "call-1",
     name: "screenshot",
+    tool_call_id: "call-1",
   });
   const [prepared] = prepareModelImageMessages([message], "responses");
-  if (!prepared) throw new Error("模型图片消息未生成");
+  if (!prepared) {
+    throw new Error("模型图片消息未生成");
+  }
   expect(prepared).toBeInstanceOf(ToolMessage);
   expect(prepared.content).toEqual([
-    { type: "input_text", text: "result" },
-    { type: "input_image", image_url: src, detail: "auto" },
+    { text: "result", type: "input_text" },
+    { detail: "auto", image_url: src, type: "input_image" },
   ]);
   expect((prepared as ToolMessage).tool_call_id).toBe("call-1");
   expect((prepared as ToolMessage).name).toBe("screenshot");
   expect(
     convertMessagesToResponsesInput({
       messages: [prepared],
-      zdrEnabled: false,
       model: "test",
+      zdrEnabled: false,
     }),
   ).toEqual([
     {
-      type: "function_call_output",
       call_id: "call-1",
       output: [
-        { type: "input_text", text: "result" },
-        { type: "input_image", image_url: src, detail: "auto" },
+        { text: "result", type: "input_text" },
+        { detail: "auto", image_url: src, type: "input_image" },
       ],
+      type: "function_call_output",
     },
   ]);
 });
@@ -64,18 +66,18 @@ test("adds image notices to Completions tool results", () => {
     new AIMessage("tools"),
     new ToolMessage({
       content: [
-        { type: "text", text: "first" },
-        { type: "image_url", image_url: { url: firstSrc } },
+        { text: "first", type: "text" },
+        { image_url: { url: firstSrc }, type: "image_url" },
       ],
       tool_call_id: "call-1",
     }),
     new ToolMessage({
       content: [
         {
-          type: "image",
-          source_type: "base64",
           data: "BBBB",
           mime_type: "image/jpeg",
+          source_type: "base64",
+          type: "image",
         },
       ],
       tool_call_id: "call-2",
@@ -91,17 +93,17 @@ test("adds image notices to Completions tool results", () => {
     "工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
   );
   expect(convertMessagesToCompletionsMessageParams({ messages: prepared })).toEqual([
-    { role: "assistant", content: "tools" },
+    { content: "tools", role: "assistant" },
     {
-      role: "tool",
       content: "first\n\n工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
+      role: "tool",
       tool_call_id: "call-1",
     },
     {
-      role: "tool",
       content: "工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
+      role: "tool",
       tool_call_id: "call-2",
     },
-    { role: "assistant", content: "next" },
+    { content: "next", role: "assistant" },
   ]);
 });

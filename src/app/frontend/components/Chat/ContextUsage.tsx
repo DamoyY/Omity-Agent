@@ -1,10 +1,12 @@
 import { DatabaseZap } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
 import type { TokenUsage } from "../../../timeline";
+import { css } from "styled-system/css";
 import { formatTokens } from "../../tokenUnits";
+import { useTranslation } from "react-i18next";
 const panel = css({
   alignItems: "end",
+  borderTopColor: "line",
+  borderTopWidth: "1px",
   color: "muted",
   display: "grid",
   fontFamily: "mono",
@@ -13,8 +15,6 @@ const panel = css({
   justifyItems: "end",
   mt: "auto",
   pt: "3",
-  borderTopColor: "line",
-  borderTopWidth: "1px",
   w: "full",
   whiteSpace: "nowrap",
 });

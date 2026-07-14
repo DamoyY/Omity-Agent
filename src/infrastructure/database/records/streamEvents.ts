@@ -43,8 +43,8 @@ function insertStreamEvent(
   }
   return {
     id,
-    queueId,
     kind,
+    queueId,
     value: payload,
     ...(messageId ? { messageId } : {}),
   };

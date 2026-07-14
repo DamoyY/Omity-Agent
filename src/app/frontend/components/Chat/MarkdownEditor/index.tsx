@@ -1,11 +1,5 @@
-import { indentUnit } from "@codemirror/language";
-import { markdown } from "@codemirror/lang-markdown";
 import { EditorState, Prec } from "@codemirror/state";
-import { EditorView, keymap, type KeyBinding } from "@codemirror/view";
-import { indentationMarkers } from "@replit/codemirror-indentation-markers";
-import CodeMirror from "@uiw/react-codemirror";
-import { cx } from "styled-system/css";
-import type { HistoryDirection } from "../Composer/history";
+import { EditorView, type KeyBinding, keymap } from "@codemirror/view";
 import {
   bareRoot,
   codeMirror,
@@ -18,6 +12,12 @@ import {
   markdownSyntax,
   root,
 } from "./theme";
+import CodeMirror from "@uiw/react-codemirror";
+import type { HistoryDirection } from "../Composer/history";
+import { cx } from "styled-system/css";
+import { indentUnit } from "@codemirror/language";
+import { indentationMarkers } from "@replit/codemirror-indentation-markers";
+import { markdown } from "@codemirror/lang-markdown";
 function historyBinding(
   key: "ArrowDown" | "ArrowUp",
   direction: HistoryDirection,
@@ -27,19 +27,27 @@ function historyBinding(
   return {
     key,
     run: (view) => {
-      if (view.composing || disabled || !navigate) return false;
+      if (view.composing || disabled || !navigate) {
+        return false;
+      }
       const selection = view.state.selection.main;
-      if (!selection.empty) return false;
+      if (!selection.empty) {
+        return false;
+      }
       const atStart = selection.head === 0;
       const atEnd = selection.head === view.state.doc.length;
-      if (direction === "previous" ? !atStart && !atEnd : !atEnd) return false;
+      if (direction === "previous" ? !atStart && !atEnd : !atEnd) {
+        return false;
+      }
       const nextValue = navigate(direction);
-      if (nextValue === undefined) return false;
+      if (nextValue === undefined) {
+        return false;
+      }
       view.dispatch({
         changes: {
           from: 0,
-          to: view.state.doc.length,
           insert: nextValue,
+          to: view.state.doc.length,
         },
         scrollIntoView: true,
         selection: { anchor: nextValue.length },
@@ -102,12 +110,18 @@ export function MarkdownEditor({
           fluid ? fluidTheme : fixedTheme,
           EditorView.domEventHandlers({
             paste: (event, view) => {
-              if (disabled || !onPasteFiles) return false;
+              if (disabled || !onPasteFiles) {
+                return false;
+              }
               const files = [...(event.clipboardData?.files ?? [])];
-              if (files.length === 0) return false;
+              if (files.length === 0) {
+                return false;
+              }
               event.preventDefault();
               const insert = onPasteFiles(files);
-              if (!insert) return true;
+              if (!insert) {
+                return true;
+              }
               const selection = view.state.selection.main;
               const before = view.state.doc.sliceString(0, selection.from);
               const after = view.state.doc.sliceString(selection.to);
@@ -118,8 +132,8 @@ export function MarkdownEditor({
               view.dispatch({
                 changes: {
                   from: selection.from,
-                  to: selection.to,
                   insert: text,
+                  to: selection.to,
                 },
                 selection: { anchor: selection.from + text.length },
               });
@@ -133,7 +147,9 @@ export function MarkdownEditor({
               {
                 key: "Ctrl-Enter",
                 run: (view) => {
-                  if (view.composing || disabled) return false;
+                  if (view.composing || disabled) {
+                    return false;
+                  }
                   onSubmit();
                   return true;
                 },

@@ -1,21 +1,21 @@
-import { existsSync } from "node:fs";
-import { buildGraph } from "./agent";
-import { sessionConflict, sessionNotFound } from "./errors";
-import { loadSettings } from "./infrastructure/configuration/loadSettings";
 import { resolveSessionPaths, sessionPaths } from "./infrastructure/configuration/sessionPaths";
-import { normalizeWorkspacePath } from "./infrastructure/configuration/workspacePath";
+import { sessionConflict, sessionNotFound } from "./errors";
 import { AgentDatabase } from "./infrastructure/database/agentDatabase";
-import { removeDatabaseDirectory } from "./infrastructure/database/connection";
-import { Logger } from "./infrastructure/logging/logger";
-import { loadMcp } from "./infrastructure/mcp/loadTools";
-import { hostLoop } from "./runtime/loop";
-import type { HostRunOptions } from "./runtime/execution/hostOptions";
-import { HostLease } from "./runtime/execution/lease";
-import { recoverHostSession } from "./runtime/execution/recovery";
-import { wireHostSignals } from "./runtime/execution/signals";
 import { HookRuntime } from "./hooks/runtime";
+import { HostLease } from "./runtime/execution/lease";
 import type { HostMode } from "./types";
+import type { HostRunOptions } from "./runtime/execution/hostOptions";
+import { Logger } from "./infrastructure/logging/logger";
 import { ToolExecutions } from "./agent/toolExecutions";
+import { buildGraph } from "./agent";
+import { existsSync } from "node:fs";
+import { hostLoop } from "./runtime/loop";
+import { loadMcp } from "./infrastructure/mcp/loadTools";
+import { loadSettings } from "./infrastructure/configuration/loadSettings";
+import { normalizeWorkspacePath } from "./infrastructure/configuration/workspacePath";
+import { recoverHostSession } from "./runtime/execution/recovery";
+import { removeDatabaseDirectory } from "./infrastructure/database/connection";
+import { wireHostSignals } from "./runtime/execution/signals";
 export async function runHost(mode: HostMode, root = process.cwd(), options: HostRunOptions = {}) {
   await runHostSession(mode, root, {
     ...options,
@@ -65,13 +65,13 @@ export async function runHostSession(
   db.onChange((event) => options.observer?.transcript?.(mode.sessionId, event));
   if (mode.kind === "new") {
     logger.info("已创建新会话", {
-      sessionId: mode.sessionId,
       db: paths.dbPath,
+      sessionId: mode.sessionId,
     });
   } else if (mode.kind === "load") {
-    logger.info("已加载会话", { sessionId: mode.sessionId, db: paths.dbPath });
+    logger.info("已加载会话", { db: paths.dbPath, sessionId: mode.sessionId });
   } else {
-    logger.info("已覆盖会话", { sessionId: mode.sessionId, db: paths.dbPath });
+    logger.info("已覆盖会话", { db: paths.dbPath, sessionId: mode.sessionId });
   }
   let mcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
   const unwireSignals = wireHostSignals({
@@ -92,28 +92,28 @@ export async function runHostSession(
       db.workspace(mode.sessionId),
     );
     const { graph, checkpointer } = buildGraph(settings, mcp.tools, db.db, hooks, {
-      modelTools: mcp.modelTools,
       freeformToolParameters: mcp.freeformToolParameters,
+      modelTools: mcp.modelTools,
       toolExecutions,
     });
     options.onReady?.({
       cancelTool: (callId) => toolExecutions.cancel(callId),
     });
     await hostLoop({
-      settings,
-      logger,
-      db,
-      graph,
-      checkpointer,
-      toolExecutions,
-      sessionId: mode.sessionId,
-      controller,
-      stopping: stoppingController.signal,
       assertLease: () => {
         lease.assertOwned();
       },
-      wake: options.wake,
+      checkpointer,
+      controller,
+      db,
+      graph,
+      logger,
       observer: options.observer,
+      sessionId: mode.sessionId,
+      settings,
+      stopping: stoppingController.signal,
+      toolExecutions,
+      wake: options.wake,
     });
     lease.assertOwned();
   } finally {
@@ -158,7 +158,9 @@ function openHostDatabase(
       if (!db.hasSession(mode.sessionId)) {
         throw sessionNotFound(mode.sessionId);
       }
-      if (recoverInterrupted) recoverHostSession(db, mode.sessionId);
+      if (recoverInterrupted) {
+        recoverHostSession(db, mode.sessionId);
+      }
       return db;
     }
     db.createSession(mode.sessionId, workspace);

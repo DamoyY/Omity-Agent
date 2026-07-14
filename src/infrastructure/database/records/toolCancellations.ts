@@ -11,7 +11,9 @@ export function requestToolCancellation(db: Database, sessionId: string, callId:
       ) AS found`,
     )
     .get(sessionId, JSON.stringify(callId));
-  if (running?.found !== 1) throw toolNotRunning(callId);
+  if (running?.found !== 1) {
+    throw toolNotRunning(callId);
+  }
   db.query(
     `INSERT INTO tool_cancellations (session_id, call_id, requested_at)
      VALUES (?, ?, ?)

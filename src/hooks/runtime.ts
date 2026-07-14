@@ -1,10 +1,10 @@
-import type { ToolMessage } from "@langchain/core/messages";
-import type { StructuredToolInterface } from "@langchain/core/tools";
+import * as callStorage from "./storage/calls";
+import type { HookRule, HookWhen } from "../types";
+import { type HookToolOutput, readToolOutput } from "./storage/outputs";
 import type { Database } from "bun:sqlite";
 import type { Logger } from "../infrastructure/logging/logger";
-import type { HookRule, HookWhen } from "../types";
-import * as callStorage from "./storage/calls";
-import { readToolOutput, type HookToolOutput } from "./storage/outputs";
+import type { StructuredToolInterface } from "@langchain/core/tools";
+import type { ToolMessage } from "@langchain/core/messages";
 import { consumeHookUsage } from "./storage/usage";
 import { resolveHookArgs } from "./variables";
 interface RunOptions {
@@ -23,12 +23,17 @@ export class HookRuntime {
     readonly workspace: string,
   ) {
     this.toolNames = new Set(tools.map((tool) => tool.name));
-    if (this.toolNames.size !== tools.length) throw new Error("MCP 工具名称重复，无法编译 Hook");
+    if (this.toolNames.size !== tools.length) {
+      throw new Error("MCP 工具名称重复，无法编译 Hook");
+    }
     for (const rule of rules) {
-      if (!Number.isInteger(rule.runLimit) || rule.runLimit < -1)
+      if (!Number.isInteger(rule.runLimit) || rule.runLimit < -1) {
         throw new Error(`Hook ${rule.id} 的 runLimit 必须是大于等于 -1 的整数`);
+      }
       this.requireTool(rule.tool, `Hook ${rule.id}`);
-      if (rule.target !== "agent") this.requireTool(rule.target, `Hook ${rule.id} 目标`);
+      if (rule.target !== "agent") {
+        this.requireTool(rule.target, `Hook ${rule.id} 目标`);
+      }
     }
   }
   matching(target: string, when: HookWhen) {
@@ -46,8 +51,8 @@ export class HookRuntime {
     this.logger.debug("执行 Hook 节点", {
       hookId: rule.id,
       mode: rule.mode,
-      trigger: details.trigger,
       sourceId,
+      trigger: details.trigger,
     });
     const output = await options.invoke(call);
     return { call, output, value: readToolOutput(output) };
@@ -60,12 +65,12 @@ export class HookRuntime {
   ) {
     const details = callStorage.hookCallDetails(rule, sourceId);
     return {
-      name: rule.tool,
       args: resolveHookArgs(rule.args, {
         cwd: this.workspace,
         previousTool: previousOutput,
       }),
       id: callStorage.createHookCallId(this.sessionId, threadId, details),
+      name: rule.tool,
       type: "tool_call" as const,
     };
   }

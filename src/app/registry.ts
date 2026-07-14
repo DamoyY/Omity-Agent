@@ -1,12 +1,12 @@
-import { existsSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
-import { Database } from "bun:sqlite";
-import { sessionNotFound } from "../errors";
-import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
-import { closeDatabase, configureReadonlyDatabase } from "../infrastructure/database/connection";
-import { assertCoreSchema } from "../infrastructure/database/validateSchema";
 import type { Control, Settings } from "../types";
-import { parseError, type ErrorDetails } from "../failures/details";
+import { type ErrorDetails, parseError } from "../failures/details";
+import { closeDatabase, configureReadonlyDatabase } from "../infrastructure/database/connection";
+import { existsSync, readdirSync } from "node:fs";
+import { Database } from "bun:sqlite";
+import { assertCoreSchema } from "../infrastructure/database/validateSchema";
+import { resolve } from "node:path";
+import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
+import { sessionNotFound } from "../errors";
 export interface RegisteredSession {
   id: string;
   workspace: string;
@@ -48,11 +48,13 @@ export class AppRegistry {
     }
   }
   list() {
-    return [...this.sessions.values()].sort(compareSessions);
+    return [...this.sessions.values()].toSorted(compareSessions);
   }
   require(id: string) {
     const session = this.sessions.get(id);
-    if (!session) throw sessionNotFound(id);
+    if (!session) {
+      throw sessionNotFound(id);
+    }
     return session;
   }
   refresh(id: string) {
@@ -61,11 +63,15 @@ export class AppRegistry {
     return session;
   }
   remove(id: string) {
-    if (!this.sessions.delete(id)) throw sessionNotFound(id);
+    if (!this.sessions.delete(id)) {
+      throw sessionNotFound(id);
+    }
   }
 }
 function scanSessions(settings: Settings, sessionsDir: string) {
-  if (!existsSync(sessionsDir)) return [];
+  if (!existsSync(sessionsDir)) {
+    return [];
+  }
   return readdirSync(sessionsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => readSession(resolveSessionPaths(settings, entry.name).dbPath, undefined, true));
@@ -74,7 +80,9 @@ function compareSessions(left: RegisteredSession, right: RegisteredSession) {
   return right.updatedAt - left.updatedAt || right.createdAt - left.createdAt;
 }
 function readSession(dbPath: string, id?: string, validate = false) {
-  if (!existsSync(dbPath)) throw sessionNotFound(id ?? dbPath);
+  if (!existsSync(dbPath)) {
+    throw sessionNotFound(id ?? dbPath);
+  }
   const db = new Database(dbPath, {
     create: false,
     readonly: true,
@@ -95,7 +103,9 @@ function readSession(dbPath: string, id?: string, validate = false) {
     const row = id
       ? db.query<SessionRow, [string]>(`${sessionSelect} WHERE s.id = ?`).get(id)
       : db.query<SessionRow, []>(`${sessionSelect} LIMIT 1`).get();
-    if (!row) throw sessionNotFound(id ?? dbPath);
+    if (!row) {
+      throw sessionNotFound(id ?? dbPath);
+    }
     return toSession(row);
   } finally {
     closeDatabase(db);
@@ -103,12 +113,12 @@ function readSession(dbPath: string, id?: string, validate = false) {
 }
 function toSession(row: SessionRow): RegisteredSession {
   return {
-    id: row.id,
-    workspace: row.workspace,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
     control: row.control,
-    paused: row.paused === 1,
+    createdAt: row.created_at,
     error: row.error ? parseError(row.error) : null,
+    id: row.id,
+    paused: row.paused === 1,
+    updatedAt: row.updated_at,
+    workspace: row.workspace,
   };
 }

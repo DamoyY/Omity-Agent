@@ -11,18 +11,24 @@ export function resolveHookArgs(args: Record<string, unknown>, variables: HookVa
   return resolveValue(args, variables) as Record<string, unknown>;
 }
 function resolveValue(value: unknown, variables: HookVariables): unknown {
-  if (typeof value === "string") return resolveString(value, variables);
+  if (typeof value === "string") {
+    return resolveString(value, variables);
+  }
   if (Array.isArray(value)) {
     return value.map((item) => resolveValue(item, variables));
   }
-  if (!isRecord(value)) return value;
+  if (!isRecord(value)) {
+    return value;
+  }
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [key, resolveValue(item, variables)]),
   );
 }
 function resolveString(value: string, variables: HookVariables) {
   const exact = exactVariable.exec(value);
-  if (exact) return variableValue(requireName(exact), variables);
+  if (exact) {
+    return variableValue(requireName(exact), variables);
+  }
   return value.replace(embeddedVariable, (placeholder, name: string) => {
     const resolved = variableValue(name, variables);
     if (!isScalar(resolved)) {
@@ -32,11 +38,17 @@ function resolveString(value: string, variables: HookVariables) {
   });
 }
 function variableValue(name: string, variables: HookVariables) {
-  if (name === "cwd") return variables.cwd;
+  if (name === "cwd") {
+    return variables.cwd;
+  }
   const output = previousToolValue(name, "output", variables);
-  if (output.matched) return output.value;
+  if (output.matched) {
+    return output.value;
+  }
   const structured = previousToolValue(name, "structuredOutput", variables);
-  if (structured.matched) return structured.value;
+  if (structured.matched) {
+    return structured.value;
+  }
   throw new Error(`未知 Hook 变量：\${${name}}`);
 }
 function previousToolValue(
@@ -79,7 +91,9 @@ function readPath(value: unknown, path: string[], variable: string): unknown {
 }
 function requireName(match: RegExpExecArray) {
   const name = match[1];
-  if (!name) throw new Error(`无效 Hook 变量：${match[0]}`);
+  if (!name) {
+    throw new Error(`无效 Hook 变量：${match[0]}`);
+  }
   return name;
 }
 function isScalar(value: unknown): value is string | number | boolean | null {

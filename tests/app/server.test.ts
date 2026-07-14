@@ -1,21 +1,21 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
-import { AppRegistry } from "../../src/app/registry";
-import { AppController } from "../../src/app/controller";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { resolveSessionState, resolveSessionStatus } from "../../src/app/sessionState";
-import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
-import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { captureError } from "../../src/failures/details";
+import { AppController } from "../../src/app/controller";
 import { AppInstanceLock } from "../../src/app/runtime/instanceLock";
+import { AppRegistry } from "../../src/app/registry";
+import { captureError } from "../../src/failures/details";
+import { join } from "node:path";
+import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import { required } from "../support/database";
+import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
+import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("app session summaries expose paused queue errors", async () => {
@@ -30,9 +30,9 @@ test("app session summaries expose paused queue errors", async () => {
   db.close();
   const controller = new AppController(root);
   expect(controller.bootstrap().sessions[0]).toMatchObject({
+    error: { message: "model request failed", name: "Error" },
     id: "failed-session",
     status: "error",
-    error: { name: "Error", message: "model request failed" },
   });
   await controller.close();
 });
@@ -64,21 +64,21 @@ test("app registry serves a memory projection refreshed one session at a time", 
   changed.close();
   expect(registry.require("second-session").control).toBe("running");
   expect(registry.refresh("second-session").control).toBe("pause");
-  rmSync(secondPaths.dir, { recursive: true, force: true });
+  rmSync(secondPaths.dir, { force: true, recursive: true });
   registry.remove("second-session");
   expect(() => registry.require("second-session")).toThrow("会话不存在");
   expect(existsSync(join(settings.paths.dataDir, "app.sqlite"))).toBe(false);
 });
 test("app instance lock rejects a second server for the same data directory", () => {
   const root = makeRoot();
-  const dataDir = loadSettings(root).paths.dataDir;
+  const { dataDir } = loadSettings(root).paths;
   const lock = AppInstanceLock.acquire(dataDir);
   expect(() => AppInstanceLock.acquire(dataDir)).toThrow("数据目录已有 App 在运行");
   lock.release();
   expect(existsSync(join(dataDir, "app.lock"))).toBe(false);
 });
 test("session status prioritizes errors and pauses over host activity", () => {
-  const running = { control: "running" as const, paused: false, error: null };
+  const running = { control: "running" as const, error: null, paused: false };
   const failure = captureError(new Error("Run failed"));
   expect(resolveSessionStatus(running, "model", null)).toBe("model");
   expect(resolveSessionStatus(running, "tool", failure)).toBe("error");
@@ -90,16 +90,16 @@ test("session state exposes host errors before queue errors", () => {
   const hostError = captureError(new Error("Host failed"));
   const session = {
     control: "running" as const,
-    paused: true,
     error: runError,
+    paused: true,
   };
   expect(resolveSessionState(session, "model", hostError)).toEqual({
-    status: "error",
     error: hostError,
+    status: "error",
   });
   expect(resolveSessionState(session, "model", null)).toEqual({
-    status: "error",
     error: runError,
+    status: "error",
   });
 });
 function makeRoot() {

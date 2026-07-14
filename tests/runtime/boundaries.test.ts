@@ -1,16 +1,16 @@
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { Logger } from "../../src/infrastructure/logging/logger";
-import type { HostContext } from "../../src/runtime/context";
-import { processQueue } from "../../src/runtime/queue";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import type { HostContext } from "../../src/runtime/context";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
+import { processQueue } from "../../src/runtime/queue";
 import { testSettings } from "../support/settings";
 afterEach(cleanupDatabaseDirs);
 test("restart completes every consumed queue item in the run", async () => {
   const db = pausedRunWithAppend();
-  const messages = [...db.history("session"), new AIMessage({ id: "final", content: "done" })];
+  const messages = [...db.history("session"), new AIMessage({ content: "done", id: "final" })];
   await processQueue(
     context(db, terminalGraph(messages, "final"), new MemorySaver()),
     required(db.nextQueue("session")),
@@ -23,8 +23,8 @@ test("an empty final response cannot reuse a previous answer", async () => {
   db.resetSession("session", workspace);
   db.appendUser("session", "new question");
   const messages = [
-    new AIMessage({ id: "old", content: "old answer" }),
-    new AIMessage({ id: "current", content: "" }),
+    new AIMessage({ content: "old answer", id: "old" }),
+    new AIMessage({ content: "", id: "current" }),
   ];
   await processQueue(
     context(db, terminalGraph(messages, "current"), new MemorySaver()),
@@ -48,31 +48,31 @@ function pausedRunWithAppend() {
 }
 function terminalGraph(messages: BaseMessage[], finalMessageId: string) {
   return {
+    getState: () =>
+      Promise.resolve({
+        next: [],
+        tasks: [],
+        values: {
+          hookPlan: { finalMessageId, kind: "done" },
+          messages,
+        },
+      }),
     stream: () => ({
       [Symbol.asyncIterator]() {
         return this;
       },
       next: () => Promise.resolve({ done: true as const, value: undefined }),
     }),
-    getState: () =>
-      Promise.resolve({
-        values: {
-          messages,
-          hookPlan: { kind: "done", finalMessageId },
-        },
-        next: [],
-        tasks: [],
-      }),
   };
 }
 function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
   return {
-    settings: testSettings(workspace),
-    logger: new Logger("error", true),
+    checkpointer: checkpointer as never,
+    controller: new AbortController(),
     db,
     graph: graph as HostContext["graph"],
-    checkpointer: checkpointer as never,
+    logger: new Logger("error", true),
     sessionId: "session",
-    controller: new AbortController(),
+    settings: testSettings(workspace),
   };
 }

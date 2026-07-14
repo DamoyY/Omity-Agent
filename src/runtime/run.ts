@@ -1,9 +1,9 @@
 import type { BaseMessage } from "@langchain/core/messages";
+import type { ErrorDetails } from "../failures/details";
+import type { HostContext } from "./context";
 import type { QueueItem } from "../types";
 import { contentToText } from "./content";
-import type { HostContext } from "./context";
 import { deleteThreadData } from "../checkpointer/lifecycle";
-import type { ErrorDetails } from "../failures/details";
 export class CanceledRun extends Error {}
 export interface QueueRun {
   items: [QueueItem, ...QueueItem[]];
@@ -19,13 +19,19 @@ export function finishRun(
   const finalMessageId = requireFinalMessageId(hookPlan);
   const last = messages.find((message) => message.type === "ai" && message.id === finalMessageId);
   const content = contentToText(last?.content);
-  if (!content) throw new Error("模型没有生成可记录的最终文本");
+  if (!content) {
+    throw new Error("模型没有生成可记录的最终文本");
+  }
   const lastItem = run.items.at(-1);
-  if (!lastItem) throw new Error("运行没有可记录的队列项");
+  if (!lastItem) {
+    throw new Error("运行没有可记录的队列项");
+  }
   finalizeRun(ctx, run, "done");
   ctx.observer?.changed?.(ctx.sessionId);
-  ctx.logger.info("队列完成", { queueId: lastItem.id, chars: content.length });
-  if (ctx.settings.logging.streamTokens) process.stdout.write("\n");
+  ctx.logger.info("队列完成", { chars: content.length, queueId: lastItem.id });
+  if (ctx.settings.logging.streamTokens) {
+    process.stdout.write("\n");
+  }
 }
 function requireFinalMessageId(plan: unknown) {
   if (
@@ -48,8 +54,12 @@ export function cancelRun(ctx: HostContext, run: QueueRun) {
 }
 function finalizeRun(ctx: HostContext, run: QueueRun, status: "done" | "canceled") {
   ctx.db.db.transaction(() => {
-    for (const item of run.items) ctx.db.setQueueStatus(item.id, status);
-    if (status === "canceled") ctx.db.setControl(ctx.sessionId, "running");
+    for (const item of run.items) {
+      ctx.db.setQueueStatus(item.id, status);
+    }
+    if (status === "canceled") {
+      ctx.db.setControl(ctx.sessionId, "running");
+    }
     deleteThreadData(ctx.db.db, run.threadId);
   })();
 }
@@ -63,7 +73,9 @@ export function setRunStatus(
     ctx.db.pauseRun(ctx.sessionId, run.rootId, error);
   } else {
     ctx.db.db.transaction(() => {
-      for (const item of run.items) ctx.db.setQueueStatus(item.id, status, error);
+      for (const item of run.items) {
+        ctx.db.setQueueStatus(item.id, status, error);
+      }
     })();
   }
   ctx.observer?.changed?.(ctx.sessionId);

@@ -1,18 +1,18 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
+import { join, resolve } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { safeId, sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { appDataRoot } from "../../src/infrastructure/configuration/configuredPath";
+import { loadHookRules } from "../../src/infrastructure/configuration/hookRules";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import { parseModelSettings } from "../../src/infrastructure/configuration/settingsSchema";
-import { safeId, sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
-import { loadHookRules } from "../../src/infrastructure/configuration/hookRules";
 import { resolveHookArgs } from "../../src/hooks/variables";
+import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("settings yaml resolves AppData data directory", () => {
@@ -32,8 +32,8 @@ test("settings yaml resolves AppData data directory", () => {
     expect(settings.skills.usagePrompt).toBe("use skills");
     const paths = sessionPaths(settings, "abc-def");
     expect(paths).toEqual({
-      dir: resolve(settings.paths.dataDir, "sessions", safeId("abc-def")),
       dbPath: resolve(settings.paths.dataDir, "sessions", safeId("abc-def"), "agent.sqlite"),
+      dir: resolve(settings.paths.dataDir, "sessions", safeId("abc-def")),
     });
     expect(() => sessionPaths(settings, "abc/def")).toThrow("路径 ID 无效");
     expect(() => sessionPaths(settings, "abc:def")).toThrow("路径 ID 无效");
@@ -45,8 +45,8 @@ test("prompt files expand current working directory placeholder", () => {
   dirs.push(root);
   mkdirSync(workspace);
   writeTestConfiguration(root, {
-    systemPrompt: "workspace: ${cwd}",
     skillsPrompt: "skills from ${cwd}",
+    systemPrompt: "workspace: ${cwd}",
   });
   const settings = loadSettings(root, { cwd: workspace });
   expect(settings.paths.dataDir).toBe(resolve(root, "data"));
@@ -130,10 +130,10 @@ test("hook variables preserve exact values and reject ambiguous output", () => {
   const previous = { files: ["a.ts", "b.ts"] };
   expect(
     resolveHookArgs(
-      { exact: "${previousTool.output}", cwd: "${cwd}/src" },
+      { cwd: "${cwd}/src", exact: "${previousTool.output}" },
       { cwd: "F:\\work", previousTool: { output: previous } },
     ),
-  ).toEqual({ exact: previous, cwd: "F:\\work/src" });
+  ).toEqual({ cwd: "F:\\work/src", exact: previous });
   expect(() =>
     resolveHookArgs(
       { invalid: "result=${previousTool.output}" },

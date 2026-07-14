@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { type FrontendSettings, type SessionInfo, appEvents, bootstrap } from "./client";
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { readDeletedEvent, readSessionEvent, readSessionsEvent } from "./events/data";
 import { useEffect, useRef } from "react";
 import type { AttachmentSettings } from "../../attachments/contract";
-import { bootstrap, appEvents, type FrontendSettings, type SessionInfo } from "./client";
-import { readDeletedEvent, readSessionEvent, readSessionsEvent } from "./events/data";
 import { reportError } from "./errors";
 import { reportSessionErrors } from "./events/reporting";
 import { transcriptKey } from "./transcript/query";
@@ -19,11 +19,11 @@ export function useBootstrap() {
   const reportedErrors = useRef(new Set<string>());
   const streamedSessions = useRef<SessionInfo[] | undefined>(undefined);
   const query = useQuery({
-    queryKey: bootstrapKey,
     queryFn: async ({ signal }) => {
       const data = await bootstrap(signal);
       return streamedSessions.current ? { ...data, sessions: streamedSessions.current } : data;
     },
+    queryKey: bootstrapKey,
   });
   useEffect(() => {
     const events = appEvents();
@@ -69,7 +69,9 @@ export function useBootstrap() {
     };
   }, [queryClient]);
   useEffect(() => {
-    if (!query.data) return;
+    if (!query.data) {
+      return;
+    }
     reportSessionErrors(query.data.sessions, reportedErrors.current);
   }, [query.data]);
   return query;
@@ -93,7 +95,9 @@ export function removeSession(queryClient: QueryClient, sessionId: string) {
 function replaceCachedSessions(queryClient: QueryClient, sessions: SessionInfo[]) {
   let replaced = false;
   queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) => {
-    if (!current) return current;
+    if (!current) {
+      return current;
+    }
     replaced = true;
     return { ...current, sessions };
   });
@@ -108,7 +112,7 @@ function updateCachedSessions(
   );
 }
 export function upsertSessionList(sessions: SessionInfo[], session: SessionInfo) {
-  return [session, ...sessions.filter(({ id }) => id !== session.id)].sort(
+  return [session, ...sessions.filter(({ id }) => id !== session.id)].toSorted(
     (left, right) => right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
   );
 }

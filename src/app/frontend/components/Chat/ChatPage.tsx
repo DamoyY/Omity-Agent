@@ -1,14 +1,14 @@
-import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
-import type { DisplayQueue, TimelineMessage } from "../../../timeline";
+import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
 import type { Control, SessionStatus } from "../../../../types";
+import type { DisplayQueue, TimelineMessage } from "../../../timeline";
 import { Composer } from "./Composer/index";
+import type { InitialSessionState } from "../../../initialState";
+import { Message } from "./Message";
 import { NewSessionPage } from "../NewSession";
 import { TranscriptScroll } from "../TranscriptScroll";
-import { Message } from "./Message";
-import type { InitialSessionState } from "../../../initialState";
-import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
+import { css } from "styled-system/css";
 import { deriveChatActionState } from "./actionState";
+import { useTranslation } from "react-i18next";
 const page = css({
   display: "grid",
   gridTemplateRows: "minmax(0, 1fr) auto",
@@ -26,9 +26,13 @@ const empty = css({
 function findLatestDetail(view: TimelineMessage[]) {
   for (let messageIndex = view.length - 1; messageIndex >= 0; messageIndex -= 1) {
     const item = view[messageIndex];
-    if (!item) continue;
+    if (!item) {
+      continue;
+    }
     const partIndex = item.parts.findLastIndex((part) => part.type !== "content");
-    if (partIndex >= 0) return { messageKey: item.key, partIndex };
+    if (partIndex !== -1) {
+      return { messageKey: item.key, partIndex };
+    }
   }
   return undefined;
 }

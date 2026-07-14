@@ -1,25 +1,25 @@
-import { expect, test } from "bun:test";
 import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
+import { expect, test } from "bun:test";
 import { buildTimeline } from "../../../src/app/timeline";
 test("keeps live output before a user append across persistence", () => {
   const rootUser = message(1, "user", "开始", 1);
   const firstOutput = message(2, "assistant", "第一段");
   const queue: DisplayQueue[] = [
     {
-      id: 1,
       content: "",
-      status: "running",
       error: null,
-      userMessageId: 1,
+      id: 1,
       root: true,
+      status: "running",
+      userMessageId: 1,
     },
     {
-      id: 2,
       content: "追加问题",
-      status: "pending",
       error: null,
-      userMessageId: null,
+      id: 2,
       root: false,
+      status: "pending",
+      userMessageId: null,
     },
   ];
   const events: DisplayEvent[] = [
@@ -28,8 +28,8 @@ test("keeps live output before a user append across persistence", () => {
       message: "assistant_text_delta",
       payload: {
         kind: "assistant_text_delta",
-        queueId: 1,
         messageId: "live-output",
+        queueId: 1,
         text: "第二段",
       },
     },
@@ -46,20 +46,20 @@ test("keeps live output before a user append across persistence", () => {
 test("keeps a streaming tool call before a pending user append", () => {
   const queue: DisplayQueue[] = [
     {
-      id: 1,
       content: "",
-      status: "running",
       error: null,
-      userMessageId: 1,
+      id: 1,
       root: true,
+      status: "running",
+      userMessageId: 1,
     },
     {
-      id: 2,
       content: "追加问题",
-      status: "pending",
       error: null,
-      userMessageId: null,
+      id: 2,
       root: false,
+      status: "pending",
+      userMessageId: null,
     },
   ];
   const events: DisplayEvent[] = [
@@ -67,10 +67,10 @@ test("keeps a streaming tool call before a pending user append", () => {
       id: 1,
       message: "tool_call_delta",
       payload: {
-        kind: "tool_call_delta",
-        queueId: 1,
-        messageId: "live-tool",
         call: { id: "call-1", index: 0, name: "inspect" },
+        kind: "tool_call_delta",
+        messageId: "live-tool",
+        queueId: 1,
       },
     },
   ];
@@ -88,15 +88,15 @@ function message(
   queueId: number | null = null,
 ): DisplayMessage {
   return {
-    id,
-    sourceId: `message-${id.toString()}`,
-    role,
     content,
-    reasoning: "",
+    createdAt: id,
+    id,
     images: [],
     queueId,
+    reasoning: "",
+    role,
+    sourceId: `message-${id.toString()}`,
     toolCalls: [],
-    createdAt: id,
   };
 }
 function summary(view: ReturnType<typeof buildTimeline>) {

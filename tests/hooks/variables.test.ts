@@ -1,18 +1,18 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { AIMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { tool } from "@langchain/core/tools";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
-import { z } from "zod";
 import { expect, test } from "bun:test";
-import { createAgentGraph } from "../../src/agent";
-import { HookRuntime } from "../../src/hooks/runtime";
+import { mkdtempSync, rmSync } from "node:fs";
+import { AIMessage } from "@langchain/core/messages";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HookRule } from "../../src/types";
+import { HookRuntime } from "../../src/hooks/runtime";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { join } from "node:path";
 import { testSettings } from "../support/settings";
+import { tmpdir } from "node:os";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
@@ -24,8 +24,8 @@ test("mixed hook modes resolve variables in config order", async () => {
       return Promise.resolve(`${args.label}-result`);
     },
     {
-      name: "hook",
       description: "hook",
+      name: "hook",
       schema: z
         .object({
           label: z.string(),
@@ -35,8 +35,8 @@ test("mixed hook modes resolve variables in config order", async () => {
     },
   );
   const originalTool = tool(() => Promise.resolve("original-result"), {
-    name: "original",
     description: "original",
+    name: "original",
     schema: z.object({}),
   });
   const hooks = new HookRuntime(
@@ -49,22 +49,22 @@ test("mixed hook modes resolve variables in config order", async () => {
   );
   try {
     const agent = createAgentGraph({
-      settings: testSettings(dir),
+      checkpointer: new MemorySaver(),
+      hooks,
       model: fakeModel()
         .respond(
           new AIMessage({
-            id: "model-tools",
             content: "",
-            tool_calls: [{ id: "original-call", name: "original", args: {} }],
+            id: "model-tools",
+            tool_calls: [{ args: {}, id: "original-call", name: "original" }],
           }),
         )
         .respond(new AIMessage("done")),
+      settings: testSettings(dir),
       tools: [hookTool, originalTool],
-      hooks,
-      checkpointer: new MemorySaver(),
     });
     const result = await agent.invoke(
-      { messages: [{ role: "user", content: "run" }] },
+      { messages: [{ content: "run", role: "user" }] },
       { configurable: { thread_id: "thread" } },
     );
     expect(received).toEqual([
@@ -77,7 +77,7 @@ test("mixed hook modes resolve variables in config order", async () => {
     expect(result.messages.slice(-2).map((message) => message.type)).toEqual(["ai", "tool"]);
   } finally {
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("user takeover receives the preceding silent hook output", async () => {
@@ -91,30 +91,30 @@ test("user takeover receives the preceding silent hook output", async () => {
       return Promise.resolve("user-hook-result");
     },
     {
-      name: "hook",
       description: "hook",
+      name: "hook",
       schema: z.object({ previous: z.unknown().optional() }).strict(),
     },
   );
   const hooks = new HookRuntime(
     [
       {
-        id: "silent-user",
-        target: "agent",
-        when: "before",
-        runLimit: -1,
-        mode: "silent",
-        tool: "hook",
         args: {},
+        id: "silent-user",
+        mode: "silent",
+        runLimit: -1,
+        target: "agent",
+        tool: "hook",
+        when: "before",
       },
       {
-        id: "takeover-user",
-        target: "agent",
-        when: "before",
-        runLimit: -1,
-        mode: "takeover",
-        tool: "hook",
         args: { previous: "${previousTool.output}" },
+        id: "takeover-user",
+        mode: "takeover",
+        runLimit: -1,
+        target: "agent",
+        tool: "hook",
+        when: "before",
       },
     ],
     [hookTool],
@@ -125,23 +125,23 @@ test("user takeover receives the preceding silent hook output", async () => {
   );
   try {
     const agent = createAgentGraph({
-      settings: testSettings(dir),
-      model: fakeModel().respond(new AIMessage("done")),
-      tools: [hookTool],
-      hooks,
       checkpointer: new MemorySaver(),
+      hooks,
+      model: fakeModel().respond(new AIMessage("done")),
+      settings: testSettings(dir),
+      tools: [hookTool],
     });
     await agent.invoke(
       {
-        messages: [{ role: "user", content: "hello" }],
         hookPendingUserIds: ["queue:1"],
+        messages: [{ content: "hello", role: "user" }],
       },
       { configurable: { thread_id: "thread" } },
     );
     expect(received).toEqual([undefined, "user-hook-result"]);
   } finally {
     db.close();
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 function rules(): HookRule[] {
@@ -178,12 +178,12 @@ function hookRule(
   target: HookRule["target"] = "original",
 ): HookRule {
   return {
-    id,
-    target,
-    when,
-    runLimit: -1,
-    mode,
     args,
+    id,
+    mode,
+    runLimit: -1,
+    target,
     tool: "hook",
+    when,
   };
 }

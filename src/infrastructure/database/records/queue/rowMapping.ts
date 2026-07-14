@@ -8,11 +8,11 @@ export interface QueueRow {
 }
 export function toQueueItem(row: QueueRow): QueueItem {
   return {
-    id: row.id,
-    runId: row.root_id,
     content: row.content,
+    id: row.id,
+    root: row.root_id === row.id,
+    runId: row.root_id,
     status: row.status,
     userMessageId: row.user_message_id,
-    root: row.root_id === row.id,
   };
 }

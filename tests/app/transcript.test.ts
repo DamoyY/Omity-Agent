@@ -1,10 +1,10 @@
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { loadTranscript } from "../../src/app/transcript";
 import { buildTimeline, displayStreamEvent } from "../../src/app/timeline";
+import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 import type { StreamEvent } from "../../src/infrastructure/database/records/streamEvents";
 import { countTokens } from "../../src/runtime/tokenizer";
-import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
+import { loadTranscript } from "../../src/app/transcript";
 afterEach(cleanupDatabaseDirs);
 test("transcript exposes Responses API token and cache usage", () => {
   const db = makeDb();
@@ -14,18 +14,18 @@ test("transcript exposes Responses API token and cache usage", () => {
     new AIMessage({
       content: "答案",
       usage_metadata: {
+        input_token_details: { cache_read: 900 },
         input_tokens: 1200,
         output_tokens: 300,
         total_tokens: 1500,
-        input_token_details: { cache_read: 900 },
       },
     }),
   ]);
   const transcript = loadTranscript(db, "usage-session");
   expect(view(transcript).at(-1)?.usage).toEqual({
+    cacheReadTokens: 900,
     inputTokens: 1200,
     outputTokens: 300,
-    cacheReadTokens: 900,
   });
   db.close();
 });
@@ -38,7 +38,7 @@ test("transcript counts raw tool input and output text", () => {
     new HumanMessage("运行命令"),
     new AIMessage({
       content: "",
-      tool_calls: [{ id: "call-1", name: "shell", args }],
+      tool_calls: [{ args, id: "call-1", name: "shell" }],
     }),
     new ToolMessage({ content: output, tool_call_id: "call-1" }),
   ]);
@@ -47,7 +47,9 @@ test("transcript counts raw tool input and output text", () => {
     .flatMap((message) => message.parts)
     .find((item) => item.type === "tool");
   expect(part?.type).toBe("tool");
-  if (part?.type !== "tool") throw new Error("工具调用未显示");
+  if (part?.type !== "tool") {
+    throw new Error("工具调用未显示");
+  }
   expect(part.call.inputTokens).toBe(countTokens(JSON.stringify(args)));
   expect(part.output?.outputTokens).toBe(countTokens(output));
   db.close();
@@ -58,11 +60,11 @@ test("transcript exposes original Freeform tool input", () => {
   db.resetSession("freeform-session", workspace);
   db.syncHistory("freeform-session", [
     new AIMessage({
-      content: "",
-      tool_calls: [{ id: "call-1", name: "apply_patch", args: { input } }],
       additional_kwargs: {
         __openai_custom_tool_call_ids__: { "call-1": "ct-1" },
       },
+      content: "",
+      tool_calls: [{ args: { input }, id: "call-1", name: "apply_patch" }],
     }),
   ]);
   const part = view(loadTranscript(db, "freeform-session"))
@@ -77,12 +79,12 @@ test("transcript keeps the original token count for redirected output", () => {
   db.syncHistory("large-output-session", [
     new AIMessage({
       content: "",
-      tool_calls: [{ id: "call-1", name: "shell", args: {} }],
+      tool_calls: [{ args: {}, id: "call-1", name: "shell" }],
     }),
     new ToolMessage({
       content: "工具输出过长，已重定向",
-      tool_call_id: "call-1",
       metadata: { largeOutput: { path: "output.txt", tokens: 12_345 } },
+      tool_call_id: "call-1",
     }),
   ]);
   const part = view(loadTranscript(db, "large-output-session"))

@@ -1,13 +1,13 @@
-import { loadMcpTools } from "@langchain/mcp-adapters";
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import { expect, test } from "bun:test";
-import { createToolInvoker } from "../../src/agent/toolExecution";
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import { ToolExecutions } from "../../src/agent/toolExecutions";
 import { createMcpToolFailureClient } from "../../src/infrastructure/mcp/toolFailures";
+import { createToolInvoker } from "../../src/agent/toolExecution";
+import { loadMcpTools } from "@langchain/mcp-adapters";
 import { testSettings } from "../support/settings";
 const rejection = "Rejected the request with HTTP 402. Check the input URL and parameters.";
 test("MCP protocol errors reach the tool message without adapter wrappers", async () => {
-  const output = await invokeMcpTool(() => Promise.reject(new McpError(-32602, rejection)));
+  const output = await invokeMcpTool(() => Promise.reject(new McpError(-32_602, rejection)));
   expect(output.status).toBe("error");
   expect(output.name).toBe("search_query");
   expect(output.tool_call_id).toBe("call-1");
@@ -16,8 +16,8 @@ test("MCP protocol errors reach the tool message without adapter wrappers", asyn
 test("MCP error results reach the tool message without adapter wrappers", async () => {
   const output = await invokeMcpTool(() =>
     Promise.resolve({
+      content: [{ text: rejection, type: "text" as const }],
       isError: true,
-      content: [{ type: "text" as const, text: rejection }],
     }),
   );
   expect(output.status).toBe("error");
@@ -55,36 +55,36 @@ async function invokeMcpTool(
   toolExecutions?: ToolExecutions,
 ) {
   const client = {
+    callTool,
     listTools: () =>
       Promise.resolve({
         tools: [
           {
-            name: "search_query",
             description: "Search",
             inputSchema: {
-              type: "object" as const,
-              properties: {},
               additionalProperties: false,
+              properties: {},
+              type: "object" as const,
             },
+            name: "search_query",
           },
         ],
       }),
-    callTool,
   };
   const tools = await loadMcpTools("web", createMcpToolFailureClient(client as never), {
     useStandardContentBlocks: true,
   });
   const invoke = createToolInvoker(tools, {
-    settings: testSettings("data"),
-    sessionId: "test-session",
     freeformToolParameters: new Map(),
+    sessionId: "test-session",
+    settings: testSettings("data"),
     toolExecutions,
   });
   return invoke(
     {
+      args: {},
       id: "call-1",
       name: "search_query",
-      args: {},
       type: "tool_call",
     },
     { configurable: { thread_id: "test-thread" } } as never,

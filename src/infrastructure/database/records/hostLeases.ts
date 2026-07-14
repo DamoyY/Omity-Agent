@@ -26,9 +26,9 @@ export function readHostLeaseRecord(db: Database, sessionId: string): HostLeaseR
     .get(sessionId);
   return row
     ? {
-        sessionId: row.session_id,
-        ownerId: row.owner_id,
         expiresAt: row.expires_at,
+        ownerId: row.owner_id,
+        sessionId: row.session_id,
       }
     : null;
 }

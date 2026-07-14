@@ -1,14 +1,14 @@
-import { z } from "zod";
-import type { ErrorDetails } from "../../../../failures/details";
 import type { DisplayEvent } from "../../../timeline";
+import type { ErrorDetails } from "../../../../failures/details";
 import type { SessionInfo } from "../../../sessionState";
+import { z } from "zod";
 const sessionInfoSchema: z.ZodType<SessionInfo> = z.object({
-  id: z.string(),
-  workspace: z.string(),
   createdAt: z.number().int(),
-  updatedAt: z.number().int(),
-  status: z.enum(["tool", "model", "idle", "paused", "error"]),
   error: z.custom<ErrorDetails>().nullable(),
+  id: z.string(),
+  status: z.enum(["tool", "model", "idle", "paused", "error"]),
+  updatedAt: z.number().int(),
+  workspace: z.string(),
 });
 const sessionsEventSchema = z.object({
   sessions: z.array(sessionInfoSchema),
@@ -42,6 +42,8 @@ function readEventData<T>(event: Event, schema: z.ZodType<T>, name: string) {
     throw new Error(`SSE ${name} 事件 JSON 无效`, { cause: error });
   }
   const parsed = schema.safeParse(value);
-  if (!parsed.success) throw new Error(`SSE ${name} 事件结构无效`);
+  if (!parsed.success) {
+    throw new Error(`SSE ${name} 事件结构无效`);
+  }
   return parsed.data;
 }

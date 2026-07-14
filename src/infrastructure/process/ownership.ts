@@ -18,7 +18,9 @@ export function hostOwnerId(owner: ProcessOwner) {
 export function parseHostOwner(value: string): HostOwner {
   const parsed: unknown = JSON.parse(value);
   const result = ownerSchema.safeParse(parsed);
-  if (!result.success) throw new Error("Host Lease owner_id 无效");
+  if (!result.success) {
+    throw new Error("Host Lease owner_id 无效");
+  }
   return result.data;
 }
 export function standaloneOwner(): ProcessOwner {
@@ -32,8 +34,12 @@ export function isProcessRunning(pid: number) {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    if (isErrorCode(error, "ESRCH")) return false;
-    if (isErrorCode(error, "EPERM")) return true;
+    if (isErrorCode(error, "ESRCH")) {
+      return false;
+    }
+    if (isErrorCode(error, "EPERM")) {
+      return true;
+    }
     throw error;
   }
 }

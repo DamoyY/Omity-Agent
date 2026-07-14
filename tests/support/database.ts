@@ -1,14 +1,16 @@
 import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 const dirs: string[] = [];
-export const workspace = "F:\\workspace\\test";
+export const workspace = String.raw`F:\workspace\test`;
 export function makeDb() {
   return required(makeDatabases(1)[0], "测试数据库创建失败");
 }
 export function required<T>(value: T | null | undefined, message = "测试所需值不存在"): T {
-  if (value === null || value === undefined) throw new Error(message);
+  if (value === null || value === undefined) {
+    throw new Error(message);
+  }
   return value;
 }
 export function makeDatabases(count: number) {
@@ -25,10 +27,12 @@ export async function cleanupDatabaseDirs() {
 async function removeDatabaseDir(dir: string) {
   for (let attempt = 0; ; attempt++) {
     try {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { force: true, recursive: true });
       return;
     } catch (error) {
-      if (!isBusy(error) || attempt === 29) throw error;
+      if (!isBusy(error) || attempt === 29) {
+        throw error;
+      }
       await Bun.sleep(100);
     }
   }

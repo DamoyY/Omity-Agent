@@ -4,18 +4,18 @@ test("mcp http config disables dependency reconnection and transport fallback", 
   expect(
     normalizeMcpServers({
       remote: {
-        transport: "http",
-        url: "https://example.com/mcp",
         automaticSSEFallback: true,
         reconnect: { enabled: true, maxAttempts: 5 },
+        transport: "http",
+        url: "https://example.com/mcp",
       },
     }),
   ).toEqual({
     remote: {
-      transport: "http",
-      url: "https://example.com/mcp",
       automaticSSEFallback: false,
       reconnect: { enabled: false, maxAttempts: 0 },
+      transport: "http",
+      url: "https://example.com/mcp",
     },
   });
 });
@@ -30,9 +30,9 @@ test("mcp config rejects auth providers that automatically retry requests", () =
   expect(() =>
     normalizeMcpServers({
       remote: {
+        authProvider: {},
         transport: "http",
         url: "https://example.com/mcp",
-        authProvider: {},
       },
     }),
   ).toThrow("MCP authProvider 会在认证失败后自动重试，请改用静态 headers");

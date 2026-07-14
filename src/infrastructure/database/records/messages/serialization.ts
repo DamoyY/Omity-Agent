@@ -1,8 +1,8 @@
 import {
-  mapChatMessagesToStoredMessages,
-  mapStoredMessagesToChatMessages,
   type BaseMessage,
   type StoredMessage,
+  mapChatMessagesToStoredMessages,
+  mapStoredMessagesToChatMessages,
 } from "@langchain/core/messages";
 export interface MessageRow {
   message_json: string;
@@ -14,11 +14,13 @@ export interface MessageInsert {
   queueId?: number;
 }
 export function messageInsert(message: BaseMessage, queueId?: number): MessageInsert {
-  if (!message.id) throw new Error("LangChain 消息缺少持久化 ID");
+  if (!message.id) {
+    throw new Error("LangChain 消息缺少持久化 ID");
+  }
   return {
     messageJson: JSON.stringify(withoutMessageId(firstStoredMessage(message))),
-    sourceId: message.id,
     queueId,
+    sourceId: message.id,
   };
 }
 export function messageRowsToChatMessages(rows: MessageRow[]): BaseMessage[] {
@@ -29,12 +31,16 @@ function rowToStoredMessage(row: MessageRow): StoredMessage {
   if (!isStoredMessage(parsed)) {
     throw new Error("message_blobs.message_json 不是有效的 LangChain StoredMessage");
   }
-  if (row.source_id !== undefined) parsed.data.id = row.source_id;
+  if (row.source_id !== undefined) {
+    parsed.data.id = row.source_id;
+  }
   return parsed;
 }
 function firstStoredMessage(message: BaseMessage): StoredMessage {
   const [stored] = mapChatMessagesToStoredMessages([message]);
-  if (!stored) throw new Error("无法序列化 LangChain 消息");
+  if (!stored) {
+    throw new Error("无法序列化 LangChain 消息");
+  }
   return stored;
 }
 function withoutMessageId(message: StoredMessage): StoredMessage {

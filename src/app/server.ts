@@ -1,13 +1,13 @@
-import { createServer, type ServerResponse } from "node:http";
+import { type ServerResponse, createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { getRequestListener } from "@hono/node-server";
-import { createServer as createViteServer } from "vite";
 import { AppController } from "./controller";
-import { errorResponse } from "./http/errors";
-import { createApi } from "./http/handler";
-import { appUrl } from "./launch";
-import { loadSettings } from "../infrastructure/configuration/loadSettings";
 import { AppInstanceLock } from "./runtime/instanceLock";
+import { appUrl } from "./launch";
+import { createApi } from "./http/handler";
+import { createServer as createViteServer } from "vite";
+import { errorResponse } from "./http/errors";
+import { getRequestListener } from "@hono/node-server";
+import { loadSettings } from "../infrastructure/configuration/loadSettings";
 export interface AppServerOptions {
   root: string;
   host: string;
@@ -28,13 +28,13 @@ export async function startAppServer(options: AppServerOptions) {
     });
     const server = createServer();
     const vite = await createViteServer({
+      appType: "spa",
       logLevel: "silent",
       server: {
         hmr: true,
         middlewareMode: true,
         ws: { server },
       },
-      appType: "spa",
     });
     const handleApi = getRequestListener(createApi(controller).fetch);
     server.on("request", (req, res) => {
@@ -43,7 +43,9 @@ export async function startAppServer(options: AppServerOptions) {
         return;
       }
       vite.middlewares(req, res, (error: unknown) => {
-        if (error) sendViteError(res, error);
+        if (error) {
+          sendViteError(res, error);
+        }
       });
     });
     await new Promise<void>((resolve, reject) => {
@@ -87,8 +89,11 @@ function waitForShutdownSignal() {
 function closeServer(server: ReturnType<typeof createServer>) {
   return new Promise<void>((resolve, reject) => {
     server.close((error) => {
-      if (error) reject(error);
-      else resolve();
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
     });
     server.closeAllConnections();
   });

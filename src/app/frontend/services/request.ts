@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { reportError } from "./errors";
+import { z } from "zod";
 const errorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
@@ -28,7 +28,9 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     return json as T;
   } catch (error) {
-    if (!init?.signal?.aborted) reportError(error, { path });
+    if (!init?.signal?.aborted) {
+      reportError(error, { path });
+    }
     throw error;
   }
 }

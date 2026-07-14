@@ -1,6 +1,6 @@
+import type { Settings } from "../../types";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Settings } from "../../types";
 export function sessionPaths(settings: Settings, sessionId: string) {
   const paths = resolveSessionPaths(settings, sessionId);
   mkdirSync(paths.dir, { recursive: true });
@@ -9,7 +9,7 @@ export function sessionPaths(settings: Settings, sessionId: string) {
 export function resolveSessionPaths(settings: Settings, sessionId: string) {
   const dir = resolve(settings.paths.dataDir, "sessions", safeId(sessionId));
   const dbPath = resolve(dir, "agent.sqlite");
-  return { dir, dbPath };
+  return { dbPath, dir };
 }
 export function safeId(value: string) {
   if (

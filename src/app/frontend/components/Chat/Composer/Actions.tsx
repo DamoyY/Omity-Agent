@@ -1,11 +1,11 @@
 import { Pause, Play, Send } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import type { TokenUsage } from "../../../../timeline";
+import { composerActions, composerControls } from "./layout";
 import { Button } from "../../ParkUI";
-import { reportPromiseErrors } from "../../../services/errors";
 import { ContextUsage } from "../ContextUsage";
 import { DeleteSessionButton } from "../DeleteSessionButton";
-import { composerActions, composerControls } from "./layout";
+import type { TokenUsage } from "../../../../timeline";
+import { reportPromiseErrors } from "../../../services/errors";
+import { useTranslation } from "react-i18next";
 type ControlState = "pause" | "pausing" | "resume";
 export function Actions({
   controlDisabled,

@@ -1,18 +1,18 @@
 import {
   BaseMessage,
+  type StoredMessage,
   mapChatMessagesToStoredMessages,
   mapStoredMessagesToChatMessages,
-  type StoredMessage,
 } from "@langchain/core/messages";
-import type { Checkpoint } from "@langchain/langgraph-checkpoint";
-import type { Database } from "bun:sqlite";
-import { randomUUID } from "node:crypto";
 import {
+  type StoredMessageRef,
   loadMessagesByRefs,
   messageRef,
   persistMessageBlob,
-  type StoredMessageRef,
 } from "../infrastructure/database/records/messages/blobStore";
+import type { Checkpoint } from "@langchain/langgraph-checkpoint";
+import type { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
 import { syncMessages } from "../infrastructure/database/records/messages/history";
 const messageRefsKey = "__omity_message_refs__";
 const storedMessageRefKey = "__omity_stored_message_ref__";
@@ -21,9 +21,11 @@ interface MessageRefs {
   shape: "array" | "single";
 }
 export function normalizeCheckpoint(checkpoint: Checkpoint) {
-  const messages = checkpoint.channel_values["messages"];
+  const { messages } = checkpoint.channel_values;
   const normalizedMessages = isMessageArray(messages) ? messages : undefined;
-  if (normalizedMessages) ensureMessageIds(normalizedMessages);
+  if (normalizedMessages) {
+    ensureMessageIds(normalizedMessages);
+  }
   const plan = normalizeHookPlan(checkpoint.channel_values["hookPlan"]);
   return {
     checkpoint: {
@@ -44,8 +46,12 @@ export function persistCheckpointMessages(
   messages: BaseMessage[] | undefined,
   referencedMessages: BaseMessage[],
 ) {
-  if (messages) syncMessages(db, sessionId, messages);
-  for (const message of referencedMessages) persistMessageBlob(db, message);
+  if (messages) {
+    syncMessages(db, sessionId, messages);
+  }
+  for (const message of referencedMessages) {
+    persistMessageBlob(db, message);
+  }
 }
 export function hydrateCheckpoint(db: Database, checkpoint: Checkpoint) {
   const marker = parseMessageRefs(checkpoint.channel_values["messages"]);
@@ -62,25 +68,33 @@ export function hydrateCheckpoint(db: Database, checkpoint: Checkpoint) {
 export function normalizePendingValue(value: unknown) {
   if (BaseMessage.isInstance(value)) {
     ensureMessageIds([value]);
-    return { value: messageRefs([value], "single"), messages: [value] };
+    return { messages: [value], value: messageRefs([value], "single") };
   }
   if (isMessageArray(value)) {
     ensureMessageIds(value);
-    return { value: messageRefs(value, "array"), messages: value };
+    return { messages: value, value: messageRefs(value, "array") };
   }
   const plan = normalizeHookPlan(value);
-  return plan.messages.length > 0 ? { value: plan.value, messages: plan.messages } : { value };
+  return plan.messages.length > 0 ? { messages: plan.messages, value: plan.value } : { value };
 }
 export function persistPendingMessages(db: Database, messages: BaseMessage[] | undefined) {
-  for (const message of messages ?? []) persistMessageBlob(db, message);
+  for (const message of messages ?? []) {
+    persistMessageBlob(db, message);
+  }
 }
 export function hydratePendingValue(db: Database, value: unknown) {
   const marker = parseMessageRefs(value);
-  if (!marker) return hydrateHookPlan(db, value);
+  if (!marker) {
+    return hydrateHookPlan(db, value);
+  }
   const messages = loadMessagesByRefs(db, marker.refs);
-  if (marker.shape === "array") return messages;
+  if (marker.shape === "array") {
+    return messages;
+  }
   const [message] = messages;
-  if (!message) throw new Error("checkpoint 单消息引用为空");
+  if (!message) {
+    throw new Error("checkpoint 单消息引用为空");
+  }
   return message;
 }
 function messageRefs(messages: BaseMessage[], shape: MessageRefs["shape"]): MessageRefs {
@@ -90,9 +104,11 @@ function messageRefs(messages: BaseMessage[], shape: MessageRefs["shape"]): Mess
   };
 }
 function parseMessageRefs(value: unknown) {
-  if (!isRecord(value)) return undefined;
+  if (!isRecord(value)) {
+    return undefined;
+  }
   const refs = value[messageRefsKey];
-  const shape = value["shape"];
+  const { shape } = value;
   return Array.isArray(refs) &&
     refs.every(isMessageRef) &&
     (shape === "array" || shape === "single")
@@ -112,29 +128,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 function normalizeHookPlan(value: unknown) {
   if (!isRecord(value) || !isStoredMessage(value["original"])) {
-    return { value, messages: [] as BaseMessage[] };
+    return { messages: [] as BaseMessage[], value };
   }
   const [message] = mapStoredMessagesToChatMessages([value["original"]]);
-  if (!message) throw new Error("Hook plan 原消息无效");
+  if (!message) {
+    throw new Error("Hook plan 原消息无效");
+  }
   ensureMessageIds([message]);
   return {
+    messages: [message],
     value: {
       ...value,
       original: { [storedMessageRefKey]: messageRef(message) },
     },
-    messages: [message],
   };
 }
 function hydrateHookPlan(db: Database, value: unknown) {
-  if (!isRecord(value)) return value;
-  const original = value["original"];
+  if (!isRecord(value)) {
+    return value;
+  }
+  const { original } = value;
   if (!isRecord(original) || !isMessageRef(original[storedMessageRefKey])) {
     return value;
   }
   const [message] = loadMessagesByRefs(db, [original[storedMessageRefKey]]);
-  if (!message) throw new Error("Hook plan 原消息正文不存在");
+  if (!message) {
+    throw new Error("Hook plan 原消息正文不存在");
+  }
   const [stored] = mapChatMessagesToStoredMessages([message]);
-  if (!stored) throw new Error("无法还原 Hook plan 原消息");
+  if (!stored) {
+    throw new Error("无法还原 Hook plan 原消息");
+  }
   return { ...value, original: stored };
 }
 function isStoredMessage(value: unknown): value is StoredMessage {

@@ -7,7 +7,9 @@ interface HostSignalOptions {
   timeoutMs: number;
 }
 export function wireHostSignals(options: HostSignalOptions) {
-  if (!options.enabled) return () => undefined;
+  if (!options.enabled) {
+    return () => undefined;
+  }
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const stop = (signal: NodeJS.Signals) => {
     const reason = new Error(`收到 ${signal}`);
@@ -31,7 +33,9 @@ export function wireHostSignals(options: HostSignalOptions) {
   process.once("SIGINT", onSigint);
   process.once("SIGTERM", onSigterm);
   return () => {
-    if (timeout) clearTimeout(timeout);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
     process.removeListener("SIGINT", onSigint);
     process.removeListener("SIGTERM", onSigterm);
   };

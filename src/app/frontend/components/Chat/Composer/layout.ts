@@ -1,8 +1,8 @@
 import { css } from "styled-system/css";
 export const composerFrame = css({
   bg: "surface",
-  borderTopWidth: "1px",
   borderTopColor: "line",
+  borderTopWidth: "1px",
   display: "grid",
   gap: "3",
   gridTemplateColumns: {
@@ -30,6 +30,6 @@ export const composerRole = css({
   color: "mutedStrong",
   display: "flex",
   justifyContent: "center",
-  mt: { md: "auto" },
   minH: "8",
+  mt: { md: "auto" },
 });

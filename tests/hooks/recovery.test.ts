@@ -1,20 +1,20 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { AIMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { tool, type StructuredToolInterface } from "@langchain/core/tools";
-import { z } from "zod";
+import { type StructuredToolInterface, tool } from "@langchain/core/tools";
 import { expect, test } from "bun:test";
-import { createAgentGraph } from "../../src/agent";
+import { mkdtempSync, rmSync } from "node:fs";
+import { AIMessage } from "@langchain/core/messages";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { BunSqliteSaver } from "../../src/checkpointer";
 import { HookRuntime } from "../../src/hooks/runtime";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { Logger } from "../../src/infrastructure/logging/logger";
-import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { join } from "node:path";
+import { processQueue } from "../../src/runtime/queue";
 import { required } from "../support/database";
 import { testSettings } from "../support/settings";
+import { tmpdir } from "node:os";
+import { z } from "zod";
 test("host restart resumes after one committed hook boundary", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
   const path = join(dir, "agent.sqlite");
@@ -28,23 +28,25 @@ test("host restart resumes after one committed hook boundary", async () => {
       ({ previous }) => {
         hookCalls++;
         received.push(previous);
-        if (hookCalls === 1) db.setControl("session", "pause");
+        if (hookCalls === 1) {
+          db.setControl("session", "pause");
+        }
         return Promise.resolve("ok");
       },
       {
-        name: "hook",
         description: "hook",
+        name: "hook",
         schema: z.object({ previous: z.unknown().optional() }).strict(),
       },
     );
     const checkpointer = new BunSqliteSaver(db.db, "session");
     const firstHooks = runtime(db, hookTool, dir);
     const firstGraph = createAgentGraph({
-      settings: testSettings(dir),
-      model: fakeModel(),
-      tools: [hookTool],
-      hooks: firstHooks,
       checkpointer,
+      hooks: firstHooks,
+      model: fakeModel(),
+      settings: testSettings(dir),
+      tools: [hookTool],
     });
     const firstContext = makeContext(db, firstGraph, checkpointer, dir);
     firstContext.wake = () => {
@@ -60,7 +62,7 @@ test("host restart resumes after one committed hook boundary", async () => {
     });
     expect(checkpoint.next).toEqual(["hooks"]);
     expect(checkpoint.values).toMatchObject({
-      hookPlan: { kind: "agent", hookIndex: 1 },
+      hookPlan: { hookIndex: 1, kind: "agent" },
     });
     expect(db.history("session").map((message) => message.type)).toEqual(["human", "ai", "tool"]);
     db.close();
@@ -68,11 +70,11 @@ test("host restart resumes after one committed hook boundary", async () => {
     const recoveredHooks = runtime(db, hookTool, dir);
     const recoveredCheckpointer = new BunSqliteSaver(db.db, "session");
     const recoveredGraph = createAgentGraph({
-      settings: testSettings(dir),
-      model: fakeModel().respond(new AIMessage("done")),
-      tools: [hookTool],
-      hooks: recoveredHooks,
       checkpointer: recoveredCheckpointer,
+      hooks: recoveredHooks,
+      model: fakeModel().respond(new AIMessage("done")),
+      settings: testSettings(dir),
+      tools: [hookTool],
     });
     db.setControl("session", "running");
     await processQueue(
@@ -96,7 +98,7 @@ test("host restart resumes after one committed hook boundary", async () => {
 async function removeDirectory(dir: string) {
   for (let attempt = 0; ; attempt++) {
     try {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { force: true, recursive: true });
       return;
     } catch (error) {
       if (
@@ -113,22 +115,22 @@ function runtime(db: AgentDatabase, hookTool: StructuredToolInterface, dir: stri
   return new HookRuntime(
     [
       {
-        id: "user-first",
-        target: "agent",
-        when: "before",
-        runLimit: -1,
-        mode: "takeover",
-        tool: "hook",
         args: {},
+        id: "user-first",
+        mode: "takeover",
+        runLimit: -1,
+        target: "agent",
+        tool: "hook",
+        when: "before",
       },
       {
-        id: "user-second",
-        target: "agent",
-        when: "before",
-        runLimit: -1,
-        mode: "silent",
-        tool: "hook",
         args: { previous: "${previousTool.output}" },
+        id: "user-second",
+        mode: "silent",
+        runLimit: -1,
+        target: "agent",
+        tool: "hook",
+        when: "before",
       },
     ],
     [hookTool],
@@ -145,13 +147,13 @@ function makeContext(
   dataDir: string,
 ): HostContext {
   return {
-    settings: testSettings(dataDir),
-    logger: new Logger("error", true),
+    checkpointer,
+    controller: new AbortController(),
     db,
     graph: graph as HostContext["graph"],
-    checkpointer: checkpointer,
+    logger: new Logger("error", true),
     sessionId: "session",
-    controller: new AbortController(),
+    settings: testSettings(dataDir),
     wake: (delayMs) => Bun.sleep(delayMs),
   };
 }

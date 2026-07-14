@@ -19,8 +19,8 @@ test("only the next pending tool call is marked as started", () => {
       new AIMessage({
         content: "",
         tool_calls: [
-          { id: "call-1", name: "first", args: {} },
-          { id: "call-2", name: "second", args: {} },
+          { args: {}, id: "call-1", name: "first" },
+          { args: {}, id: "call-2", name: "second" },
         ],
       }),
       new ToolMessage({ content: "done", tool_call_id: "call-1" }),

@@ -1,14 +1,14 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { DynamicStructuredTool } from "@langchain/core/tools";
 import { afterEach, expect, test } from "bun:test";
-import { modelMessages } from "../../src/agent/model";
-import { createToolInvoker } from "../../src/agent/toolExecution";
-import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
-import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
 import {
   messageInsert,
   messageRowsToChatMessages,
 } from "../../src/infrastructure/database/records/messages/serialization";
+import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
+import { DynamicStructuredTool } from "@langchain/core/tools";
+import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
+import { createToolInvoker } from "../../src/agent/toolExecution";
+import { modelMessages } from "../../src/agent/model";
 import { testSettings } from "../support/settings";
 const servers: ReturnType<typeof Bun.serve>[] = [];
 afterEach(async () => {
@@ -17,12 +17,13 @@ afterEach(async () => {
 test("custom MCP tool output completes a Responses API round trip", async () => {
   const requests: Record<string, unknown>[] = [];
   const server = Bun.serve({
-    port: 0,
     async fetch(request) {
       const body = (await request.json()) as Record<string, unknown>;
       requests.push(body);
-      if (requests.length === 1) return Response.json(customToolResponse());
-      const input = body["input"];
+      if (requests.length === 1) {
+        return Response.json(customToolResponse());
+      }
+      const { input } = body;
       const output = Array.isArray(input) ? (input as unknown[]).at(-1) : undefined;
       const customCall = Array.isArray(input)
         ? (input as unknown[]).find((item) => isRecord(item) && item["type"] === "custom_tool_call")
@@ -40,27 +41,28 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
       }
       return Response.json(textResponse());
     },
+    port: 0,
   });
   servers.push(server);
   const tool = new DynamicStructuredTool({
-    name: "apply_patch",
     description: "Apply a patch",
+    func: () => Promise.resolve("Done!"),
+    name: "apply_patch",
     schema: {
-      type: "object" as const,
+      additionalProperties: false,
       properties: { patch: { type: "string" as const } },
       required: ["patch"],
-      additionalProperties: false,
+      type: "object" as const,
     },
-    func: () => Promise.resolve("Done!"),
   });
   const configured = configureFreeformMcpTools([tool], ["apply_patch"]);
   const model = new CompatibleChatOpenAIResponses({
-    model: "test-model",
     apiKey: "test-key",
-    maxRetries: 0,
-    streaming: false,
-    promptCacheKey: "test-session",
     configuration: { baseURL: `${server.url}v1` },
+    maxRetries: 0,
+    model: "test-model",
+    promptCacheKey: "test-session",
+    streaming: false,
   }).bindTools(configured.modelTools);
   const human = new HumanMessage("Apply the patch");
   const assistant = await model.invoke([human]);
@@ -70,7 +72,7 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
     : undefined;
   assistant.additional_kwargs["tool_outputs"] = [rawCustomCall];
   assistant.response_metadata["output"] = [
-    { type: "function_call", call_id: "call_1", name: "apply_patch" },
+    { call_id: "call_1", name: "apply_patch", type: "function_call" },
   ];
   const stored = messageInsert(assistant);
   const hydrated = messageRowsToChatMessages([
@@ -80,11 +82,13 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
     throw new Error("stored assistant response is not an AIMessage");
   }
   const call = hydrated.tool_calls?.[0];
-  if (!call) throw new Error("mock upstream did not return a tool call");
+  if (!call) {
+    throw new Error("mock upstream did not return a tool call");
+  }
   const invokeTool = createToolInvoker([tool], {
-    settings: responsesSettings(),
-    sessionId: "test-session",
     freeformToolParameters: configured.parameters,
+    sessionId: "test-session",
+    settings: responsesSettings(),
   });
   const output = await invokeTool(call, {
     configurable: { thread_id: "test-thread" },
@@ -100,41 +104,41 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
 function customToolResponse() {
   return response([
     {
-      id: "ct_1",
-      type: "custom_tool_call",
-      status: "completed",
       call_id: "call_1",
-      name: "apply_patch",
+      id: "ct_1",
       input: "*** Begin Patch\n*** End Patch",
+      name: "apply_patch",
+      status: "completed",
+      type: "custom_tool_call",
     },
   ]);
 }
 function textResponse() {
   return response([
     {
+      content: [{ annotations: [], text: "Patch applied", type: "output_text" }],
       id: "msg_1",
-      type: "message",
-      status: "completed",
       role: "assistant",
-      content: [{ type: "output_text", text: "Patch applied", annotations: [] }],
+      status: "completed",
+      type: "message",
     },
   ]);
 }
 function response(output: unknown[]) {
   return {
-    id: "resp_1",
-    object: "response",
     created_at: 0,
-    status: "completed",
+    id: "resp_1",
     model: "test-model",
+    object: "response",
     output,
     output_text: "",
+    status: "completed",
     usage: {
       input_tokens: 1,
-      output_tokens: 1,
-      total_tokens: 2,
       input_tokens_details: { cached_tokens: 0 },
+      output_tokens: 1,
       output_tokens_details: { reasoning_tokens: 0 },
+      total_tokens: 2,
     },
   };
 }

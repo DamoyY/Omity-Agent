@@ -1,8 +1,8 @@
 import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { forkDatabaseBeforeMessage } from "../../src/app/fork";
-import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
+import { forkDatabaseBeforeMessage } from "../../src/app/fork";
 afterEach(cleanupDatabaseDirs);
 test("fork copies messages before selected user message", () => {
   const source = makeDb();
@@ -17,12 +17,12 @@ test("fork copies messages before selected user message", () => {
   appendAssistantMessage(source.db, "source", "也不要复制");
   const forkMessageId = userMessageId(source, forkPoint);
   forkDatabaseBeforeMessage({
+    beforeMessageId: forkMessageId,
     source,
-    target,
     sourceSessionId: "source",
+    target,
     targetSessionId: "target",
     workspace,
-    beforeMessageId: forkMessageId,
   });
   expect(target.history("target").map((message) => message.text)).toEqual(["第一条", "第一条回复"]);
   expect(target.control("target")).toBe("running");
@@ -43,12 +43,12 @@ test("first user message cannot fork", () => {
   const firstMessageId = userMessageId(source, first);
   expect(() => {
     forkDatabaseBeforeMessage({
+      beforeMessageId: firstMessageId,
       source,
-      target,
       sourceSessionId: "source",
+      target,
       targetSessionId: "target",
       workspace,
-      beforeMessageId: firstMessageId,
     });
   }).toThrow("每个 session 的第一条用户消息不能 Fork");
   source.close();
@@ -89,12 +89,12 @@ test("fork point must be a user message", () => {
   const assistantRow = latestMessageId(source);
   expect(() => {
     forkDatabaseBeforeMessage({
+      beforeMessageId: assistantRow,
       source,
-      target,
       sourceSessionId: "source",
+      target,
       targetSessionId: "target",
       workspace,
-      beforeMessageId: assistantRow,
     });
   }).toThrow("只能从用户消息创建 Fork");
   source.close();
@@ -120,7 +120,7 @@ test("fork preserves completed takeover pairs in an editable draft", () => {
     ...source.history("source"),
     new AIMessage({
       content: "",
-      tool_calls: [{ id: "hook-call", name: "format", args: {} }],
+      tool_calls: [{ args: {}, id: "hook-call", name: "format" }],
     }),
     new ToolMessage({
       content: "formatted",
@@ -134,12 +134,12 @@ test("fork preserves completed takeover pairs in an editable draft", () => {
   source.startQueue("source", appendItem);
   const forkPoint = { id: userMessageId(source, appended) };
   forkDatabaseBeforeMessage({
+    beforeMessageId: forkPoint.id,
     source,
-    target,
     sourceSessionId: "source",
+    target,
     targetSessionId: "target",
     workspace,
-    beforeMessageId: forkPoint.id,
   });
   expect(target.history("target").map((message) => message.type)).toEqual([
     "human",

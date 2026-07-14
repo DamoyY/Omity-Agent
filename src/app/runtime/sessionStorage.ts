@@ -1,10 +1,10 @@
-import type { Settings } from "../../types";
+import { type InitialMessagePair, initialHistory } from "../initialState";
 import { resolveSessionPaths, sessionPaths } from "../../infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../../infrastructure/database/agentDatabase";
-import { removeDatabaseDirectory } from "../../infrastructure/database/connection";
-import { initializeConversation } from "../../infrastructure/database/initialConversation";
+import type { Settings } from "../../types";
 import { forkDatabaseBeforeMessage } from "../fork";
-import { initialHistory, type InitialMessagePair } from "../initialState";
+import { initializeConversation } from "../../infrastructure/database/initialConversation";
+import { removeDatabaseDirectory } from "../../infrastructure/database/connection";
 export function createSessionStorage(
   settings: Settings,
   sessionId: string,
@@ -21,7 +21,9 @@ export function createSessionStorage(
     initialized = true;
   } finally {
     db.close();
-    if (!initialized) removeDatabaseDirectory(paths.dir);
+    if (!initialized) {
+      removeDatabaseDirectory(paths.dir);
+    }
   }
 }
 export function forkSessionStorage({
@@ -46,12 +48,12 @@ export function forkSessionStorage({
     source = new AgentDatabase(sourcePaths.dbPath);
     target = new AgentDatabase(targetPaths.dbPath);
     forkDatabaseBeforeMessage({
+      beforeMessageId,
       source,
-      target,
       sourceSessionId,
+      target,
       targetSessionId,
       workspace,
-      beforeMessageId,
     });
     created = true;
   } finally {
@@ -62,7 +64,9 @@ export function forkSessionStorage({
         source?.close();
       }
     } finally {
-      if (!created) removeDatabaseDirectory(targetPaths.dir);
+      if (!created) {
+        removeDatabaseDirectory(targetPaths.dir);
+      }
     }
   }
 }

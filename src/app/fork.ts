@@ -1,10 +1,10 @@
+import type { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Database } from "bun:sqlite";
-import { randomUUID } from "node:crypto";
 import { DomainError } from "../errors";
-import { AgentDatabase } from "../infrastructure/database/agentDatabase";
-import { storeMessage } from "../infrastructure/database/records/messages/history";
-import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { contentToText } from "../runtime/content";
+import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
+import { randomUUID } from "node:crypto";
+import { storeMessage } from "../infrastructure/database/records/messages/history";
 interface MessageRow {
   id: number;
   source_id: string;
@@ -76,7 +76,9 @@ function forkMessages(db: Database, sessionId: string, beforePosition: number) {
 function insertMessages(db: Database, sessionId: string, messages: MessageRow[]) {
   for (const [position, message] of messages.entries()) {
     const [chatMessage] = messageRowsToChatMessages([message]);
-    if (!chatMessage) throw new Error("无法还原 Fork 消息");
+    if (!chatMessage) {
+      throw new Error("无法还原 Fork 消息");
+    }
     chatMessage.id = randomUUID();
     storeMessage(db, sessionId, chatMessage, position, undefined, message.created_at);
   }
@@ -90,7 +92,9 @@ function storedMessageType(value: string) {
 }
 function messageContent(value: string) {
   const [message] = messageRowsToChatMessages([{ message_json: value }]);
-  if (!message) throw new Error("无法还原 Fork 消息");
+  if (!message) {
+    throw new Error("无法还原 Fork 消息");
+  }
   return contentToText(message.content);
 }
 function isRecord(value: unknown): value is Record<string, unknown> {

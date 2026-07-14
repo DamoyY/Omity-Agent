@@ -1,5 +1,11 @@
-import { sameToolCall } from "./identity";
-import { groupAssistantMessages } from "./grouping";
+import type {
+  DisplayEvent,
+  DisplayMessage,
+  DisplayQueue,
+  DisplayRole,
+  TimelineMessage,
+  TimelinePart,
+} from "./types";
 import {
   currentToolCallEvents,
   eventMessageId,
@@ -9,14 +15,8 @@ import {
   eventText,
   streamToolCalls,
 } from "./streamEvents";
-import type {
-  DisplayEvent,
-  DisplayMessage,
-  DisplayQueue,
-  DisplayRole,
-  TimelineMessage,
-  TimelinePart,
-} from "./types";
+import { groupAssistantMessages } from "./grouping";
+import { sameToolCall } from "./identity";
 export type {
   DisplayEvent,
   DisplayImage,
@@ -92,14 +92,14 @@ function streamMessage(
   );
   return withParts(
     {
-      id: -1,
-      role: "assistant",
       content,
-      reasoning,
+      createdAt: 0,
+      id: -1,
       images: [],
       queueId: null,
+      reasoning,
+      role: "assistant",
       toolCalls,
-      createdAt: 0,
     },
     `stream-${item.id.toString()}`,
     outputs,
@@ -121,13 +121,13 @@ function withParts(
     ...(message.usage ? { usage: message.usage } : {}),
     parts: [
       ...(message.reasoning.trim()
-        ? [{ type: "reasoning", content: message.reasoning } as const]
+        ? [{ content: message.reasoning, type: "reasoning" } as const]
         : []),
-      ...(message.content.trim() ? [{ type: "content", content: message.content } as const] : []),
+      ...(message.content.trim() ? [{ content: message.content, type: "content" } as const] : []),
       ...message.toolCalls.map((call) => ({
-        type: "tool" as const,
         call,
         output: outputs.get(call.id),
+        type: "tool" as const,
         ...(startedCallIds.has(call.id) ? { started: true } : {}),
       })),
     ],
@@ -135,12 +135,12 @@ function withParts(
 }
 function synthetic(role: DisplayRole, content: string, key: string): TimelineMessage {
   return {
-    id: -1,
-    role,
     content,
     createdAt: 0,
+    id: -1,
     key,
-    parts: content.trim() ? [{ type: "content", content }] : [],
+    parts: content.trim() ? [{ content, type: "content" }] : [],
+    role,
   };
 }
 function toolParts(message: TimelineMessage) {

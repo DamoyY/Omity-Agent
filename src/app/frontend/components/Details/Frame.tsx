@@ -1,21 +1,29 @@
 import { ChevronRight, type LucideIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { sva } from "styled-system/css";
 const frame = sva({
-  slots: ["root", "summary", "disclosure", "icon", "title"],
   base: {
+    disclosure: {
+      color: "muted",
+      "details[open] &": { transform: "rotate(90deg)" },
+      flexShrink: 0,
+      transition: "transform 120ms ease",
+    },
+    icon: { flexShrink: 0 },
     root: {
+      "& pre": { m: 0, maxW: "full" },
       borderLeftWidth: "2px",
       color: "muted",
       fontSize: "sm",
       maxW: "full",
-      mt: "-2",
       minW: 0,
+      mt: "-2",
       p: 0,
       w: "full",
-      "& pre": { m: 0, maxW: "full" },
     },
     summary: {
+      "&::-webkit-details-marker": { display: "none" },
+      _hover: { bg: "controlHover" },
       alignItems: "center",
       cursor: "pointer",
       display: "flex",
@@ -24,16 +32,7 @@ const frame = sva({
       listStyle: "none",
       maxW: "full",
       px: "2",
-      _hover: { bg: "controlHover" },
-      "&::-webkit-details-marker": { display: "none" },
     },
-    disclosure: {
-      color: "muted",
-      flexShrink: 0,
-      transition: "transform 120ms ease",
-      "details[open] &": { transform: "rotate(90deg)" },
-    },
-    icon: { flexShrink: 0 },
     title: {
       color: "mutedStrong",
       flex: "1",
@@ -44,15 +43,16 @@ const frame = sva({
       whiteSpace: "nowrap",
     },
   },
+  slots: ["root", "summary", "disclosure", "icon", "title"],
   variants: {
     tone: {
       model: {
-        root: { borderLeftColor: "statusModel" },
         icon: { color: "statusModel" },
+        root: { borderLeftColor: "statusModel" },
       },
       tool: {
-        root: { borderLeftColor: "statusTool" },
         icon: { color: "statusTool" },
+        root: { borderLeftColor: "statusTool" },
       },
     },
   },

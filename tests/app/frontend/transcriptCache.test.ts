@@ -1,10 +1,10 @@
-import { expect, test } from "bun:test";
 import {
+  type TranscriptSnapshot,
   appendTranscriptEvents,
   emptyTranscriptData,
   reconcileTranscript,
-  type TranscriptSnapshot,
 } from "../../../src/app/frontend/services/transcript/cache";
+import { expect, test } from "bun:test";
 import type { DisplayEvent } from "../../../src/app/timeline";
 test("replays deltas that arrive after an older snapshot", () => {
   const current = appendTranscriptEvents(emptyTranscriptData(), [textEvent(2, "B")]);
@@ -25,20 +25,20 @@ test("completed snapshots replace cleared stream events", () => {
   const streaming = reconcileTranscript(snapshot(2, [textEvent(1, "A"), textEvent(2, "B")]));
   const completed: TranscriptSnapshot = {
     ...snapshot(2, []),
-    queue: [],
     messages: [
       {
-        id: 10,
-        sourceId: "assistant-10",
-        role: "assistant",
         content: "AB",
-        reasoning: "",
+        createdAt: 1,
+        id: 10,
         images: [],
         queueId: 1,
+        reasoning: "",
+        role: "assistant",
+        sourceId: "assistant-10",
         toolCalls: [],
-        createdAt: 1,
       },
     ],
+    queue: [],
   };
   const data = reconcileTranscript(completed, streaming);
   expect(data.events).toEqual([]);
@@ -48,18 +48,18 @@ test("completed snapshots replace cleared stream events", () => {
 function snapshot(eventCursor: number, events: DisplayEvent[]): TranscriptSnapshot {
   return {
     control: "running",
+    eventCursor,
+    events,
+    messages: [],
     queue: [
       {
-        id: 1,
         content: "question",
-        status: "running",
         error: null,
+        id: 1,
+        status: "running",
         userMessageId: 1,
       },
     ],
-    messages: [],
-    events,
-    eventCursor,
   };
 }
 function textEvent(id: number, text: string): DisplayEvent {

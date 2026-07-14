@@ -1,16 +1,16 @@
-import type { HonoRequest } from "hono/request";
-import { z } from "zod";
-import { safeId } from "../../infrastructure/configuration/sessionPaths";
 import type {
   MessageSubmission,
   PendingAttachment,
   SessionSubmission,
 } from "../attachments/contract";
+import type { HonoRequest } from "hono/request";
 import { HttpError } from "./errors";
+import { safeId } from "../../infrastructure/configuration/sessionPaths";
+import { z } from "zod";
 export const requestBodyLimit = 1024 * 1024;
 const nonEmptyMessage = z.string().refine((value) => value.trim().length > 0);
 const historySchema = z.array(
-  z.object({ user: nonEmptyMessage, assistant: nonEmptyMessage }).strict(),
+  z.object({ assistant: nonEmptyMessage, user: nonEmptyMessage }).strict(),
 );
 const messageFieldsSchema = z.object({
   content: nonEmptyMessage,
@@ -21,9 +21,9 @@ const messageFieldsSchema = z.object({
     .pipe(z.number().int().nonnegative()),
 });
 const sessionFieldsSchema = z.object({
-  workspace: z.string().trim().min(1).max(32_767),
-  message: nonEmptyMessage,
   history: historySchema,
+  message: nonEmptyMessage,
+  workspace: z.string().trim().min(1).max(32_767),
 });
 export const composerDraftBody = z
   .object({
@@ -66,8 +66,8 @@ export async function readMessageForm(request: HonoRequest): Promise<MessageSubm
 export async function readSessionForm(request: HonoRequest): Promise<SessionSubmission> {
   const form = await readFormData(request);
   const fields = {
-    workspace: singleText(form, "workspace"),
     message: singleText(form, "message"),
+    workspace: singleText(form, "workspace"),
   };
   let history: unknown;
   try {
@@ -91,13 +91,15 @@ async function readFormData(request: HonoRequest) {
 }
 function readAttachments(form: FormData, fields: Set<string>) {
   return [...form.entries()].flatMap(([key, value]): PendingAttachment[] => {
-    if (fields.has(key)) return [];
+    if (fields.has(key)) {
+      return [];
+    }
     const match =
       /^file:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u.exec(key);
     if (!match || typeof value === "string") {
       throw new HttpError(400, `附件字段无效：${key}`);
     }
-    return [{ id: match[1] ?? "", file: value }];
+    return [{ file: value, id: match[1] ?? "" }];
   });
 }
 function singleText(form: FormData, name: string) {

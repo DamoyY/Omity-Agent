@@ -23,13 +23,13 @@ export default class App extends Command {
   async run() {
     const { flags } = await this.parse(App);
     await startAppServer({
-      root: process.cwd(),
       host: flags.host,
-      port: flags.port,
       onReady: (url) => {
         this.log(`WebUI 已启动：${url}`);
         openBrowser(url);
       },
+      port: flags.port,
+      root: process.cwd(),
     });
   }
 }

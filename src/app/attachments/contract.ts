@@ -20,7 +20,9 @@ export interface AttachmentSettings {
   maxSizeBytes: number;
 }
 export function appendAttachments(body: FormData, attachments: PendingAttachment[]) {
-  for (const { id, file } of attachments) body.append(`file:${id}`, file);
+  for (const { id, file } of attachments) {
+    body.append(`file:${id}`, file);
+  }
 }
 const placeholderPattern = /\{\{file:([0-9a-f-]{36}):([^{}\r\n]+)\}\}/giu;
 export function attachmentPlaceholder(id: string, name: string) {
@@ -57,7 +59,9 @@ export function validateAttachmentBatch(
   files: Pick<File, "name" | "size">[],
   settings: AttachmentSettings,
 ) {
-  for (const file of files) validateAttachment(file, settings);
+  for (const file of files) {
+    validateAttachment(file, settings);
+  }
   const total = files.reduce((size, file) => size + file.size, 0);
   if (!Number.isSafeInteger(total)) {
     throw new DomainError("ATTACHMENT_TOO_LARGE", "附件总大小超出安全整数范围");

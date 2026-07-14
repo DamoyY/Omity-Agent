@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
-import { Logger } from "../../src/infrastructure/logging/logger";
-import type { HostContext } from "../../src/runtime/context";
-import { processQueue } from "../../src/runtime/queue";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import type { HostContext } from "../../src/runtime/context";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { processQueue } from "../../src/runtime/queue";
 afterEach(cleanupDatabaseDirs);
 test("paused polling publishes the state only once", async () => {
   const db = makeDb();
@@ -13,19 +13,19 @@ test("paused polling publishes the state only once", async () => {
   const controller = new AbortController();
   let changes = 0;
   const context = {
-    settings: { host: { pausePollMs: 1 } },
-    logger: new Logger("error"),
+    checkpointer: {},
+    controller,
     db,
     graph: {},
-    checkpointer: {},
-    sessionId: "123",
-    controller,
+    logger: new Logger("error"),
     observer: {
       changed: () => {
         changes += 1;
       },
       token: () => undefined,
     },
+    sessionId: "123",
+    settings: { host: { pausePollMs: 1 } },
   } as unknown as HostContext;
   const running = processQueue(context, item);
   await Bun.sleep(10);

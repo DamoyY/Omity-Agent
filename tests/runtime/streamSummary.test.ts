@@ -1,28 +1,28 @@
-import { expect, test } from "bun:test";
 import { createStreamLogState, incrementalSummary } from "../../src/runtime/stream";
+import { expect, test } from "bun:test";
 test("stream debug logging keeps only incremental context", () => {
   const state = createStreamLogState();
   const first = {
     values: {
       messages: [
-        { id: "user-1", content: "第一条" },
-        { id: "ai-1", content: "中间响应" },
+        { content: "第一条", id: "user-1" },
+        { content: "中间响应", id: "ai-1" },
       ],
     },
   };
   const second = {
     values: {
       messages: [
-        { id: "user-1", content: "第一条" },
-        { id: "ai-1", content: "中间响应" },
-        { id: "user-2", content: "第二条" },
+        { content: "第一条", id: "user-1" },
+        { content: "中间响应", id: "ai-1" },
+        { content: "第二条", id: "user-2" },
       ],
     },
   };
   expect(incrementalSummary(first, state)).toEqual(first);
   expect(incrementalSummary(second, state)).toEqual({
     values: {
-      messages: [{ id: "user-2", content: "第二条" }],
+      messages: [{ content: "第二条", id: "user-2" }],
     },
   });
   expect(incrementalSummary(second, state)).toBeUndefined();
@@ -45,9 +45,9 @@ test("incremental summary accepts JSON values and compares object keys stably", 
   };
   const reordered = {
     payload: {
-      items: [null, "value", { second: 2, first: 1 }],
-      enabled: true,
       count: 1,
+      enabled: true,
+      items: [null, "value", { first: 1, second: 2 }],
     },
   };
   expect(incrementalSummary(first, state)).toEqual(first);

@@ -26,28 +26,39 @@ export function hookCommand(
     rule.mode === "takeover"
       ? [
           new AIMessage({
-            id: plan.kind === "tools" ? plan.replaceMessageId : undefined,
             content: "",
+            id: plan.kind === "tools" ? plan.replaceMessageId : undefined,
             tool_calls: [result.call],
           }),
           result.output,
         ]
       : undefined;
   return new Command({
+    goto: hookNode,
     update: {
       hookPlan: nextPlan,
       hookPreviousOutput: result.value,
       ...(clearPending ? { hookPendingUserIds: [] } : {}),
       ...(messages ? { messages } : {}),
     },
-    goto: hookNode,
   });
 }
 export function originalToolCommand(plan: ToolHookPlan, original: AIMessage, call: ToolCall) {
-  if (!call.id) throw new Error(`工具调用缺少 ID：${call.name}`);
+  if (!call.id) {
+    throw new Error(`工具调用缺少 ID：${call.name}`);
+  }
   const includeResponse = !plan.responseEmitted;
   return new Command({
+    goto: toolsNode,
     update: {
+      hookPlan: {
+        ...plan,
+        awaiting: {
+          callId: call.id,
+        },
+        replaceMessageId: undefined,
+        responseEmitted: true,
+      },
       messages: [
         new AIMessage({
           id: plan.replaceMessageId,
@@ -55,16 +66,7 @@ export function originalToolCommand(plan: ToolHookPlan, original: AIMessage, cal
           ...partitionToolResponse(original, call.id, includeResponse),
         }),
       ],
-      hookPlan: {
-        ...plan,
-        replaceMessageId: undefined,
-        responseEmitted: true,
-        awaiting: {
-          callId: call.id,
-        },
-      },
     },
-    goto: toolsNode,
   });
 }
 export function finishAgent(plan: AgentHookPlan, clearPending: boolean) {
@@ -72,8 +74,10 @@ export function finishAgent(plan: AgentHookPlan, clearPending: boolean) {
     return command(null, modelNode, clearPending, plan.previousOutput);
   }
   const finalMessageId = plan.sources.at(-1);
-  if (!finalMessageId) throw new Error("Agent after Hook 缺少最终消息 ID");
-  return command({ kind: "done", finalMessageId }, END, clearPending, plan.previousOutput);
+  if (!finalMessageId) {
+    throw new Error("Agent after Hook 缺少最终消息 ID");
+  }
+  return command({ finalMessageId, kind: "done" }, END, clearPending, plan.previousOutput);
 }
 export function command(
   plan: HookPlan | null,
@@ -82,11 +86,11 @@ export function command(
   previousOutput?: unknown,
 ) {
   return new Command({
+    goto,
     update: {
       hookPlan: plan,
       hookPreviousOutput: previousOutput,
       ...(clearPending ? { hookPendingUserIds: [] } : {}),
     },
-    goto,
   });
 }

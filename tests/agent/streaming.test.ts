@@ -1,11 +1,11 @@
 import { AIMessageChunk, HumanMessage } from "@langchain/core/messages";
-import { FakeStreamingChatModel } from "@langchain/core/utils/testing";
 import { afterEach, expect, test } from "bun:test";
-import { createAgentGraph } from "../../src/agent";
+import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
+import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
+import { FakeStreamingChatModel } from "@langchain/core/utils/testing";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { Logger } from "../../src/infrastructure/logging/logger";
-import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
-import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
+import { createAgentGraph } from "../../src/agent";
 import { testSettings } from "../support/settings";
 afterEach(cleanupDatabaseDirs);
 test("streams every model delta once across the recoverable task boundary", async () => {
@@ -15,13 +15,13 @@ test("streams every model delta once across the recoverable task boundary", asyn
   const model = new FakeStreamingChatModel({
     chunks: [
       new AIMessageChunk({
-        content: [],
         additional_kwargs: {
           reasoning: {
-            type: "reasoning",
             summary: [{ index: 0, text: "分析", type: "summary_text" }],
+            type: "reasoning",
           },
         },
+        content: [],
       }),
       new AIMessageChunk({ content: "重" }),
       new AIMessageChunk({ content: "重" }),
@@ -29,10 +29,10 @@ test("streams every model delta once across the recoverable task boundary", asyn
   });
   const hooks = new HookRuntime([], [], db.db, logger, "session", workspace);
   const graph = createAgentGraph({
-    settings: testSettings(workspace),
-    model,
-    tools: [],
     hooks,
+    model,
+    settings: testSettings(workspace),
+    tools: [],
   });
   const tokens: string[] = [];
   const reasoning: string[] = [];

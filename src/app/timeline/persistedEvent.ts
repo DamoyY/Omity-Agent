@@ -1,10 +1,10 @@
-import { z } from "zod";
 import type {
   StreamEvent,
   StreamEventKind,
 } from "../../infrastructure/database/records/streamEvents";
 import type { DisplayEvent } from "./types";
 import { displayStreamEvent } from "./streamEvents";
+import { z } from "zod";
 export interface PersistedEventRow {
   id: number;
   queue_id: number;
@@ -34,7 +34,9 @@ export function persistedDisplayEvent(row: PersistedEventRow): DisplayEvent {
     kind: row.kind,
     value: JSON.parse(row.payload_json) as unknown,
   });
-  if (!parsed.success) throw new Error("stream 文本增量无效");
+  if (!parsed.success) {
+    throw new Error("stream 文本增量无效");
+  }
   const value = parsed.data;
   const base = {
     id: row.id,

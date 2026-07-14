@@ -1,9 +1,9 @@
-import { existsSync } from "node:fs";
-import { sessionNotFound } from "./errors";
-import { loadSettings } from "./infrastructure/configuration/loadSettings";
-import { resolveSessionPaths } from "./infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "./infrastructure/database/agentDatabase";
 import type { Control } from "./types";
+import { existsSync } from "node:fs";
+import { loadSettings } from "./infrastructure/configuration/loadSettings";
+import { resolveSessionPaths } from "./infrastructure/configuration/sessionPaths";
+import { sessionNotFound } from "./errors";
 export interface ClientCommand {
   sessionId: string;
   append?: string;

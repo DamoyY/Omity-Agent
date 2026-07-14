@@ -1,13 +1,13 @@
-import { AIMessage } from "@langchain/core/messages";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { parseError } from "../../src/failures/details";
-import { Logger } from "../../src/infrastructure/logging/logger";
-import { processQueue } from "../../src/runtime/queue";
-import type { HostContext } from "../../src/runtime/context";
-import type { Settings } from "../../src/types";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import { AIMessage } from "@langchain/core/messages";
+import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import type { HostContext } from "../../src/runtime/context";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
+import type { Settings } from "../../src/types";
+import { parseError } from "../../src/failures/details";
+import { processQueue } from "../../src/runtime/queue";
 afterEach(cleanupDatabaseDirs);
 test("unexpected errors pause the queue", async () => {
   const db = makeDb();
@@ -25,8 +25,8 @@ test("unexpected errors pause the queue", async () => {
   expect(db.control("123")).toBe("pause");
   const stored = db.db.query<{ error: string }, []>("SELECT error FROM queue LIMIT 1").get();
   expect(parseError(required(stored).error)).toMatchObject({
-    name: "Error",
     message: "boom",
+    name: "Error",
   });
   db.close();
 });
@@ -35,24 +35,26 @@ test("observer errors cannot revive a terminal queue", async () => {
   db.resetSession("123", workspace);
   db.appendUser("123", "会完成的输入");
   const item = required(db.nextQueue("123"));
-  const final = new AIMessage({ id: "final", content: "done" });
+  const final = new AIMessage({ content: "done", id: "final" });
   const graph = {
-    stream: () => Promise.resolve([]),
     getState: () =>
       Promise.resolve({
-        values: {
-          messages: [...db.history("123"), final],
-          hookPlan: { kind: "done", finalMessageId: "final" },
-        },
         next: [],
         tasks: [],
+        values: {
+          hookPlan: { finalMessageId: "final", kind: "done" },
+          messages: [...db.history("123"), final],
+        },
       }),
+    stream: () => Promise.resolve([]),
   };
   const context = makeContext(db, graph);
   let changes = 0;
   context.observer = {
     changed: () => {
-      if (++changes === 3) throw new Error("observer failed");
+      if (++changes === 3) {
+        throw new Error("observer failed");
+      }
     },
     token: () => undefined,
   };
@@ -126,48 +128,48 @@ test("host abort cancels an active graph stream", async () => {
 });
 function makeContext(db: AgentDatabase, graph: unknown): HostContext {
   return {
-    settings: makeSettings(),
-    logger: new Logger("error"),
+    checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
+    controller: new AbortController(),
     db,
     graph: graph as HostContext["graph"],
-    checkpointer: new MemorySaver() as unknown as HostContext["checkpointer"],
+    logger: new Logger("error"),
     sessionId: "123",
-    controller: new AbortController(),
+    settings: makeSettings(),
   };
 }
 function makeSettings(): Settings {
   return {
-    paths: { dataDir: "data" },
+    agent: { systemPrompt: "test" },
     attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,
     },
+    hooks: [],
+    host: {
+      idleLogMs: 1,
+      pausePollMs: 1,
+      pollMs: 1,
+      recursionLimit: 10,
+      shutdownTimeoutMs: 1000,
+    },
+    leases: { hostTtlMs: 30_000 },
+    logging: { level: "error", streamTokens: false },
     model: {
       adapter: "completions",
-      model: "test-model",
       apiKeyEnv: "TEST_OPENAI_KEY",
       baseURL: null,
+      model: "test-model",
       temperature: 0,
       timeoutMs: 1000,
     },
-    host: {
-      pollMs: 1,
-      pausePollMs: 1,
-      idleLogMs: 1,
-      recursionLimit: 10,
-      shutdownTimeoutMs: 1_000,
-    },
-    logging: { level: "error", streamTokens: false },
-    leases: { hostTtlMs: 30_000 },
-    toolOutput: { maxTokens: 8192 },
-    hooks: [],
-    agent: { systemPrompt: "test" },
+    paths: { dataDir: "data" },
     skills: {
-      enabled: false,
       directory: "~/.agents/skills",
-      usagePrompt: "use skills",
+      enabled: false,
       skillEnabled: {},
+      usagePrompt: "use skills",
     },
+    toolOutput: { maxTokens: 8192 },
   };
 }

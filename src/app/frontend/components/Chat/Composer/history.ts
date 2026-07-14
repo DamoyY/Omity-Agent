@@ -13,7 +13,9 @@ export class UserMessageHistory {
     this.index = undefined;
   }
   private previous(current: string, messages: readonly string[]) {
-    if (messages.length === 0) return undefined;
+    if (messages.length === 0) {
+      return undefined;
+    }
     if (this.index === undefined) {
       this.draft = current;
       this.index = messages.length - 1;
@@ -25,12 +27,14 @@ export class UserMessageHistory {
     return messages[this.index];
   }
   private next(messages: readonly string[]) {
-    if (this.index === undefined) return undefined;
+    if (this.index === undefined) {
+      return undefined;
+    }
     if (this.index < messages.length - 1) {
       this.index += 1;
       return messages[this.index];
     }
-    const draft = this.draft;
+    const { draft } = this;
     this.reset();
     return draft;
   }

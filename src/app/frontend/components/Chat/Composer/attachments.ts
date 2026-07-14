@@ -1,8 +1,8 @@
 import {
-  attachmentIds,
-  attachmentPlaceholder,
   type AttachmentSettings,
   type PendingAttachment,
+  attachmentIds,
+  attachmentPlaceholder,
   validateAttachmentBatch,
 } from "../../../../attachments/contract";
 import { reportError } from "../../../services/errors";
@@ -21,13 +21,15 @@ export class PendingAttachments {
     }
   }
   private add(files: File[], content: string) {
-    if (!this.settings) return undefined;
+    if (!this.settings) {
+      return undefined;
+    }
     const retained = this.values(content).map(({ file }) => file);
     validateAttachmentBatch([...retained, ...files], this.settings);
     return files
       .map((file) => {
         const id = crypto.randomUUID();
-        this.entries.set(id, { id, file });
+        this.entries.set(id, { file, id });
         return attachmentPlaceholder(id, file.name);
       })
       .join("\n");

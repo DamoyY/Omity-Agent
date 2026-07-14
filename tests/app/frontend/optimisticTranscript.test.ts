@@ -1,22 +1,22 @@
-import { QueryClient } from "@tanstack/react-query";
-import { expect, test } from "bun:test";
+import { type TranscriptData, transcriptKey } from "../../../src/app/frontend/services/queries";
 import {
   addOptimisticUser,
   confirmOptimisticUser,
   removeOptimisticUser,
 } from "../../../src/app/frontend/services/transcript/optimistic";
-import { transcriptKey, type TranscriptData } from "../../../src/app/frontend/services/queries";
 import {
   appendTranscriptEvents,
   emptyTranscriptData,
   rebuildTranscript,
 } from "../../../src/app/frontend/services/transcript/cache";
+import { expect, test } from "bun:test";
+import { QueryClient } from "@tanstack/react-query";
 test("optimistic user appears before a transcript has loaded", () => {
   const client = new QueryClient();
   addOptimisticUser(client, "session", "hello");
   const data = transcript(client);
   expect(data.view).toMatchObject([
-    { role: "user", content: "hello", parts: [{ content: "hello" }] },
+    { content: "hello", parts: [{ content: "hello" }], role: "user" },
   ]);
 });
 test("send confirmation converts optimistic user into a pending queue item", () => {
@@ -25,8 +25,8 @@ test("send confirmation converts optimistic user into a pending queue item", () 
   const key = addOptimisticUser(client, "session", "hello");
   confirmOptimisticUser(client, "session", key, 7, "hello");
   const data = transcript(client);
-  expect(data.queue).toMatchObject([{ id: 7, content: "hello", status: "pending" }]);
-  expect(data.view).toMatchObject([{ key: "queue-7", content: "hello" }]);
+  expect(data.queue).toMatchObject([{ content: "hello", id: 7, status: "pending" }]);
+  expect(data.view).toMatchObject([{ content: "hello", key: "queue-7" }]);
 });
 test("confirmation removes optimistic duplicate after SSE persisted the user", () => {
   const client = new QueryClient();
@@ -34,26 +34,26 @@ test("confirmation removes optimistic duplicate after SSE persisted the user", (
   const key = addOptimisticUser(client, "session", "hello");
   client.setQueryData<TranscriptData>(transcriptKey("session"), (current) =>
     rebuildTranscript(current ?? empty(), {
-      queue: [
-        {
-          id: 7,
-          content: "",
-          status: "running",
-          error: null,
-          userMessageId: 11,
-        },
-      ],
       messages: [
         {
-          id: 11,
-          sourceId: "human-11",
-          role: "user",
           content: "hello",
-          reasoning: "",
+          createdAt: 1,
+          id: 11,
           images: [],
           queueId: 7,
+          reasoning: "",
+          role: "user",
+          sourceId: "human-11",
           toolCalls: [],
-          createdAt: 1,
+        },
+      ],
+      queue: [
+        {
+          content: "",
+          error: null,
+          id: 7,
+          status: "running",
+          userMessageId: 11,
         },
       ],
     }),
@@ -86,13 +86,15 @@ test("stream deltas preserve optimistic users", () => {
     ]),
   );
   expect(transcript(client).view.at(-1)).toMatchObject({
-    role: "user",
     content: "hello",
+    role: "user",
   });
 });
 function transcript(client: QueryClient) {
   const data = client.getQueryData<TranscriptData>(transcriptKey("session"));
-  if (!data) throw new Error("transcript cache missing");
+  if (!data) {
+    throw new Error("transcript cache missing");
+  }
   return data;
 }
 function empty(): TranscriptData {

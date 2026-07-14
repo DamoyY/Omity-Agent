@@ -1,17 +1,17 @@
-import { AIMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { tool } from "@langchain/core/tools";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { afterEach, expect, test } from "bun:test";
-import { z } from "zod";
-import { createAgentGraph } from "../../src/agent";
-import { HookRuntime } from "../../src/hooks/runtime";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { Logger } from "../../src/infrastructure/logging/logger";
-import type { HostContext } from "../../src/runtime/context";
-import { processQueue } from "../../src/runtime/queue";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import { AIMessage } from "@langchain/core/messages";
+import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { HookRuntime } from "../../src/hooks/runtime";
+import type { HostContext } from "../../src/runtime/context";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { processQueue } from "../../src/runtime/queue";
 import { testSettings } from "../support/settings";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
 afterEach(cleanupDatabaseDirs);
 test("append during model execution continues after the agent boundary", async () => {
   const db = makeDb();
@@ -23,18 +23,18 @@ test("append during model execution continues after the agent boundary", async (
       afterCalls++;
       return Promise.resolve("notified");
     },
-    { name: "notify", description: "notify", schema: z.object({}) },
+    { description: "notify", name: "notify", schema: z.object({}) },
   );
   const hooks = new HookRuntime(
     [
       {
-        id: "after",
-        target: "agent",
-        when: "after",
-        runLimit: -1,
-        mode: "silent",
-        tool: "notify",
         args: {},
+        id: "after",
+        mode: "silent",
+        runLimit: -1,
+        target: "agent",
+        tool: "notify",
+        when: "after",
       },
     ],
     [afterTool],
@@ -59,11 +59,11 @@ test("append during model execution continues after the agent boundary", async (
     });
   const checkpointer = new MemorySaver();
   const graph = createAgentGraph({
-    settings: testSettings(workspace),
-    model,
-    tools: [afterTool],
-    hooks,
     checkpointer,
+    hooks,
+    model,
+    settings: testSettings(workspace),
+    tools: [afterTool],
   });
   try {
     await processQueue(context(db, graph, checkpointer), required(db.nextQueue("session")));
@@ -82,25 +82,27 @@ test("append before a pending model replaces its scheduled route", async () => {
   const beforeTool = tool(
     () => {
       beforeCalls++;
-      if (beforeCalls === 1) db.appendUser("session", "second");
+      if (beforeCalls === 1) {
+        db.appendUser("session", "second");
+      }
       return Promise.resolve("queued");
     },
     {
-      name: "queue-next",
       description: "queue next input",
+      name: "queue-next",
       schema: z.object({}),
     },
   );
   const hooks = new HookRuntime(
     [
       {
-        id: "before",
-        target: "agent",
-        when: "before",
-        runLimit: -1,
-        mode: "silent",
-        tool: "queue-next",
         args: {},
+        id: "before",
+        mode: "silent",
+        runLimit: -1,
+        target: "agent",
+        tool: "queue-next",
+        when: "before",
       },
     ],
     [beforeTool],
@@ -117,11 +119,11 @@ test("append before a pending model replaces its scheduled route", async () => {
   const model = fakeModel().respond(response).respond(response);
   const checkpointer = new MemorySaver();
   const graph = createAgentGraph({
-    settings: testSettings(workspace),
-    model,
-    tools: [beforeTool],
-    hooks,
     checkpointer,
+    hooks,
+    model,
+    settings: testSettings(workspace),
+    tools: [beforeTool],
   });
   try {
     await processQueue(context(db, graph, checkpointer), required(db.nextQueue("session")));
@@ -134,12 +136,12 @@ test("append before a pending model replaces its scheduled route", async () => {
 });
 function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
   return {
-    settings: testSettings(workspace),
-    logger: new Logger("error", true),
+    checkpointer: checkpointer as never,
+    controller: new AbortController(),
     db,
     graph: graph as HostContext["graph"],
-    checkpointer: checkpointer as never,
+    logger: new Logger("error", true),
     sessionId: "session",
-    controller: new AbortController(),
+    settings: testSettings(workspace),
   };
 }

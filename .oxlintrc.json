@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "perf": "warn",
+    "style": "warn",
+    "suspicious": "warn"
+  },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "rules": {
+    "func-style": "allow",
+    "jsx-max-depth": "allow",
+    "id-length": "allow",
+    "init-declarations": "allow",
+    "max-params": "allow",
+    "max-statements": "allow",
+    "no-magic-numbers": "allow",
+    "no-nested-ternary": "allow",
+    "no-ternary": "allow",
+    "react-in-jsx-scope": "allow",
+    "typescript/no-deprecated": "warn"
+  },
+  "plugins": [
+    "react",
+    "react-perf",
+    "promise"
+  ]
+}

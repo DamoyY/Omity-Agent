@@ -1,8 +1,8 @@
-import { Bot, Circle, CircleAlert, Pause, Wrench, type LucideIcon } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Bot, Circle, CircleAlert, type LucideIcon, Pause, Wrench } from "lucide-react";
 import { css, cva, cx } from "styled-system/css";
-import type { SessionStatus } from "../../../../types";
 import type { ErrorDetails } from "../../../../failures/details";
+import type { SessionStatus } from "../../../../types";
+import { useTranslation } from "react-i18next";
 const indicator = cva({
   base: {
     alignItems: "center",
@@ -23,11 +23,11 @@ const indicator = cva({
 });
 const activeIcon = css({ animation: "pulse 1.8s ease-in-out infinite" });
 const statusMeta: Record<SessionStatus, { icon: LucideIcon; label: string; active?: boolean }> = {
-  tool: { icon: Wrench, label: "statusTool", active: true },
-  model: { icon: Bot, label: "statusModel", active: true },
-  idle: { icon: Circle, label: "statusIdle" },
-  paused: { icon: Pause, label: "statusPaused" },
   error: { icon: CircleAlert, label: "statusError" },
+  idle: { icon: Circle, label: "statusIdle" },
+  model: { active: true, icon: Bot, label: "statusModel" },
+  paused: { icon: Pause, label: "statusPaused" },
+  tool: { active: true, icon: Wrench, label: "statusTool" },
 };
 export function Status({
   compact = false,

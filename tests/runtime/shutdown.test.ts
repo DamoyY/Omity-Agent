@@ -1,10 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { Logger } from "../../src/infrastructure/logging/logger";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import type { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import type { HostContext } from "../../src/runtime/context";
 import { HostLeaseLostError } from "../../src/runtime/execution/lease";
+import { Logger } from "../../src/infrastructure/logging/logger";
 import { processQueue } from "../../src/runtime/queue";
-import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
 afterEach(cleanupDatabaseDirs);
 test("graceful stop waits for the active graph stream boundary", async () => {
@@ -43,7 +43,9 @@ test("stop between queue status and claim cannot leave orphan running", async ()
   );
   context.observer = {
     changed: () => {
-      if (++changes === 1) stopping.abort(new Error("claim boundary stop"));
+      if (++changes === 1) {
+        stopping.abort(new Error("claim boundary stop"));
+      }
     },
     token: () => undefined,
   };
@@ -67,7 +69,9 @@ test("wrapped abort cannot let a former lease owner pause the run", async () => 
     new AbortController().signal,
   );
   context.assertLease = () => {
-    if (leaseLost) throw new HostLeaseLostError("lease lost");
+    if (leaseLost) {
+      throw new HostLeaseLostError("lease lost");
+    }
   };
   let failure: unknown;
   try {
@@ -88,15 +92,15 @@ function runningDatabase() {
 }
 function makeContext(db: AgentDatabase, graph: unknown, stopping: AbortSignal): HostContext {
   return {
-    settings: testSettings(workspace),
-    logger: new Logger("error", true),
-    db,
-    graph: graph as HostContext["graph"],
     checkpointer: {
       getTuple: () => Promise.resolve(undefined),
     } as unknown as HostContext["checkpointer"],
-    sessionId: "123",
     controller: new AbortController(),
+    db,
+    graph: graph as HostContext["graph"],
+    logger: new Logger("error", true),
+    sessionId: "123",
+    settings: testSettings(workspace),
     stopping,
   };
 }

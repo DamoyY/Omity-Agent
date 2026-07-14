@@ -1,5 +1,5 @@
+import { ToolExecutions, markMcpRequestStarted } from "../../src/agent/toolExecutions";
 import { expect, test } from "bun:test";
-import { markMcpRequestStarted, ToolExecutions } from "../../src/agent/toolExecutions";
 test("tool cancellation survives the gap before execution begins", () => {
   const executions = new ToolExecutions();
   executions.announce("call-1");

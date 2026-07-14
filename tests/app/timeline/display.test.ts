@@ -1,37 +1,37 @@
-import { expect, test } from "bun:test";
 import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
+import { expect, test } from "bun:test";
 import { buildTimeline } from "../../../src/app/timeline";
 test("streaming tool call is hidden after the final tool call is visible", () => {
   const messages: DisplayMessage[] = [
     {
-      id: 1,
-      sourceId: "message-1",
-      role: "assistant",
       content: "",
-      reasoning: "",
+      createdAt: 1,
+      id: 1,
       images: [],
       queueId: null,
+      reasoning: "",
+      role: "assistant",
+      sourceId: "message-1",
       toolCalls: [
         {
           id: "call-1",
           index: 0,
+          input: {},
           inputTokens: 1,
           name: "terminal_new_tab",
-          input: {},
         },
       ],
-      createdAt: 1,
     },
   ];
-  const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
+  const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
   const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_call",
       payload: {
+        call: { id: "call-1", index: 0, name: "terminal_new_tab" },
         kind: "tool_call_delta",
         queueId: 1,
-        call: { id: "call-1", name: "terminal_new_tab", index: 0 },
       },
     },
   ];
@@ -43,34 +43,34 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
 test("streaming tool call is grouped with previous assistant message", () => {
   const messages: DisplayMessage[] = [
     {
-      id: 1,
-      sourceId: "message-1",
-      role: "assistant",
       content: "",
-      reasoning: "",
+      createdAt: 1,
+      id: 1,
       images: [],
       queueId: null,
+      reasoning: "",
+      role: "assistant",
+      sourceId: "message-1",
       toolCalls: [
         {
           id: "call-1",
           index: 0,
+          input: {},
           inputTokens: 1,
           name: "terminal_new_tab",
-          input: {},
         },
       ],
-      createdAt: 1,
     },
   ];
-  const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
+  const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
   const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_call",
       payload: {
+        call: { id: "call-2", index: 1, name: "terminal_send_command" },
         kind: "tool_call_delta",
         queueId: 1,
-        call: { id: "call-2", name: "terminal_send_command", index: 1 },
       },
     },
   ];
@@ -80,30 +80,30 @@ test("streaming tool call is grouped with previous assistant message", () => {
 });
 test("tool output retains images", () => {
   const image = {
-    src: "data:image/png;base64,iVBORw0KGgo=",
     mimeType: "image/png",
+    src: "data:image/png;base64,iVBORw0KGgo=",
   };
   const messages: DisplayMessage[] = [
     {
-      id: 1,
-      role: "assistant",
       content: "",
-      reasoning: "",
+      createdAt: 1,
+      id: 1,
       images: [],
       queueId: null,
-      toolCalls: [{ id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} }],
-      createdAt: 1,
+      reasoning: "",
+      role: "assistant",
+      toolCalls: [{ id: "call-1", index: 0, input: {}, inputTokens: 1, name: "capture" }],
     },
     {
-      id: 2,
-      role: "tool",
       content: "",
-      reasoning: "",
+      createdAt: 2,
+      id: 2,
       images: [image],
       queueId: null,
-      toolCalls: [],
+      reasoning: "",
+      role: "tool",
       toolCallId: "call-1",
-      createdAt: 2,
+      toolCalls: [],
     },
   ];
   const view = buildTimeline(messages, [], []);
@@ -113,21 +113,21 @@ test("tool output retains images", () => {
 test("started tool call exposes an empty output state", () => {
   const messages: DisplayMessage[] = [
     {
-      id: 1,
-      role: "assistant",
       content: "",
-      reasoning: "",
+      createdAt: 1,
+      id: 1,
       images: [],
       queueId: null,
-      toolCalls: [{ id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} }],
-      createdAt: 1,
+      reasoning: "",
+      role: "assistant",
+      toolCalls: [{ id: "call-1", index: 0, input: {}, inputTokens: 1, name: "capture" }],
     },
   ];
   const events: DisplayEvent[] = [
     {
       id: 1,
       message: "tool_started",
-      payload: { kind: "tool_started", queueId: 1, callId: "call-1" },
+      payload: { callId: "call-1", kind: "tool_started", queueId: 1 },
     },
   ];
   const part = buildTimeline(messages, [], events)[0]?.parts.find((item) => item.type === "tool");
@@ -136,15 +136,15 @@ test("started tool call exposes an empty output state", () => {
 });
 test("grouped assistant messages retain the latest token usage", () => {
   const usage = {
+    cacheReadTokens: 900,
     inputTokens: 1200,
     outputTokens: 300,
-    cacheReadTokens: 900,
   };
   const messages: DisplayMessage[] = [
     assistant(1, {
+      cacheReadTokens: 400,
       inputTokens: 800,
       outputTokens: 200,
-      cacheReadTokens: 400,
     }),
     assistant(2, usage),
   ];
@@ -154,15 +154,15 @@ test("grouped assistant messages retain the latest token usage", () => {
 });
 function assistant(id: number, usage: NonNullable<DisplayMessage["usage"]>): DisplayMessage {
   return {
-    id,
-    role: "assistant",
     content: `回答 ${id.toString()}`,
-    reasoning: "",
+    createdAt: id,
+    id,
     images: [],
     queueId: null,
+    reasoning: "",
+    role: "assistant",
     toolCalls: [],
     usage,
-    createdAt: id,
   };
 }
 function toolCalls(message: ReturnType<typeof buildTimeline>[number] | undefined) {

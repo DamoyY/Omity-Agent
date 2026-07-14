@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
+import { messageInsert, messageRowsToChatMessages } from "./serialization";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
-import { messageInsert, messageRowsToChatMessages } from "./serialization";
 export interface StoredMessageRef {
   sourceId: string;
   digest: string;
@@ -13,9 +13,13 @@ export function loadMessagesByRefs(db: Database, refs: StoredMessageRef[]) {
   try {
     return refs.map((ref) => {
       const row = select.get(ref.digest);
-      if (!row) throw new Error(`checkpoint 消息正文不存在：${ref.digest}`);
+      if (!row) {
+        throw new Error(`checkpoint 消息正文不存在：${ref.digest}`);
+      }
       const [message] = messageRowsToChatMessages([{ ...row, source_id: ref.sourceId }]);
-      if (!message) throw new Error(`无法还原 checkpoint 消息：${ref.sourceId}`);
+      if (!message) {
+        throw new Error(`无法还原 checkpoint 消息：${ref.sourceId}`);
+      }
       return message;
     });
   } finally {
@@ -26,8 +30,8 @@ export function messageRef(message: BaseMessage): StoredMessageRef {
   message.id ??= randomUUID();
   const item = messageInsert(message);
   return {
-    sourceId: item.sourceId,
     digest: createHash("sha256").update(item.messageJson).digest("base64url"),
+    sourceId: item.sourceId,
   };
 }
 export function persistMessageBlob(db: Database, message: BaseMessage) {

@@ -1,41 +1,41 @@
 import type { ComponentProps, ReactNode } from "react";
 import { css, cx } from "styled-system/css";
 import {
+  type BadgeVariantProps,
+  type ButtonVariantProps,
+  type CodeVariantProps,
+  type InputVariantProps,
+  type TextareaVariantProps,
   badge as badgeRecipe,
   button as buttonRecipe,
   code as codeRecipe,
   field as fieldRecipe,
   input as inputRecipe,
   textarea as textareaRecipe,
-  type BadgeVariantProps,
-  type ButtonVariantProps,
-  type CodeVariantProps,
-  type InputVariantProps,
-  type TextareaVariantProps,
 } from "styled-system/recipes";
 const fieldClasses = fieldRecipe();
 const compactControl = css({
-  borderRadius: "0",
-  color: "text",
-  fontFamily: "body",
-  fontWeight: "normal",
-  minW: 0,
   _focusVisible: {
     outlineColor: "mutedStrong",
     outlineOffset: "2px",
     outlineStyle: "solid",
     outlineWidth: "1px",
   },
+  borderRadius: "0",
+  color: "text",
+  fontFamily: "body",
+  fontWeight: "normal",
+  minW: 0,
 });
 const surfacedControl = css({
-  bg: "control",
-  borderColor: "lineStrong",
   _disabled: {
     bg: "surface",
     borderColor: "line",
     color: "muted",
   },
   _hover: { bg: "controlHover" },
+  bg: "control",
+  borderColor: "lineStrong",
 });
 const compactBadge = css({
   bg: "surfaceRaised",
@@ -116,8 +116,8 @@ function FieldLabel({ className, ...props }: ComponentProps<"span">) {
   return <span className={cx(fieldClasses.label, className)} {...props} />;
 }
 export const Field = {
-  Root: FieldRoot,
   Label: FieldLabel,
+  Root: FieldRoot,
 };
 type BadgeProps = ComponentProps<"span"> & BadgeVariantProps;
 export function Badge({ className, size = "sm", variant = "outline", ...props }: BadgeProps) {

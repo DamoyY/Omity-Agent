@@ -1,10 +1,10 @@
-import { Plus } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
-import type { SessionInfo } from "../../services/client";
 import { Button } from "../ParkUI";
+import { Plus } from "lucide-react";
 import { SessionGroup } from "./SessionGroup";
+import type { SessionInfo } from "../../services/client";
+import { css } from "styled-system/css";
 import { groupSessions } from "./sessions";
+import { useTranslation } from "react-i18next";
 const panel = css({
   alignItems: "center",
   bg: "sidebar",

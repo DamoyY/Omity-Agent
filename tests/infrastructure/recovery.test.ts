@@ -8,48 +8,48 @@ test("recovery refuses a live lease unless its exact owner is confirmed dead", (
   const queueId = db.appendUser("123", "继续运行");
   db.startQueue("123", required(db.nextQueue("123")));
   db.acquireHostLease({
-    sessionId: "123",
+    now: 1000,
     ownerId: "host-a",
-    now: 1_000,
+    sessionId: "123",
     ttlMs: 100,
   });
   expect(db.hostLease("123")).toEqual({
-    sessionId: "123",
+    expiresAt: 1100,
     ownerId: "host-a",
-    expiresAt: 1_100,
+    sessionId: "123",
   });
-  expect(db.recoverInterruptedSession({ sessionId: "123", now: 1_050 })).toMatchObject({
+  expect(db.recoverInterruptedSession({ now: 1050, sessionId: "123" })).toMatchObject({
     status: "blocked",
   });
   expect(
     db.recoverInterruptedSession({
-      sessionId: "123",
-      now: 1_050,
       confirmedDeadOwnerId: "host-b",
+      now: 1050,
+      sessionId: "123",
     }),
   ).toMatchObject({ status: "blocked" });
   expect(db.queueStatus(queueId)).toBe("running");
   expect(
     db.recoverInterruptedSession({
-      sessionId: "123",
-      now: 1_050,
       confirmedDeadOwnerId: "host-a",
+      now: 1050,
+      sessionId: "123",
     }),
-  ).toEqual({ status: "recovered", action: "paused", activeItems: 1 });
+  ).toEqual({ action: "paused", activeItems: 1, status: "recovered" });
   expect(db.queueStatus(queueId)).toBe("paused");
   expect(db.control("123")).toBe("pause");
   expect(db.hostLease("123")).toBeNull();
   db.setControl("123", "running");
   db.startQueue("123", required(db.activeQueue("123")[0]));
   db.acquireHostLease({
-    sessionId: "123",
+    now: 2000,
     ownerId: "host-c",
-    now: 2_000,
+    sessionId: "123",
     ttlMs: 100,
   });
-  expect(db.recoverInterruptedSession({ sessionId: "123", now: 2_100 })).toMatchObject({
-    status: "recovered",
+  expect(db.recoverInterruptedSession({ now: 2100, sessionId: "123" })).toMatchObject({
     action: "paused",
+    status: "recovered",
   });
   expect(db.hostLease("123")).toBeNull();
   db.close();
@@ -63,10 +63,10 @@ test("recovery preserves pending work while normalizing an interrupted run", () 
   db.startQueue("123", required(db.nextQueue("123")));
   db.setQueueStatus(paused, "paused");
   db.setControl("123", "pause_cancel");
-  expect(db.recoverInterruptedSession({ sessionId: "123", now: 1_000 })).toEqual({
-    status: "recovered",
+  expect(db.recoverInterruptedSession({ now: 1000, sessionId: "123" })).toEqual({
     action: "paused",
     activeItems: 3,
+    status: "recovered",
   });
   expect(db.activeQueue("123").map(({ id, status }) => ({ id, status }))).toEqual([
     { id: running, status: "paused" },
@@ -87,10 +87,10 @@ test("recovery completes a persisted cancel and removes only its run data", () =
   insertThreadData(db, `123:${root.toString()}`);
   insertThreadData(db, "unrelated:1");
   db.setControl("123", "cancel");
-  expect(db.recoverInterruptedSession({ sessionId: "123", now: 1_000 })).toEqual({
-    status: "recovered",
+  expect(db.recoverInterruptedSession({ now: 1000, sessionId: "123" })).toEqual({
     action: "canceled",
     activeItems: 2,
+    status: "recovered",
   });
   expect([db.queueStatus(root), db.queueStatus(appended)]).toEqual(["canceled", "canceled"]);
   expect(db.control("123")).toBe("running");

@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import YAML from "yaml";
 import { normalizeFreeformToolInputs } from "./freeformInputs";
 import { normalizeMcpToolNameOverrides } from "./nameOverrides";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 const envPlaceholder = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
 type McpServers = Record<string, unknown>;
@@ -9,14 +9,14 @@ const mcpServerSchema = z.looseObject({});
 const mcpServersSchema = z.record(z.string(), mcpServerSchema);
 const mcpConfigurationSchema = z
   .object({
+    freeformToolInputs: z.unknown().optional(),
     mcpServers: mcpServersSchema.optional(),
     toolNameOverrides: z.unknown().optional(),
-    freeformToolInputs: z.unknown().optional(),
   })
   .strict();
 const stdioServerSchema = z.looseObject({
-  command: z.string(),
   args: z.array(z.string()).optional(),
+  command: z.string(),
 });
 export function readMcpConfiguration(path: string) {
   const parsed = expandEnvPlaceholders(YAML.parse(readFileSync(path, "utf8")) ?? {});
@@ -25,14 +25,16 @@ export function readMcpConfiguration(path: string) {
     const rootIssue = result.error.issues.find(
       (issue) => issue.code === "invalid_type" && issue.path.length === 0,
     );
-    if (rootIssue) throw new Error(`MCP 配置 ${path} 必须是对象`);
+    if (rootIssue) {
+      throw new Error(`MCP 配置 ${path} 必须是对象`);
+    }
     throw result.error;
   }
   const configuration = result.data;
   return {
+    freeformToolInputs: normalizeFreeformToolInputs(configuration.freeformToolInputs),
     mcpServers: normalizeMcpServers(configuration.mcpServers ?? {}),
     toolNameOverrides: normalizeMcpToolNameOverrides(configuration.toolNameOverrides),
-    freeformToolInputs: normalizeFreeformToolInputs(configuration.freeformToolInputs),
   };
 }
 export function expandEnvPlaceholders(value: unknown, path = "settings/mcp.yaml"): unknown {
@@ -64,10 +66,14 @@ export function normalizeMcpServers(mcpServers: McpServers): McpServers {
   );
 }
 function normalizeMcpServer(server: unknown): unknown {
-  if (!isRecord(server)) return server;
+  if (!isRecord(server)) {
+    return server;
+  }
   if ("command" in server) {
     const result = stdioServerSchema.safeParse(server);
-    if (!result.success) throw result.error;
+    if (!result.success) {
+      throw result.error;
+    }
     return {
       ...result.data,
       args: result.data.args ?? [],
@@ -80,7 +86,9 @@ function normalizeMcpServer(server: unknown): unknown {
   if ("authProvider" in server) {
     throw new Error("MCP authProvider 会在认证失败后自动重试，请改用静态 headers");
   }
-  if (!("url" in server)) return server;
+  if (!("url" in server)) {
+    return server;
+  }
   return {
     ...server,
     automaticSSEFallback: false,

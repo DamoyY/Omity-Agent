@@ -1,6 +1,6 @@
-import type { SQLQueryBindings } from "bun:sqlite";
 import type { CheckpointListOptions } from "@langchain/langgraph-checkpoint";
 import type { RunnableConfig } from "@langchain/core/runnables";
+import type { SQLQueryBindings } from "bun:sqlite";
 export type SqlBinding = SQLQueryBindings;
 export interface CheckpointRow {
   thread_id: string;
@@ -87,7 +87,9 @@ export function filterBinding(value: unknown): SqlBinding {
   return JSON.stringify(value);
 }
 export function optionalConfigString(value: unknown, name: string) {
-  if (value === undefined || value === null) return undefined;
+  if (value === undefined || value === null) {
+    return undefined;
+  }
   if (typeof value !== "string") {
     throw new Error(`${name} 必须是字符串`);
   }
@@ -95,7 +97,9 @@ export function optionalConfigString(value: unknown, name: string) {
 }
 export function requiredConfigString(value: unknown, name: string) {
   const parsed = optionalConfigString(value, name);
-  if (!parsed) throw new Error(`缺少 ${name}`);
+  if (!parsed) {
+    throw new Error(`缺少 ${name}`);
+  }
   return parsed;
 }
 export function buildListQuery(config: RunnableConfig, options?: CheckpointListOptions) {
@@ -136,7 +140,7 @@ export function buildListQuery(config: RunnableConfig, options?: CheckpointListO
     sql += " LIMIT ?";
     args.push(limit);
   }
-  return { sql, args };
+  return { args, sql };
 }
 function requireRecord(value: unknown, name: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {

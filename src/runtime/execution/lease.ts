@@ -1,11 +1,11 @@
-import { DomainError } from "../../errors";
-import type { AgentDatabase } from "../../infrastructure/database/agentDatabase";
-import type { Logger } from "../../infrastructure/logging/logger";
 import {
+  type ProcessOwner,
   hostOwnerId,
   standaloneOwner,
-  type ProcessOwner,
 } from "../../infrastructure/process/ownership";
+import type { AgentDatabase } from "../../infrastructure/database/agentDatabase";
+import { DomainError } from "../../errors";
+import type { Logger } from "../../infrastructure/logging/logger";
 export class HostLeaseLostError extends Error {}
 export class HostLease {
   private readonly ownerId: string;
@@ -22,9 +22,9 @@ export class HostLease {
     this.ownerId = hostOwnerId(owner);
     if (
       !db.acquireHostLease({
-        sessionId,
-        ownerId: this.ownerId,
         now: Date.now(),
+        ownerId: this.ownerId,
+        sessionId,
         ttlMs,
       })
     ) {
@@ -39,7 +39,9 @@ export class HostLease {
     this.timer.unref();
   }
   assertOwned() {
-    if (this.error) throw this.error;
+    if (this.error) {
+      throw this.error;
+    }
     if (this.db.hostLease(this.sessionId)?.ownerId !== this.ownerId) {
       const error = new HostLeaseLostError(`Host Lease 已丢失：${this.sessionId}`);
       this.fail(error);
@@ -53,9 +55,9 @@ export class HostLease {
   private renew() {
     try {
       const renewed = this.db.renewHostLease({
-        sessionId: this.sessionId,
-        ownerId: this.ownerId,
         now: Date.now(),
+        ownerId: this.ownerId,
+        sessionId: this.sessionId,
         ttlMs: this.ttlMs,
       });
       if (!renewed) {
@@ -69,8 +71,8 @@ export class HostLease {
     this.error = error;
     this.controller.abort(error);
     this.logger.error("Host Lease 续租失败", {
-      sessionId: this.sessionId,
       error: error.message,
+      sessionId: this.sessionId,
     });
   }
 }

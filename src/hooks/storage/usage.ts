@@ -5,7 +5,9 @@ export function consumeHookUsage(
   hookId: string,
   limit: number,
 ): boolean {
-  if (limit === -1) return true;
+  if (limit === -1) {
+    return true;
+  }
   return (
     db
       .query<{ used_count: number }, [string, string, number, number]>(

@@ -1,19 +1,19 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
 import {
   clearSessionDraft,
   readSessionDraft,
   writeSessionDraft,
 } from "../../src/app/composerDraft";
-import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
+import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { join } from "node:path";
+import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { testSettings } from "../support/settings";
+import { tmpdir } from "node:os";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("session composer drafts survive database reopen", () => {

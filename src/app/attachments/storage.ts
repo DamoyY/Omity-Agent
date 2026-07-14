@@ -1,15 +1,15 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
-import type { Settings } from "../../types";
-import { DomainError } from "../../errors";
-import { resolveSessionPaths } from "../../infrastructure/configuration/sessionPaths";
 import {
+  type PendingAttachment,
   attachmentIds,
   fileSuffix,
-  type PendingAttachment,
   validateAttachmentBatch,
 } from "./contract";
+import { basename, join } from "node:path";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { DomainError } from "../../errors";
+import type { Settings } from "../../types";
+import { randomUUID } from "node:crypto";
+import { resolveSessionPaths } from "../../infrastructure/configuration/sessionPaths";
 export async function saveMessageAttachments(
   settings: Settings,
   sessionId: string,
@@ -19,7 +19,9 @@ export async function saveMessageAttachments(
   const referenced = attachmentIds(content);
   const selected = attachments.filter(({ id }) => referenced.has(id));
   validateSelected(selected, referenced, settings);
-  if (selected.length === 0) return saved(content, []);
+  if (selected.length === 0) {
+    return saved(content, []);
+  }
   const session = resolveSessionPaths(settings, sessionId);
   const directory = join(session.dir, "attachments");
   await mkdir(directory, { recursive: true });

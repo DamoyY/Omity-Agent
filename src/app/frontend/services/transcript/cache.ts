@@ -1,11 +1,11 @@
-import type { Control } from "../../../../types";
 import {
-  buildTimeline,
   type DisplayEvent,
   type DisplayMessage,
   type DisplayQueue,
   type TimelineMessage,
+  buildTimeline,
 } from "../../../timeline";
+import type { Control } from "../../../../types";
 export interface TranscriptSnapshot {
   control: Control;
   queue: DisplayQueue[];
@@ -19,10 +19,10 @@ export interface TranscriptData extends TranscriptSnapshot {
 export function emptyTranscriptData(): TranscriptData {
   return {
     control: "running",
-    queue: [],
-    messages: [],
-    events: [],
     eventCursor: 0,
+    events: [],
+    messages: [],
+    queue: [],
     view: [],
   };
 }
@@ -34,8 +34,8 @@ export function reconcileTranscript(
   return buildTranscript(
     {
       ...snapshot,
-      events: replay?.length ? [...snapshot.events, ...replay] : snapshot.events,
       eventCursor: replay?.at(-1)?.id ?? snapshot.eventCursor,
+      events: replay?.length ? [...snapshot.events, ...replay] : snapshot.events,
     },
     optimisticMessages(current),
   );
@@ -45,13 +45,15 @@ export function appendTranscriptEvents(current: TranscriptData, incoming: Displa
     ...new Map(
       incoming.filter((event) => event.id > current.eventCursor).map((event) => [event.id, event]),
     ).values(),
-  ].sort((left, right) => left.id - right.id);
-  if (events.length === 0) return current;
+  ].toSorted((left, right) => left.id - right.id);
+  if (events.length === 0) {
+    return current;
+  }
   return buildTranscript(
     {
       ...current,
-      events: [...current.events, ...events],
       eventCursor: events.at(-1)?.id ?? current.eventCursor,
+      events: [...current.events, ...events],
     },
     optimisticMessages(current),
   );

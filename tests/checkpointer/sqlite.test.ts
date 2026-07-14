@@ -1,15 +1,17 @@
+import { afterEach, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { BunSqliteSaver } from "../../src/checkpointer";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, expect, test } from "bun:test";
-import { BunSqliteSaver } from "../../src/checkpointer";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
 afterEach(() => {
-  for (const db of databases.splice(0)) db.close();
+  for (const db of databases.splice(0)) {
+    db.close();
+  }
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 function makePath() {
@@ -34,14 +36,14 @@ test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   const saved = await saver.put(
     { configurable: { thread_id: "thread-1" } },
     {
-      v: 4,
-      id: "00000000-0000-6000-8000-000000000001",
-      ts: new Date(0).toISOString(),
       channel_values: { messages: ["hello"] },
       channel_versions: { messages: 1 },
+      id: "00000000-0000-6000-8000-000000000001",
+      ts: new Date(0).toISOString(),
+      v: 4,
       versions_seen: {},
     },
-    { source: "input", step: -1, parents: {} },
+    { parents: {}, source: "input", step: -1 },
   );
   await saver.putWrites(saved, [["messages", "pending"]], "task-1");
   closeDatabase(first.db);
@@ -86,18 +88,18 @@ test("pending writes keep deterministic order and per-channel conflicts", async 
 });
 function putCheckpoint(saver: BunSqliteSaver, threadId: string, checkpointNs: string, id: string) {
   return saver.put(
-    { configurable: { thread_id: threadId, checkpoint_ns: checkpointNs } },
+    { configurable: { checkpoint_ns: checkpointNs, thread_id: threadId } },
     checkpoint(id),
-    { source: "input", step: -1, parents: {} },
+    { parents: {}, source: "input", step: -1 },
   );
 }
 function checkpoint(id: string) {
   return {
-    v: 4,
-    id,
-    ts: new Date(0).toISOString(),
     channel_values: {},
     channel_versions: {},
+    id,
+    ts: new Date(0).toISOString(),
+    v: 4,
     versions_seen: {},
   };
 }

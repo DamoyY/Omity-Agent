@@ -1,12 +1,9 @@
-import { Hono, type Context } from "hono";
-import { bodyLimit } from "hono/body-limit";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { AppController } from "../controller";
-import { errorResponse, HttpError } from "./errors";
+import { type Context, Hono } from "hono";
+import { HttpError, errorResponse } from "./errors";
 import {
   cancelToolBody,
-  controlBody,
   composerDraftBody,
+  controlBody,
   decodeSessionId,
   forkBody,
   readJson,
@@ -14,6 +11,9 @@ import {
   readSessionForm,
   requestBodyLimit,
 } from "./request";
+import type { AppController } from "../controller";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { bodyLimit } from "hono/body-limit";
 export type ApiController = Pick<
   AppController,
   | "bootstrap"
@@ -53,11 +53,11 @@ export function createApi(controller: ApiController) {
   app.post("/api/workspace-picker", async (c) =>
     c.json({ workspace: await controller.pickWorkspace() }),
   );
-  app.post("/api/sessions", attachmentRequestLimit, async (c) => {
-    return c.json({
+  app.post("/api/sessions", attachmentRequestLimit, async (c) =>
+    c.json({
       session: await controller.createSession(await readSessionForm(c.req)),
-    });
-  });
+    }),
+  );
   app.delete("/api/sessions/:sessionId", async (c) => {
     const sessionId = decodeSessionId(c.req.param("sessionId"));
     return c.json(await controller.deleteSession(sessionId));
@@ -106,6 +106,8 @@ export function createApi(controller: ApiController) {
 }
 function sessionId(c: Context) {
   const value = c.req.param("sessionId");
-  if (value === undefined) throw new HttpError(400, "请求缺少 Session ID");
+  if (value === undefined) {
+    throw new HttpError(400, "请求缺少 Session ID");
+  }
   return decodeSessionId(value);
 }

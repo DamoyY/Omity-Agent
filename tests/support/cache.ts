@@ -1,12 +1,14 @@
-import { ToolMessage, type BaseMessage } from "@langchain/core/messages";
+import { type BaseMessage, ToolMessage } from "@langchain/core/messages";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { afterEach } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 const servers: ReturnType<typeof Bun.serve>[] = [];
 const databases: AgentDatabase[] = [];
 export function cacheTestCleanup() {
   afterEach(async () => {
-    for (const database of databases.splice(0)) database.close();
+    for (const database of databases.splice(0)) {
+      database.close();
+    }
     await Promise.all(servers.splice(0).map((server) => server.stop(true)));
   });
 }
@@ -19,79 +21,81 @@ export function persist(messages: BaseMessage[]) {
 }
 export function lookupTool() {
   return new DynamicStructuredTool({
-    name: "lookup",
     description: "look up a value",
+    func: () => Promise.resolve("unused"),
+    name: "lookup",
     schema: {
-      type: "object" as const,
+      additionalProperties: false,
       properties: { query: { type: "string" as const } },
       required: ["query"],
-      additionalProperties: false,
+      type: "object" as const,
     },
-    func: () => Promise.resolve("unused"),
   });
 }
 export function imageToolOutput() {
   return new ToolMessage({
-    id: "tool-1",
-    tool_call_id: "call-1",
-    name: "lookup",
     content: [
-      { type: "text", text: "found" },
+      { text: "found", type: "text" },
       {
-        type: "image_url",
         image_url: { url: "data:image/png;base64,AAAA" },
+        type: "image_url",
       },
     ],
+    id: "tool-1",
+    name: "lookup",
+    tool_call_id: "call-1",
   });
 }
 export function mockCompletions(requests: Record<string, unknown>[]) {
   return mockOpenAI(requests, () => ({
-    id: "completion",
-    object: "chat.completion",
-    created: 0,
-    model: "test",
     choices: [
       {
-        index: 0,
-        message: { role: "assistant", content: "ok" },
         finish_reason: "stop",
+        index: 0,
+        message: { content: "ok", role: "assistant" },
       },
     ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    created: 0,
+    id: "completion",
+    model: "test",
+    object: "chat.completion",
+    usage: { completion_tokens: 1, prompt_tokens: 1, total_tokens: 2 },
   }));
 }
 export function mockResponses(requests: Record<string, unknown>[]) {
   return mockOpenAI(requests, () => ({
-    id: `response-${requests.length.toString()}`,
-    object: "response",
     created_at: 0,
-    status: "completed",
+    id: `response-${requests.length.toString()}`,
     model: "test",
+    object: "response",
     output: [
       {
+        content: [{ annotations: [], text: "ok", type: "output_text" }],
         id: `message-${requests.length.toString()}`,
-        type: "message",
-        status: "completed",
         role: "assistant",
-        content: [{ type: "output_text", text: "ok", annotations: [] }],
+        status: "completed",
+        type: "message",
       },
     ],
     output_text: "ok",
+    status: "completed",
     usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
   }));
 }
 export function requiredArray(value: unknown): unknown[] {
-  if (!Array.isArray(value)) throw new Error("模型请求缺少数组输入");
+  if (!Array.isArray(value)) {
+    throw new Error("模型请求缺少数组输入");
+  }
   return value;
 }
 function mockOpenAI(requests: Record<string, unknown>[], response: () => unknown) {
   const server = Bun.serve({
-    port: 0,
     async fetch(request) {
       const body = (await request.json()) as Record<string, unknown>;
       requests.push(body);
       return Response.json(response());
     },
+    port: 0,
   });
   servers.push(server);
   return server;

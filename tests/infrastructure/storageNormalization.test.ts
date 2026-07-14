@@ -1,7 +1,7 @@
 import { AIMessage, ToolMessage, mapChatMessagesToStoredMessages } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { BunSqliteSaver } from "../../src/checkpointer";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+import { BunSqliteSaver } from "../../src/checkpointer";
 afterEach(cleanupDatabaseDirs);
 test("one database stores each message body once and clears terminal recovery data", async () => {
   const db = makeDb();
@@ -12,23 +12,25 @@ test("one database stores each message body once and clears terminal recovery da
   db.appendUser("session", userText);
   db.startQueue("session", required(db.nextQueue("session")));
   const toolOutput = new ToolMessage({
-    id: "hook-output",
     content: toolText,
+    id: "hook-output",
     tool_call_id: "hook-call",
   });
   const assistant = new AIMessage({
-    id: "assistant-output",
     content: assistantText,
+    id: "assistant-output",
   });
   const messages = [...db.history("session"), assistant];
   const saver = new BunSqliteSaver(db.db, "session");
   const saved = await saver.put(
     { configurable: { thread_id: "session:1" } },
     checkpoint(messages),
-    { source: "loop", step: 0, parents: {} },
+    { parents: {}, source: "loop", step: 0 },
   );
   const [storedAssistant] = mapChatMessagesToStoredMessages([assistant]);
-  if (!storedAssistant) throw new Error("测试消息序列化失败");
+  if (!storedAssistant) {
+    throw new Error("测试消息序列化失败");
+  }
   await saver.putWrites(
     saved,
     [
@@ -45,8 +47,8 @@ test("one database stores each message body once and clears terminal recovery da
         "messages",
         [
           new ToolMessage({
-            id: "ignored-output",
             content: ignoredText,
+            id: "ignored-output",
             tool_call_id: "ignored-call",
           }),
         ],
@@ -93,11 +95,11 @@ test("one database stores each message body once and clears terminal recovery da
 });
 function checkpoint(messages: unknown[]) {
   return {
-    v: 4,
-    id: "00000000-0000-6000-8000-000000000001",
-    ts: new Date(0).toISOString(),
     channel_values: { messages },
     channel_versions: { messages: 1 },
+    id: "00000000-0000-6000-8000-000000000001",
+    ts: new Date(0).toISOString(),
+    v: 4,
     versions_seen: {},
   };
 }
@@ -134,7 +136,9 @@ function rawRecoveryContains(db: ReturnType<typeof makeDb>["db"], value: string)
   return checkpointCount + writeCount > 0;
 }
 function rowCount(db: ReturnType<typeof makeDb>["db"], table: string) {
-  if (!/^[a-z_]+$/.test(table)) throw new Error(`测试表名无效：${table}`);
+  if (!/^[a-z_]+$/.test(table)) {
+    throw new Error(`测试表名无效：${table}`);
+  }
   return required(db.query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM ${table}`).get())
     .count;
 }

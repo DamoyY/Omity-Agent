@@ -1,23 +1,23 @@
-import type { Database } from "bun:sqlite";
 import {
   type Checkpoint,
   type CheckpointPendingWrite,
   type CheckpointTuple,
   type SerializerProtocol,
 } from "@langchain/langgraph-checkpoint";
-import type { RunnableConfig } from "@langchain/core/runnables";
 import type { CheckpointRow, WriteJson } from "./sql";
-import { deserialize } from "./serde";
 import { hydrateCheckpoint, hydratePendingValue } from "./messageRefs";
+import type { Database } from "bun:sqlite";
+import type { RunnableConfig } from "@langchain/core/runnables";
+import { deserialize } from "./serde";
 import { z } from "zod";
 interface TupleContext {
   db: Database;
   serde: SerializerProtocol;
 }
 const writeRowSchema = z.looseObject({
-  task_id: z.string(),
-  idx: z.number(),
   channel: z.string(),
+  idx: z.number(),
+  task_id: z.string(),
   type: z.string(),
   value: z.string(),
 });
@@ -31,15 +31,15 @@ export async function rowToTuple(
     await deserialize<Checkpoint>(ctx.serde, row.type, row.checkpoint),
   );
   return {
-    config,
     checkpoint,
+    config,
     metadata: await deserialize(ctx.serde, row.type, row.metadata),
     parentConfig: row.parent_checkpoint_id
       ? {
           configurable: {
-            thread_id: row.thread_id,
-            checkpoint_ns: row.checkpoint_ns,
             checkpoint_id: row.parent_checkpoint_id,
+            checkpoint_ns: row.checkpoint_ns,
+            thread_id: row.thread_id,
           },
         }
       : undefined,

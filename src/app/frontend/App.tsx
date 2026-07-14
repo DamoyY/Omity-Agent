@@ -1,17 +1,17 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
-import { cx } from "styled-system/css";
-import { ChatPage } from "./components/Chat/ChatPage";
-import { Sidebar } from "./components/Sidebar";
-import { layout, main, sidebar } from "./design";
 import {
+  type Page,
   readPage,
   resolvePage,
   sessionPage,
   usePageNavigation,
   writePage,
-  type Page,
 } from "./route";
+import {
+  addOptimisticUser,
+  confirmOptimisticUser,
+  removeOptimisticUser,
+} from "./services/transcript/optimistic";
+import { addSession, removeSession, useBootstrap, useSessionTranscript } from "./services/queries";
 import {
   cancelTool,
   createSession,
@@ -21,13 +21,13 @@ import {
   sendMessage,
   setControl,
 } from "./services/client";
-import { addSession, removeSession, useBootstrap, useSessionTranscript } from "./services/queries";
-import {
-  addOptimisticUser,
-  confirmOptimisticUser,
-  removeOptimisticUser,
-} from "./services/transcript/optimistic";
+import { layout, main, sidebar } from "./design";
+import { useCallback, useState } from "react";
+import { ChatPage } from "./components/Chat/ChatPage";
+import { Sidebar } from "./components/Sidebar";
+import { cx } from "styled-system/css";
 import { recentWorkspaces } from "./services/recentWorkspaces";
+import { useQueryClient } from "@tanstack/react-query";
 export function App() {
   const queryClient = useQueryClient();
   const bootstrap = useBootstrap();
@@ -89,11 +89,15 @@ export function App() {
             navigate(sessionPage(session.id));
           }}
           onCancelTool={async (toolCallId) => {
-            if (!activeSession) return;
+            if (!activeSession) {
+              return;
+            }
             await cancelTool(activeSession.id, toolCallId);
           }}
           onControl={async (control) => {
-            if (!activeSession) return;
+            if (!activeSession) {
+              return;
+            }
             const running = transcript.queue.some((item) => item.status === "running");
             if (control === "pause" && running) {
               setPausingSessionId(activeSession.id);
@@ -101,19 +105,27 @@ export function App() {
             try {
               await setControl(activeSession.id, control);
             } catch (error) {
-              if (control === "pause") setPausingSessionId(undefined);
+              if (control === "pause") {
+                setPausingSessionId(undefined);
+              }
               throw error;
             }
-            if (control !== "pause") setPausingSessionId(undefined);
+            if (control !== "pause") {
+              setPausingSessionId(undefined);
+            }
           }}
           onDelete={async () => {
-            if (!activeSession) return;
+            if (!activeSession) {
+              return;
+            }
             await deleteSession(activeSession.id);
             removeSession(queryClient, activeSession.id);
             navigate({ kind: "new" });
           }}
           onFork={async (messageId) => {
-            if (!activeSession) return;
+            if (!activeSession) {
+              return;
+            }
             const { session } = await forkSession(activeSession.id, messageId);
             addSession(queryClient, session);
             setPausingSessionId(undefined);
@@ -124,7 +136,9 @@ export function App() {
             return result.workspace;
           }}
           onSend={async (content, draftRevision, attachments) => {
-            if (!activeSession) return;
+            if (!activeSession) {
+              return;
+            }
             const optimisticKey = addOptimisticUser(queryClient, activeSession.id, content);
             try {
               const { content: sentContent, queueId } = await sendMessage(

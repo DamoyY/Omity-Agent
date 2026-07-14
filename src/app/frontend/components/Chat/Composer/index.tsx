@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
+  type ComposerDraftTarget,
   clearTemporaryComposerDraft,
   flushComposerDraft,
   readComposerDraft,
-  type ComposerDraftTarget,
 } from "../../../services/composerDrafts";
+import { type HistoryDirection, UserMessageHistory } from "./history";
 import { reportError, reportPromiseErrors } from "../../../services/errors";
+import { useEffect, useRef, useState } from "react";
+import { Actions } from "./Actions";
+import type { ComposerProps } from "./props";
 import { DraftSaver } from "../../../services/scheduling/draftSaver";
 import { MarkdownEditor } from "../MarkdownEditor";
-import { Actions } from "./Actions";
 import { PendingAttachments } from "./attachments";
-import { UserMessageHistory, type HistoryDirection } from "./history";
 import { composerFrame } from "./layout";
-import type { ComposerProps } from "./props";
+import { useTranslation } from "react-i18next";
 export function Composer({
   disabled,
   attachmentSettings,
@@ -50,7 +50,9 @@ export function Composer({
       : { kind: "new" };
     reportPromiseErrors(
       readComposerDraft(target, draft ?? "").then((loaded) => {
-        if (!current) return;
+        if (!current) {
+          return;
+        }
         revisionRef.current = loaded.revision;
         contentRef.current = loaded.content;
         historyRef.current.reset();
@@ -63,14 +65,18 @@ export function Composer({
     };
   }, [draft, sessionId]);
   useEffect(() => {
-    if (draftSaveDelayMs === undefined) return;
+    if (draftSaveDelayMs === undefined) {
+      return;
+    }
     const target: ComposerDraftTarget = sessionId
       ? { kind: "session", sessionId }
       : { kind: "new" };
     const saver = new DraftSaver(target, draftSaveDelayMs, reportError);
     saverRef.current = saver;
     return () => {
-      if (saverRef.current === saver) saverRef.current = undefined;
+      if (saverRef.current === saver) {
+        saverRef.current = undefined;
+      }
       reportPromiseErrors(saver.flush());
     };
   }, [draftSaveDelayMs, sessionId]);
@@ -87,7 +93,9 @@ export function Composer({
     };
   }, [sessionId]);
   const updateContent = (nextContent: string) => {
-    if (nextContent === contentRef.current) return;
+    if (nextContent === contentRef.current) {
+      return;
+    }
     contentRef.current = nextContent;
     setContent(nextContent);
     revisionRef.current += 1;
@@ -95,19 +103,25 @@ export function Composer({
   };
   const navigateHistory = (direction: HistoryDirection) => {
     const nextContent = historyRef.current.navigate(direction, contentRef.current, userMessages);
-    if (nextContent === undefined) return undefined;
+    if (nextContent === undefined) {
+      return undefined;
+    }
     updateContent(nextContent);
     return nextContent;
   };
   const submit = async () => {
     const submittedContent = contentRef.current;
-    if (submittingRef.current || !submittedContent.trim()) return;
+    if (submittingRef.current || !submittedContent.trim()) {
+      return;
+    }
     const submittedRevision = revisionRef.current;
     submittingRef.current = true;
     setSubmitting(true);
     saverRef.current?.discardPending();
     historyRef.current.reset();
-    if (draftTarget.kind === "new") clearTemporaryComposerDraft();
+    if (draftTarget.kind === "new") {
+      clearTemporaryComposerDraft();
+    }
     contentRef.current = "";
     setContent("");
     try {
@@ -140,7 +154,9 @@ export function Composer({
       <MarkdownEditor
         disabled={editorDisabled}
         onChange={(nextContent) => {
-          if (nextContent === contentRef.current) return;
+          if (nextContent === contentRef.current) {
+            return;
+          }
           historyRef.current.reset();
           updateContent(nextContent);
         }}

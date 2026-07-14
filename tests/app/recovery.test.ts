@@ -1,20 +1,20 @@
-import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
-import { AppController } from "../../src/app/controller";
-import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
-import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { AppController } from "../../src/app/controller";
 import { hostOwnerId } from "../../src/infrastructure/process/ownership";
+import { join } from "node:path";
+import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
+import { randomUUID } from "node:crypto";
 import { recoverHostSession } from "../../src/runtime/execution/recovery";
 import { required } from "../support/database";
+import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
+import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
+    rmSync(root, { force: true, recursive: true });
   }
 });
 test("app startup atomically pauses an orphaned run", async () => {
@@ -35,13 +35,13 @@ test("app startup reclaims the lease of its terminated predecessor", async () =>
   const fixture = interruptedSession("abandoned");
   const abandonedOwner = { pid: process.pid, token: randomUUID() };
   fixture.db.acquireHostLease({
-    sessionId: "abandoned",
+    now: Date.now(),
     ownerId: hostOwnerId({
       instanceId: abandonedOwner.token,
       kind: "app",
       pid: abandonedOwner.pid,
     }),
-    now: Date.now(),
+    sessionId: "abandoned",
     ttlMs: 30_000,
   });
   fixture.db.close();
@@ -56,13 +56,13 @@ test("app startup reclaims the lease of its terminated predecessor", async () =>
 test("app startup never takes over a live standalone host", async () => {
   const fixture = interruptedSession("live");
   fixture.db.acquireHostLease({
-    sessionId: "live",
+    now: Date.now(),
     ownerId: hostOwnerId({
       instanceId: randomUUID(),
       kind: "standalone",
       pid: process.pid,
     }),
-    now: Date.now(),
+    sessionId: "live",
     ttlMs: 30_000,
   });
   fixture.db.close();
@@ -77,13 +77,13 @@ test("app startup never takes over a live standalone host", async () => {
 test("standalone Host uses the shared interrupted-session recovery", () => {
   const fixture = interruptedSession("standalone");
   fixture.db.acquireHostLease({
-    sessionId: "standalone",
+    now: Date.now() - 1000,
     ownerId: hostOwnerId({
       instanceId: randomUUID(),
       kind: "standalone",
       pid: process.pid,
     }),
-    now: Date.now() - 1_000,
+    sessionId: "standalone",
     ttlMs: 1,
   });
   expect(recoverHostSession(fixture.db, "standalone").status).toBe("recovered");
@@ -114,7 +114,7 @@ function interruptedSession(sessionId: string) {
   db.createSession(sessionId, workspace);
   const queueId = db.appendUser(sessionId, "运行中的输入");
   db.startQueue(sessionId, required(db.nextQueue(sessionId)));
-  return { root, db, queueId };
+  return { db, queueId, root };
 }
 function openSession(root: string, sessionId: string) {
   const settings = loadSettings(root);
@@ -128,6 +128,8 @@ async function captureFailure(promise: Promise<unknown>) {
     failure = error;
   }
   expect(failure).toBeInstanceOf(Error);
-  if (!(failure instanceof Error)) throw failure;
+  if (!(failure instanceof Error)) {
+    throw failure;
+  }
   return failure;
 }

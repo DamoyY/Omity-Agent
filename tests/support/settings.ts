@@ -1,7 +1,7 @@
 import type { Settings } from "../../src/types";
 export function testSettings(dataDir: string): Settings {
   return {
-    paths: { dataDir },
+    agent: { systemPrompt: "test" },
     attachments: {
       allowedSuffixes: [".txt", ".md"],
       maxSizeBytes: 1024,
@@ -10,31 +10,31 @@ export function testSettings(dataDir: string): Settings {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,
     },
+    hooks: [],
+    host: {
+      idleLogMs: 1,
+      pausePollMs: 1,
+      pollMs: 1,
+      recursionLimit: 50,
+      shutdownTimeoutMs: 1000,
+    },
+    leases: { hostTtlMs: 30_000 },
+    logging: { level: "error", streamTokens: false },
     model: {
       adapter: "completions",
-      model: "test",
       apiKeyEnv: "TEST_KEY",
       baseURL: null,
+      model: "test",
       temperature: 0,
-      timeoutMs: 1_000,
+      timeoutMs: 1000,
     },
-    host: {
-      pollMs: 1,
-      pausePollMs: 1,
-      idleLogMs: 1,
-      recursionLimit: 50,
-      shutdownTimeoutMs: 1_000,
-    },
-    logging: { level: "error", streamTokens: false },
-    leases: { hostTtlMs: 30_000 },
-    toolOutput: { maxTokens: 8_192 },
-    hooks: [],
-    agent: { systemPrompt: "test" },
+    paths: { dataDir },
     skills: {
-      enabled: false,
       directory: "~/.agents/skills",
-      usagePrompt: "use skills",
+      enabled: false,
       skillEnabled: {},
+      usagePrompt: "use skills",
     },
+    toolOutput: { maxTokens: 8192 },
   };
 }

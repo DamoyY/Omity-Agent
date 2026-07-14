@@ -1,8 +1,8 @@
+import { requireSessionRecord, touchSessionRecord } from "./records/sessions";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
-import { syncMessages } from "./records/messages/history";
 import { appendUserQueue } from "./records/queue/operations";
-import { requireSessionRecord, touchSessionRecord } from "./records/sessions";
+import { syncMessages } from "./records/messages/history";
 export function initializeConversation(
   db: Database,
   sessionId: string,

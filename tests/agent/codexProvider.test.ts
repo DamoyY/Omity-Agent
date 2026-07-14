@@ -1,20 +1,20 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { ChatOpenAIResponses } from "@langchain/openai";
 import { afterEach, expect, test } from "bun:test";
-import type { FetchLike } from "openai-codex-oauth";
 import { buildModel, resolveModelApi } from "../../src/agent";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import {
   parseMainSettings,
   parseModelSettings,
 } from "../../src/infrastructure/configuration/settingsSchema";
-import { createCodexClientFields } from "../../src/infrastructure/openai/codexAuthentication";
+import { ChatOpenAIResponses } from "@langchain/openai";
+import type { FetchLike } from "openai-codex-oauth";
 import type { Settings } from "../../src/types";
+import { createCodexClientFields } from "../../src/infrastructure/openai/codexAuthentication";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("codex adapter does not require OpenAI-compatible connection settings", () => {
@@ -56,22 +56,22 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
     JSON.stringify({
       tokens: {
         access_token: "test-access-token",
-        refresh_token: "test-refresh-token",
         account_id: "test-account-id",
+        refresh_token: "test-refresh-token",
       },
     }),
   );
   const requests: CapturedRequest[] = [];
   const upstreamFetch = ((input, init) => {
     requests.push({
-      url: input instanceof Request ? input.url : String(input),
-      headers: new Headers(init?.headers),
       body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+      headers: new Headers(init?.headers),
+      url: input instanceof Request ? input.url : String(input),
     });
     return Promise.resolve(
       new Response("{}", {
-        status: 200,
         headers: { "content-type": "application/json" },
+        status: 200,
       }),
     );
   }) as FetchLike;
@@ -80,16 +80,16 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
     fetch: upstreamFetch,
   });
   await fields.configuration.fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
+    body: JSON.stringify({
+      input: "hello",
+      max_output_tokens: 100,
+      model: "gpt-5.3-codex",
+    }),
     headers: {
       authorization: "Bearer placeholder",
       "content-type": "application/json",
     },
-    body: JSON.stringify({
-      model: "gpt-5.3-codex",
-      input: "hello",
-      max_output_tokens: 100,
-    }),
+    method: "POST",
   });
   const request = requests[0];
   expect(request).toBeDefined();
@@ -97,9 +97,9 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
   expect(request?.headers.get("authorization")).toBe("Bearer test-access-token");
   expect(request?.headers.get("chatgpt-account-id")).toBe("test-account-id");
   expect(request?.body).toEqual({
-    model: "gpt-5.3-codex",
     input: "hello",
     instructions: "",
+    model: "gpt-5.3-codex",
     store: false,
   });
 });
@@ -110,27 +110,27 @@ interface CapturedRequest {
 }
 function codexSettings(): Settings {
   const main = parseMainSettings({
-    paths: { dataDir: "./data" },
     attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,
     },
     host: {
-      pollMs: 1,
-      pausePollMs: 1,
       idleLogMs: 1,
+      pausePollMs: 1,
+      pollMs: 1,
       recursionLimit: 1,
-      shutdownTimeoutMs: 1_000,
+      shutdownTimeoutMs: 1000,
     },
-    logging: { level: "debug", streamTokens: false },
     leases: { hostTtlMs: 30_000 },
-    toolOutput: { maxTokens: 8192 },
+    logging: { level: "debug", streamTokens: false },
+    paths: { dataDir: "./data" },
     skills: {
-      enabled: false,
       directory: "~/.agents/skills",
+      enabled: false,
       skillEnabled: {},
     },
+    toolOutput: { maxTokens: 8192 },
   });
   const model = parseModelSettings({
     profile: "codex",
@@ -145,9 +145,9 @@ function codexSettings(): Settings {
   });
   return {
     ...main,
-    model,
-    hooks: [],
     agent: { systemPrompt: "test" },
+    hooks: [],
+    model,
     skills: { ...main.skills, usagePrompt: "use skills" },
   };
 }

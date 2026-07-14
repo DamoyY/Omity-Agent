@@ -1,6 +1,6 @@
-import { runClient } from "../../client";
-import type { Settings } from "../../types";
 import type { PendingAttachment } from "./contract";
+import type { Settings } from "../../types";
+import { runClient } from "../../client";
 import { saveMessageAttachments } from "./storage";
 export async function enqueueMessageWithAttachments(
   settings: Settings,
@@ -13,7 +13,7 @@ export async function enqueueMessageWithAttachments(
   const saved = await saveMessageAttachments(settings, sessionId, content, attachments);
   try {
     await ensureHost();
-    const result = runClient({ sessionId, append: saved.content }, appRoot);
+    const result = runClient({ append: saved.content, sessionId }, appRoot);
     return { ...result, content: saved.content };
   } catch (error) {
     await saved.discard();

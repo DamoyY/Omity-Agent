@@ -4,7 +4,9 @@ export function deleteThreadData(db: Database, threadId: string) {
   db.transaction(() => {
     db.query("DELETE FROM checkpoints WHERE thread_id = ?").run(threadId);
     db.query("DELETE FROM writes WHERE thread_id = ?").run(threadId);
-    if (hasTable(db, "message_blobs")) pruneMessageBlobs(db);
+    if (hasTable(db, "message_blobs")) {
+      pruneMessageBlobs(db);
+    }
   })();
 }
 function hasTable(db: Database, name: string) {

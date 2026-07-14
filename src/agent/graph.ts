@@ -1,28 +1,15 @@
-import { randomUUID } from "node:crypto";
-import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { AIMessage, ToolMessage, type BaseMessage, type ToolCall } from "@langchain/core/messages";
-import type { StructuredToolInterface } from "@langchain/core/tools";
-import type { Database } from "bun:sqlite";
+import { AIMessage, type BaseMessage, type ToolCall, ToolMessage } from "@langchain/core/messages";
 import {
   Annotation,
+  type BaseCheckpointSaver,
   END,
-  getConfig,
   MessagesAnnotation,
   START,
   StateGraph,
+  getConfig,
   task,
-  type BaseCheckpointSaver,
 } from "@langchain/langgraph";
-import { BunSqliteSaver } from "../checkpointer";
-import { hookNode, modelNode, toolsNode } from "../hooks/graph/commands";
-import { createHookNode } from "../hooks/graph/node";
-import { agentPlan, toolPlan, type HookPlan } from "../hooks/plan";
-import type { HookRuntime } from "../hooks/runtime";
-import type { HookToolOutput } from "../hooks/storage/outputs";
-import { contentToText } from "../runtime/content";
-import { ModelEmptyResponseError } from "../runtime/network";
-import { buildSkillsMessage } from "../skills";
-import type { Settings } from "../types";
+import { type HookPlan, agentPlan, toolPlan } from "../hooks/plan";
 import {
   bindModelTools,
   buildModel,
@@ -30,22 +17,35 @@ import {
   modelMessages,
   resolveModelApi,
 } from "./model";
-import { normalizeTaskConfig } from "./taskConfig";
+import { hookNode, modelNode, toolsNode } from "../hooks/graph/commands";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { BunSqliteSaver } from "../checkpointer";
+import type { Database } from "bun:sqlite";
+import type { HookRuntime } from "../hooks/runtime";
+import type { HookToolOutput } from "../hooks/storage/outputs";
+import { ModelEmptyResponseError } from "../runtime/network";
+import type { Settings } from "../types";
+import type { StructuredToolInterface } from "@langchain/core/tools";
+import type { ToolExecutions } from "./toolExecutions";
+import { buildSkillsMessage } from "../skills";
+import { contentToText } from "../runtime/content";
+import { createHookNode } from "../hooks/graph/node";
 import { createToolInvoker } from "./toolExecution";
-import { ToolExecutions } from "./toolExecutions";
+import { normalizeTaskConfig } from "./taskConfig";
+import { randomUUID } from "node:crypto";
 const AgentState = Annotation.Root({
   ...MessagesAnnotation.spec,
   hookPendingUserIds: Annotation<string[]>({
-    reducer: (_left, right) => right,
     default: () => [],
+    reducer: (_left, right) => right,
   }),
   hookPlan: Annotation<HookPlan | null>({
-    reducer: (_left, right) => right,
     default: () => null,
+    reducer: (_left, right) => right,
   }),
   hookPreviousOutput: Annotation<HookToolOutput | undefined>({
-    reducer: (_left, right) => right,
     default: () => undefined,
+    reducer: (_left, right) => right,
   }),
 });
 type GraphState = typeof AgentState.State;
@@ -87,19 +87,21 @@ export function buildGraph(
     checkpointer,
     skillsMessage,
   });
-  return { graph, checkpointer };
+  return { checkpointer, graph };
 }
 export function createAgentGraph(options: AgentGraphOptions) {
   const model = bindModelTools(options.model, options.modelTools ?? options.tools);
   const invokeTool = createToolInvoker(options.tools, {
-    settings: options.settings,
-    sessionId: options.hooks.sessionId,
     freeformToolParameters: options.freeformToolParameters ?? new Map(),
+    sessionId: options.hooks.sessionId,
+    settings: options.settings,
     toolExecutions: options.toolExecutions,
   });
   const requestModel = task("request_model", async (messages: BaseMessage[]) => {
     const response = await model.invoke(messages, normalizeTaskConfig(getConfig()));
-    if (!AIMessage.isInstance(response)) throw new Error("没有返回 AIMessage");
+    if (!AIMessage.isInstance(response)) {
+      throw new Error("没有返回 AIMessage");
+    }
     if (!response.tool_calls?.length && !contentToText(response.content)) {
       throw new ModelEmptyResponseError();
     }
@@ -122,10 +124,10 @@ export function createAgentGraph(options: AgentGraphOptions) {
       modelMessages(options.settings, options.skillsMessage, state.messages),
     );
     return {
-      messages: [response],
       hookPlan: response.tool_calls?.length
         ? toolPlan(response)
         : agentPlan("after", [response.id], state.hookPreviousOutput),
+      messages: [response],
     };
   };
   const callTool = async (state: GraphState) => {
@@ -152,6 +154,8 @@ function pendingToolCall(messages: BaseMessage[]): ToolCall {
   const call = messages
     .findLast((message) => AIMessage.isInstance(message))
     ?.tool_calls?.find((candidate) => !candidate.id || !completed.has(candidate.id));
-  if (!call) throw new Error("工具节点没有待执行的工具调用");
+  if (!call) {
+    throw new Error("工具节点没有待执行的工具调用");
+  }
   return call;
 }

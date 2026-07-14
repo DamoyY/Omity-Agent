@@ -1,10 +1,10 @@
 import {
-  useCallback,
-  useLayoutEffect,
-  useRef,
   type ReactNode,
   type RefObject,
   type UIEventHandler,
+  useCallback,
+  useLayoutEffect,
+  useRef,
 } from "react";
 import type { TimelineMessage } from "../../timeline";
 import { scroll } from "../design";
@@ -29,7 +29,9 @@ export function useFollowBottom<T extends HTMLElement>({
   }, [resetKey]);
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!enabled || !element || !followingRef.current) return;
+    if (!enabled || !element || !followingRef.current) {
+      return;
+    }
     element.scrollTop = element.scrollHeight;
   }, [enabled, ref, resetKey, version]);
   const onScroll = useCallback<UIEventHandler<T>>((event) => {

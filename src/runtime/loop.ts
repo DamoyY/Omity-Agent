@@ -1,4 +1,4 @@
-import { waitForWake, type HostContext } from "./context";
+import { type HostContext, waitForWake } from "./context";
 import { processQueue } from "./queue";
 export async function hostLoop(ctx: HostContext) {
   let lastIdle = 0;
@@ -6,7 +6,9 @@ export async function hostLoop(ctx: HostContext) {
     ctx.assertLease?.();
     const item = ctx.db.nextQueue(ctx.sessionId);
     if (ctx.stopping?.aborted) {
-      if (item) await processQueue(ctx, item);
+      if (item) {
+        await processQueue(ctx, item);
+      }
       return;
     }
     if (!item) {

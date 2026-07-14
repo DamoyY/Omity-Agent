@@ -1,18 +1,18 @@
-import { ChevronDown } from "lucide-react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { cx } from "styled-system/css";
-import { pagePath } from "../../route";
-import { Button, LinkButton } from "../ParkUI";
-import { Status } from "./Status";
 import * as styles from "./groupStyles";
+import { Button, LinkButton } from "../ParkUI";
 import {
+  type SessionGroup as Group,
   formatUpdatedAt,
   isRunning,
   sessionLabel,
   workspaceLabel,
-  type SessionGroup as Group,
 } from "./sessions";
+import { ChevronDown } from "lucide-react";
+import { Status } from "./Status";
+import { cx } from "styled-system/css";
+import { pagePath } from "../../route";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 interface Props {
   group: Group;
   activeId?: string;
@@ -64,7 +64,7 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
                 aria-current={session.id === activeId ? "page" : undefined}
                 aria-label={session.id}
                 className={styles.row}
-                href={pagePath({ kind: "session", id: session.id })}
+                href={pagePath({ id: session.id, kind: "session" })}
                 onClick={(event) => {
                   if (
                     event.defaultPrevented ||
@@ -73,8 +73,9 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
                     event.ctrlKey ||
                     event.shiftKey ||
                     event.altKey
-                  )
+                  ) {
                     return;
+                  }
                   event.preventDefault();
                   onSelect(session.id);
                 }}

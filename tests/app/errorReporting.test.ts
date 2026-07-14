@@ -1,13 +1,13 @@
+import {
+  type ErrorDetails,
+  captureError,
+  parseError,
+  stringifyError,
+} from "../../src/failures/details";
 import { expect, spyOn, test } from "bun:test";
 import type { SessionInfo } from "../../src/app/frontend/services/client";
 import { reportError } from "../../src/app/frontend/services/errors";
 import { reportSessionErrors } from "../../src/app/frontend/services/events/reporting";
-import {
-  captureError,
-  parseError,
-  stringifyError,
-  type ErrorDetails,
-} from "../../src/failures/details";
 test("session errors are logged once until they clear", () => {
   const log = spyOn(console, "error").mockImplementation(() => undefined);
   const reported = new Set<string>();
@@ -16,8 +16,8 @@ test("session errors are logged once until they clear", () => {
   reportSessionErrors([failed], reported);
   expect(log).toHaveBeenCalledTimes(1);
   expect(log).toHaveBeenCalledWith("failed", {
-    sessionId: "session",
     error: failed.error,
+    sessionId: "session",
   });
   reportSessionErrors([session(null)], reported);
   reportSessionErrors([failed], reported);
@@ -38,45 +38,45 @@ test("structured errors retain SDK fields, response headers, body and cause", ()
     code: "ECONNRESET",
   });
   const error = Object.assign(new Error("502 Upstream request failed", { cause }), {
-    status: 502,
     code: "upstream_error",
-    requestID: "req-123",
+    error: { provider: "upstream", type: "gateway_error" },
     headers: new Headers({ "x-request-id": "req-123" }),
-    error: { type: "gateway_error", provider: "upstream" },
+    requestID: "req-123",
+    status: 502,
   });
   const persisted = parseError(stringifyError(captureError(error)));
   expect(persisted).toMatchObject({
-    name: "Error",
-    message: "502 Upstream request failed",
     cause: {
-      name: "Error",
-      message: "socket closed",
       details: { code: "ECONNRESET" },
+      message: "socket closed",
+      name: "Error",
     },
     details: {
-      status: 502,
       code: "upstream_error",
-      requestID: "req-123",
+      error: { provider: "upstream", type: "gateway_error" },
       headers: { "x-request-id": "req-123" },
-      error: { type: "gateway_error", provider: "upstream" },
+      requestID: "req-123",
+      status: 502,
     },
+    message: "502 Upstream request failed",
+    name: "Error",
   });
 });
 test("persisted error details are validated recursively", () => {
   expect(() =>
     parseError(
       JSON.stringify({
-        name: "Error",
+        cause: { message: "cause", name: "Error", stack: 42 },
         message: "failed",
-        cause: { name: "Error", message: "cause", stack: 42 },
+        name: "Error",
       }),
     ),
   ).toThrow("队列错误详情无效");
   expect(() =>
     parseError(
       JSON.stringify({
-        name: "Error",
         message: "failed",
+        name: "Error",
         unexpected: true,
       }),
     ),
@@ -84,29 +84,29 @@ test("persisted error details are validated recursively", () => {
 });
 test("non-error and circular values keep the persisted error contract", () => {
   const circular: Record<string, unknown> = {
-    reason: "failed",
     omitted: undefined,
+    reason: "failed",
   };
   circular["self"] = circular;
   expect(parseError(stringifyError(captureError(circular)))).toMatchObject({
-    name: "Object",
-    message: "[object Object]",
     details: {
       value: { reason: "failed", self: "[Circular]" },
     },
+    message: "[object Object]",
+    name: "Object",
   });
   expect(captureError(new Date(0))).toMatchObject({
-    name: "Date",
     details: { value: "1970-01-01T00:00:00.000Z" },
+    name: "Date",
   });
 });
 function session(error: ErrorDetails | null): SessionInfo {
   return {
-    id: "session",
-    workspace: "F:/workspace",
     createdAt: 1,
-    updatedAt: 1,
-    status: error ? "error" : "idle",
     error,
+    id: "session",
+    status: error ? "error" : "idle",
+    updatedAt: 1,
+    workspace: "F:/workspace",
   };
 }

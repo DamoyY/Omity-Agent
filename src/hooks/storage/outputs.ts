@@ -11,13 +11,17 @@ export function readToolOutput(message: ToolMessage): HookToolOutput {
   };
 }
 function extractStructuredOutput(value: unknown) {
-  if (!isUnknownArray(value)) return undefined;
+  if (!isUnknownArray(value)) {
+    return undefined;
+  }
   const artifacts = value.filter(isStructuredArtifact);
   if (artifacts.length > 1) {
     throw new Error("MCP 工具返回了多个结构化输出 artifact");
   }
   const artifact = artifacts[0];
-  if (!artifact) return undefined;
+  if (!artifact) {
+    return undefined;
+  }
   if (!("data" in artifact)) {
     throw new Error("MCP 结构化输出 artifact 缺少 data");
   }

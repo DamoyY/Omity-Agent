@@ -10,7 +10,9 @@ export class RefreshScheduler {
   ) {}
   request() {
     this.queued = true;
-    if (this.running || this.timer !== undefined) return;
+    if (this.running || this.timer !== undefined) {
+      return;
+    }
     const elapsed = Date.now() - this.lastStarted;
     const delay = Math.max(0, this.intervalMs - elapsed);
     this.timer = setTimeout(() => {
@@ -19,12 +21,16 @@ export class RefreshScheduler {
     }, delay);
   }
   dispose() {
-    if (this.timer !== undefined) clearTimeout(this.timer);
+    if (this.timer !== undefined) {
+      clearTimeout(this.timer);
+    }
     this.timer = undefined;
     this.queued = false;
   }
   private async run() {
-    if (!this.queued) return;
+    if (!this.queued) {
+      return;
+    }
     this.queued = false;
     this.running = true;
     this.lastStarted = Date.now();
@@ -34,7 +40,9 @@ export class RefreshScheduler {
       this.onError(error);
     } finally {
       this.running = false;
-      if (this.hasQueuedRequest()) this.request();
+      if (this.hasQueuedRequest()) {
+        this.request();
+      }
     }
   }
   private hasQueuedRequest() {

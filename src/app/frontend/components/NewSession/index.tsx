@@ -1,21 +1,21 @@
-import { Plus, Send, UserRound } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
-import type { InitialSessionState } from "../../../initialState";
 import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
-import { reportPromiseErrors } from "../../services/errors";
+import { type EditablePair, MessageStack } from "./MessageStack";
+import { Plus, Send, UserRound } from "lucide-react";
 import {
   composerActions,
   composerControls,
   composerFrame,
   composerRole,
 } from "../Chat/Composer/layout";
-import { MarkdownEditor } from "../Chat/MarkdownEditor";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../ParkUI";
+import type { InitialSessionState } from "../../../initialState";
+import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { PendingAttachments } from "../Chat/Composer/attachments";
-import { MessageStack, type EditablePair } from "./MessageStack";
 import { WorkspacePicker } from "./WorkspacePicker";
+import { css } from "styled-system/css";
+import { reportPromiseErrors } from "../../services/errors";
+import { useTranslation } from "react-i18next";
 const scroll = css({ minH: 0, overflowY: "auto" });
 const scrollContent = css({
   display: "grid",
@@ -63,10 +63,14 @@ export function NewSessionPage({
   useLayoutEffect(() => {
     const pairAdded = pairs.length > previousPairCountRef.current;
     previousPairCountRef.current = pairs.length;
-    if (!pairAdded) return;
+    if (!pairAdded) {
+      return;
+    }
     const keepLastMessageInPlace = () => {
       const node = scrollRef.current;
-      if (node) node.scrollTop = node.scrollHeight;
+      if (node) {
+        node.scrollTop = node.scrollHeight;
+      }
     };
     keepLastMessageInPlace();
     const frame = requestAnimationFrame(keepLastMessageInPlace);
@@ -79,12 +83,14 @@ export function NewSessionPage({
     message.trim().length > 0 &&
     pairs.every(({ user, assistant }) => user.trim().length > 0 && assistant.trim().length > 0);
   const submit = async () => {
-    if (!complete || submitting) return;
+    if (!complete || submitting) {
+      return;
+    }
     setSubmitting(true);
     try {
       await onCreate(
         {
-          history: pairs.map(({ user, assistant }) => ({ user, assistant })),
+          history: pairs.map(({ user, assistant }) => ({ assistant, user })),
           message,
         },
         attachmentsRef.current.values(message),
@@ -153,9 +159,9 @@ export function NewSessionPage({
                       setPairs((current) => [
                         ...current,
                         {
+                          assistant: "",
                           id: crypto.randomUUID(),
                           user: "",
-                          assistant: "",
                         },
                       ]);
                     }}

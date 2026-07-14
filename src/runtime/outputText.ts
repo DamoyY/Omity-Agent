@@ -7,57 +7,69 @@ export interface ToolTextContent {
 }
 export function inspectToolTextContent(content: MessageContent): ToolTextContent | null {
   const parsed = parseMcpContent(content);
-  if (parsed === null) return null;
-  const value = parsed.value;
+  if (parsed === null) {
+    return null;
+  }
+  const { value } = parsed;
   if (typeof value === "string") {
     return {
-      text: value,
       isError: parsed.isError,
       normalized: value,
       replaceText: (replacement) => replacement,
+      text: value,
     };
   }
   const text = value.map(blockText).join("");
   const hasNonText = value.some((block) => blockText(block) === null);
   return {
-    text,
     isError: parsed.isError,
     normalized: hasNonText ? asContentBlocks(value) : text,
     replaceText: (replacement) =>
       hasNonText ? replaceTextBlocks(value, replacement) : replacement,
+    text,
   };
 }
 function parseMcpContent(
   content: MessageContent,
 ): { value: string | unknown[]; isError: boolean } | null {
-  if (typeof content !== "string") return { value: content, isError: false };
+  if (typeof content !== "string") {
+    return { isError: false, value: content };
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(content) as unknown;
   } catch {
-    return { value: content, isError: false };
+    return { isError: false, value: content };
   }
-  if (Array.isArray(parsed)) return { value: parsed, isError: false };
+  if (Array.isArray(parsed)) {
+    return { isError: false, value: parsed };
+  }
   if (isRecord(parsed) && Array.isArray(parsed["content"])) {
-    return { value: parsed["content"], isError: parsed["isError"] === true };
+    return { isError: parsed["isError"] === true, value: parsed["content"] };
   }
-  if (isTextBlock(parsed)) return { value: [parsed], isError: false };
-  return { value: content, isError: false };
+  if (isTextBlock(parsed)) {
+    return { isError: false, value: [parsed] };
+  }
+  return { isError: false, value: content };
 }
 function replaceTextBlocks(blocks: unknown[], replacement: string) {
   const firstText = blocks.findIndex((block) => blockText(block) !== null);
-  if (firstText < 0) {
-    return asContentBlocks([{ type: "text", text: replacement }, ...blocks]);
+  if (firstText === -1) {
+    return asContentBlocks([{ text: replacement, type: "text" }, ...blocks]);
   }
   return asContentBlocks(
     blocks.flatMap((block, index) => {
-      if (blockText(block) === null) return [block];
-      return index === firstText ? [{ type: "text", text: replacement }] : [];
+      if (blockText(block) === null) {
+        return [block];
+      }
+      return index === firstText ? [{ text: replacement, type: "text" }] : [];
     }),
   );
 }
 function blockText(block: unknown): string | null {
-  if (typeof block === "string") return block;
+  if (typeof block === "string") {
+    return block;
+  }
   return isTextBlock(block) ? block.text : null;
 }
 function isTextBlock(value: unknown): value is { text: string } {

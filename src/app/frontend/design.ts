@@ -17,8 +17,8 @@ export const layout = css({
 });
 export const sidebar = css({
   bg: "sidebar",
-  borderRightWidth: "1px",
   borderRightColor: "line",
+  borderRightWidth: "1px",
   display: "grid",
   gridTemplateRows: "auto minmax(0, 1fr)",
   minH: 0,

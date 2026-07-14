@@ -1,6 +1,6 @@
 import type { DisplayEvent, DisplayToolCall } from "./types";
-import { countTokens } from "../../runtime/tokenizer";
 import type { StreamEvent } from "../../infrastructure/database/records/streamEvents";
+import { countTokens } from "../../runtime/tokenizer";
 export function displayStreamEvent(event: StreamEvent): DisplayEvent {
   const payload =
     event.kind === "tool_call_delta"
@@ -61,7 +61,9 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
   const calls: ToolCallAccumulator[] = [];
   for (const event of events) {
     const delta = toolCallDelta(event);
-    if (!delta) continue;
+    if (!delta) {
+      continue;
+    }
     const matches = calls.filter((call) => matchesDelta(call, delta));
     let current = matches.shift();
     if (!current) {
@@ -90,7 +92,9 @@ function matchesDelta(
   call: ToolCallAccumulator,
   delta: NonNullable<ReturnType<typeof toolCallDelta>>,
 ) {
-  if (delta.id && call.id === delta.id) return true;
+  if (delta.id && call.id === delta.id) {
+    return true;
+  }
   return (
     delta.index !== undefined &&
     call.index === delta.index &&
@@ -120,8 +124,10 @@ function toolCallDelta(event: DisplayEvent) {
   if (!isRecord(event.payload) || event.payload["kind"] !== "tool_call_delta") {
     return null;
   }
-  const call = event.payload["call"];
-  if (!isRecord(call)) return null;
+  const { call } = event.payload;
+  if (!isRecord(call)) {
+    return null;
+  }
   return {
     args: typeof call["args"] === "string" ? call["args"] : undefined,
     freeform: call["freeform"] === true ? true : undefined,
@@ -132,8 +138,12 @@ function toolCallDelta(event: DisplayEvent) {
   };
 }
 function appendArguments(current = "", delta?: string) {
-  if (!delta) return current;
-  if (current.length === 0 || delta.startsWith(current)) return delta;
+  if (!delta) {
+    return current;
+  }
+  if (current.length === 0 || delta.startsWith(current)) {
+    return delta;
+  }
   return current + delta;
 }
 function assistantDelta(
@@ -141,8 +151,12 @@ function assistantDelta(
   queueId: number,
   kind: "assistant_reasoning_delta" | "assistant_text_delta",
 ) {
-  if (eventQueueId(event) !== queueId || !isRecord(event.payload)) return "";
-  if (event.payload["kind"] !== kind) return "";
+  if (eventQueueId(event) !== queueId || !isRecord(event.payload)) {
+    return "";
+  }
+  if (event.payload["kind"] !== kind) {
+    return "";
+  }
   return typeof event.payload["text"] === "string" ? event.payload["text"] : "";
 }
 function isRecord(value: unknown): value is Record<string, unknown> {

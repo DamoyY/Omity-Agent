@@ -1,10 +1,10 @@
 import { AIMessage, AIMessageChunk } from "@langchain/core/messages";
-import { expect, test } from "bun:test";
 import {
   createReasoningStreamState,
   messageReasoning,
   streamedMessageReasoning,
 } from "../../src/runtime/content";
+import { expect, test } from "bun:test";
 test("streamed reasoning separates summary parts and reasoning items", () => {
   const state = createReasoningStreamState();
   const chunks = [
@@ -24,18 +24,18 @@ test("persisted reasoning is rebuilt from Responses API summary parts", () => {
   const first = reasoningItem("rs_1", ["**First**", "**Second**"]);
   const second = reasoningItem("rs_2", ["**Third**"]);
   const message = new AIMessage({
-    content: [{ type: "reasoning", reasoning: "concatenated" }],
     additional_kwargs: { reasoning: second },
+    content: [{ reasoning: "concatenated", type: "reasoning" }],
     response_metadata: { output: [first, second] },
   });
   expect(messageReasoning(message)).toBe("**First**\n\n**Second**\n\n**Third**");
 });
 test("existing summary newlines are not duplicated", () => {
   const message = new AIMessage({
-    content: [],
     additional_kwargs: {
       reasoning: reasoningItem("rs_1", ["First\n", "\nSecond"]),
     },
+    content: [],
   });
   expect(messageReasoning(message)).toBe("First\n\nSecond");
 });
@@ -52,16 +52,15 @@ test("adjacent bold summaries in one part are separated across deltas", () => {
 });
 test("persisted adjacent bold summaries in one part are separated", () => {
   const message = new AIMessage({
-    content: [],
     additional_kwargs: {
       reasoning: reasoningItem("rs_1", ["**Planning****Refining**"]),
     },
+    content: [],
   });
   expect(messageReasoning(message)).toBe("**Planning**\n\n**Refining**");
 });
 function reasoningChunk({ id, parts }: { id?: string; parts: { index: number; text: string }[] }) {
   return new AIMessageChunk({
-    content: [],
     additional_kwargs: {
       reasoning: {
         type: "reasoning",
@@ -72,12 +71,13 @@ function reasoningChunk({ id, parts }: { id?: string; parts: { index: number; te
         })),
       },
     },
+    content: [],
   });
 }
 function reasoningItem(id: string, texts: string[]) {
   return {
     id,
+    summary: texts.map((text) => ({ text, type: "summary_text" })),
     type: "reasoning",
-    summary: texts.map((text) => ({ type: "summary_text", text })),
   };
 }

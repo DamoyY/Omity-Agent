@@ -1,11 +1,11 @@
+import type { AttachmentSettings, PendingAttachment } from "../../attachments/contract";
 import type { Control } from "../../../types";
-import { reportError } from "./errors";
-import { request } from "./request";
 import type { InitialSessionState } from "../../initialState";
 import type { SessionInfo } from "../../sessionState";
 import type { TranscriptSnapshot } from "./transcript/cache";
-import type { AttachmentSettings, PendingAttachment } from "../../attachments/contract";
 import { appendAttachments } from "../../attachments/contract";
+import { reportError } from "./errors";
+import { request } from "./request";
 export { ApiError } from "./request";
 export type { SessionInfo } from "../../sessionState";
 export interface FrontendSettings {
@@ -31,8 +31,8 @@ export async function createSession(
   body.set("message", initialState.message);
   appendAttachments(body, attachments);
   return request<{ session: SessionInfo }>("/api/sessions", {
-    method: "POST",
     body,
+    method: "POST",
   });
 }
 export async function deleteSession(sessionId: string) {
@@ -65,8 +65,8 @@ export async function saveComposerDraft(sessionId: string, content: string, revi
   return request<{ revision: number }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
     {
-      method: "PUT",
       body: JSON.stringify({ content, revision }),
+      method: "PUT",
     },
   );
 }
@@ -92,8 +92,8 @@ export async function sendMessage(
   return request<{ content: string; queueId: number }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
-      method: "POST",
       body,
+      method: "POST",
     },
   );
 }
@@ -102,23 +102,23 @@ export async function setControl(
   control: Extract<Control, "running" | "pause" | "cancel">,
 ) {
   return request(`/api/sessions/${encodeURIComponent(sessionId)}/control`, {
-    method: "POST",
     body: JSON.stringify({ control }),
+    method: "POST",
   });
 }
 export async function cancelTool(sessionId: string, toolCallId: string) {
   return request<{ toolCallId: string }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/tools/cancel`,
     {
-      method: "POST",
       body: JSON.stringify({ toolCallId }),
+      method: "POST",
     },
   );
 }
 export async function forkSession(sessionId: string, beforeMessageId: number) {
   return request<{ session: SessionInfo }>(`/api/sessions/${encodeURIComponent(sessionId)}/fork`, {
-    method: "POST",
     body: JSON.stringify({ beforeMessageId }),
+    method: "POST",
   });
 }
 function eventSource(path: string) {

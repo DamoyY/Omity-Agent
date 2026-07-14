@@ -1,9 +1,9 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import type { Context } from "hono";
-import { streamSSE } from "hono/streaming";
-import mitt from "mitt";
 import type { DisplayEvent } from "./timeline";
 import type { SessionInfo } from "./sessionState";
+import mitt from "mitt";
+import { setTimeout as sleep } from "node:timers/promises";
+import { streamSSE } from "hono/streaming";
 interface TranscriptDelta {
   sessionId: string;
   event: DisplayEvent;
@@ -30,7 +30,7 @@ export class AppEvents {
     this.bus.emit("transcriptChanged", sessionId);
   }
   notifyTranscript(sessionId: string, event: DisplayEvent) {
-    this.bus.emit("transcriptDelta", { sessionId, event });
+    this.bus.emit("transcriptDelta", { event, sessionId });
   }
   wake(sessionId: string) {
     this.bus.emit("wake", sessionId);
@@ -39,11 +39,15 @@ export class AppEvents {
     return new Promise<void>((resolve) => {
       let settled = false;
       const handler = (changedSessionId: string) => {
-        if (changedSessionId !== sessionId) return;
+        if (changedSessionId !== sessionId) {
+          return;
+        }
         done();
       };
       const done = () => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
         this.bus.off("wake", handler);
         resolve();
@@ -72,10 +76,14 @@ export class AppEvents {
   streamTranscript(c: Context, sessionId: string) {
     return this.stream(c, (write) => {
       const changed = (changedSessionId: string) => {
-        if (changedSessionId === sessionId) write("changed", {});
+        if (changedSessionId === sessionId) {
+          write("changed", {});
+        }
       };
       const delta = (value: TranscriptDelta) => {
-        if (value.sessionId === sessionId) write("delta", value.event);
+        if (value.sessionId === sessionId) {
+          write("delta", value.event);
+        }
       };
       this.bus.on("transcriptChanged", changed);
       this.bus.on("transcriptDelta", delta);
@@ -96,7 +104,7 @@ export class AppEvents {
         rejectStream = reject;
       });
       const write: WriteEvent = (event, data) => {
-        pending = pending.then(() => stream.writeSSE({ event, data: JSON.stringify(data) }));
+        pending = pending.then(() => stream.writeSSE({ data: JSON.stringify(data), event }));
         void pending.catch(rejectStream);
       };
       const unsubscribe = subscribe(write);
@@ -104,8 +112,11 @@ export class AppEvents {
         resolveStream();
       };
       try {
-        if (c.req.raw.signal.aborted) resolveStream();
-        else c.req.raw.signal.addEventListener("abort", abort, { once: true });
+        if (c.req.raw.signal.aborted) {
+          resolveStream();
+        } else {
+          c.req.raw.signal.addEventListener("abort", abort, { once: true });
+        }
         await disconnected;
         await pending;
       } finally {

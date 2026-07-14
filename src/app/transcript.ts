@@ -1,20 +1,20 @@
-import { existsSync } from "node:fs";
 import {
-  mapStoredMessagesToChatMessages,
-  ToolMessage,
   type BaseMessage,
   type StoredMessage,
+  ToolMessage,
+  mapStoredMessagesToChatMessages,
 } from "@langchain/core/messages";
-import { sessionNotFound } from "../errors";
-import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
+import { type DisplayMessage, type DisplayToolCall } from "./timeline";
+import { contentToText, messageReasoning } from "../runtime/content";
+import { freeformCallIds, rawFreeformInput } from "./timeline/freeform";
+import { modelTokenUsage, toolInputTokens, toolOutputTokens } from "./timeline/tokenCounts";
 import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Settings } from "../types";
-import { contentToText, messageReasoning } from "../runtime/content";
+import { existsSync } from "node:fs";
 import { extractToolImages } from "../runtime/modelImages";
 import { parseError } from "../failures/details";
-import { type DisplayMessage, type DisplayToolCall } from "./timeline";
-import { modelTokenUsage, toolInputTokens, toolOutputTokens } from "./timeline/tokenCounts";
-import { freeformCallIds, rawFreeformInput } from "./timeline/freeform";
+import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
+import { sessionNotFound } from "../errors";
 import { z } from "zod";
 interface MessageRow {
   id: number;
@@ -36,12 +36,14 @@ interface SequenceRow {
   seq: number;
 }
 const storedMessageSchema = z.looseObject({
-  type: z.string(),
   data: z.record(z.string(), z.unknown()),
+  type: z.string(),
 });
 export function loadSessionTranscript(settings: Settings, sessionId: string) {
   const paths = resolveSessionPaths(settings, sessionId);
-  if (!existsSync(paths.dbPath)) throw sessionNotFound(sessionId);
+  if (!existsSync(paths.dbPath)) {
+    throw sessionNotFound(sessionId);
+  }
   const db = new AgentDatabase(paths.dbPath);
   try {
     return loadTranscript(db, sessionId);
@@ -70,12 +72,12 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
     )
     .all(sessionId)
     .map((row) => ({
-      id: row.id,
       content: row.content,
-      status: row.status,
       error: row.error ? parseError(row.error) : null,
-      userMessageId: row.user_message_id,
+      id: row.id,
       root: row.root_id === row.id,
+      status: row.status,
+      userMessageId: row.user_message_id,
     }));
   const events = db.db
     .query<PersistedEventRow, [string]>(
@@ -90,13 +92,15 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
   if (!Number.isSafeInteger(eventCursor)) {
     throw new Error(`流式事件游标超出安全整数范围：${String(eventCursor)}`);
   }
-  return { control, queue, messages, events, eventCursor };
+  return { control, eventCursor, events, messages, queue };
 }
 function toDisplayMessage(row: MessageRow): DisplayMessage {
   const stored = parseStored(row.message_json);
   stored.data.id = row.source_id;
   const [message] = mapStoredMessagesToChatMessages([stored]);
-  if (!message) throw new Error("无法还原消息");
+  if (!message) {
+    throw new Error("无法还原消息");
+  }
   const role = messageRole(message);
   const content = contentToText(message.content);
   if (role === "tool" && !ToolMessage.isInstance(message)) {
@@ -128,8 +132,12 @@ function parseStored(value: string): StoredMessage {
   return result.data as unknown as StoredMessage;
 }
 function messageRole(message: BaseMessage): DisplayMessage["role"] {
-  if (message.type === "human") return "user";
-  if (message.type === "tool") return "tool";
+  if (message.type === "human") {
+    return "user";
+  }
+  if (message.type === "tool") {
+    return "tool";
+  }
   return "assistant";
 }
 function extractToolCalls(message: BaseMessage): DisplayToolCall[] {

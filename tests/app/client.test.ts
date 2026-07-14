@@ -1,16 +1,16 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
 import { parseClientIntent, runClient } from "../../src/client";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { join } from "node:path";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
+import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("client intent parses messages and controls", () => {
@@ -25,7 +25,7 @@ test("client cancel during pause preserves pause state", () => {
   const db = new AgentDatabase(dbPath);
   db.setControl("123", "pause");
   db.close();
-  runClient({ sessionId: "123", control: "cancel" }, root);
+  runClient({ control: "cancel", sessionId: "123" }, root);
   const reopened = new AgentDatabase(dbPath);
   expect(reopened.control("123")).toBe("pause_cancel");
   reopened.close();

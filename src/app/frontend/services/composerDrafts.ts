@@ -27,7 +27,9 @@ export function writeComposerDraft(target: ComposerDraftTarget, content: string,
 }
 export function flushComposerDraft(target: ComposerDraftTarget, content: string, revision: number) {
   if (target.kind === "session") {
-    if (revision === 0) return true;
+    if (revision === 0) {
+      return true;
+    }
     return beaconComposerDraft(target.sessionId, content, revision);
   }
   window.sessionStorage.setItem(newSessionKey, content);

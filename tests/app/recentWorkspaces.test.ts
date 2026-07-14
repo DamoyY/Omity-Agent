@@ -8,11 +8,11 @@ test("recent workspaces preserve session order, remove duplicates, and cap resul
 });
 function session(workspace: string, index: number): SessionInfo {
   return {
-    id: index.toString(),
-    workspace,
     createdAt: index,
-    updatedAt: index,
-    status: "idle",
     error: null,
+    id: index.toString(),
+    status: "idle",
+    updatedAt: index,
+    workspace,
   };
 }

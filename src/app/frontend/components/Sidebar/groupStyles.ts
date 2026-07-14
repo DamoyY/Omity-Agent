@@ -1,6 +1,7 @@
 import { css } from "styled-system/css";
 export const root = css({ display: "grid", minW: 0 });
 export const header = css({
+  _hover: { bg: "control" },
   alignItems: "center",
   bg: "sidebar",
   borderWidth: 0,
@@ -10,13 +11,12 @@ export const header = css({
   gap: "1.5",
   gridTemplateColumns: "auto minmax(0, 1fr) auto",
   h: "7",
-  px: "2",
   position: "sticky",
+  px: "2",
   textAlign: "left",
   top: 0,
   w: "full",
   zIndex: 1,
-  _hover: { bg: "control" },
 });
 export const chevron = css({ transition: "transform 150ms ease" });
 export const collapsedChevron = css({ transform: "rotate(-90deg)" });
@@ -34,6 +34,7 @@ export const counts = css({
 export const runningCount = css({ color: "statusModel" });
 export const sessions = css({ display: "grid", gap: "0.5", pb: "2" });
 export const historyToggle = css({
+  _hover: { bg: "control", color: "mutedStrong" },
   bg: "transparent",
   borderWidth: 0,
   color: "muted",
@@ -42,9 +43,10 @@ export const historyToggle = css({
   justifyContent: "flex-start",
   ml: "2px",
   px: "3",
-  _hover: { bg: "control", color: "mutedStrong" },
 });
 export const item = css({
+  _focusWithin: { bg: "control" },
+  _hover: { bg: "control" },
   alignItems: "stretch",
   borderBottomColor: "line",
   borderBottomWidth: "1px",
@@ -55,16 +57,19 @@ export const item = css({
   minW: 0,
   overflow: "hidden",
   transition: "background 120ms ease",
-  _hover: { bg: "control" },
-  _focusWithin: { bg: "control" },
 });
 export const selected = css({
-  bg: "transparent",
-  borderLeftColor: "text",
   _focusWithin: { bg: "transparent" },
   _hover: { bg: "transparent" },
+  bg: "transparent",
+  borderLeftColor: "text",
 });
 export const row = css({
+  _focusVisible: {
+    bg: "transparent",
+    outline: "none",
+  },
+  _hover: { bg: "transparent" },
   bg: "transparent",
   borderWidth: 0,
   display: "grid",
@@ -76,11 +81,6 @@ export const row = css({
   px: "2.5",
   textAlign: "left",
   w: "full",
-  _hover: { bg: "transparent" },
-  _focusVisible: {
-    bg: "transparent",
-    outline: "none",
-  },
 });
 export const fingerprint = css({
   color: "mutedStrong",

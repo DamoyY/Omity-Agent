@@ -1,44 +1,44 @@
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { createHash } from "node:crypto";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { redirectLargeToolOutput } from "../../src/runtime/largeOutput";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { ToolMessage } from "@langchain/core/messages";
 import { countTokens } from "../../src/runtime/tokenizer";
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+import { redirectLargeToolOutput } from "../../src/runtime/largeOutput";
+import { tmpdir } from "node:os";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("normalizes MCP text content before size handling", async () => {
   const root = makeDir();
   const short = "短输出";
   const shortMessage = new ToolMessage({
-    content: JSON.stringify({ content: [{ type: "text", text: short }] }),
+    content: JSON.stringify({ content: [{ text: short, type: "text" }] }),
     tool_call_id: "call-0",
   });
   const original = "结构化长输出 ".repeat(100);
   const message = new ToolMessage({
     content: JSON.stringify({
-      content: [{ type: "text", text: original }],
+      content: [{ text: original, type: "text" }],
       structuredContent: { ignored: true },
     }),
-    tool_call_id: "call-1",
     name: "demo_tool",
+    tool_call_id: "call-1",
   });
   const normalized = await redirectLargeToolOutput(shortMessage, {
     dataDir: root,
     maxTokens: countTokens(short),
-    sessionId: "demo-session",
     outputId: "call-0",
+    sessionId: "demo-session",
   });
   const redirected = await redirectLargeToolOutput(message, {
     dataDir: root,
     maxTokens: 1,
-    sessionId: "demo-session",
     outputId: "call-1",
+    sessionId: "demo-session",
   });
   const outputPath = join(
     root,
@@ -63,8 +63,8 @@ test("accepts hook call IDs when writing large output", async () => {
     {
       dataDir: root,
       maxTokens: 1,
-      sessionId: "demo-session",
       outputId,
+      sessionId: "demo-session",
     },
   );
   const outputPath = join(
@@ -93,31 +93,31 @@ test("keeps MCP images outside the text size limit", async () => {
   const imageData = "A".repeat(1024 * 1024);
   const imageMessage = new ToolMessage({
     content: JSON.stringify({
-      content: [{ type: "image", data: imageData, mimeType: "image/png" }],
+      content: [{ data: imageData, mimeType: "image/png", type: "image" }],
     }),
     tool_call_id: "call-2",
   });
   const errorMessage = new ToolMessage({
     content: JSON.stringify({
+      content: [{ text: "MCP 工具报错".repeat(100), type: "text" }],
       isError: true,
-      content: [{ type: "text", text: "MCP 工具报错".repeat(100) }],
     }),
     tool_call_id: "call-3",
   });
   const imageRedirected = await redirectLargeToolOutput(imageMessage, {
     dataDir: root,
     maxTokens: 1,
-    sessionId: "demo",
     outputId: "call-2",
+    sessionId: "demo",
   });
   const errorRedirected = await redirectLargeToolOutput(errorMessage, {
     dataDir: root,
     maxTokens: 1,
-    sessionId: "demo",
     outputId: "call-3",
+    sessionId: "demo",
   });
   expect(imageRedirected.content).toEqual([
-    { type: "image", data: imageData, mimeType: "image/png" },
+    { data: imageData, mimeType: "image/png", type: "image" },
   ]);
   expect(errorRedirected).toBe(errorMessage);
 });
@@ -125,25 +125,25 @@ test("redirects mixed output text without removing its image", async () => {
   const root = makeDir();
   const text = "long text ".repeat(100);
   const image = {
-    type: "image",
-    source_type: "base64",
     data: "A".repeat(1024 * 1024),
     mime_type: "image/png",
+    source_type: "base64",
+    type: "image",
   };
   const redirected = await redirectLargeToolOutput(
     new ToolMessage({
-      content: [{ type: "text", text }, image],
+      content: [{ text, type: "text" }, image],
       tool_call_id: "call-4",
     }),
     {
       dataDir: root,
       maxTokens: 1,
-      sessionId: "demo",
       outputId: "call-4",
+      sessionId: "demo",
     },
   );
   expect(redirected.content).toEqual([
-    { type: "text", text: expect.stringContaining("工具输出过长") },
+    { text: expect.stringContaining("工具输出过长"), type: "text" },
     image,
   ]);
 });

@@ -1,28 +1,28 @@
-import type { Database } from "bun:sqlite";
 import {
-  WRITES_IDX_MAP,
-  copyCheckpoint,
   type Checkpoint,
   type CheckpointMetadata,
   type PendingWrite,
   type SerializerProtocol,
+  WRITES_IDX_MAP,
+  copyCheckpoint,
 } from "@langchain/langgraph-checkpoint";
-import type { RunnableConfig } from "@langchain/core/runnables";
-import type { BaseMessage } from "@langchain/core/messages";
-import type { SqlBinding } from "./sql";
-import { optionalConfigString, requiredConfigString } from "./sql";
-import { serialize } from "./serde";
 import {
   normalizeCheckpoint,
   normalizePendingValue,
   persistCheckpointMessages,
   persistPendingMessages,
 } from "./messageRefs";
+import { optionalConfigString, requiredConfigString } from "./sql";
 import {
   pruneMessageBlobs,
   replaceCheckpointBlobRefs,
   replaceWriteBlobRefs,
 } from "../infrastructure/database/records/messages/blobStore";
+import type { BaseMessage } from "@langchain/core/messages";
+import type { Database } from "bun:sqlite";
+import type { RunnableConfig } from "@langchain/core/runnables";
+import type { SqlBinding } from "./sql";
+import { serialize } from "./serde";
 export async function putCheckpoint(
   db: Database,
   serde: SerializerProtocol,
@@ -65,16 +65,16 @@ export async function putCheckpoint(
     replaceCheckpointBlobRefs(
       db,
       {
-        threadId: thread_id,
-        checkpointNs: checkpoint_ns,
         checkpointId: checkpoint.id,
+        checkpointNs: checkpoint_ns,
+        threadId: thread_id,
       },
       [...(normalized.messages ?? []), ...normalized.referencedMessages],
     );
     pruneMessageBlobs(db);
   })();
   return {
-    configurable: { thread_id, checkpoint_ns, checkpoint_id: checkpoint.id },
+    configurable: { checkpoint_id: checkpoint.id, checkpoint_ns, thread_id },
   };
 }
 export async function putPendingWrites(
@@ -120,7 +120,9 @@ export async function putPendingWrites(
           changed = true;
         }
       }
-      if (changed) pruneMessageBlobs(db);
+      if (changed) {
+        pruneMessageBlobs(db);
+      }
     })(rows);
   } finally {
     replace.finalize();
@@ -155,11 +157,11 @@ async function pendingWriteRows(
       return {
         replace: channel in WRITES_IDX_MAP,
         key: {
-          threadId,
-          checkpointNs,
           checkpointId,
-          taskId,
+          checkpointNs,
           idx: writeIndex,
+          taskId,
+          threadId,
         },
         ...(normalized.messages ? { messages: normalized.messages } : {}),
         bindings: [

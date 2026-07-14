@@ -29,17 +29,20 @@ test("SSE closes after the first network error instead of reconnecting", () => {
     expect(log).toHaveBeenCalledTimes(1);
   } finally {
     log.mockRestore();
-    if (descriptor) Object.defineProperty(globalThis, "EventSource", descriptor);
-    else Reflect.deleteProperty(globalThis, "EventSource");
+    if (descriptor) {
+      Object.defineProperty(globalThis, "EventSource", descriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "EventSource");
+    }
   }
 });
 function session(status: SessionInfo["status"], updatedAt: number): SessionInfo {
   return {
-    id: "session",
-    workspace: "F:/workspace",
     createdAt: 1,
-    updatedAt,
-    status,
     error: null,
+    id: "session",
+    status,
+    updatedAt,
+    workspace: "F:/workspace",
   };
 }

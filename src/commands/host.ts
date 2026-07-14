@@ -1,7 +1,7 @@
 import { Args, Command } from "@oclif/core";
-import { runHost } from "../host";
-import { deleteHostSession } from "../sessionStorage";
 import type { HostMode } from "../types";
+import { deleteHostSession } from "../sessionStorage";
+import { runHost } from "../host";
 const hostActions = ["new", "load", "delete", "overwrite"] as const;
 type HostAction = (typeof hostActions)[number];
 export default class Host extends Command {
@@ -16,19 +16,19 @@ export default class Host extends Command {
     },
   ];
   static override args = {
-    sessionId: Args.string({
-      name: "session-id",
-      description: "会话 ID，例如 123",
-      required: true,
-    }),
     action: Args.string({
       options: [...hostActions],
+      required: true,
+    }),
+    sessionId: Args.string({
+      description: "会话 ID，例如 123",
+      name: "session-id",
       required: true,
     }),
   };
   async run() {
     const { args } = await this.parse(Host);
-    const sessionId = args.sessionId;
+    const { sessionId } = args;
     const action = args.action as HostAction;
     if (action === "delete") {
       deleteHostSession(sessionId);

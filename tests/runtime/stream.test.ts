@@ -3,8 +3,8 @@ import {
   type RawInputToolCallChunk,
   ToolMessageChunk,
 } from "@langchain/core/messages";
-import { expect, test } from "bun:test";
 import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
+import { expect, test } from "bun:test";
 test("stream messages persist only assistant text chunks", () => {
   const stream = makeStreamRecorder();
   handleStreamEvent(
@@ -29,8 +29,8 @@ test("stream messages persist assistant reasoning chunks", () => {
       "messages",
       [
         new AIMessageChunk({
+          content: [{ reasoning: "分析中", type: "reasoning" }],
           id: "message-1",
-          content: [{ type: "reasoning", reasoning: "分析中" }],
         }),
         {},
       ],
@@ -48,8 +48,8 @@ test("stream messages persist assistant tool call chunks", () => {
       "messages",
       [
         new AIMessageChunk({
-          id: "message-1",
           content: "",
+          id: "message-1",
           tool_call_chunks: [
             {
               args: '{"path":',
@@ -127,14 +127,14 @@ function makeStreamRecorder() {
   return {
     ctx: {
       db: {
-        streamToken: (_sessionId: string, queueId: number, text: string, messageId?: string) =>
-          tokens.push({ queueId, text, ...(messageId ? { messageId } : {}) }),
         streamReasoning: (_sessionId: string, queueId: number, text: string, messageId?: string) =>
           reasoning.push({
             queueId,
             text,
             ...(messageId ? { messageId } : {}),
           }),
+        streamToken: (_sessionId: string, queueId: number, text: string, messageId?: string) =>
+          tokens.push({ queueId, text, ...(messageId ? { messageId } : {}) }),
         streamToolCall: (
           _sessionId: string,
           queueId: number,

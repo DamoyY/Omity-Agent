@@ -9,7 +9,7 @@ test.each([
 ])("formats an incomplete JSON prefix as YAML", (inputText, expected) => {
   expect(formatToolInput(call(inputText))).toBe(expected);
 });
-test.each(['{"value":tru', '{"value":"\\u12', '{"value" 1}'])(
+test.each(['{"value":tru', String.raw`{"value":"\u12`, '{"value" 1}'])(
   "keeps a non-recoverable JSON prefix as text",
   (inputText) => {
     expect(formatToolInput(call(inputText))).toBe(`'${inputText}'\n`);

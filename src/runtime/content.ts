@@ -23,8 +23,12 @@ export function contentToText(content: unknown): string {
   if (Array.isArray(content)) {
     return content
       .map((part: unknown) => {
-        if (typeof part === "string") return part;
-        if (!isRecord(part)) return "";
+        if (typeof part === "string") {
+          return part;
+        }
+        if (!isRecord(part)) {
+          return "";
+        }
         return typeof part["text"] === "string" ? part["text"] : "";
       })
       .join("");
@@ -37,7 +41,9 @@ export function messageReasoning(message: BaseMessage) {
   const outputParts = Array.isArray(output)
     ? output.flatMap((item) => readReasoningSummary(item)?.parts ?? [])
     : [];
-  if (outputParts.length > 0) return joinReasoningParts(outputParts);
+  if (outputParts.length > 0) {
+    return joinReasoningParts(outputParts);
+  }
   const summary = readReasoningSummary(message.additional_kwargs["reasoning"]);
   if (summary && summary.parts.length > 0) {
     return joinReasoningParts(summary.parts);
@@ -67,7 +73,9 @@ export function streamedMessageReasoning(message: BaseMessage, state: ReasoningS
   return reasoning ? appendReasoningPart({ text: reasoning }, state) : flushAsterisks(state);
 }
 export function contentBlocksToReasoning(content: unknown): string {
-  if (!Array.isArray(content)) return "";
+  if (!Array.isArray(content)) {
+    return "";
+  }
   return joinReasoningParts(
     content.flatMap((part) =>
       isRecord(part) && part["type"] === "reasoning" && typeof part["reasoning"] === "string"
@@ -87,14 +95,18 @@ function appendReasoningPart(part: ReasoningPart, state: ReasoningStreamState) {
   output += prefix;
   updateStreamTail(state, prefix);
   state.breakBeforeNext = false;
-  if (part.index !== undefined) state.partIndex = part.index;
+  if (part.index !== undefined) {
+    state.partIndex = part.index;
+  }
   return output + appendReasoningText(part.text, state);
 }
 function joinReasoningParts(parts: ReasoningPart[]) {
   const state = createReasoningStreamState();
   const text = parts
     .map((part, index) => {
-      if (index > 0) state.breakBeforeNext = true;
+      if (index > 0) {
+        state.breakBeforeNext = true;
+      }
       return appendReasoningPart(part, state);
     })
     .join("");
@@ -119,13 +131,17 @@ function flushAsterisks(state: ReasoningStreamState) {
   return pending;
 }
 function readReasoningSummary(value: unknown): ReasoningSummary | null {
-  if (!isRecord(value) || value["type"] !== "reasoning") return null;
-  const summary = value["summary"];
+  if (!isRecord(value) || value["type"] !== "reasoning") {
+    return null;
+  }
+  const { summary } = value;
   return {
     ...(typeof value["id"] === "string" ? { id: value["id"] } : {}),
     parts: Array.isArray(summary)
       ? summary.flatMap((part) => {
-          if (!isRecord(part) || typeof part["text"] !== "string") return [];
+          if (!isRecord(part) || typeof part["text"] !== "string") {
+            return [];
+          }
           return [
             {
               text: part["text"],
@@ -147,7 +163,9 @@ function updatedTrailingNewlines(previous: number, appended: string) {
   return trailing === appended.length ? previous + trailing : trailing;
 }
 function updateStreamTail(state: ReasoningStreamState, appended: string) {
-  if (!appended) return;
+  if (!appended) {
+    return;
+  }
   state.hasText = true;
   state.lastCharacter = appended.at(-1) ?? state.lastCharacter;
   state.trailingNewlines = updatedTrailingNewlines(state.trailingNewlines, appended);

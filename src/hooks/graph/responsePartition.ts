@@ -5,8 +5,8 @@ export function partitionToolResponse(
   includeResponse: boolean,
 ) {
   return {
-    content: includeResponse ? original.content : "",
     additional_kwargs: partitionAdditionalKwargs(original, callId, includeResponse),
+    content: includeResponse ? original.content : "",
     response_metadata: partitionResponseMetadata(original, callId, includeResponse),
     usage_metadata: includeResponse ? original.usage_metadata : undefined,
   };
@@ -19,7 +19,9 @@ function partitionAdditionalKwargs(original: AIMessage, callId: string, includeR
         const partition = partitionCallItems(value, allCallIds, callId, includeResponse);
         return partition ? [[key, partition]] : [];
       }
-      if (!isRecord(value)) return includeResponse ? [[key, value]] : [];
+      if (!isRecord(value)) {
+        return includeResponse ? [[key, value]] : [];
+      }
       const partition = partitionCallRecord(value, allCallIds, callId, includeResponse);
       return partition ? [[key, partition]] : [];
     }),
@@ -27,11 +29,16 @@ function partitionAdditionalKwargs(original: AIMessage, callId: string, includeR
 }
 function partitionResponseMetadata(original: AIMessage, callId: string, includeResponse: boolean) {
   const responseMetadata = includeResponse ? { ...original.response_metadata } : {};
-  const output = original.response_metadata["output"];
-  if (!Array.isArray(output)) return responseMetadata;
+  const { output } = original.response_metadata;
+  if (!Array.isArray(output)) {
+    return responseMetadata;
+  }
   const partition = partitionCallItems(output, toolCallIds(original), callId, includeResponse);
-  if (partition) responseMetadata["output"] = partition;
-  else delete responseMetadata["output"];
+  if (partition) {
+    responseMetadata["output"] = partition;
+  } else {
+    delete responseMetadata["output"];
+  }
   return responseMetadata;
 }
 function partitionCallItems(
@@ -54,7 +61,9 @@ function partitionCallRecord(
   includeResponse: boolean,
 ) {
   const hasCallIds = Object.keys(value).some((id) => allCallIds.has(id));
-  if (!hasCallIds) return includeResponse ? value : undefined;
+  if (!hasCallIds) {
+    return includeResponse ? value : undefined;
+  }
   const partition = Object.fromEntries(
     Object.entries(value).filter(
       ([key]) => key === callId || (includeResponse && !allCallIds.has(key)),
@@ -63,10 +72,14 @@ function partitionCallRecord(
   return Object.keys(partition).length > 0 ? partition : undefined;
 }
 function itemCallId(item: unknown, allCallIds: Set<string>) {
-  if (!isRecord(item)) return undefined;
+  if (!isRecord(item)) {
+    return undefined;
+  }
   const callId = item["call_id"];
-  if (typeof callId === "string" && allCallIds.has(callId)) return callId;
-  const id = item["id"];
+  if (typeof callId === "string" && allCallIds.has(callId)) {
+    return callId;
+  }
+  const { id } = item;
   return typeof id === "string" && allCallIds.has(id) ? id : undefined;
 }
 function toolCallIds(message: AIMessage) {

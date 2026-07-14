@@ -1,6 +1,6 @@
-import type { QueryClient } from "@tanstack/react-query";
-import { transcriptKey, type TranscriptData } from "../queries";
+import { type TranscriptData, transcriptKey } from "../queries";
 import { emptyTranscriptData, rebuildTranscript, withoutOptimistic } from "./cache";
+import type { QueryClient } from "@tanstack/react-query";
 export function addOptimisticUser(queryClient: QueryClient, sessionId: string, content: string) {
   const key = `optimistic-${crypto.randomUUID()}`;
   queryClient.setQueryData<TranscriptData>(transcriptKey(sessionId), (current) => {
@@ -10,12 +10,12 @@ export function addOptimisticUser(queryClient: QueryClient, sessionId: string, c
       view: [
         ...transcript.view,
         {
-          id: -1,
-          key,
-          role: "user",
           content,
           createdAt: Date.now(),
-          parts: [{ type: "content", content }],
+          id: -1,
+          key,
+          parts: [{ content, type: "content" }],
+          role: "user",
         },
       ],
     };
@@ -30,17 +30,19 @@ export function confirmOptimisticUser(
   content: string,
 ) {
   queryClient.setQueryData<TranscriptData>(transcriptKey(sessionId), (current) => {
-    if (!current) return current;
+    if (!current) {
+      return current;
+    }
     const queueItem = current.queue.find(({ id }) => id === queueId);
     const queue = queueItem
       ? current.queue
       : [
           ...current.queue,
           {
-            id: queueId,
             content,
-            status: "pending",
             error: null,
+            id: queueId,
+            status: "pending",
             userMessageId: null,
           },
         ];

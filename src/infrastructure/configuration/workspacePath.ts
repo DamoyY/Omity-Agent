@@ -44,7 +44,7 @@ function expandDollarVariables(value: string, env: Env) {
 function envValue(name: string, env: Env) {
   const value = env[name] ?? env[caseInsensitiveEnvName(name, env)];
   if (value === undefined) {
-    throw new Error("环境变量未定义：" + name);
+    throw new Error(`环境变量未定义：${name}`);
   }
   return value;
 }
@@ -53,6 +53,8 @@ function caseInsensitiveEnvName(name: string, env: Env) {
   return Object.keys(env).find((key) => key.toLowerCase() === lower) ?? name;
 }
 function normalizeDriveRoot(value: string) {
-  if (process.platform !== "win32") return value;
-  return /^[A-Za-z]:$/.test(value) ? value + "\\" : value;
+  if (process.platform !== "win32") {
+    return value;
+  }
+  return /^[A-Za-z]:$/.test(value) ? `${value}\\` : value;
 }

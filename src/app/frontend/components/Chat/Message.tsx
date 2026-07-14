@@ -1,13 +1,13 @@
-import { GitFork } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { css, cva, cx } from "styled-system/css";
-import type { TimelineMessage } from "../../../timeline";
-import { reportPromiseErrors } from "../../services/errors";
-import { Reasoning } from "../Details/Reasoning";
-import { ToolCall } from "../Details/ToolCall";
-import { MarkdownView } from "../MarkdownView";
-import { IconButton } from "../ParkUI";
 import { CopyButton } from "./CopyButton";
+import { GitFork } from "lucide-react";
+import { IconButton } from "../ParkUI";
+import { MarkdownView } from "../MarkdownView";
+import { Reasoning } from "../Details/Reasoning";
+import type { TimelineMessage } from "../../../timeline";
+import { ToolCall } from "../Details/ToolCall";
+import { reportPromiseErrors } from "../../services/errors";
+import { useTranslation } from "react-i18next";
 const row = css({
   alignItems: "start",
   display: "flex",
@@ -124,7 +124,7 @@ export function Message({
           </span>
         </div>
         {item.parts.map((part, index) => {
-          if (part.type === "content")
+          if (part.type === "content") {
             return (
               <MarkdownView
                 content={part.content}
@@ -132,7 +132,8 @@ export function Message({
                 preserveLineBreaks={item.role === "user"}
               />
             );
-          if (part.type === "reasoning")
+          }
+          if (part.type === "reasoning") {
             return (
               <Reasoning
                 content={part.content}
@@ -140,6 +141,7 @@ export function Message({
                 latest={index === latestDetailIndex}
               />
             );
+          }
           return (
             <ToolCall
               call={part.call}

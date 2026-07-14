@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import type { HookRule, HookTrigger, HookWhen } from "../../types";
+import { createHash } from "node:crypto";
 export interface HookCallDetails {
   trigger: HookTrigger;
   sourceId: string;
@@ -12,9 +12,9 @@ export function hookTrigger(target: string, when: HookWhen): HookTrigger {
 }
 export function hookCallDetails(rule: HookRule, sourceId: string): HookCallDetails {
   return {
-    trigger: hookTrigger(rule.target, rule.when),
-    sourceId,
     hookId: rule.id,
+    sourceId,
+    trigger: hookTrigger(rule.target, rule.when),
   };
 }
 export function createHookCallId(sessionId: string, threadId: string, details: HookCallDetails) {

@@ -1,23 +1,23 @@
-import { runClient } from "../client";
-import { deleteHostSession } from "../sessionStorage";
-import { loadSettings } from "../infrastructure/configuration/loadSettings";
-import { appOwner } from "../infrastructure/process/ownership";
-import type { ProcessOwner } from "../infrastructure/process/ownership";
+import { AppRegistry, type RegisteredSession } from "./registry";
 import type { Control, Settings } from "../types";
 import type { MessageSubmission, SessionSubmission } from "./attachments/contract";
-import { enqueueMessageWithAttachments } from "./attachments/message";
+import { type SessionInfo, projectSession } from "./sessionState";
 import { clearSessionDraft, readSessionDraft, writeSessionDraft } from "./composerDraft";
-import { controllerHostEvents } from "./controllerHostEvents";
+import { createAppFork, createAppSession } from "./runtime/sessionActions";
+import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
 import { AppEvents } from "./events";
 import { AppHosts } from "./hosts";
-import { AppRegistry, type RegisteredSession } from "./registry";
-import { projectSession, type SessionInfo } from "./sessionState";
-import { loadSessionTranscript } from "./transcript";
-import { pickWorkspaceDirectory } from "./workspacePicker";
 import type { AppInstanceOwner } from "./runtime/instanceLock";
-import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
-import { createAppFork, createAppSession } from "./runtime/sessionActions";
+import type { ProcessOwner } from "../infrastructure/process/ownership";
+import { appOwner } from "../infrastructure/process/ownership";
 import { cancelSessionTool } from "./sessionCommands";
+import { controllerHostEvents } from "./controllerHostEvents";
+import { deleteHostSession } from "../sessionStorage";
+import { enqueueMessageWithAttachments } from "./attachments/message";
+import { loadSessionTranscript } from "./transcript";
+import { loadSettings } from "../infrastructure/configuration/loadSettings";
+import { pickWorkspaceDirectory } from "./workspacePicker";
+import { runClient } from "../client";
 export class AppController {
   readonly events: AppEvents;
   private readonly settings: Settings;
@@ -101,7 +101,7 @@ export class AppController {
     if (control === "running") {
       await this.ensureHost(session);
     }
-    const result = runClient({ sessionId, control }, this.appRoot);
+    const result = runClient({ control, sessionId }, this.appRoot);
     this.publishChange(sessionId);
     return result;
   }
@@ -114,11 +114,11 @@ export class AppController {
   async forkSession(sessionId: string, beforeMessageId: number) {
     const session = this.registry.require(sessionId);
     const id = await createAppFork({
+      beforeMessageId,
+      pauseSource: () => this.control(sessionId, "pause"),
       settings: this.settings,
       sourceSessionId: sessionId,
       workspace: session.workspace,
-      beforeMessageId,
-      pauseSource: () => this.control(sessionId, "pause"),
     });
     const targetSession = this.registry.refresh(id);
     this.hosts.clearError(id);

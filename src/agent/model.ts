@@ -1,12 +1,12 @@
+import { AIMessage, SystemMessage } from "@langchain/core/messages";
+import type { ModelApi, ModelSettings, Settings } from "../types";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { BaseMessage } from "@langchain/core/messages";
-import { AIMessage, SystemMessage } from "@langchain/core/messages";
-import type { StructuredToolInterface } from "@langchain/core/tools";
 import { ChatOpenAICompletions } from "@langchain/openai";
-import { codexClientFields } from "../infrastructure/openai/codexAuthentication";
 import { CompatibleChatOpenAIResponses } from "../infrastructure/openai/compatibleResponses";
+import type { StructuredToolInterface } from "@langchain/core/tools";
+import { codexClientFields } from "../infrastructure/openai/codexAuthentication";
 import { prepareModelImageMessages } from "../runtime/modelImages";
-import type { ModelApi, ModelSettings, Settings } from "../types";
 export function buildModel(settings: Settings, sessionId: string, instructions?: string) {
   const api = resolveModelApi(settings.model);
   const fields = {
@@ -25,16 +25,16 @@ export function buildModel(settings: Settings, sessionId: string, instructions?:
   return api === "responses"
     ? new CompatibleChatOpenAIResponses({
         ...fields,
+        modelKwargs: {
+          ...fields.modelKwargs,
+          include: ["reasoning.encrypted_content"],
+          ...(instructions ? { instructions } : {}),
+        },
         reasoning: {
           ...(settings.model.reasoning_effort === undefined
             ? {}
             : { effort: settings.model.reasoning_effort }),
           summary: "detailed",
-        },
-        modelKwargs: {
-          ...fields.modelKwargs,
-          include: ["reasoning.encrypted_content"],
-          ...(instructions ? { instructions } : {}),
         },
       })
     : new ChatOpenAICompletions({
@@ -45,8 +45,12 @@ export function buildModel(settings: Settings, sessionId: string, instructions?:
       });
 }
 export function bindModelTools(model: BaseChatModel, tools: StructuredToolInterface[]) {
-  if (tools.length === 0) return model;
-  if (!model.bindTools) throw new Error("模型不支持工具绑定");
+  if (tools.length === 0) {
+    return model;
+  }
+  if (!model.bindTools) {
+    throw new Error("模型不支持工具绑定");
+  }
   return model.bindTools(tools);
 }
 export function modelMessages(
@@ -67,29 +71,39 @@ export function modelMessages(
 }
 export function restoreResponsesCustomToolCalls(messages: BaseMessage[]) {
   return messages.map((message) => {
-    if (!AIMessage.isInstance(message)) return message;
-    const output = message.response_metadata["output"];
+    if (!AIMessage.isInstance(message)) {
+      return message;
+    }
+    const { output } = message.response_metadata;
     const toolOutputs = message.additional_kwargs["tool_outputs"];
-    if (!Array.isArray(output) || !Array.isArray(toolOutputs)) return message;
+    if (!Array.isArray(output) || !Array.isArray(toolOutputs)) {
+      return message;
+    }
     const customCalls = new Map(
       toolOutputs.filter(isCustomToolCallItem).map((item) => [item.call_id, item]),
     );
     const restored = output.map((item: unknown) => {
-      if (!isRecord(item) || item["type"] !== "function_call") return item;
+      if (!isRecord(item) || item["type"] !== "function_call") {
+        return item;
+      }
       const callId = item["call_id"];
       const customCall = typeof callId === "string" && customCalls.get(callId);
-      if (!customCall) return item;
+      if (!customCall) {
+        return item;
+      }
       return customCall;
     });
-    if (restored.every((item, index) => item === output[index])) return message;
+    if (restored.every((item, index) => item === output[index])) {
+      return message;
+    }
     return new AIMessage({
+      additional_kwargs: message.additional_kwargs,
       content: message.content,
       id: message.id,
-      name: message.name,
-      tool_calls: message.tool_calls,
       invalid_tool_calls: message.invalid_tool_calls,
-      additional_kwargs: message.additional_kwargs,
+      name: message.name,
       response_metadata: { ...message.response_metadata, output: restored },
+      tool_calls: message.tool_calls,
       usage_metadata: message.usage_metadata,
     });
   });
@@ -104,9 +118,13 @@ export function resolveModelApi(model: ModelSettings): ModelApi {
   return model.adapter === "codex" ? "responses" : model.adapter;
 }
 function modelClientFields(model: ModelSettings) {
-  if (model.adapter === "codex") return codexClientFields();
+  if (model.adapter === "codex") {
+    return codexClientFields();
+  }
   const apiKey = process.env[model.apiKeyEnv];
-  if (!apiKey) throw new Error(`缺少环境变量 ${model.apiKeyEnv}`);
+  if (!apiKey) {
+    throw new Error(`缺少环境变量 ${model.apiKeyEnv}`);
+  }
   return {
     apiKey,
     configuration: {

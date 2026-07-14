@@ -149,6 +149,8 @@ export const migrationSql = [
   `,
 ] as const;
 export function applySchema(db: Database) {
-  for (const sql of migrationSql) db.run(sql);
+  for (const sql of migrationSql) {
+    db.run(sql);
+  }
   assertCoreSchema(db);
 }

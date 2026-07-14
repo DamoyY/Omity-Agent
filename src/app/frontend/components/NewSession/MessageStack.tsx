@@ -1,15 +1,15 @@
 import { Bot, Trash2, UserRound } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { css } from "styled-system/css";
-import type { InitialMessagePair } from "../../../initialState";
 import {
   composerActions,
   composerControls,
   composerFrame,
   composerRole,
 } from "../Chat/Composer/layout";
-import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { Button } from "../ParkUI";
+import type { InitialMessagePair } from "../../../initialState";
+import { MarkdownEditor } from "../Chat/MarkdownEditor";
+import { css } from "styled-system/css";
+import { useTranslation } from "react-i18next";
 export interface EditablePair extends InitialMessagePair {
   id: string;
 }

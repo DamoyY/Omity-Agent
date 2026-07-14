@@ -1,8 +1,8 @@
-import { AIMessage, HumanMessage, type BaseMessage } from "@langchain/core/messages";
+import { AIMessage, type BaseMessage, HumanMessage } from "@langchain/core/messages";
+import { type MessageRow, messageRowsToChatMessages } from "./serialization";
+import { persistMessageBlob, pruneMessageBlobs } from "./blobStore";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
-import { messageRowsToChatMessages, type MessageRow } from "./serialization";
-import { persistMessageBlob, pruneMessageBlobs } from "./blobStore";
 const messageColumns = "b.message_json AS message_json, m.source_id AS source_id";
 export function insertUserMessage(
   db: Database,
@@ -22,9 +22,13 @@ export function queueMessageId(sessionId: string, queueId: number) {
   return `queue:${sessionId}:${queueId.toString()}`;
 }
 export function messageQueueId(sessionId: string, message: BaseMessage) {
-  if (message.type !== "human" || !message.id) return undefined;
+  if (message.type !== "human" || !message.id) {
+    return undefined;
+  }
   const prefix = `queue:${sessionId}:`;
-  if (!message.id.startsWith("queue:")) return undefined;
+  if (!message.id.startsWith("queue:")) {
+    return undefined;
+  }
   if (!message.id.startsWith(prefix)) {
     throw new Error(`用户消息属于其他会话：${message.id}`);
   }
@@ -43,7 +47,9 @@ export function appendAssistantMessage(db: Database, sessionId: string, content:
   );
 }
 export function syncMessages(db: Database, sessionId: string, messages: BaseMessage[]) {
-  for (const message of messages) message.id ??= randomUUID();
+  for (const message of messages) {
+    message.id ??= randomUUID();
+  }
   const tx = db.transaction(() => {
     db.query("UPDATE messages SET position = NULL, queue_id = NULL WHERE session_id = ?").run(
       sessionId,
@@ -94,7 +100,9 @@ export function storeMessage(
        WHERE session_id = ? AND source_id = ? AND blob_digest = ?`,
     )
     .get(sessionId, ref.sourceId, ref.digest);
-  if (!row) throw new Error(`消息写入失败：${ref.sourceId}`);
+  if (!row) {
+    throw new Error(`消息写入失败：${ref.sourceId}`);
+  }
   return row.id;
 }
 export function pruneUnreferencedMessages(db: Database, sessionId: string) {
@@ -111,6 +119,8 @@ function nextPosition(db: Database, sessionId: string) {
       "SELECT COALESCE(MAX(position), -1) + 1 AS position FROM messages WHERE session_id = ?",
     )
     .get(sessionId);
-  if (!row) throw new Error("无法分配消息位置");
+  if (!row) {
+    throw new Error("无法分配消息位置");
+  }
   return row.position;
 }

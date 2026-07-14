@@ -7,10 +7,10 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { isProcessRunning } from "../../infrastructure/process/ownership";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { z } from "zod";
-import { isProcessRunning } from "../../infrastructure/process/ownership";
 const ownerSchema = z.object({
   pid: z.number().int().positive(),
   token: z.uuid(),
@@ -41,7 +41,9 @@ export class AppInstanceLock {
         closeSync(descriptor);
         return new AppInstanceLock(path, owner, abandonedOwner);
       } catch (error) {
-        if (!isExistsError(error)) throw error;
+        if (!isExistsError(error)) {
+          throw error;
+        }
         const owner = readOwner(path);
         if (isProcessRunning(owner.pid)) {
           throw new Error(`数据目录已有 App 在运行（PID ${owner.pid.toString()}）：${dataDir}`, {
@@ -55,7 +57,9 @@ export class AppInstanceLock {
     throw new Error(`无法获取 App 实例锁：${path}`);
   }
   release() {
-    if (this.released) return;
+    if (this.released) {
+      return;
+    }
     const owner = readOwner(this.path);
     if (owner.token !== this.owner.token) {
       throw new Error(`App 实例锁所有者已变化：${this.path}`);
@@ -65,10 +69,14 @@ export class AppInstanceLock {
   }
 }
 function readOwner(path: string) {
-  if (!existsSync(path)) throw new Error(`App 实例锁不存在：${path}`);
+  if (!existsSync(path)) {
+    throw new Error(`App 实例锁不存在：${path}`);
+  }
   const value: unknown = JSON.parse(readFileSync(path, "utf8"));
   const parsed = ownerSchema.safeParse(value);
-  if (!parsed.success) throw new Error(`App 实例锁内容无效：${path}`);
+  if (!parsed.success) {
+    throw new Error(`App 实例锁内容无效：${path}`);
+  }
   return parsed.data;
 }
 function isExistsError(error: unknown) {

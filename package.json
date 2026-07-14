@@ -8,7 +8,7 @@
   "module": "src/cli.ts",
   "scripts": {
     "omity": "bun src/cli.ts",
-    "check": "tsc --noEmit && eslint --fix && oxfmt && bun test"
+    "check": "oxlint --fix --format=agent && oxfmt && bun test"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
@@ -58,18 +58,15 @@
   },
   "devDependencies": {
     "@babel/core": "latest",
-    "@eslint/js": "latest",
     "@pandacss/dev": "latest",
     "@rolldown/plugin-babel": "latest",
     "@types/bun": "latest",
-    "@typescript/native-preview": "latest",
     "@vitejs/plugin-react": "latest",
     "babel-plugin-react-compiler": "latest",
-    "eslint": "latest",
-    "eslint-plugin-react-hooks": "latest",
     "oxfmt": "latest",
+    "oxlint": "latest",
+    "oxlint-tsgolint": "latest",
     "postcss": "latest",
-    "typescript-eslint": "latest",
     "vite": "latest"
   },
   "oclif": {

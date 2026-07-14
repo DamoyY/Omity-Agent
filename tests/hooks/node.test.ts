@@ -1,25 +1,29 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { AIMessage, ToolMessage, type BaseMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { tool } from "@langchain/core/tools";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
-import { z } from "zod";
+import { AIMessage, type BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { createAgentGraph } from "../../src/agent";
-import { HookRuntime } from "../../src/hooks/runtime";
-import { isHookCallId } from "../../src/hooks/storage/calls";
+import { mkdtempSync, rmSync } from "node:fs";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HookRule } from "../../src/types";
+import { HookRuntime } from "../../src/hooks/runtime";
+import { Logger } from "../../src/infrastructure/logging/logger";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { isHookCallId } from "../../src/hooks/storage/calls";
+import { join } from "node:path";
 import { required } from "../support/database";
 import { testSettings } from "../support/settings";
+import { tmpdir } from "node:os";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
 afterEach(() => {
-  for (const db of databases.splice(0)) db.close();
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const db of databases.splice(0)) {
+    db.close();
+  }
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { force: true, recursive: true });
+  }
 });
 test("takeover hooks bracket an agent tool without recursive hooks", async () => {
   const calls: string[] = [];
@@ -35,22 +39,22 @@ test("takeover hooks bracket an agent tool without recursive hooks", async () =>
     [hookTool, originalTool],
   );
   const graph = createAgentGraph({
-    settings: testSettings(hooks.workspace),
+    checkpointer: new MemorySaver(),
+    hooks,
     model: fakeModel()
       .respond(
         new AIMessage({
-          id: "agent-call-message",
           content: "",
-          tool_calls: [{ id: "original-call", name: "original", args: {} }],
+          id: "agent-call-message",
+          tool_calls: [{ args: {}, id: "original-call", name: "original" }],
         }),
       )
       .respond(new AIMessage("done")),
+    settings: testSettings(hooks.workspace),
     tools: [hookTool, originalTool],
-    hooks,
-    checkpointer: new MemorySaver(),
   });
   const result = await graph.invoke(
-    { messages: [{ role: "user", content: "run" }] },
+    { messages: [{ content: "run", role: "user" }] },
     { configurable: { thread_id: "thread" } },
   );
   expect(calls).toEqual(["hook", "hook", "original", "hook"]);
@@ -82,11 +86,11 @@ test("each hook execution commits one hooks node boundary", async () => {
   );
   const model = fakeModel().respond(new AIMessage("done"));
   const graph = createAgentGraph({
-    settings: testSettings(hooks.workspace),
-    model,
-    tools: [hookTool],
-    hooks,
     checkpointer: new MemorySaver(),
+    hooks,
+    model,
+    settings: testSettings(hooks.workspace),
+    tools: [hookTool],
   });
   const config = {
     configurable: { thread_id: "boundaries" },
@@ -95,8 +99,8 @@ test("each hook execution commits one hooks node boundary", async () => {
   await invokeBoundary(
     graph,
     {
-      messages: [{ role: "user", content: "run" }],
       hookPendingUserIds: ["queue:1"],
+      messages: [{ content: "run", role: "user" }],
     },
     config,
   );
@@ -115,7 +119,9 @@ async function invokeBoundary(
   await graph.invoke(input, config);
   for (;;) {
     const state = await graph.getState(config);
-    if (state.next.length > 0 || state.tasks.length === 0) return;
+    if (state.next.length > 0 || state.tasks.length === 0) {
+      return;
+    }
     await graph.invoke(null, config);
   }
 }
@@ -133,7 +139,7 @@ function makeTool(name: string, record: () => void) {
       record();
       return Promise.resolve(`${name}-result`);
     },
-    { name, description: name, schema: z.object({}) },
+    { description: name, name, schema: z.object({}) },
   );
 }
 function takeover(id: string, target: string, when: HookRule["when"]): HookRule {
@@ -147,18 +153,20 @@ function silent(
   runLimit = -1,
 ): HookRule {
   return {
-    id,
-    target,
-    when,
-    runLimit,
-    mode: "silent",
-    tool: toolName,
     args: {},
+    id,
+    mode: "silent",
+    runLimit,
+    target,
+    tool: toolName,
+    when,
   };
 }
 function assertToolProtocol(messages: BaseMessage[]) {
   for (const [index, message] of messages.entries()) {
-    if (!AIMessage.isInstance(message)) continue;
+    if (!AIMessage.isInstance(message)) {
+      continue;
+    }
     for (const call of message.tool_calls ?? []) {
       const next = messages[index + 1];
       expect(next).toBeInstanceOf(ToolMessage);

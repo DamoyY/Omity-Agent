@@ -1,4 +1,3 @@
-import { Database } from "bun:sqlite";
 import {
   BaseCheckpointSaver,
   type Checkpoint,
@@ -8,19 +7,20 @@ import {
   type PendingWrite,
   type SerializerProtocol,
 } from "@langchain/langgraph-checkpoint";
-import type { RunnableConfig } from "@langchain/core/runnables";
 import {
-  buildListQuery,
-  selectCheckpoint,
-  setupSql,
-  optionalConfigString,
-  requiredConfigString,
   type CheckpointRow,
   type SqlBinding,
+  buildListQuery,
+  optionalConfigString,
+  requiredConfigString,
+  selectCheckpoint,
+  setupSql,
 } from "./sql";
-import { rowToTuple } from "./tuple";
 import { putCheckpoint, putPendingWrites } from "./write";
+import type { Database } from "bun:sqlite";
+import type { RunnableConfig } from "@langchain/core/runnables";
 import { deleteThreadData } from "./lifecycle";
+import { rowToTuple } from "./tuple";
 export class BunSqliteSaver extends BaseCheckpointSaver {
   private isSetup = false;
   constructor(
@@ -31,7 +31,9 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     super(serde);
   }
   protected setup() {
-    if (this.isSetup) return;
+    if (this.isSetup) {
+      return;
+    }
     for (const sql of setupSql) {
       this.db.run(sql);
     }
@@ -51,14 +53,16 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     const row = checkpoint_id
       ? query.get(thread_id, checkpoint_ns, checkpoint_id)
       : query.get(thread_id, checkpoint_ns);
-    if (!row) return undefined;
+    if (!row) {
+      return undefined;
+    }
     const finalConfig = checkpoint_id
       ? config
       : {
           configurable: {
-            thread_id: row.thread_id,
-            checkpoint_ns,
             checkpoint_id: row.checkpoint_id,
+            checkpoint_ns,
+            thread_id: row.thread_id,
           },
         };
     return this.decodeRow(row, finalConfig);
@@ -72,9 +76,9 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     for (const row of this.db.query<CheckpointRow, SqlBinding[]>(sql).all(...args)) {
       yield await this.decodeRow(row, {
         configurable: {
-          thread_id: row.thread_id,
-          checkpoint_ns: row.checkpoint_ns,
           checkpoint_id: row.checkpoint_id,
+          checkpoint_ns: row.checkpoint_ns,
+          thread_id: row.thread_id,
         },
       });
     }
@@ -110,7 +114,9 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     });
   }
   private resolveSessionId(config: RunnableConfig) {
-    if (this.sessionId) return this.sessionId;
+    if (this.sessionId) {
+      return this.sessionId;
+    }
     const threadId = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
     return threadId.split(":", 1)[0] ?? threadId;
   }

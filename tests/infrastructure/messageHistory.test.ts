@@ -23,8 +23,8 @@ test("initial conversation keeps history outside the pending queue", () => {
     "历史问题二",
     "历史回答二",
   ]);
-  expect(db.pendingAppends("123").map(({ id, content }) => ({ id, content }))).toEqual([
-    { id: queueId, content: "当前问题" },
+  expect(db.pendingAppends("123").map(({ id, content }) => ({ content, id }))).toEqual([
+    { content: "当前问题", id: queueId },
   ]);
   db.startQueue("123", required(db.nextQueue("123")));
   expect(db.history("123").map((message) => message.text)).toEqual([
@@ -40,24 +40,24 @@ test("preserves full LangChain message structure", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   const reasoning = {
-    id: "rs_1",
-    type: "reasoning",
     encrypted_content: "sealed",
-    summary: [{ type: "summary_text", text: "visible summary" }],
+    id: "rs_1",
+    summary: [{ text: "visible summary", type: "summary_text" }],
+    type: "reasoning",
   };
   const output = [
     reasoning,
     {
-      type: "message",
+      content: [{ annotations: [], text: "答案", type: "output_text" }],
       role: "assistant",
-      content: [{ type: "output_text", text: "答案", annotations: [] }],
+      type: "message",
     },
   ];
   db.syncHistory("123", [
     new HumanMessage("问题"),
     new AIMessage({
-      content: [{ type: "text", text: "答案", annotations: [] }],
       additional_kwargs: { reasoning },
+      content: [{ annotations: [], text: "答案", type: "text" }],
       response_metadata: { model_provider: "openai", output },
     }),
   ]);
@@ -93,16 +93,16 @@ test("persists only transient stream deltas", () => {
   expect(queueId).toBe(1);
   expect(events).toEqual([
     {
-      queue_id: 1,
-      message_id: null,
       kind: "assistant_text_delta",
+      message_id: null,
       payload_json: '"答案"',
+      queue_id: 1,
     },
     {
-      queue_id: 1,
-      message_id: null,
       kind: "tool_call_delta",
+      message_id: null,
       payload_json: '{"id":"call-1","name":"tool"}',
+      queue_id: 1,
     },
   ]);
   db.syncHistory("123", [new HumanMessage("问题"), new AIMessage("答案")]);

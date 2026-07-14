@@ -1,4 +1,4 @@
-import { writeComposerDraft, type ComposerDraftTarget } from "../composerDrafts";
+import { type ComposerDraftTarget, writeComposerDraft } from "../composerDrafts";
 interface DraftSnapshot {
   content: string;
   revision: number;
@@ -36,13 +36,17 @@ export class DraftSaver {
     return this.tail;
   }
   private clearTimer() {
-    if (this.timer === undefined) return;
+    if (this.timer === undefined) {
+      return;
+    }
     clearTimeout(this.timer);
     this.timer = undefined;
   }
   private persistPending() {
     const snapshot = this.pending;
-    if (!snapshot) return;
+    if (!snapshot) {
+      return;
+    }
     this.pending = undefined;
     this.tail = this.tail
       .then(() => this.persist(this.target, snapshot.content, snapshot.revision))

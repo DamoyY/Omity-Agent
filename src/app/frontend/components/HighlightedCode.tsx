@@ -1,9 +1,9 @@
-import DOMPurify from "dompurify";
-import hljs from "highlight.js/lib/common";
-import { useRef } from "react";
 import { css, cx } from "styled-system/css";
 import { CopyButton } from "./Chat/CopyButton";
+import DOMPurify from "dompurify";
+import hljs from "highlight.js/lib/common";
 import { useFollowBottom } from "./TranscriptScroll";
+import { useRef } from "react";
 const container = css({
   maxW: "full",
   minW: 0,
@@ -16,9 +16,31 @@ const copyButton = css({
   zIndex: "1",
 });
 const block = css({
+  "& .hljs-addition": { color: "syntaxAddition" },
+  "& .hljs-attr, & .hljs-attribute, & .hljs-property": {
+    color: "syntaxProperty",
+  },
+  "& .hljs-comment, & .hljs-quote": {
+    color: "syntaxComment",
+    fontStyle: "italic",
+  },
+  "& .hljs-deletion": { color: "syntaxDeletion" },
+  "& .hljs-keyword, & .hljs-selector-tag, & .hljs-built_in": {
+    color: "syntaxKeyword",
+  },
+  "& .hljs-meta, & .hljs-doctag": { color: "syntaxMeta" },
+  "& .hljs-number, & .hljs-literal, & .hljs-symbol": {
+    color: "syntaxNumber",
+  },
+  "& .hljs-string, & .hljs-regexp, & .hljs-template-variable": {
+    color: "syntaxString",
+  },
+  "& .hljs-title, & .hljs-title.function_, & .hljs-title.class_": {
+    color: "syntaxTitle",
+  },
   bg: "surfaceInset",
-  borderWidth: "1px",
   borderColor: "line",
+  borderWidth: "1px",
   color: "text",
   display: "block",
   fontFamily: "mono",
@@ -31,28 +53,6 @@ const block = css({
   p: "3",
   pr: "12",
   whiteSpace: "pre",
-  "& .hljs-keyword, & .hljs-selector-tag, & .hljs-built_in": {
-    color: "syntaxKeyword",
-  },
-  "& .hljs-string, & .hljs-regexp, & .hljs-template-variable": {
-    color: "syntaxString",
-  },
-  "& .hljs-number, & .hljs-literal, & .hljs-symbol": {
-    color: "syntaxNumber",
-  },
-  "& .hljs-title, & .hljs-title.function_, & .hljs-title.class_": {
-    color: "syntaxTitle",
-  },
-  "& .hljs-attr, & .hljs-attribute, & .hljs-property": {
-    color: "syntaxProperty",
-  },
-  "& .hljs-comment, & .hljs-quote": {
-    color: "syntaxComment",
-    fontStyle: "italic",
-  },
-  "& .hljs-meta, & .hljs-doctag": { color: "syntaxMeta" },
-  "& .hljs-deletion": { color: "syntaxDeletion" },
-  "& .hljs-addition": { color: "syntaxAddition" },
 });
 const codeElement = css({
   bg: "transparent",

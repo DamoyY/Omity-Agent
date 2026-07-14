@@ -1,25 +1,25 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { fakeModel } from "@langchain/core/testing";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { expect, test } from "bun:test";
-import { createAgentGraph } from "../../src/agent";
 import type { HookRuntime } from "../../src/hooks/runtime";
-import { readGraphState } from "../../src/runtime/context";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { ModelEmptyResponseError } from "../../src/runtime/network";
+import { createAgentGraph } from "../../src/agent";
+import { fakeModel } from "@langchain/core/testing";
+import { readGraphState } from "../../src/runtime/context";
 import { testSettings } from "../support/settings";
 test("rejects an empty model response before committing it", async () => {
-  const model = fakeModel().respond(new AIMessage({ id: "empty", content: "" }));
+  const model = fakeModel().respond(new AIMessage({ content: "", id: "empty" }));
   const graph = createAgentGraph({
-    settings: testSettings("data"),
-    model,
-    tools: [],
-    hooks: { sessionId: "session" } as HookRuntime,
     checkpointer: new MemorySaver(),
+    hooks: { sessionId: "session" } as HookRuntime,
+    model,
+    settings: testSettings("data"),
+    tools: [],
   });
   const config = { configurable: { thread_id: "empty-response" } };
   let failure: unknown;
   try {
-    await graph.invoke({ messages: [{ role: "user", content: "answer" }] }, config);
+    await graph.invoke({ messages: [{ content: "answer", role: "user" }] }, config);
   } catch (error) {
     failure = error;
   }
@@ -34,18 +34,18 @@ test("rejects an empty model response before committing it", async () => {
 test("validates LangGraph state while retaining third-party task fields", () => {
   const message = new HumanMessage("question");
   const state = readGraphState({
-    values: { messages: [message], hookPlan: { step: 1 }, extension: true },
-    next: ["model_request"],
-    tasks: [{ name: "model_request", id: "task-1" }],
     extension: true,
+    next: ["model_request"],
+    tasks: [{ id: "task-1", name: "model_request" }],
+    values: { extension: true, hookPlan: { step: 1 }, messages: [message] },
   });
   expect(state.values.messages).toEqual([message]);
-  expect(state.tasks[0]).toEqual({ name: "model_request", id: "task-1" });
+  expect(state.tasks[0]).toEqual({ id: "task-1", name: "model_request" });
   expect(() =>
     readGraphState({
-      values: { messages: [message], hookPendingUserIds: [1] },
       next: [],
       tasks: [],
+      values: { hookPendingUserIds: [1], messages: [message] },
     }),
   ).toThrow("LangGraph Hook pending 状态无效");
 });

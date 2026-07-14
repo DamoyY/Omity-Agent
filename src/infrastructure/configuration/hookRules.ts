@@ -1,15 +1,15 @@
-import { readFileSync } from "node:fs";
-import YAML from "yaml";
-import { z } from "zod";
 import type { HookRule } from "../../types";
+import YAML from "yaml";
+import { readFileSync } from "node:fs";
+import { z } from "zod";
 const argsSchema = z.record(z.string(), z.unknown());
 const callFields = {
-  id: z.string().min(1),
-  target: z.string().min(1),
-  when: z.enum(["before", "after"]),
-  runLimit: z.number().int().min(-1),
-  tool: z.string().min(1),
   args: argsSchema,
+  id: z.string().min(1),
+  runLimit: z.number().int().min(-1),
+  target: z.string().min(1),
+  tool: z.string().min(1),
+  when: z.enum(["before", "after"]),
 };
 const hookSchema = z.object({ ...callFields, mode: z.enum(["silent", "takeover"]) }).strict();
 const hooksFileSchema = z

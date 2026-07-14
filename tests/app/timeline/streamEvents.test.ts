@@ -1,8 +1,8 @@
-import { expect, test } from "bun:test";
 import type { DisplayEvent, DisplayQueue } from "../../../src/app/timeline";
+import { expect, test } from "bun:test";
 import { buildTimeline } from "../../../src/app/timeline";
 import { countTokens } from "../../../src/runtime/tokenizer";
-const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
+const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
 test("merges tool identity and argument chunks by index", () => {
   const calls = streamedCalls([
     toolEvent(1, { id: "call-1", index: 0, name: "terminal_send_command" }),
@@ -14,8 +14,8 @@ test("merges tool identity and argument chunks by index", () => {
       id: "call-1",
       index: 0,
       input: {},
-      inputTokens: countTokens('{"command":"where.exe codex","waiting":10}'),
       inputText: '{"command":"where.exe codex","waiting":10}',
+      inputTokens: countTokens('{"command":"where.exe codex","waiting":10}'),
       name: "terminal_send_command",
       streaming: true,
     },
@@ -118,6 +118,6 @@ function toolEvent(
   return {
     id,
     message: "tool_call",
-    payload: { kind: "tool_call_delta", queueId: 1, call },
+    payload: { call, kind: "tool_call_delta", queueId: 1 },
   };
 }

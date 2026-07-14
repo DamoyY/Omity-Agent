@@ -1,6 +1,6 @@
-import { ToolMessage, type BaseMessage, type ContentBlock } from "@langchain/core/messages";
-import { createMiddleware } from "langchain";
+import { type BaseMessage, type ContentBlock, ToolMessage } from "@langchain/core/messages";
 import type { ModelApi } from "../types";
+import { createMiddleware } from "langchain";
 export interface ToolImage {
   src: string;
   mimeType: string;
@@ -22,9 +22,15 @@ export function prepareModelImageMessages(messages: BaseMessage[], api: ModelApi
 }
 export function extractToolImages(content: unknown): ToolImage[] {
   const parsed = parseStructuredString(content);
-  if (parsed !== content) return extractToolImages(parsed);
-  if (Array.isArray(content)) return content.flatMap(extractToolImages);
-  if (!isRecord(content)) return [];
+  if (parsed !== content) {
+    return extractToolImages(parsed);
+  }
+  if (Array.isArray(content)) {
+    return content.flatMap(extractToolImages);
+  }
+  if (!isRecord(content)) {
+    return [];
+  }
   if (Array.isArray(content["content"])) {
     return extractToolImages(content["content"]);
   }
@@ -33,10 +39,18 @@ export function extractToolImages(content: unknown): ToolImage[] {
 }
 export function toolContentText(content: unknown): string {
   const parsed = parseStructuredString(content);
-  if (parsed !== content) return toolContentText(parsed);
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) return content.map(toolContentText).join("");
-  if (content == null) return "";
+  if (parsed !== content) {
+    return toolContentText(parsed);
+  }
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content.map(toolContentText).join("");
+  }
+  if (content == null) {
+    return "";
+  }
   if (!isRecord(content)) {
     if (
       typeof content === "number" ||
@@ -56,21 +70,27 @@ export function toolContentText(content: unknown): string {
   ) {
     return content["text"];
   }
-  if (readImage(content)) return "";
+  if (readImage(content)) {
+    return "";
+  }
   return JSON.stringify(content);
 }
 function prepareResponsesMessages(messages: BaseMessage[]) {
   return messages.map((message) => {
-    if (!ToolMessage.isInstance(message)) return message;
+    if (!ToolMessage.isInstance(message)) {
+      return message;
+    }
     const images = extractToolImages(message.content);
-    if (images.length === 0) return message;
+    if (images.length === 0) {
+      return message;
+    }
     const text = toolContentText(message.content);
     const content: ContentBlock[] = [
-      ...(text ? [{ type: "input_text", text }] : []),
+      ...(text ? [{ text, type: "input_text" }] : []),
       ...images.map(({ src }) => ({
-        type: "input_image",
-        image_url: src,
         detail: "auto",
+        image_url: src,
+        type: "input_image",
       })),
     ];
     return copyToolMessage(message, content);
@@ -78,34 +98,38 @@ function prepareResponsesMessages(messages: BaseMessage[]) {
 }
 function prepareCompletionsMessages(messages: BaseMessage[]) {
   return messages.map((message) => {
-    if (!ToolMessage.isInstance(message)) return message;
+    if (!ToolMessage.isInstance(message)) {
+      return message;
+    }
     const imageCount = extractToolImages(message.content).length;
-    if (imageCount === 0) return message;
+    if (imageCount === 0) {
+      return message;
+    }
     const text = toolContentText(message.content);
     const notice = `工具返回了 ${imageCount.toString()} 张图片，但 Completions API 不支持工具返回图片给模型。`;
     return copyToolMessage(message, [text, notice].filter((part) => part.length > 0).join("\n\n"));
   });
 }
 function copyToolMessage(message: ToolMessage, content: ContentBlock[] | string) {
-  const artifact: unknown = message.artifact;
+  const { artifact } = message;
   return new ToolMessage({
-    content,
-    tool_call_id: message.tool_call_id,
-    name: message.name,
-    id: message.id,
     additional_kwargs: message.additional_kwargs,
-    response_metadata: message.response_metadata,
     artifact,
-    status: message.status,
+    content,
+    id: message.id,
     metadata: message.metadata,
+    name: message.name,
+    response_metadata: message.response_metadata,
+    status: message.status,
+    tool_call_id: message.tool_call_id,
   });
 }
 function readImage(value: Record<string, unknown>): ToolImage | null {
   if (value["type"] === "image") {
-    const data = value["data"];
+    const { data } = value;
     const mimeType = value["mimeType"] ?? value["mime_type"];
     if (typeof data === "string" && typeof mimeType === "string") {
-      return { src: `data:${mimeType};base64,${data}`, mimeType };
+      return { mimeType, src: `data:${mimeType};base64,${data}` };
     }
   }
   if (value["type"] !== "image_url" && value["type"] !== "input_image") {
@@ -117,10 +141,12 @@ function readImage(value: Record<string, unknown>): ToolImage | null {
 }
 function parseImageDataUrl(src: string): ToolImage | null {
   const match = /^data:([^;,]+)(?:;[^,]*)*;base64,/i.exec(src);
-  return match?.[1] ? { src, mimeType: match[1] } : null;
+  return match?.[1] ? { mimeType: match[1], src } : null;
 }
 function parseStructuredString(value: unknown): unknown {
-  if (typeof value !== "string") return value;
+  if (typeof value !== "string") {
+    return value;
+  }
   try {
     const parsed: unknown = JSON.parse(value);
     return isStructuredContent(parsed) ? parsed : value;

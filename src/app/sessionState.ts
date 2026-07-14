@@ -1,6 +1,6 @@
 import type { ErrorDetails } from "../failures/details";
-import type { SessionStatus } from "../types";
 import type { RegisteredSession } from "./registry";
+import type { SessionStatus } from "../types";
 export interface SessionInfo {
   id: string;
   workspace: string;
@@ -15,10 +15,10 @@ export function projectSession(
   hostError: ErrorDetails | null,
 ): SessionInfo {
   return {
-    id: session.id,
-    workspace: session.workspace,
     createdAt: session.createdAt,
+    id: session.id,
     updatedAt: session.updatedAt,
+    workspace: session.workspace,
     ...resolveSessionState(session, activity, hostError),
   };
 }
@@ -28,8 +28,8 @@ export function resolveSessionState(
   hostError: ErrorDetails | null,
 ) {
   return {
-    status: resolveSessionStatus(session, activity, hostError),
     error: hostError ?? session.error,
+    status: resolveSessionStatus(session, activity, hostError),
   };
 }
 export function resolveSessionStatus(
@@ -37,7 +37,9 @@ export function resolveSessionStatus(
   activity: Extract<SessionStatus, "tool" | "model" | "idle">,
   hostError: ErrorDetails | null,
 ): SessionStatus {
-  if (hostError || session.error) return "error";
+  if (hostError || session.error) {
+    return "error";
+  }
   if (session.paused || session.control === "pause" || session.control === "pause_cancel") {
     return "paused";
   }

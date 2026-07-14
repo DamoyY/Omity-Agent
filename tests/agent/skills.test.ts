@@ -1,15 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import { modelMessages } from "../../src/agent";
 import { buildSkillsMessage, loadSkills } from "../../src/skills";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { HumanMessage } from "@langchain/core/messages";
 import type { Settings } from "../../src/types";
+import { join } from "node:path";
+import { modelMessages } from "../../src/agent";
+import { tmpdir } from "node:os";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("loads enabled skills from SKILL.md front matter", () => {
@@ -19,8 +19,8 @@ test("loads enabled skills from SKILL.md front matter", () => {
   const settings = makeSettings(skillsDir, { web: false });
   expect(loadSkills(settings)).toEqual([
     {
-      name: "code",
       description: "代码任务",
+      name: "code",
       source: join(skillsDir, "code", "SKILL.md"),
     },
   ]);
@@ -52,44 +52,44 @@ function writeSkill(skillsDir: string, dirname: string, name: string, descriptio
 }
 function makeSettings(skillsDir: string, skillEnabled: Record<string, boolean>): Settings {
   return {
-    paths: { dataDir: "data" },
+    agent: {
+      systemPrompt: "test",
+    },
     attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,
     },
-    model: {
-      adapter: "completions",
-      model: "test-model",
-      apiKeyEnv: "TEST_OPENAI_KEY",
-      baseURL: null,
-      temperature: 0,
-      timeoutMs: 1000,
-    },
+    hooks: [],
     host: {
-      pollMs: 1,
-      pausePollMs: 1,
       idleLogMs: 1,
+      pausePollMs: 1,
+      pollMs: 1,
       recursionLimit: 10,
-      shutdownTimeoutMs: 1_000,
+      shutdownTimeoutMs: 1000,
     },
+    leases: { hostTtlMs: 30_000 },
     logging: {
       level: "error",
       streamTokens: false,
     },
-    leases: { hostTtlMs: 30_000 },
+    model: {
+      adapter: "completions",
+      apiKeyEnv: "TEST_OPENAI_KEY",
+      baseURL: null,
+      model: "test-model",
+      temperature: 0,
+      timeoutMs: 1000,
+    },
+    paths: { dataDir: "data" },
+    skills: {
+      directory: skillsDir,
+      enabled: true,
+      skillEnabled,
+      usagePrompt: "use skills",
+    },
     toolOutput: {
       maxTokens: 8192,
-    },
-    hooks: [],
-    agent: {
-      systemPrompt: "test",
-    },
-    skills: {
-      enabled: true,
-      directory: skillsDir,
-      usagePrompt: "use skills",
-      skillEnabled,
     },
   };
 }

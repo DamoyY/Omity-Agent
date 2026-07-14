@@ -1,8 +1,8 @@
-import type { Settings } from "../../types";
-import { resolveSessionPaths } from "../../infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../../infrastructure/database/agentDatabase";
-import { recoverHostSession } from "../../runtime/execution/recovery";
 import type { AppInstanceOwner } from "./instanceLock";
+import type { Settings } from "../../types";
+import { recoverHostSession } from "../../runtime/execution/recovery";
+import { resolveSessionPaths } from "../../infrastructure/configuration/sessionPaths";
 interface RecoverableSession {
   id: string;
 }

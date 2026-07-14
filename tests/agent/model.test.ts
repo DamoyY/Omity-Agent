@@ -1,11 +1,11 @@
 import { ChatOpenAICompletions, ChatOpenAIResponses } from "@langchain/openai";
+import type { ModelApi, Settings } from "../../src/types";
 import { afterEach, expect, test } from "bun:test";
 import {
   buildModel,
   normalizeResponsesPayload,
   normalizeResponsesStreamEvent,
 } from "../../src/agent";
-import type { ModelApi, Settings } from "../../src/types";
 const savedEnv = new Map<string, string | undefined>();
 afterEach(() => {
   for (const [key, value] of savedEnv) {
@@ -25,44 +25,44 @@ function setEnv(key: string, value: string) {
 }
 function makeSettings(api: ModelApi): Settings {
   return {
-    paths: { dataDir: "data" },
+    agent: {
+      systemPrompt: "test",
+    },
     attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,
       transcriptRefreshIntervalMs: 1,
     },
-    model: {
-      adapter: api,
-      model: "test-model",
-      apiKeyEnv: "TEST_OPENAI_KEY",
-      baseURL: null,
-      temperature: 0,
-      timeoutMs: 1000,
-    },
+    hooks: [],
     host: {
-      pollMs: 1,
-      pausePollMs: 1,
       idleLogMs: 1,
+      pausePollMs: 1,
+      pollMs: 1,
       recursionLimit: 1,
-      shutdownTimeoutMs: 1_000,
+      shutdownTimeoutMs: 1000,
     },
+    leases: { hostTtlMs: 30_000 },
     logging: {
       level: "debug",
       streamTokens: false,
     },
-    leases: { hostTtlMs: 30_000 },
+    model: {
+      adapter: api,
+      apiKeyEnv: "TEST_OPENAI_KEY",
+      baseURL: null,
+      model: "test-model",
+      temperature: 0,
+      timeoutMs: 1000,
+    },
+    paths: { dataDir: "data" },
+    skills: {
+      directory: "~/.agents/skills",
+      enabled: false,
+      skillEnabled: {},
+      usagePrompt: "use skills",
+    },
     toolOutput: {
       maxTokens: 8192,
-    },
-    hooks: [],
-    agent: {
-      systemPrompt: "test",
-    },
-    skills: {
-      enabled: false,
-      directory: "~/.agents/skills",
-      usagePrompt: "use skills",
-      skillEnabled: {},
     },
   };
 }
@@ -119,44 +119,44 @@ test("normalizes missing Responses API output_text annotations", () => {
   const response = {
     output: [
       {
+        content: [{ text: "hello", type: "output_text" }],
         type: "message",
-        content: [{ type: "output_text", text: "hello" }],
       },
     ],
   };
   expect(normalizeResponsesPayload(response as unknown)).toEqual({
     output: [
       {
+        content: [{ annotations: [], text: "hello", type: "output_text" }],
         type: "message",
-        content: [{ type: "output_text", text: "hello", annotations: [] }],
       },
     ],
   });
 });
 test("normalizes completed Responses API stream events", () => {
   const event = {
-    type: "response.completed",
     response: {
       output: [
         {
+          content: [{ text: "hello", type: "output_text" }],
           type: "message",
-          content: [{ type: "output_text", text: "hello" }],
         },
       ],
     },
+    type: "response.completed",
   };
   const normalized = normalizeResponsesStreamEvent(
     event as Parameters<typeof normalizeResponsesStreamEvent>[0],
   );
   expect(normalized as unknown).toEqual({
-    type: "response.completed",
     response: {
       output: [
         {
+          content: [{ annotations: [], text: "hello", type: "output_text" }],
           type: "message",
-          content: [{ type: "output_text", text: "hello", annotations: [] }],
         },
       ],
     },
+    type: "response.completed",
   });
 });

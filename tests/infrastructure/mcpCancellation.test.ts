@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { markMcpRequestStarted, ToolExecutions } from "../../src/agent/toolExecutions";
+import { ToolExecutions, markMcpRequestStarted } from "../../src/agent/toolExecutions";
 test("aborting a cancellable MCP request sends notifications/cancelled", async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test-client", version: "1" });
@@ -28,7 +28,7 @@ test("aborting a cancellable MCP request sends notifications/cancelled", async (
     const executions = new ToolExecutions();
     executions.announce("call-1");
     const execution = executions.begin("call-1");
-    const request = client.callTool({ name: "wait", arguments: {} }, undefined, {
+    const request = client.callTool({ arguments: {}, name: "wait" }, undefined, {
       signal: execution.signal,
     });
     markMcpRequestStarted(execution.signal);

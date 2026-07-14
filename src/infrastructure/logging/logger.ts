@@ -1,23 +1,23 @@
 import type { LogLevel } from "../../types";
 const priority: Record<LogLevel, number> = {
   debug: 10,
+  error: 40,
   info: 20,
   warn: 30,
-  error: 40,
 };
 const styles = {
-  reset: "\x1b[0m",
-  dim: "\x1b[2m",
   blue: "\x1b[34m",
+  dim: "\x1b[2m",
   green: "\x1b[32m",
-  yellow: "\x1b[33m",
   red: "\x1b[31m",
+  reset: "\x1b[0m",
+  yellow: "\x1b[33m",
 };
 const levelMeta: Record<LogLevel, { label: string; mark: string; color: string }> = {
-  debug: { label: "DEBUG", mark: "·", color: styles.blue },
-  info: { label: "INFO ", mark: "●", color: styles.green },
-  warn: { label: "WARN ", mark: "▲", color: styles.yellow },
-  error: { label: "ERROR", mark: "✖", color: styles.red },
+  debug: { color: styles.blue, label: "DEBUG", mark: "·" },
+  error: { color: styles.red, label: "ERROR", mark: "✖" },
+  info: { color: styles.green, label: "INFO ", mark: "●" },
+  warn: { color: styles.yellow, label: "WARN ", mark: "▲" },
 };
 export class Logger {
   private indent = 0;
@@ -46,11 +46,15 @@ export class Logger {
     this.write("error", message, data);
   }
   token(text: string) {
-    if (this.silent) return;
+    if (this.silent) {
+      return;
+    }
     process.stdout.write(text);
   }
   private write(level: LogLevel, message: string, data?: unknown) {
-    if (this.silent) return;
+    if (this.silent) {
+      return;
+    }
     if (priority[level] < priority[this.level]) {
       return;
     }

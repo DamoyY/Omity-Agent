@@ -1,7 +1,7 @@
+import { type HostContext, waitForWake } from "./context";
 import type { QueueItem } from "../types";
-import { waitForWake, type HostContext } from "./context";
-import { modelNetworkRetryDelayMs } from "./network";
 import { captureError } from "../failures/details";
+import { modelNetworkRetryDelayMs } from "./network";
 interface RetriedRun {
   items: [QueueItem, ...QueueItem[]];
 }
@@ -19,10 +19,10 @@ export async function waitBeforeModelNetworkRetry(
 ) {
   const delayMs = modelNetworkRetryDelayMs(attempt);
   console.warn("模型 API 网络异常，将继续重试", {
-    queueId: run.items[0].id,
     attempt,
     delayMs,
     error: captureError(error),
+    queueId: run.items[0].id,
   });
   const deadline = Date.now() + delayMs;
   while (Date.now() < deadline) {

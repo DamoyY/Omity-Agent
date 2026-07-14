@@ -1,9 +1,9 @@
+import { type ApiController, createApi } from "../../src/app/http/handler";
+import { DomainError, sessionNotFound } from "../../src/errors";
+import { decodeSessionId, requestBodyLimit } from "../../src/app/http/request";
 import { expect, test } from "bun:test";
 import { AppEvents } from "../../src/app/events";
 import { normalizeError } from "../../src/app/http/errors";
-import { createApi, type ApiController } from "../../src/app/http/handler";
-import { decodeSessionId, requestBodyLimit } from "../../src/app/http/request";
-import { DomainError, sessionNotFound } from "../../src/errors";
 test("API JSON validation rejects invalid controls and empty messages", async () => {
   const api = createApi(apiController());
   const invalidControl = await api.request(
@@ -15,8 +15,8 @@ test("API JSON validation rejects invalid controls and empty messages", async ()
     error: { code: "BAD_REQUEST" },
   });
   const emptyMessage = await api.request("/api/sessions/test/messages", {
-    method: "POST",
     body: messageForm("   ", 0),
+    method: "POST",
   });
   expect(emptyMessage.status).toBe(400);
 });
@@ -25,23 +25,23 @@ test("message multipart validation forwards placeholders and files", async () =>
   const controller = apiController();
   controller.sendMessage = (...args: unknown[]) => {
     calls.push(args);
-    return Promise.resolve({ queueId: 1, content: "attachments/file.txt" });
+    return Promise.resolve({ content: "attachments/file.txt", queueId: 1 });
   };
   const id = "123e4567-e89b-42d3-a456-426614174000";
   const body = messageForm(`查看 {{file:${id}:notes.txt}}`, 3);
   body.append(`file:${id}`, new File(["hello"], "notes.txt"));
   const response = await createApi(controller).request("/api/sessions/test/messages", {
-    method: "POST",
     body,
+    method: "POST",
   });
   expect(response.status).toBe(200);
   expect(calls).toHaveLength(1);
   expect(calls[0]).toMatchObject([
     "test",
     {
+      attachments: [{ file: { name: "notes.txt", size: 5 }, id }],
       content: `查看 {{file:${id}:notes.txt}}`,
       draftRevision: 3,
-      attachments: [{ id, file: { name: "notes.txt", size: 5 } }],
     },
   ]);
 });
@@ -51,43 +51,43 @@ test("session creation validates and forwards the complete initial state", async
   controller.createSession = (...args: unknown[]) => {
     calls.push(args);
     return Promise.resolve({
-      id: "new-session",
-      workspace: "F:/workspace",
       createdAt: 1,
-      updatedAt: 1,
-      status: "idle",
       error: null,
+      id: "new-session",
+      status: "idle",
+      updatedAt: 1,
+      workspace: "F:/workspace",
     });
   };
   const api = createApi(controller);
-  const body = sessionForm("F:/workspace", [{ user: "旧问题", assistant: "旧回答" }], "新问题");
+  const body = sessionForm("F:/workspace", [{ assistant: "旧回答", user: "旧问题" }], "新问题");
   const response = await api.request("/api/sessions", {
-    method: "POST",
     body,
+    method: "POST",
   });
   expect(response.status).toBe(200);
   expect(calls).toEqual([
     [
       {
-        workspace: "F:/workspace",
-        history: [{ user: "旧问题", assistant: "旧回答" }],
-        message: "新问题",
         attachments: [],
+        history: [{ assistant: "旧回答", user: "旧问题" }],
+        message: "新问题",
+        workspace: "F:/workspace",
       },
     ],
   ]);
-  const incompleteBody = sessionForm("F:/workspace", [{ user: "", assistant: "回答" }], "新问题");
+  const incompleteBody = sessionForm("F:/workspace", [{ assistant: "回答", user: "" }], "新问题");
   const incomplete = await api.request("/api/sessions", {
-    method: "POST",
     body: incompleteBody,
+    method: "POST",
   });
   expect(incomplete.status).toBe(400);
 });
 test("API JSON reader enforces the body size limit", async () => {
   const body = `"${"x".repeat(requestBodyLimit)}"`;
   const response = await createApi(apiController()).request("/api/sessions/test/control", {
-    method: "POST",
     body,
+    method: "POST",
   });
   expect(response.status).toBe(413);
   expect(await response.json()).toEqual({
@@ -111,26 +111,26 @@ test("API validates encoded session IDs without path normalization", () => {
 });
 test("API maps missing sessions and conflicts to explicit status codes", () => {
   expect(normalizeError(sessionNotFound("123"))).toMatchObject({
-    status: 404,
     code: "SESSION_NOT_FOUND",
+    status: 404,
   });
   expect(
     normalizeError(new DomainError("HOST_LEASE_CONFLICT", "会话已有 Host 正在运行：123")),
   ).toMatchObject({
-    status: 409,
     code: "HOST_LEASE_CONFLICT",
+    status: 409,
   });
   expect(normalizeError(new Error("会话不存在：文案不再参与映射"))).toMatchObject({
-    status: 500,
     code: "INTERNAL_ERROR",
     message: "会话不存在：文案不再参与映射",
+    status: 500,
   });
   expect(
     normalizeError(new DomainError("ATTACHMENT_TOO_LARGE", "附件总大小超过上限")),
-  ).toMatchObject({ status: 413, code: "ATTACHMENT_TOO_LARGE" });
+  ).toMatchObject({ code: "ATTACHMENT_TOO_LARGE", status: 413 });
 });
 function jsonRequest(body: unknown): RequestInit {
-  return { method: "POST", body: JSON.stringify(body) };
+  return { body: JSON.stringify(body), method: "POST" };
 }
 function messageForm(content: string, draftRevision: number) {
   const body = new FormData();
@@ -151,21 +151,21 @@ function sessionForm(
 }
 function apiController() {
   return {
+    assertSession: () => undefined,
     bootstrap: () => ({
       attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     }),
-    sessions: () => [],
-    pickWorkspace: () => null,
+    cancelTool: () => ({}),
+    composerDraft: () => ({}),
+    control: () => ({}),
     createSession: () => ({}),
     deleteSession: () => ({}),
-    transcript: () => ({}),
-    composerDraft: () => ({}),
+    events: new AppEvents(),
+    forkSession: () => ({}),
+    pickWorkspace: () => null,
     saveComposerDraft: () => ({}),
     sendMessage: () => ({}),
-    control: () => ({}),
-    cancelTool: () => ({}),
-    forkSession: () => ({}),
-    assertSession: () => undefined,
-    events: new AppEvents(),
+    sessions: () => [],
+    transcript: () => ({}),
   } as unknown as ApiController;
 }

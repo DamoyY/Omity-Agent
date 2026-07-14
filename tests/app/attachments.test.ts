@@ -1,15 +1,15 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
 import { attachmentPlaceholder, validateAttachmentBatch } from "../../src/app/attachments/contract";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { required } from "../support/database";
 import { saveMessageAttachments } from "../../src/app/attachments/storage";
 import { testSettings } from "../support/settings";
-import { required } from "../support/database";
+import { tmpdir } from "node:os";
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 test("referenced pasted files are saved and placeholders become absolute paths", async () => {
@@ -23,7 +23,7 @@ test("referenced pasted files are saved and placeholders become absolute paths",
     settings,
     sessionId,
     `读取 ${placeholder} 和 ${placeholder.toUpperCase()}`,
-    [{ id, file: new File(["hello"], "../notes.txt") }],
+    [{ file: new File(["hello"], "../notes.txt"), id }],
   );
   const [path, repeated] = saved.content.slice("读取 ".length).split(" 和 ");
   const savedPath = required(path);
@@ -37,7 +37,7 @@ test("unreferenced files are ignored and missing references are rejected", async
   const settings = testSettings(root);
   const id = "123e4567-e89b-42d3-a456-426614174000";
   const ignored = await saveMessageAttachments(settings, "session", "hello", [
-    { id, file: new File(["hello"], "notes.txt") },
+    { file: new File(["hello"], "notes.txt"), id },
   ]);
   expect(ignored.content).toBe("hello");
   expect(() =>

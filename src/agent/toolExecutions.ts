@@ -38,17 +38,19 @@ export class ToolExecutions {
     executionsBySignal.set(signal, execution);
     this.startPolling(callId, execution);
     return {
-      signal,
       cancellationDurationMs: () =>
         execution.cancelledAt === undefined
           ? undefined
           : Math.max(0, execution.cancelledAt - execution.announcedAt),
       complete: () => {
-        if (execution.timer) clearInterval(execution.timer);
+        if (execution.timer) {
+          clearInterval(execution.timer);
+        }
         if (this.executions.get(callId) === execution) {
           this.executions.delete(callId);
         }
       },
+      signal,
     };
   }
   cancel(callId: string) {
@@ -69,29 +71,39 @@ export class ToolExecutions {
     };
   }
   private startPolling(callId: string, execution: ToolExecution) {
-    if (!this.options.cancellationRequested) return;
+    if (!this.options.cancellationRequested) {
+      return;
+    }
     const check = () => {
       if (this.options.cancellationRequested?.(callId)) {
         this.cancel(callId);
       }
     };
     check();
-    if (execution.cancelledAt !== undefined) return;
+    if (execution.cancelledAt !== undefined) {
+      return;
+    }
     execution.timer = setInterval(check, this.options.pollMs ?? 100);
     execution.timer.unref();
   }
 }
 export function markMcpRequestStarted(signal?: AbortSignal) {
   const execution = signal ? executionsBySignal.get(signal) : undefined;
-  if (!execution) return;
+  if (!execution) {
+    return;
+  }
   execution.requestStarted = true;
   abortCancelledRequest(execution);
 }
 export function markMcpRequestCompleted(signal?: AbortSignal) {
   const execution = signal ? executionsBySignal.get(signal) : undefined;
-  if (execution) execution.requestCompleted = true;
+  if (execution) {
+    execution.requestCompleted = true;
+  }
 }
 function abortCancelledRequest(execution: ToolExecution) {
-  if (execution.cancelledAt === undefined || !execution.requestStarted) return;
+  if (execution.cancelledAt === undefined || !execution.requestStarted) {
+    return;
+  }
   execution.controller.abort(new Error("用户手动终止工具"));
 }

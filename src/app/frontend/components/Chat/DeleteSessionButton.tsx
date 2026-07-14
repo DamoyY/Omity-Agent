@@ -5,9 +5,9 @@ import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
 import { Button } from "../ParkUI";
 const armed = css({
+  _hover: { bg: "statusError", color: "canvas" },
   bg: "statusError",
   color: "canvas",
-  _hover: { bg: "statusError", color: "canvas" },
 });
 export function DeleteSessionButton({
   disabled,
@@ -19,7 +19,9 @@ export function DeleteSessionButton({
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   useEffect(() => {
-    if (!confirming) return;
+    if (!confirming) {
+      return;
+    }
     const timeout = window.setTimeout(() => {
       setConfirming(false);
     }, 2000);

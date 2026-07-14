@@ -1,9 +1,4 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { ChatOpenAICompletions } from "@langchain/openai";
-import { expect, test } from "bun:test";
-import { modelMessages } from "../../src/agent/model";
-import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
-import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
 import {
   cacheTestCleanup,
   imageToolOutput,
@@ -13,6 +8,11 @@ import {
   persist,
   requiredArray,
 } from "../support/cache";
+import { expect, test } from "bun:test";
+import { ChatOpenAICompletions } from "@langchain/openai";
+import { CompatibleChatOpenAIResponses } from "../../src/infrastructure/openai/compatibleResponses";
+import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeformInputs";
+import { modelMessages } from "../../src/agent/model";
 import { testSettings } from "../support/settings";
 cacheTestCleanup();
 test("Completions 请求在追加历史和 SQLite 恢复后保持缓存前缀", async () => {
@@ -23,22 +23,22 @@ test("Completions 请求在追加历史和 SQLite 恢复后保持缓存前缀", 
   settings.model.baseURL = `${server.url}v1`;
   const tool = lookupTool();
   const model = new ChatOpenAICompletions({
-    model: "test",
     apiKey: "test",
-    streaming: false,
     configuration: { baseURL: settings.model.baseURL },
+    model: "test",
+    streaming: false,
   }).bindTools([tool]);
-  const initial = [new HumanMessage({ id: "user-1", content: "inspect" })];
+  const initial = [new HumanMessage({ content: "inspect", id: "user-1" })];
   const history = [
     ...initial,
     new AIMessage({
-      id: "assistant-1",
       content: "",
-      tool_calls: [{ id: "call-1", name: "lookup", args: { query: "cache" } }],
+      id: "assistant-1",
+      tool_calls: [{ args: { query: "cache" }, id: "call-1", name: "lookup" }],
     }),
     imageToolOutput(),
-    new AIMessage({ id: "assistant-2", content: "first answer" }),
-    new HumanMessage({ id: "user-2", content: "continue" }),
+    new AIMessage({ content: "first answer", id: "assistant-2" }),
+    new HumanMessage({ content: "continue", id: "user-2" }),
   ];
   await model.invoke(modelMessages(settings, "stable skills", initial));
   await model.invoke(modelMessages(settings, "stable skills", history));
@@ -58,25 +58,25 @@ test("Responses HTTP 请求保留完整历史和稳定缓存键", async () => {
   settings.agent.systemPrompt = "stable system";
   const configured = configureFreeformMcpTools([lookupTool()], ["lookup"]);
   const model = new CompatibleChatOpenAIResponses({
-    model: "test",
     apiKey: "test",
-    streaming: false,
-    promptCacheKey: "session-1",
-    modelKwargs: { instructions: "stable system\n\nstable skills" },
     configuration: { baseURL: `${server.url}v1` },
+    model: "test",
+    modelKwargs: { instructions: "stable system\n\nstable skills" },
+    promptCacheKey: "session-1",
+    streaming: false,
   }).bindTools(configured.modelTools);
-  const initial = [new HumanMessage({ id: "user-1", content: "inspect" })];
+  const initial = [new HumanMessage({ content: "inspect", id: "user-1" })];
   const firstResponse = await model.invoke(modelMessages(settings, null, initial));
   const secondHistory = [
     ...initial,
     firstResponse,
-    new HumanMessage({ id: "user-2", content: "continue" }),
+    new HumanMessage({ content: "continue", id: "user-2" }),
   ];
   const secondResponse = await model.invoke(modelMessages(settings, null, secondHistory));
   const thirdHistory = persist([
     ...secondHistory,
     secondResponse,
-    new HumanMessage({ id: "user-3", content: "persisted" }),
+    new HumanMessage({ content: "persisted", id: "user-3" }),
   ]);
   const thirdResponse = await model.invoke(modelMessages(settings, null, thirdHistory));
   expect(thirdResponse.text).toBe("ok");

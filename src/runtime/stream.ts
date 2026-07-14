@@ -1,12 +1,12 @@
 import { AIMessage, AIMessageChunk, type BaseMessage, ToolMessage } from "@langchain/core/messages";
-import stableStringify from "fast-json-stable-stringify";
-import type { HostContext } from "./context";
 import {
+  type ReasoningStreamState,
   contentToText,
   createReasoningStreamState,
-  type ReasoningStreamState,
   streamedMessageReasoning,
 } from "./content";
+import type { HostContext } from "./context";
+import stableStringify from "fast-json-stable-stringify";
 const omitted = Symbol("omitted");
 type DiffResult = { value: unknown } | typeof omitted;
 export interface StreamLogState {
@@ -29,14 +29,18 @@ export function handleStreamEvent(
 ) {
   if (!Array.isArray(event) || event.length !== 2) {
     const delta = incrementalSummary(event, state);
-    if (delta !== undefined) ctx.logger.debug("LangGraph 事件增量", delta);
+    if (delta !== undefined) {
+      ctx.logger.debug("LangGraph 事件增量", delta);
+    }
     return;
   }
   const mode: unknown = event[0];
   const payload: unknown = event[1];
   if (mode === "messages") {
     const chunk: unknown = Array.isArray(payload) ? payload[0] : undefined;
-    if (!isAiChunk(chunk)) return;
+    if (!isAiChunk(chunk)) {
+      return;
+    }
     const messageId = readMessageId(chunk);
     const text = contentToText(chunk.content);
     const reasoning = streamedMessageReasoning(chunk, state.reasoning);
@@ -51,17 +55,23 @@ export function handleStreamEvent(
       ctx.observer?.token(ctx.sessionId, queueId, text);
     }
     for (const call of toolCallDeltas(chunk)) {
-      if (queueId !== undefined) ctx.db.streamToolCall(ctx.sessionId, queueId, call, messageId);
+      if (queueId !== undefined) {
+        ctx.db.streamToolCall(ctx.sessionId, queueId, call, messageId);
+      }
     }
     return;
   }
   if (mode === "updates") {
     const delta = incrementalSummary(payload, state);
-    if (delta !== undefined) ctx.logger.debug("状态更新增量", delta);
+    if (delta !== undefined) {
+      ctx.logger.debug("状态更新增量", delta);
+    }
     return;
   }
   const delta = incrementalSummary(payload, state);
-  if (delta !== undefined) ctx.logger.debug("调试事件增量", delta);
+  if (delta !== undefined) {
+    ctx.logger.debug("调试事件增量", delta);
+  }
 }
 export function recordToolExecutionStarted(
   ctx: HostContext,
@@ -74,11 +84,15 @@ export function recordToolExecutionStarted(
       .map((message) => message.tool_call_id),
   );
   const request = messages.findLast((message) => AIMessage.isInstance(message));
-  if (!request || !AIMessage.isInstance(request)) return;
+  if (!request || !AIMessage.isInstance(request)) {
+    return;
+  }
   const call = request.tool_calls?.find(
     (candidate) => !candidate.id || !completed.has(candidate.id),
   );
-  if (!call?.id) return;
+  if (!call?.id) {
+    return;
+  }
   ctx.toolExecutions?.announce(call.id);
   ctx.db.toolStarted(ctx.sessionId, queueId, call.id);
 }
@@ -89,25 +103,33 @@ export function incrementalSummary(value: unknown, state: StreamLogState): unkno
 function diffSeen(value: unknown, state: StreamLogState, key: string): DiffResult {
   if (isRecord(value)) {
     const hash = stableStringify(value);
-    if (state.seenStructures.has(hash)) return omitted;
+    if (state.seenStructures.has(hash)) {
+      return omitted;
+    }
     state.seenStructures.add(hash);
     const entries = Object.entries(value)
       .map(([name, child]) => [name, diffSeen(child, state, name)] as const)
       .filter((entry): entry is readonly [string, { value: unknown }] => entry[1] !== omitted);
-    if (entries.length === 0) return omitted;
+    if (entries.length === 0) {
+      return omitted;
+    }
     return {
       value: Object.fromEntries(entries.map(([name, child]) => [name, child.value])),
     };
   }
   if (Array.isArray(value)) {
     const hash = stableStringify(value);
-    if (state.seenStructures.has(hash)) return omitted;
+    if (state.seenStructures.has(hash)) {
+      return omitted;
+    }
     state.seenStructures.add(hash);
     const items = value.map((child) => diffSeen(child, state, key)).filter(isIncluded);
     return items.length === 0 ? omitted : { value: items.map((item) => item.value) };
   }
   const fact = `${key}:${stableStringify(value)}`;
-  if (state.seenFacts.has(fact)) return omitted;
+  if (state.seenFacts.has(fact)) {
+    return omitted;
+  }
   state.seenFacts.add(fact);
   return { value };
 }
@@ -115,7 +137,9 @@ function isIncluded(value: DiffResult): value is { value: unknown } {
   return value !== omitted;
 }
 function summarize(value: unknown) {
-  if (value === undefined) return undefined;
+  if (value === undefined) {
+    return undefined;
+  }
   const json = JSON.stringify(value, (_key, current: unknown) =>
     typeof current === "string" && current.length > 240 ? `${current.slice(0, 240)}…` : current,
   );

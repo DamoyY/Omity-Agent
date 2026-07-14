@@ -1,11 +1,11 @@
-import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import YAML from "yaml";
-import type { Settings } from "../../types";
-import { loadHookRules } from "./hookRules";
-import { resolveConfiguredPath } from "./configuredPath";
+import { mkdirSync, readFileSync } from "node:fs";
 import { parseMainSettings, parseModelSettings } from "./settingsSchema";
+import type { Settings } from "../../types";
+import YAML from "yaml";
+import { loadHookRules } from "./hookRules";
 import { normalizeWorkspacePath } from "./workspacePath";
+import { resolveConfiguredPath } from "./configuredPath";
 export interface LoadSettingsOptions {
   cwd?: string;
 }
@@ -21,17 +21,17 @@ export function loadSettings(root = process.cwd(), options: LoadSettingsOptions 
   mkdirSync(dataDir, { recursive: true });
   return {
     ...main,
-    model,
-    hooks: loadHookRules(resolve(settingsDir, "hooks.yaml")),
     agent: {
       systemPrompt: readPrompt(join(promptsDir, "system.md"), context),
     },
+    hooks: loadHookRules(resolve(settingsDir, "hooks.yaml")),
+    model,
+    paths: { dataDir },
     skills: {
       ...main.skills,
-      usagePrompt: readPrompt(join(promptsDir, "skills.md"), context, true),
       directory: resolveConfiguredPath(configRoot, main.skills.directory),
+      usagePrompt: readPrompt(join(promptsDir, "skills.md"), context, true),
     },
-    paths: { dataDir },
   };
 }
 function readYaml(path: string): unknown {

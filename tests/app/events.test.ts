@@ -1,6 +1,6 @@
+import { type ApiController, createApi } from "../../src/app/http/handler";
 import { expect, test } from "bun:test";
 import { AppEvents } from "../../src/app/events";
-import { createApi, type ApiController } from "../../src/app/http/handler";
 test("global SSE starts with a full session snapshot and sends mutations", async () => {
   const abort = new AbortController();
   const controller = apiController();
@@ -11,12 +11,12 @@ test("global SSE starts with a full session snapshot and sends mutations", async
   const frames = sseFrames(response);
   expect(await frames.next()).toBe('event: sessions\ndata: {"sessions":[]}\n\n');
   const session = {
-    id: "test",
-    workspace: "F:/workspace",
     createdAt: 1,
-    updatedAt: 2,
-    status: "model" as const,
     error: null,
+    id: "test",
+    status: "model" as const,
+    updatedAt: 2,
+    workspace: "F:/workspace",
   };
   controller.events.notifySession(session);
   expect(await frames.next()).toBe(`event: session\ndata: ${JSON.stringify(session)}\n\n`);
@@ -46,42 +46,46 @@ test("session SSE sends ordered deltas only for the target session", async () =>
 });
 function apiController() {
   return {
+    assertSession: () => undefined,
     bootstrap: () => ({
       attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     }),
-    sessions: () => [],
-    pickWorkspace: () => null,
+    composerDraft: () => ({}),
+    control: () => ({}),
     createSession: () => ({}),
     deleteSession: () => ({}),
-    transcript: () => ({}),
-    composerDraft: () => ({}),
+    events: new AppEvents(),
+    forkSession: () => ({}),
+    pickWorkspace: () => null,
     saveComposerDraft: () => ({}),
     sendMessage: () => ({}),
-    control: () => ({}),
-    forkSession: () => ({}),
-    assertSession: () => undefined,
-    events: new AppEvents(),
+    sessions: () => [],
+    transcript: () => ({}),
   } as unknown as ApiController;
 }
 function sseFrames(response: Response) {
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("SSE 响应缺少 body");
+  if (!reader) {
+    throw new Error("SSE 响应缺少 body");
+  }
   const decoder = new TextDecoder();
   let buffer = "";
   return {
+    cancel: () => reader.cancel(),
     async next() {
       for (;;) {
         const boundary = buffer.indexOf("\n\n");
-        if (boundary >= 0) {
+        if (boundary !== -1) {
           const frame = buffer.slice(0, boundary + 2);
           buffer = buffer.slice(boundary + 2);
           return frame;
         }
         const chunk = await reader.read();
-        if (chunk.done) throw new Error("SSE 在下一帧前结束");
+        if (chunk.done) {
+          throw new Error("SSE 在下一帧前结束");
+        }
         buffer += decoder.decode(chunk.value, { stream: true });
       }
     },
-    cancel: () => reader.cancel(),
   };
 }

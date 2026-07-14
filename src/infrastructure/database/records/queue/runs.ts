@@ -1,8 +1,8 @@
+import { type ErrorDetails, stringifyError } from "../../../../failures/details";
+import { type QueueRow, toQueueItem } from "./rowMapping";
 import type { Database } from "bun:sqlite";
-import { stringifyError, type ErrorDetails } from "../../../../failures/details";
 import type { QueueItem } from "../../../../types";
 import { requireSessionRecord } from "../sessions";
-import { toQueueItem, type QueueRow } from "./rowMapping";
 const activeStatuses = "('pending', 'running', 'paused')";
 export function activeQueueRows(db: Database, sessionId: string): QueueItem[] {
   requireSessionRecord(db, sessionId);

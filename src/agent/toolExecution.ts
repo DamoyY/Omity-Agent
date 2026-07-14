@@ -1,11 +1,11 @@
-import { AIMessage, ToolMessage, type ToolCall } from "@langchain/core/messages";
-import type { StructuredToolInterface } from "@langchain/core/tools";
-import { isGraphInterrupt, type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { requireCallId } from "../hooks/plan";
-import { redirectLargeToolOutput } from "../runtime/largeOutput";
+import { AIMessage, type ToolCall, ToolMessage } from "@langchain/core/messages";
+import { type LangGraphRunnableConfig, isGraphInterrupt } from "@langchain/langgraph";
 import type { Settings } from "../types";
-import { ToolExecutions } from "./toolExecutions";
+import type { StructuredToolInterface } from "@langchain/core/tools";
+import type { ToolExecutions } from "./toolExecutions";
+import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { redirectLargeToolOutput } from "../runtime/largeOutput";
+import { requireCallId } from "../hooks/plan";
 interface ToolInvokerOptions {
   settings: Settings;
   sessionId: string;
@@ -39,7 +39,9 @@ export function createToolInvoker(
       if (durationMs !== undefined) {
         output = cancelledToolOutput(call, callId, durationMs);
       } else {
-        if (isGraphInterrupt(error) || config.signal?.aborted) throw error;
+        if (isGraphInterrupt(error) || config.signal?.aborted) {
+          throw error;
+        }
         output = toolErrorOutput(call, callId, error);
       }
     } finally {
@@ -48,22 +50,24 @@ export function createToolInvoker(
     const normalizedOutput = await redirectLargeToolOutput(output, {
       dataDir: options.settings.paths.dataDir,
       maxTokens: options.settings.toolOutput.maxTokens,
-      sessionId: options.sessionId,
       outputId: callId,
+      sessionId: options.sessionId,
     });
     return customToolCall ? markCustomToolOutput(normalizedOutput) : normalizedOutput;
   };
 }
 function cancelledToolOutput(call: ToolCall, callId: string, durationMs: number) {
   return new ToolMessage({
-    status: "error",
-    name: call.name,
-    tool_call_id: callId,
     content: `工具运行 ${formatDuration(durationMs)} 后被用户手动终止。`,
+    name: call.name,
+    status: "error",
+    tool_call_id: callId,
   });
 }
 export function formatDuration(durationMs: number) {
-  if (durationMs < 1000) return `${Math.round(durationMs).toString()} 毫秒`;
+  if (durationMs < 1000) {
+    return `${Math.round(durationMs).toString()} 毫秒`;
+  }
   const seconds = durationMs / 1000;
   if (seconds < 60) {
     return `${Number(seconds.toFixed(1)).toString()} 秒`;
@@ -76,10 +80,10 @@ export function formatDuration(durationMs: number) {
 }
 function toolErrorOutput(call: ToolCall, callId: string, error: unknown) {
   return new ToolMessage({
-    status: "error",
-    name: call.name,
-    tool_call_id: callId,
     content: error instanceof Error ? error.message || error.name : String(error),
+    name: call.name,
+    status: "error",
+    tool_call_id: callId,
   });
 }
 export function materializeFreeformToolCall(
@@ -87,9 +91,13 @@ export function materializeFreeformToolCall(
   parameters: ReadonlyMap<string, string>,
 ): ToolCall {
   const parameter = parameters.get(call.name);
-  if (!parameter) return call;
-  if (!isFreeformModelToolCall(call, parameters)) return call;
-  const args: unknown = call.args;
+  if (!parameter) {
+    return call;
+  }
+  if (!isFreeformModelToolCall(call, parameters)) {
+    return call;
+  }
+  const { args } = call;
   const input = isRecord(args) ? args["input"] : undefined;
   if (typeof input !== "string") {
     throw new Error(`MCP free-form 工具 ${call.name} 没有返回字符串输入`);
@@ -103,17 +111,17 @@ function isFreeformModelToolCall(call: ToolCall, parameters: ReadonlyMap<string,
   return parameters.has(call.name) && (isCustomToolCall(call) || isRawFreeformInput(call.args));
 }
 function markCustomToolOutput(message: ToolMessage) {
-  const artifact: unknown = message.artifact;
+  const { artifact } = message;
   return new ToolMessage({
-    content: message.content,
-    tool_call_id: message.tool_call_id,
-    name: message.name,
-    id: message.id,
     additional_kwargs: { ...message.additional_kwargs, customTool: true },
-    response_metadata: message.response_metadata,
     artifact,
-    status: message.status,
+    content: message.content,
+    id: message.id,
     metadata: message.metadata,
+    name: message.name,
+    response_metadata: message.response_metadata,
+    status: message.status,
+    tool_call_id: message.tool_call_id,
   });
 }
 function isRawFreeformInput(args: unknown) {
@@ -123,7 +131,7 @@ function singleToolOutput(value: unknown, callId: string) {
   if (!isRecord(value) || !Array.isArray(value["messages"])) {
     throw new Error("工具节点没有返回 messages");
   }
-  const messages = value["messages"];
+  const { messages } = value;
   if (messages.length !== 1 || !ToolMessage.isInstance(messages[0])) {
     throw new Error("工具节点必须返回一个 ToolMessage");
   }

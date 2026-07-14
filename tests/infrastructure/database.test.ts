@@ -1,6 +1,4 @@
 import { afterEach, expect, test } from "bun:test";
-import { sqliteBusyTimeoutMs } from "../../src/infrastructure/database/connection";
-import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
 import {
   cleanupDatabaseDirs,
   makeDatabases,
@@ -8,6 +6,8 @@ import {
   required,
   workspace,
 } from "../support/database";
+import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
+import { sqliteBusyTimeoutMs } from "../../src/infrastructure/database/connection";
 afterEach(cleanupDatabaseDirs);
 test("queue append and transcript lifecycle", () => {
   const db = makeDb();
@@ -53,33 +53,33 @@ test("host lease excludes concurrent owners and permits takeover after expiry", 
   first.resetSession("123", workspace);
   expect(
     first.acquireHostLease({
-      sessionId: "123",
+      now: 1000,
       ownerId: "host-a",
-      now: 1_000,
+      sessionId: "123",
       ttlMs: 100,
     }),
   ).toBe(true);
   expect(
     second.acquireHostLease({
-      sessionId: "123",
+      now: 1050,
       ownerId: "host-b",
-      now: 1_050,
+      sessionId: "123",
       ttlMs: 100,
     }),
   ).toBe(false);
   expect(
     second.renewHostLease({
-      sessionId: "123",
+      now: 1050,
       ownerId: "host-b",
-      now: 1_050,
+      sessionId: "123",
       ttlMs: 100,
     }),
   ).toBe(false);
   expect(
     second.acquireHostLease({
-      sessionId: "123",
+      now: 1101,
       ownerId: "host-b",
-      now: 1_101,
+      sessionId: "123",
       ttlMs: 100,
     }),
   ).toBe(true);

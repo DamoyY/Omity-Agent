@@ -1,6 +1,6 @@
 import type { AttachmentSettings, PendingAttachment } from "../../../../attachments/contract";
-import type { TokenUsage } from "../../../../timeline";
 import type { ComposerDraftTarget } from "../../../services/composerDrafts";
+import type { TokenUsage } from "../../../../timeline";
 type ControlState = "pause" | "pausing" | "resume";
 export interface ComposerProps {
   disabled: boolean;

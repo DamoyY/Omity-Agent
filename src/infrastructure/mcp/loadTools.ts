@@ -1,14 +1,14 @@
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
-import type { StructuredToolInterface } from "@langchain/core/tools";
-import { loadMcpTools, MultiServerMCPClient } from "@langchain/mcp-adapters";
+import { MultiServerMCPClient, loadMcpTools } from "@langchain/mcp-adapters";
 import type { Logger } from "../logging/logger";
-import { readMcpConfiguration } from "./config";
-import { configureFreeformMcpTools } from "./freeformInputs";
-import { renameMcpTools } from "./nameOverrides";
-import { disableMcpRequestTimeout } from "./requestTimeout";
+import type { StructuredToolInterface } from "@langchain/core/tools";
 import { collectReadableZodIssues } from "./schemaIssues";
+import { configureFreeformMcpTools } from "./freeformInputs";
 import { createMcpToolFailureClient } from "./toolFailures";
+import { disableMcpRequestTimeout } from "./requestTimeout";
+import { existsSync } from "node:fs";
+import { readMcpConfiguration } from "./config";
+import { renameMcpTools } from "./nameOverrides";
+import { resolve } from "node:path";
 interface LoadedMcp {
   tools: StructuredToolInterface[];
   modelTools: StructuredToolInterface[];
@@ -51,8 +51,8 @@ async function connectMcp(
     disableMcpRequestTimeout();
     client = new MultiServerMCPClient({
       mcpServers: configuration.mcpServers,
-      throwOnLoadError: false,
       prefixToolNameWithServerName: true,
+      throwOnLoadError: false,
     } as never);
     const tools = renameMcpTools(
       await loadServerTools(client, names),
@@ -65,13 +65,15 @@ async function connectMcp(
     });
     const connectedClient = client;
     return {
-      tools,
-      modelTools: configured.modelTools,
-      freeformToolParameters: configured.parameters,
       close: () => connectedClient.close(),
+      freeformToolParameters: configured.parameters,
+      modelTools: configured.modelTools,
+      tools,
     };
   } catch (error) {
-    if (client !== undefined) await client.close();
+    if (client !== undefined) {
+      await client.close();
+    }
     throw createMcpLoadError(error);
   } finally {
     end();
@@ -86,8 +88,8 @@ async function loadServerTools(client: MultiServerMCPClient, names: string[]) {
           throw new Error(`MCP 服务器客户端未建立：${name}`);
         }
         return loadMcpTools(name, createMcpToolFailureClient(serverClient), {
-          throwOnLoadError: false,
           prefixToolNameWithServerName: true,
+          throwOnLoadError: false,
           useStandardContentBlocks: true,
         });
       }),
@@ -98,7 +100,9 @@ function validateConfiguredServers(
   configuration: ReturnType<typeof readMcpConfiguration>,
   names: string[],
 ) {
-  if (names.length > 0) return;
+  if (names.length > 0) {
+    return;
+  }
   if (Object.keys(configuration.toolNameOverrides).length > 0) {
     throw new Error("MCP 工具重命名配置需要至少配置一个 MCP 服务器");
   }
@@ -108,9 +112,9 @@ function validateConfiguredServers(
 }
 function emptyMcp(): LoadedMcp {
   return {
-    tools: [],
-    modelTools: [],
-    freeformToolParameters: new Map(),
     close: () => Promise.resolve(),
+    freeformToolParameters: new Map(),
+    modelTools: [],
+    tools: [],
   };
 }

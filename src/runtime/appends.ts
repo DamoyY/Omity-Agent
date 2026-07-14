@@ -1,11 +1,15 @@
-import { HumanMessage } from "@langchain/core/messages";
-import { queueMessageId } from "../infrastructure/database/records/messages/history";
 import type { HostContext } from "./context";
+import { HumanMessage } from "@langchain/core/messages";
 import type { QueueRun } from "./run";
+import { queueMessageId } from "../infrastructure/database/records/messages/history";
 export function consumeBoundaryAppends(ctx: HostContext, run: QueueRun, state: BoundaryState) {
-  if (hasPendingTools(state) || blocksAppend(state.values?.hookPlan)) return null;
+  if (hasPendingTools(state) || blocksAppend(state.values?.hookPlan)) {
+    return null;
+  }
   const appends = ctx.db.pendingAppends(ctx.sessionId);
-  if (appends.length === 0) return null;
+  if (appends.length === 0) {
+    return null;
+  }
   for (const item of appends) {
     const userMessageId = ctx.db.startQueue(ctx.sessionId, item);
     run.items.push({ ...item, status: "running", userMessageId });
@@ -14,6 +18,10 @@ export function consumeBoundaryAppends(ctx: HostContext, run: QueueRun, state: B
     queueIds: appends.map((item) => item.id),
   });
   return {
+    hookPendingUserIds: [
+      ...pendingUserIds(state),
+      ...appends.map((item) => queueMessageId(ctx.sessionId, item.id)),
+    ],
     messages: appends.map(
       (item) =>
         new HumanMessage({
@@ -21,10 +29,6 @@ export function consumeBoundaryAppends(ctx: HostContext, run: QueueRun, state: B
           id: queueMessageId(ctx.sessionId, item.id),
         }),
     ),
-    hookPendingUserIds: [
-      ...pendingUserIds(state),
-      ...appends.map((item) => queueMessageId(ctx.sessionId, item.id)),
-    ],
   };
 }
 export function recoverConsumedAppends(ctx: HostContext, run: QueueRun, state: BoundaryState) {
@@ -34,7 +38,9 @@ export function recoverConsumedAppends(ctx: HostContext, run: QueueRun, state: B
       consumedIds.delete(message.id);
     }
   }
-  if (consumedIds.size === 0) return null;
+  if (consumedIds.size === 0) {
+    return null;
+  }
   const messages = ctx.db
     .history(ctx.sessionId)
     .filter(
@@ -52,8 +58,8 @@ export function recoverConsumedAppends(ctx: HostContext, run: QueueRun, state: B
       .map((item) => item.id),
   });
   return {
-    messages,
     hookPendingUserIds: [...new Set([...pendingUserIds(state), ...consumedIds])],
+    messages,
   };
 }
 interface BoundaryState {
@@ -76,7 +82,9 @@ function pendingUserIds(state: BoundaryState) {
 }
 function hasPendingTools(state: BoundaryState) {
   const messages = state.values?.messages;
-  if (!Array.isArray(messages)) return false;
+  if (!Array.isArray(messages)) {
+    return false;
+  }
   const toolIds = new Set(messages.filter(isToolMessage).map((message) => message.tool_call_id));
   const lastAi = messages.findLast(isAiMessage);
   return Boolean(lastAi?.tool_calls?.some((call) => !toolIds.has(call.id)));

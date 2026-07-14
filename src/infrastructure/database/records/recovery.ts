@@ -1,16 +1,16 @@
-import type { Database } from "bun:sqlite";
-import type { ErrorDetails } from "../../../failures/details";
-import { pruneMessageBlobs } from "./messages/blobStore";
-import { activeQueueRows, pauseRunRecord } from "./queue/runs";
 import {
+  type HostLeaseClaim,
+  type HostLeaseRecord,
   acquireHostLeaseRecord,
   readHostLeaseRecord,
   releaseHostLeaseRecord,
   renewHostLeaseRecord,
-  type HostLeaseClaim,
-  type HostLeaseRecord,
 } from "./hostLeases";
+import { activeQueueRows, pauseRunRecord } from "./queue/runs";
 import { readControlRecord, writeControlRecord } from "./sessions";
+import type { Database } from "bun:sqlite";
+import type { ErrorDetails } from "../../../failures/details";
+import { pruneMessageBlobs } from "./messages/blobStore";
 export interface InterruptedSessionClaim {
   sessionId: string;
   now: number;
@@ -29,7 +29,7 @@ export function recoverInterruptedSessionRecord(
 ): InterruptedSessionRecovery {
   const lease = readHostLeaseRecord(db, claim.sessionId);
   if (lease && lease.expiresAt > claim.now && lease.ownerId !== claim.confirmedDeadOwnerId) {
-    return { status: "blocked", lease };
+    return { lease, status: "blocked" };
   }
   const active = activeQueueRows(db, claim.sessionId);
   const control = readControlRecord(db, claim.sessionId);
@@ -55,14 +55,16 @@ export function recoverInterruptedSessionRecord(
       lease.ownerId,
     ]);
   }
-  return { status: "recovered", action, activeItems: active.length };
+  return { action, activeItems: active.length, status: "recovered" };
 }
 function cancelActiveRuns(
   db: Database,
   sessionId: string,
   active: ReturnType<typeof activeQueueRows>,
 ) {
-  if (active.length === 0) return;
+  if (active.length === 0) {
+    return;
+  }
   db.run(
     `UPDATE queue SET status = 'canceled', error = NULL
      WHERE session_id = ? AND status IN ('pending', 'running', 'paused')`,
@@ -82,7 +84,9 @@ function cancelActiveRuns(
   }
   const removeEvent = db.prepare("DELETE FROM events WHERE queue_id = ?");
   try {
-    for (const item of active) removeEvent.run(item.id);
+    for (const item of active) {
+      removeEvent.run(item.id);
+    }
   } finally {
     removeEvent.finalize();
   }

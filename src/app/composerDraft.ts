@@ -1,7 +1,7 @@
+import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Database } from "bun:sqlite";
 import type { Settings } from "../types";
 import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
-import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 export function readSessionDraft(settings: Settings, sessionId: string) {
   return withSessionDatabase(settings, sessionId, (db) => {
     const row = db
@@ -9,7 +9,9 @@ export function readSessionDraft(settings: Settings, sessionId: string) {
         "SELECT content, revision FROM composer_drafts WHERE session_id = ?",
       )
       .get(sessionId);
-    if (!row) return { content: null, revision: 0 };
+    if (!row) {
+      return { content: null, revision: 0 };
+    }
     return {
       content: row.content.length > 0 ? row.content : null,
       revision: row.revision,
@@ -39,7 +41,9 @@ export function writeSessionDraft(
           "SELECT revision FROM composer_drafts WHERE session_id = ?",
         )
         .get(sessionId);
-      if (!row) throw new Error(`Composer 草稿保存失败：${sessionId}`);
+      if (!row) {
+        throw new Error(`Composer 草稿保存失败：${sessionId}`);
+      }
       return row;
     });
     return save();

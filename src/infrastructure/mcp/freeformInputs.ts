@@ -13,7 +13,9 @@ export function normalizeFreeformToolInputs(
   value: unknown,
   path = "settings/mcp.yaml.freeformToolInputs",
 ): string[] {
-  if (value == null) return [];
+  if (value == null) {
+    return [];
+  }
   if (!Array.isArray(value)) {
     throw new Error(`MCP free-form 工具配置 ${path} 必须是数组`);
   }
@@ -43,19 +45,21 @@ export function configureFreeformMcpTools(
     parameters.set(name, singleStringParameter(tool));
   }
   return {
-    parameters,
     modelTools: tools.map((tool) => {
-      if (!parameters.has(tool.name)) return tool;
+      if (!parameters.has(tool.name)) {
+        return tool;
+      }
       return customTool(() => Promise.reject(new Error(`工具定义 ${tool.name} 不能直接用于执行`)), {
-        name: tool.name,
         description: tool.description,
         format: { type: "text" },
+        name: tool.name,
       });
     }),
+    parameters,
   };
 }
 function singleStringParameter(tool: StructuredToolInterface) {
-  const schema: unknown = tool.schema;
+  const { schema } = tool;
   const parsed = toolJsonSchema.safeParse(schema);
   const entries = parsed.success ? Object.entries(parsed.data.properties) : [];
   if (entries.length !== 1) {
@@ -64,7 +68,9 @@ function singleStringParameter(tool: StructuredToolInterface) {
     );
   }
   const [entry] = entries;
-  if (!entry) throw new Error(`MCP free-form 工具 ${tool.name} 缺少输入参数`);
+  if (!entry) {
+    throw new Error(`MCP free-form 工具 ${tool.name} 缺少输入参数`);
+  }
   const [parameter, definition] = entry;
   if (!parameter) {
     throw new Error(`MCP free-form 工具 ${tool.name} 的输入参数名不能为空`);

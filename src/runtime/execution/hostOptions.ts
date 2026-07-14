@@ -1,5 +1,5 @@
-import type { ProcessOwner } from "../../infrastructure/process/ownership";
 import type { HostObserver } from "../context";
+import type { ProcessOwner } from "../../infrastructure/process/ownership";
 export interface HostControls {
   cancelTool(callId: string): boolean;
 }

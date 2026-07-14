@@ -48,7 +48,7 @@ export function isModelNetworkError(error: unknown): boolean {
 }
 export function modelNetworkRetryDelayMs(attempt: number): number {
   const exponent = Math.min(Math.max(0, attempt - 1), 5);
-  return Math.min(30_000, 1_000 * 2 ** exponent);
+  return Math.min(30_000, 1000 * 2 ** exponent);
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

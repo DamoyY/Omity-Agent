@@ -1,16 +1,16 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import {
   expandEnvPlaceholders,
   normalizeMcpServers,
   readMcpConfiguration,
 } from "../../src/infrastructure/mcp/config";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
 } from "../../src/infrastructure/mcp/nameOverrides";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 const savedEnv = new Map<string, string | undefined>();
 afterEach(() => {
   for (const [key, value] of savedEnv) {
@@ -35,30 +35,30 @@ test("mcp config expands env placeholders recursively", () => {
     expandEnvPlaceholders({
       mcpServers: {
         search: {
-          transport: "stdio",
-          command: "npx",
           args: ["server", "--key=${MCP_API_KEY}"],
+          command: "npx",
           env: {
             API_KEY: "${MCP_API_KEY}",
           },
           headers: {
             Authorization: "Bearer ${MCP_TOKEN}",
           },
+          transport: "stdio",
         },
       },
     }),
   ).toEqual({
     mcpServers: {
       search: {
-        transport: "stdio",
-        command: "npx",
         args: ["server", "--key=secret"],
+        command: "npx",
         env: {
           API_KEY: "secret",
         },
         headers: {
           Authorization: "Bearer token",
         },
+        transport: "stdio",
       },
     },
   });
@@ -81,38 +81,38 @@ test("mcp config rejects unknown top-level fields", () => {
 test("mcp stdio config fills omitted args and suppresses stderr", () => {
   expect(
     normalizeMcpServers({
-      omitted: {
-        transport: "stdio",
-        command: "server.exe",
-      },
       noisy: {
-        transport: "stdio",
-        command: "server.exe",
         args: ["--serve"],
-        stderr: "inherit",
+        command: "server.exe",
         extension: { enabled: true },
+        stderr: "inherit",
+        transport: "stdio",
+      },
+      omitted: {
+        command: "server.exe",
+        transport: "stdio",
       },
     }),
   ).toEqual({
-    omitted: {
-      transport: "stdio",
-      command: "server.exe",
-      args: [],
-      stderr: "ignore",
-    },
     noisy: {
-      transport: "stdio",
-      command: "server.exe",
       args: ["--serve"],
-      stderr: "ignore",
+      command: "server.exe",
       extension: { enabled: true },
+      stderr: "ignore",
+      transport: "stdio",
+    },
+    omitted: {
+      args: [],
+      command: "server.exe",
+      stderr: "ignore",
+      transport: "stdio",
     },
   });
 });
 test("mcp stdio config rejects non-array args", () => {
   expect(() =>
     normalizeMcpServers({
-      invalid: { command: "server.exe", args: null },
+      invalid: { args: null, command: "server.exe" },
     }),
   ).toThrow();
 });

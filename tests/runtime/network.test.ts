@@ -1,16 +1,16 @@
-import { expect, mock, spyOn, test } from "bun:test";
 import {
-  isModelNetworkError,
   ModelEmptyResponseError,
+  isModelNetworkError,
   modelNetworkRetryDelayMs,
 } from "../../src/runtime/network";
-import { waitBeforeModelNetworkRetry } from "../../src/runtime/retry";
+import { expect, mock, spyOn, test } from "bun:test";
 import type { HostContext } from "../../src/runtime/context";
 import type { QueueItem } from "../../src/types";
-import { captureError } from "../../src/failures/details";
 import { buildModel } from "../../src/agent/model";
+import { captureError } from "../../src/failures/details";
 import { parseModelSettings } from "../../src/infrastructure/configuration/settingsSchema";
 import { testSettings } from "../support/settings";
+import { waitBeforeModelNetworkRetry } from "../../src/runtime/retry";
 test("detects retryable model network errors", () => {
   expect(isModelNetworkError(new TypeError("fetch failed"))).toBe(true);
   expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
@@ -29,8 +29,8 @@ test("does not guess network failures from broad error messages", () => {
   );
 });
 test("model network retry delay grows with a cap", () => {
-  expect(modelNetworkRetryDelayMs(1)).toBe(1_000);
-  expect(modelNetworkRetryDelayMs(2)).toBe(2_000);
+  expect(modelNetworkRetryDelayMs(1)).toBe(1000);
+  expect(modelNetworkRetryDelayMs(2)).toBe(2000);
   expect(modelNetworkRetryDelayMs(99)).toBe(30_000);
 });
 test("model clients disable dependency network retries", () => {
@@ -45,8 +45,11 @@ test("model clients disable dependency network retries", () => {
     expect(internals.caller.maxRetries).toBe(0);
     expect(internals.clientConfig.maxRetries).toBe(0);
   } finally {
-    if (previousKey === undefined) Reflect.deleteProperty(process.env, "TEST_KEY");
-    else process.env["TEST_KEY"] = previousKey;
+    if (previousKey === undefined) {
+      Reflect.deleteProperty(process.env, "TEST_KEY");
+    } else {
+      process.env["TEST_KEY"] = previousKey;
+    }
   }
 });
 test("model settings reject dependency retry configuration", () => {
@@ -56,9 +59,9 @@ test("model settings reject dependency retry configuration", () => {
       profiles: {
         test: {
           adapter: "codex",
-          model: "test",
           maxRetries: 1,
-          timeoutMs: 1_000,
+          model: "test",
+          timeoutMs: 1000,
         },
       },
     }),
@@ -71,12 +74,12 @@ test("warns on every model network error even when the host is stopping", async 
   controller.abort();
   const error = { code: "stream_read_error" };
   const item: QueueItem = {
-    id: 42,
-    runId: null,
     content: "test",
+    id: 42,
+    root: true,
+    runId: null,
     status: "running",
     userMessageId: 1,
-    root: true,
   };
   try {
     const shouldRetry = await waitBeforeModelNetworkRetry(
@@ -85,19 +88,19 @@ test("warns on every model network error even when the host is stopping", async 
       error,
       1,
       {
-        stop,
-        pause: () => Promise.resolve(false),
         cancel: () => Promise.resolve(),
+        pause: () => Promise.resolve(false),
+        stop,
       },
     );
     expect(shouldRetry).toBe(false);
     expect(stop).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith("模型 API 网络异常，将继续重试", {
-      queueId: 42,
       attempt: 1,
-      delayMs: 1_000,
+      delayMs: 1000,
       error: captureError(error),
+      queueId: 42,
     });
   } finally {
     warn.mockRestore();
