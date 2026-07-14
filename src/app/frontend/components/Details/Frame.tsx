@@ -1,14 +1,23 @@
 import { ChevronRight, type LucideIcon } from "lucide-react";
-import { type ReactNode, type SyntheticEvent, useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { sva } from "styled-system/css";
 
 const frame = sva({
   base: {
+    accessory: { alignItems: "center", display: "flex", flexShrink: 0 },
     disclosure: {
+      'button[aria-expanded="true"] &': { transform: "rotate(90deg)" },
       color: "muted",
-      "details[open] &": { transform: "rotate(90deg)" },
       flexShrink: 0,
       transition: "transform 120ms ease",
+    },
+    header: {
+      _hover: { bg: "controlHover" },
+      alignItems: "center",
+      display: "flex",
+      h: "detailHeader",
+      maxW: "full",
+      px: "2",
     },
     icon: { flexShrink: 0 },
     root: {
@@ -22,18 +31,6 @@ const frame = sva({
       p: 0,
       w: "full",
     },
-    summary: {
-      "&::-webkit-details-marker": { display: "none" },
-      _hover: { bg: "controlHover" },
-      alignItems: "center",
-      cursor: "pointer",
-      display: "flex",
-      gap: "2",
-      h: "detailHeader",
-      listStyle: "none",
-      maxW: "full",
-      px: "2",
-    },
     title: {
       color: "mutedStrong",
       flex: "1",
@@ -43,8 +40,25 @@ const frame = sva({
       textOverflow: "ellipsis",
       whiteSpace: "nowrap",
     },
+    trigger: {
+      alignItems: "center",
+      appearance: "none",
+      bg: "transparent",
+      borderWidth: 0,
+      color: "inherit",
+      cursor: "pointer",
+      display: "flex",
+      flex: "1",
+      font: "inherit",
+      gap: "2",
+      h: "full",
+      maxW: "full",
+      minW: 0,
+      p: 0,
+      textAlign: "left",
+    },
   },
-  slots: ["root", "summary", "disclosure", "icon", "title"],
+  slots: ["root", "header", "trigger", "disclosure", "icon", "title", "accessory"],
   variants: {
     tone: {
       model: {
@@ -77,18 +91,26 @@ export function Frame({
 }) {
   const [expanded, setExpanded] = useState(expandedInitially);
   const classes = frame({ tone });
-  const handleToggle = useCallback((event: SyntheticEvent<HTMLDetailsElement>) => {
-    setExpanded(event.currentTarget.open);
+  const handleToggle = useCallback(() => {
+    setExpanded((current) => !current);
   }, []);
   return (
-    <details className={classes.root} onToggle={handleToggle} open={expanded}>
-      <summary aria-label={label} className={classes.summary}>
-        <ChevronRight className={classes.disclosure} size={12} />
-        <Icon className={classes.icon} size={13} />
-        {title ? <span className={classes.title}>{title}</span> : null}
-        {accessory}
-      </summary>
+    <div className={classes.root}>
+      <div className={classes.header}>
+        <button
+          aria-expanded={expanded}
+          aria-label={label}
+          className={classes.trigger}
+          onClick={handleToggle}
+          type="button"
+        >
+          <ChevronRight className={classes.disclosure} size={12} />
+          <Icon className={classes.icon} size={13} />
+          {title ? <span className={classes.title}>{title}</span> : null}
+        </button>
+        {accessory ? <div className={classes.accessory}>{accessory}</div> : null}
+      </div>
       {expanded ? children : null}
-    </details>
+    </div>
   );
 }
