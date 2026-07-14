@@ -1,6 +1,10 @@
-import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
+import {
+  type DisplayEvent,
+  type DisplayMessage,
+  type DisplayQueue,
+  buildTimeline,
+} from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
-import { buildTimeline } from "../../../src/app/timeline";
 test("keeps live output before a user append across persistence", () => {
   const rootUser = message(1, "user", "开始", 1);
   const firstOutput = message(2, "assistant", "第一段");

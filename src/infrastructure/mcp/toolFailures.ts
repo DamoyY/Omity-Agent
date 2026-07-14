@@ -31,7 +31,7 @@ export function createMcpToolFailureClient(client: McpClient): McpClient {
   });
 }
 function requestSignal(args: unknown[]) {
-  const options = args[2];
+  const [, , options] = args;
   return isRecord(options) && options["signal"] instanceof AbortSignal
     ? options["signal"]
     : undefined;

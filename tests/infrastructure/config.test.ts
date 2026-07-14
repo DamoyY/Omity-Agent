@@ -20,7 +20,7 @@ test("settings yaml resolves AppData data directory", () => {
   const appData = join(root, "app-data");
   dirs.push(root);
   writeTestConfiguration(root, {
-    dataDir: "${appData}/omity-agent",
+    dataDir: `\${appData}/omity-agent`,
   });
   withAppDataRoot(appData, () => {
     const settings = loadSettings(root);
@@ -45,8 +45,8 @@ test("prompt files expand current working directory placeholder", () => {
   dirs.push(root);
   mkdirSync(workspace);
   writeTestConfiguration(root, {
-    skillsPrompt: "skills from ${cwd}",
-    systemPrompt: "workspace: ${cwd}",
+    skillsPrompt: `skills from \${cwd}`,
+    systemPrompt: `workspace: \${cwd}`,
   });
   const settings = loadSettings(root, { cwd: workspace });
   expect(settings.paths.dataDir).toBe(resolve(root, "data"));
@@ -130,19 +130,19 @@ test("hook variables preserve exact values and reject ambiguous output", () => {
   const previous = { files: ["a.ts", "b.ts"] };
   expect(
     resolveHookArgs(
-      { cwd: "${cwd}/src", exact: "${previousTool.output}" },
+      { cwd: `\${cwd}/src`, exact: `\${previousTool.output}` },
       { cwd: "F:\\work", previousTool: { output: previous } },
     ),
   ).toEqual({ cwd: "F:\\work/src", exact: previous });
   expect(() =>
     resolveHookArgs(
-      { invalid: "result=${previousTool.output}" },
+      { invalid: `result=\${previousTool.output}` },
       { cwd: "F:\\work", previousTool: { output: previous } },
     ),
   ).toThrow("不能将数组或对象嵌入字符串");
-  expect(() => resolveHookArgs({ missing: "${previousTool.output}" }, { cwd: "F:\\work" })).toThrow(
-    "没有可用的前序工具输出",
-  );
+  expect(() =>
+    resolveHookArgs({ missing: `\${previousTool.output}` }, { cwd: "F:\\work" }),
+  ).toThrow("没有可用的前序工具输出");
 });
 function withAppDataRoot(path: string, callback: () => void) {
   const previous = {

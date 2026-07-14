@@ -12,7 +12,7 @@ import {
   persistCheckpointMessages,
   persistPendingMessages,
 } from "./messageRefs";
-import { optionalConfigString, requiredConfigString } from "./sql";
+import { type SqlBinding, optionalConfigString, requiredConfigString } from "./sql";
 import {
   pruneMessageBlobs,
   replaceCheckpointBlobRefs,
@@ -21,7 +21,6 @@ import {
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
-import type { SqlBinding } from "./sql";
 import { serialize } from "./serde";
 export async function putCheckpoint(
   db: Database,

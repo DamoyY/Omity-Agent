@@ -1,6 +1,6 @@
 import { AIMessage, type BaseMessage, type ToolMessage } from "@langchain/core/messages";
-import { countTokens } from "../../runtime/tokenizer";
 import type { TokenUsage } from "./types";
+import { countTokens } from "../../runtime/tokenizer";
 export function toolInputTokens(call: Record<string, unknown>, input: unknown) {
   if (call["isCustomTool"] === true) {
     if (!isRecord(input) || typeof input["input"] !== "string") {

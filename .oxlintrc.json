@@ -2,6 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "categories": {
     "correctness": "error",
+    "nursery": "warn",
     "perf": "warn",
     "style": "warn",
     "suspicious": "warn"
@@ -17,9 +18,12 @@
     "init-declarations": "allow",
     "max-params": "allow",
     "max-statements": "allow",
+    "new-cap": "allow",
+    "no-await-in-loop": "allow",
     "no-magic-numbers": "allow",
     "no-nested-ternary": "allow",
     "no-ternary": "allow",
+    "no-undef": "allow",
     "react-in-jsx-scope": "allow",
     "typescript/no-deprecated": "warn"
   },

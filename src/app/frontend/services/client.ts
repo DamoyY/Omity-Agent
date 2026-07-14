@@ -1,9 +1,12 @@
-import type { AttachmentSettings, PendingAttachment } from "../../attachments/contract";
+import {
+  type AttachmentSettings,
+  type PendingAttachment,
+  appendAttachments,
+} from "../../attachments/contract";
 import type { Control } from "../../../types";
 import type { InitialSessionState } from "../../initialState";
 import type { SessionInfo } from "../../sessionState";
 import type { TranscriptSnapshot } from "./transcript/cache";
-import { appendAttachments } from "../../attachments/contract";
 import { reportError } from "./errors";
 import { request } from "./request";
 export { ApiError } from "./request";

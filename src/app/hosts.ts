@@ -71,19 +71,7 @@ export class AppHosts {
       stoppingController: stopping,
       wake: (delayMs) => this.events.wait(sessionId, delayMs),
     });
-    const done = hostPromise
-      .catch((error: unknown) => {
-        this.errors.set(sessionId, captureError(error));
-        if (!initialized) {
-          ready.reject(error);
-        }
-      })
-      .finally(() => {
-        if (this.running.get(sessionId)?.force === force) {
-          this.running.delete(sessionId);
-        }
-        this.events.changed(sessionId);
-      });
+    const done = this.finishHost(hostPromise, sessionId, force, () => initialized, ready);
     this.running.set(sessionId, {
       activity: "idle",
       cancelTool: (callId) => cancelTool(callId),
@@ -134,6 +122,27 @@ export class AppHosts {
         this.events.transcript(changedSessionId, event);
       },
     };
+  }
+  private async finishHost(
+    hostPromise: Promise<unknown>,
+    sessionId: string,
+    force: AbortController,
+    isInitialized: () => boolean,
+    ready: PromiseWithResolvers<undefined>,
+  ) {
+    try {
+      await hostPromise;
+    } catch (error: unknown) {
+      this.errors.set(sessionId, captureError(error));
+      if (!isInitialized()) {
+        ready.reject(error);
+      }
+    } finally {
+      if (this.running.get(sessionId)?.force === force) {
+        this.running.delete(sessionId);
+      }
+      this.events.changed(sessionId);
+    }
   }
   private async stopAtDeadline(host: RunningHost) {
     const stopped = await Promise.race([

@@ -89,12 +89,15 @@ export function ToolCall({
                   event.preventDefault();
                   event.stopPropagation();
                   setCancelling(true);
-                  reportPromiseErrors(
-                    onCancel(call.id).catch((error: unknown) => {
+                  const cancel = async () => {
+                    try {
+                      await onCancel(call.id);
+                    } catch (error: unknown) {
                       setCancelling(false);
                       throw error;
-                    }),
-                  );
+                    }
+                  };
+                  reportPromiseErrors(cancel());
                 }}
                 title={t("stopTool")}
                 type="button"

@@ -24,13 +24,15 @@ export function appendAttachments(body: FormData, attachments: PendingAttachment
     body.append(`file:${id}`, file);
   }
 }
-const placeholderPattern = /\{\{file:([0-9a-f-]{36}):([^{}\r\n]+)\}\}/giu;
+const placeholderPattern = /\{\{file:(?<id>[0-9a-f-]{36}):(?<name>[^{}\r\n]+)\}\}/giu;
 export function attachmentPlaceholder(id: string, name: string) {
   return `{{file:${id}:${name.replaceAll(/[{}\r\n]/gu, "_")}}}`;
 }
 export function attachmentIds(content: string) {
   return new Set(
-    [...content.matchAll(placeholderPattern)].map((match) => (match[1] ?? "").toLowerCase()),
+    [...content.matchAll(placeholderPattern)].map((match) =>
+      (match.groups?.["id"] ?? "").toLowerCase(),
+    ),
   );
 }
 export function fileSuffix(name: string) {

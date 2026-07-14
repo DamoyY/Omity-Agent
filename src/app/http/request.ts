@@ -16,7 +16,7 @@ const messageFieldsSchema = z.object({
   content: nonEmptyMessage,
   draftRevision: z
     .string()
-    .regex(/^(0|[1-9]\d*)$/u)
+    .regex(/^(?<revision>0|[1-9]\d*)$/u)
     .transform(Number)
     .pipe(z.number().int().nonnegative()),
 });
@@ -95,11 +95,13 @@ function readAttachments(form: FormData, fields: Set<string>) {
       return [];
     }
     const match =
-      /^file:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u.exec(key);
+      /^file:(?<id>[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u.exec(
+        key,
+      );
     if (!match || typeof value === "string") {
       throw new HttpError(400, `附件字段无效：${key}`);
     }
-    return [{ file: value, id: match[1] ?? "" }];
+    return [{ file: value, id: match.groups?.["id"] ?? "" }];
   });
 }
 function singleText(form: FormData, name: string) {

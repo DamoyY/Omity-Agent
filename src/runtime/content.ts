@@ -119,7 +119,7 @@ function appendReasoningText(text: string, state: ReasoningStreamState) {
   state.pendingAsterisks = pending;
   const context = state.lastCharacter + complete;
   const normalized = context
-    .replace(/(\S)\*{4}(?=\S)/g, "$1**\n\n**")
+    .replace(/(?<character>\S)\*{4}(?=\S)/g, "$<character>**\n\n**")
     .slice(state.lastCharacter.length);
   updateStreamTail(state, normalized);
   return normalized;

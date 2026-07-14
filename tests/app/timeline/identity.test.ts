@@ -1,6 +1,10 @@
-import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
+import {
+  type DisplayEvent,
+  type DisplayMessage,
+  type DisplayQueue,
+  buildTimeline,
+} from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
-import { buildTimeline } from "../../../src/app/timeline";
 const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
 test("persisted content hides only its identified stream", () => {
   const messages: DisplayMessage[] = [assistant({ content: "完成", id: 1, sourceId: "message-1" })];
@@ -103,8 +107,8 @@ test("equal tool inputs do not hide unidentified calls", () => {
 });
 test("repeated assistant content and tool inputs remain visible", () => {
   const messages: DisplayMessage[] = [
-    assistant({ call: call("call-1"), content: "完成", id: 1 }),
-    assistant({ call: call("call-2"), content: "完成", id: 2 }),
+    assistant({ call: toolCall("call-1"), content: "完成", id: 1 }),
+    assistant({ call: toolCall("call-2"), content: "完成", id: 2 }),
   ];
   const view = buildTimeline(messages, [], []);
   expect(view[0]?.content).toBe("完成\n\n完成");
@@ -112,8 +116,8 @@ test("repeated assistant content and tool inputs remain visible", () => {
 });
 test("equal reasoning from distinct model responses remains visible", () => {
   const messages: DisplayMessage[] = [
-    assistant({ call: call("call-1"), id: 1, reasoning: "独立分析" }),
-    assistant({ call: call("call-2"), id: 2, reasoning: "独立分析" }),
+    assistant({ call: toolCall("call-1"), id: 1, reasoning: "独立分析" }),
+    assistant({ call: toolCall("call-2"), id: 2, reasoning: "独立分析" }),
   ];
   const reasoning = buildTimeline(messages, [], [])[0]?.parts.flatMap((part) =>
     part.type === "reasoning" ? [part.content] : [],
@@ -139,7 +143,7 @@ function assistant(options: {
     createdAt: options.id,
   };
 }
-function call(id: string) {
+function toolCall(id: string) {
   return { id, index: 0, input: {}, inputTokens: 1, name: "read" };
 }
 function event(message: string, payload: Record<string, unknown>, id = 1): DisplayEvent {

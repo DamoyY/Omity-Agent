@@ -44,13 +44,16 @@ export class AppInstanceLock {
         if (!isExistsError(error)) {
           throw error;
         }
-        const owner = readOwner(path);
-        if (isProcessRunning(owner.pid)) {
-          throw new Error(`数据目录已有 App 在运行（PID ${owner.pid.toString()}）：${dataDir}`, {
-            cause: error,
-          });
+        const existingOwner = readOwner(path);
+        if (isProcessRunning(existingOwner.pid)) {
+          throw new Error(
+            `数据目录已有 App 在运行（PID ${existingOwner.pid.toString()}）：${dataDir}`,
+            {
+              cause: error,
+            },
+          );
         }
-        abandonedOwner = owner;
+        abandonedOwner = existingOwner;
         unlinkSync(path);
       }
     }

@@ -1,7 +1,6 @@
+import ReactMarkdown, { type Components } from "react-markdown";
 import { Code } from "./ParkUI";
-import type { Components } from "react-markdown";
 import { HighlightedCode } from "./HighlightedCode";
-import ReactMarkdown from "react-markdown";
 import type { ReactNode } from "react";
 import { css } from "styled-system/css";
 import remarkBreaks from "remark-breaks";
@@ -32,7 +31,7 @@ const components: Components = {
   code: ({ children, className }) => {
     const raw = codeText(children);
     const code = raw.replace(/\n$/, "");
-    const language = className?.match(/(?:^|\s)language-([^\s]+)/)?.[1];
+    const language = className?.match(/(?:^|\s)language-(?<language>[^\s]+)/)?.groups?.["language"];
     if (className || raw.includes("\n")) {
       return <HighlightedCode code={code} language={language} />;
     }

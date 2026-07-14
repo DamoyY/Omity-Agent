@@ -35,13 +35,13 @@ test("mcp config expands env placeholders recursively", () => {
     expandEnvPlaceholders({
       mcpServers: {
         search: {
-          args: ["server", "--key=${MCP_API_KEY}"],
+          args: ["server", `--key=\${MCP_API_KEY}`],
           command: "npx",
           env: {
-            API_KEY: "${MCP_API_KEY}",
+            API_KEY: `\${MCP_API_KEY}`,
           },
           headers: {
-            Authorization: "Bearer ${MCP_TOKEN}",
+            Authorization: `Bearer \${MCP_TOKEN}`,
           },
           transport: "stdio",
         },
@@ -64,7 +64,7 @@ test("mcp config expands env placeholders recursively", () => {
   });
 });
 test("mcp config reports missing env placeholders", () => {
-  expect(() => expandEnvPlaceholders({ env: { API_KEY: "${MISSING_MCP_KEY}" } })).toThrow(
+  expect(() => expandEnvPlaceholders({ env: { API_KEY: `\${MISSING_MCP_KEY}` } })).toThrow(
     "MCP 配置 settings/mcp.yaml.env.API_KEY 引用了未设置的环境变量 MISSING_MCP_KEY",
   );
 });

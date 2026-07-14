@@ -140,8 +140,8 @@ function readImage(value: Record<string, unknown>): ToolImage | null {
   return typeof src === "string" ? parseImageDataUrl(src) : null;
 }
 function parseImageDataUrl(src: string): ToolImage | null {
-  const match = /^data:([^;,]+)(?:;[^,]*)*;base64,/i.exec(src);
-  return match?.[1] ? { mimeType: match[1], src } : null;
+  const match = /^data:(?<mimeType>[^;,]+)(?:;[^,]*)*;base64,/i.exec(src);
+  return match?.groups?.["mimeType"] ? { mimeType: match.groups["mimeType"], src } : null;
 }
 function parseStructuredString(value: unknown): unknown {
   if (typeof value !== "string") {

@@ -1,6 +1,10 @@
-import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
+import {
+  type DisplayEvent,
+  type DisplayMessage,
+  type DisplayQueue,
+  buildTimeline,
+} from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
-import { buildTimeline } from "../../../src/app/timeline";
 test("streaming tool call is hidden after the final tool call is visible", () => {
   const messages: DisplayMessage[] = [
     {

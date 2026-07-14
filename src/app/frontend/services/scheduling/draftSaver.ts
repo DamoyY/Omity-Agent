@@ -48,9 +48,14 @@ export class DraftSaver {
       return;
     }
     this.pending = undefined;
-    this.tail = this.tail
-      .then(() => this.persist(this.target, snapshot.content, snapshot.revision))
-      .then(() => undefined)
-      .catch(this.onError);
+    this.tail = this.persistAfter(this.tail, snapshot);
+  }
+  private async persistAfter(previous: Promise<unknown>, snapshot: DraftSnapshot) {
+    await previous;
+    try {
+      await this.persist(this.target, snapshot.content, snapshot.revision);
+    } catch (error: unknown) {
+      this.onError(error);
+    }
   }
 }

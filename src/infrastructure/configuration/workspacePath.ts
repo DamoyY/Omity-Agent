@@ -21,7 +21,7 @@ function stripOuterQuotes(value: string) {
   return current;
 }
 function matchingQuotes(value: string) {
-  const first = value[0];
+  const [first] = value;
   const last = value.at(-1);
   return (
     (first === '"' && last === '"') ||
@@ -33,13 +33,13 @@ function expandEnvironmentVariables(value: string, env: Env) {
   return expandDollarVariables(expandPercentVariables(value, env), env);
 }
 function expandPercentVariables(value: string, env: Env) {
-  return value.replaceAll(/%([^%]+)%/g, (_, name: string) => envValue(name, env));
+  return value.replaceAll(/%(?<name>[^%]+)%/g, (_, name: string) => envValue(name, env));
 }
 function expandDollarVariables(value: string, env: Env) {
   return value
-    .replaceAll(/\$env:([A-Za-z_][A-Za-z0-9_]*)/gi, (_, name: string) => envValue(name, env))
-    .replaceAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name: string) => envValue(name, env))
-    .replaceAll(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, name: string) => envValue(name, env));
+    .replaceAll(/\$env:(?<name>[A-Za-z_][A-Za-z0-9_]*)/gi, (_, name: string) => envValue(name, env))
+    .replaceAll(/\$\{(?<name>[A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name: string) => envValue(name, env))
+    .replaceAll(/\$(?<name>[A-Za-z_][A-Za-z0-9_]*)/g, (_, name: string) => envValue(name, env));
 }
 function envValue(name: string, env: Env) {
   const value = env[name] ?? env[caseInsensitiveEnvName(name, env)];

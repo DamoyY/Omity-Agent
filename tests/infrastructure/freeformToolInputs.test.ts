@@ -27,7 +27,7 @@ test("creates a custom model tool from the only string parameter", () => {
   });
   const untouched = makeTool("search", { query: { type: "string" } });
   const configured = configureFreeformMcpTools([original, untouched], ["apply_patch"]);
-  const modelTool = configured.modelTools[0];
+  const [modelTool] = configured.modelTools;
   if (!modelTool) {
     throw new Error("缺少 apply_patch 工具");
   }

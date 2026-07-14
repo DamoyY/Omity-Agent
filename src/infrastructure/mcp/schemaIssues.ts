@@ -27,7 +27,7 @@ function flattenBestIssues(issues: ZodIssueLike[]): ZodIssueLike[] {
     const candidates = issue.unionErrors
       .map((unionError) => flattenBestIssues(unionError.issues ?? []))
       .filter((candidate) => candidate.length > 0);
-    const best = candidates.toSorted((left, right) => left.length - right.length)[0];
+    const [best] = candidates.toSorted((left, right) => left.length - right.length);
     return best ?? [issue];
   });
 }

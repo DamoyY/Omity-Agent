@@ -13,7 +13,7 @@ test("workspace path expands environment variables and strips quotes", () => {
   expect(normalizeWorkspacePath("'$env:TEMP_ROOT/workspace'", String.raw`F:\base`, env)).toBe(
     String.raw`F:\Temp\workspace`,
   );
-  expect(normalizeWorkspacePath('"${USERPROFILE}/repo"', String.raw`F:\base`, env)).toBe(
+  expect(normalizeWorkspacePath(`"\${USERPROFILE}/repo"`, String.raw`F:\base`, env)).toBe(
     String.raw`C:\Users\tester\repo`,
   );
 });

@@ -1,5 +1,5 @@
-const exactVariable = /^\$\{([^}]+)\}$/;
-const embeddedVariable = /\$\{([^}]+)\}/g;
+const exactVariable = /^\$\{(?<name>[^}]+)\}$/;
+const embeddedVariable = /\$\{(?<name>[^}]+)\}/g;
 export interface HookVariables {
   cwd: string;
   previousTool?: {
@@ -90,7 +90,7 @@ function readPath(value: unknown, path: string[], variable: string): unknown {
   return current;
 }
 function requireName(match: RegExpExecArray) {
-  const name = match[1];
+  const name = match.groups?.["name"];
   if (!name) {
     throw new Error(`无效 Hook 变量：${match[0]}`);
   }

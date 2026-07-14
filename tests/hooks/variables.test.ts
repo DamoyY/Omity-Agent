@@ -108,7 +108,7 @@ test("user takeover receives the preceding silent hook output", async () => {
         when: "before",
       },
       {
-        args: { previous: "${previousTool.output}" },
+        args: { previous: `\${previousTool.output}` },
         id: "takeover-user",
         mode: "takeover",
         runLimit: -1,
@@ -151,21 +151,21 @@ function rules(): HookRule[] {
     }),
     hookRule("before-takeover", "before", "takeover", {
       label: "before-takeover",
-      previous: "${previousTool.output}",
+      previous: `\${previousTool.output}`,
     }),
     hookRule("after-silent", "after", "silent", {
       label: "after-silent",
-      previous: "${previousTool.output}",
+      previous: `\${previousTool.output}`,
     }),
     hookRule("after-takeover", "after", "takeover", {
       label: "after-takeover",
-      previous: "${previousTool.output}",
+      previous: `\${previousTool.output}`,
     }),
     hookRule(
       "agent-end",
       "after",
       "takeover",
-      { label: "agent-end", previous: "${previousTool.output}" },
+      { label: "agent-end", previous: `\${previousTool.output}` },
       "agent",
     ),
   ];

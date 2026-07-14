@@ -1,6 +1,5 @@
-import type { DisplayEvent, DisplayQueue } from "../../../src/app/timeline";
+import { type DisplayEvent, type DisplayQueue, buildTimeline } from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
-import { buildTimeline } from "../../../src/app/timeline";
 import { countTokens } from "../../../src/runtime/tokenizer";
 const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
 test("merges tool identity and argument chunks by index", () => {
@@ -66,19 +65,17 @@ test("accepts cumulative argument snapshots", () => {
   expect(calls[0]?.inputText).toBe('{"value":10}');
 });
 test("updates token count from raw argument text while streaming", () => {
-  const initial = streamedCalls([
-    toolEvent(1, { args: '{"command":"', id: "call-1", index: 0 }),
-  ])[0];
-  const complete = streamedCalls([
+  const [initial] = streamedCalls([toolEvent(1, { args: '{"command":"', id: "call-1", index: 0 })]);
+  const [complete] = streamedCalls([
     toolEvent(1, { args: '{"command":"', id: "call-1", index: 0 }),
     toolEvent(2, { args: 'echo 你好"}', index: 0 }),
-  ])[0];
+  ]);
   expect(initial?.inputTokens).toBe(countTokens('{"command":"'));
   expect(complete?.inputTokens).toBe(countTokens('{"command":"echo 你好"}'));
 });
 test("exposes raw Freeform input while streaming", () => {
   const input = "*** Begin Patch\n*** End Patch";
-  const call = streamedCalls([
+  const [call] = streamedCalls([
     toolEvent(1, {
       args: input,
       freeform: true,
@@ -86,7 +83,7 @@ test("exposes raw Freeform input while streaming", () => {
       index: 0,
       name: "apply_patch",
     }),
-  ])[0];
+  ]);
   expect(call?.rawInput).toBe(input);
 });
 test("keeps parallel tool call indexes separate", () => {

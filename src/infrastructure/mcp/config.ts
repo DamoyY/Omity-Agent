@@ -3,7 +3,7 @@ import { normalizeFreeformToolInputs } from "./freeformInputs";
 import { normalizeMcpToolNameOverrides } from "./nameOverrides";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
-const envPlaceholder = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+const envPlaceholder = /\$\{(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\}/g;
 type McpServers = Record<string, unknown>;
 const mcpServerSchema = z.looseObject({});
 const mcpServersSchema = z.record(z.string(), mcpServerSchema);

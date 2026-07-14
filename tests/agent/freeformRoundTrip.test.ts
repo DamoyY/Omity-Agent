@@ -75,9 +75,9 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
     { call_id: "call_1", name: "apply_patch", type: "function_call" },
   ];
   const stored = messageInsert(assistant);
-  const hydrated = messageRowsToChatMessages([
+  const [hydrated] = messageRowsToChatMessages([
     { message_json: stored.messageJson, source_id: stored.sourceId },
-  ])[0];
+  ]);
   if (!AIMessage.isInstance(hydrated)) {
     throw new Error("stored assistant response is not an AIMessage");
   }

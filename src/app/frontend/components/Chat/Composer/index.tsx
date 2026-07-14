@@ -48,18 +48,18 @@ export function Composer({
     const target: ComposerDraftTarget = sessionId
       ? { kind: "session", sessionId }
       : { kind: "new" };
-    reportPromiseErrors(
-      readComposerDraft(target, draft ?? "").then((loaded) => {
-        if (!current) {
-          return;
-        }
-        revisionRef.current = loaded.revision;
-        contentRef.current = loaded.content;
-        historyRef.current.reset();
-        setContent(loaded.content);
-        setLoading(false);
-      }),
-    );
+    const load = async () => {
+      const loaded = await readComposerDraft(target, draft ?? "");
+      if (!current) {
+        return;
+      }
+      revisionRef.current = loaded.revision;
+      contentRef.current = loaded.content;
+      historyRef.current.reset();
+      setContent(loaded.content);
+      setLoading(false);
+    };
+    reportPromiseErrors(load());
     return () => {
       current = false;
     };

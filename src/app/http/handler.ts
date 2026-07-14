@@ -59,8 +59,8 @@ export function createApi(controller: ApiController) {
     }),
   );
   app.delete("/api/sessions/:sessionId", async (c) => {
-    const sessionId = decodeSessionId(c.req.param("sessionId"));
-    return c.json(await controller.deleteSession(sessionId));
+    const deletedSessionId = decodeSessionId(c.req.param("sessionId"));
+    return c.json(await controller.deleteSession(deletedSessionId));
   });
   app.get("/api/sessions/:sessionId/transcript", (c) =>
     c.json(controller.transcript(sessionId(c))),

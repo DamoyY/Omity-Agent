@@ -13,9 +13,14 @@ export function reportError(error: unknown, context?: Record<string, unknown>) {
   }
 }
 export function reportPromiseErrors(promise: Promise<unknown>) {
-  void promise.catch((error: unknown) => {
+  void reportPromise(promise);
+}
+async function reportPromise(promise: Promise<unknown>) {
+  try {
+    await promise;
+  } catch (error: unknown) {
     reportError(error);
-  });
+  }
 }
 function isObject(value: unknown): value is object {
   return (typeof value === "object" && value !== null) || typeof value === "function";

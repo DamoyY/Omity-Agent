@@ -1,8 +1,7 @@
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
-import { AIMessage } from "@langchain/core/messages";
 import { AgentDatabase } from "../../../src/infrastructure/database/agentDatabase";
-import type { BaseMessage } from "@langchain/core/messages";
 import { BunSqliteSaver } from "../../../src/checkpointer";
 import { HookRuntime } from "../../../src/hooks/runtime";
 import type { HostContext } from "../../../src/runtime/context";
@@ -102,11 +101,11 @@ function graph(
   };
 }
 async function commitModelBoundary(
-  graph: ReturnType<typeof createAgentGraph>,
+  agentGraph: ReturnType<typeof createAgentGraph>,
   messages: BaseMessage[],
   queueIds: number[],
 ) {
-  const stream = await graph.stream(
+  const stream = await agentGraph.stream(
     {
       hookPendingUserIds: queueIds.map((id) => queueMessageId("session", id)),
       messages,
@@ -119,13 +118,13 @@ async function commitModelBoundary(
   for await (const event of stream) {
     void event;
   }
-  expect((await graph.getState({ configurable: { thread_id: "session:1" } })).next).toEqual([
+  expect((await agentGraph.getState({ configurable: { thread_id: "session:1" } })).next).toEqual([
     "model_request",
   ]);
 }
 function context(
   db: AgentDatabase,
-  graph: unknown,
+  graphValue: unknown,
   checkpointer: BunSqliteSaver,
   dir: string,
 ): HostContext {
@@ -133,7 +132,7 @@ function context(
     checkpointer,
     controller: new AbortController(),
     db,
-    graph: graph as HostContext["graph"],
+    graph: graphValue as HostContext["graph"],
     logger: new Logger("error", true),
     sessionId: "session",
     settings: testSettings(dir),

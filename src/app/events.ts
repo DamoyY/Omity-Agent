@@ -53,7 +53,10 @@ export class AppEvents {
         resolve();
       };
       this.bus.on("wake", handler);
-      void sleep(delayMs).then(done);
+      void (async () => {
+        await sleep(delayMs);
+        done();
+      })();
     });
   }
   streamSessions(c: Context, getSessions: () => SessionInfo[]) {
@@ -104,8 +107,8 @@ export class AppEvents {
         rejectStream = reject;
       });
       const write: WriteEvent = (event, data) => {
-        pending = pending.then(() => stream.writeSSE({ data: JSON.stringify(data), event }));
-        void pending.catch(rejectStream);
+        pending = writePending(pending, stream, event, data);
+        void observePending(pending, rejectStream);
       };
       const unsubscribe = subscribe(write);
       const abort = () => {
@@ -126,5 +129,21 @@ export class AppEvents {
     });
     response.headers.set("content-type", "text/event-stream; charset=utf-8");
     return response;
+  }
+}
+async function writePending(
+  previous: Promise<void>,
+  stream: Parameters<Parameters<typeof streamSSE>[1]>[0],
+  event: string,
+  data: unknown,
+) {
+  await previous;
+  await stream.writeSSE({ data: JSON.stringify(data), event });
+}
+async function observePending(promise: Promise<void>, reject: (error: unknown) => void) {
+  try {
+    await promise;
+  } catch (error: unknown) {
+    reject(error);
   }
 }

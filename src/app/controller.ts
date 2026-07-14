@@ -1,6 +1,7 @@
 import { AppRegistry, type RegisteredSession } from "./registry";
 import type { Control, Settings } from "../types";
 import type { MessageSubmission, SessionSubmission } from "./attachments/contract";
+import { type ProcessOwner, appOwner } from "../infrastructure/process/ownership";
 import { type SessionInfo, projectSession } from "./sessionState";
 import { clearSessionDraft, readSessionDraft, writeSessionDraft } from "./composerDraft";
 import { createAppFork, createAppSession } from "./runtime/sessionActions";
@@ -8,8 +9,6 @@ import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
 import { AppEvents } from "./events";
 import { AppHosts } from "./hosts";
 import type { AppInstanceOwner } from "./runtime/instanceLock";
-import type { ProcessOwner } from "../infrastructure/process/ownership";
-import { appOwner } from "../infrastructure/process/ownership";
 import { cancelSessionTool } from "./sessionCommands";
 import { controllerHostEvents } from "./controllerHostEvents";
 import { deleteHostSession } from "../sessionStorage";

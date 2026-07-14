@@ -124,7 +124,7 @@ function runtime(db: AgentDatabase, hookTool: StructuredToolInterface, dir: stri
         when: "before",
       },
       {
-        args: { previous: "${previousTool.output}" },
+        args: { previous: `\${previousTool.output}` },
         id: "user-second",
         mode: "silent",
         runLimit: -1,

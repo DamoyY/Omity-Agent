@@ -34,10 +34,9 @@ export function handleStreamEvent(
     }
     return;
   }
-  const mode: unknown = event[0];
-  const payload: unknown = event[1];
+  const [mode, payload] = event;
   if (mode === "messages") {
-    const chunk: unknown = Array.isArray(payload) ? payload[0] : undefined;
+    const [chunk] = Array.isArray(payload) ? payload : [];
     if (!isAiChunk(chunk)) {
       return;
     }

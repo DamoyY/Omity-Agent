@@ -1,7 +1,6 @@
-import { AIMessage, SystemMessage } from "@langchain/core/messages";
+import { AIMessage, type BaseMessage, SystemMessage } from "@langchain/core/messages";
 import type { ModelApi, ModelSettings, Settings } from "../types";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import type { BaseMessage } from "@langchain/core/messages";
 import { ChatOpenAICompletions } from "@langchain/openai";
 import { CompatibleChatOpenAIResponses } from "../infrastructure/openai/compatibleResponses";
 import type { StructuredToolInterface } from "@langchain/core/tools";

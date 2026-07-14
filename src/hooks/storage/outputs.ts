@@ -18,7 +18,7 @@ function extractStructuredOutput(value: unknown) {
   if (artifacts.length > 1) {
     throw new Error("MCP 工具返回了多个结构化输出 artifact");
   }
-  const artifact = artifacts[0];
+  const [artifact] = artifacts;
   if (!artifact) {
     return undefined;
   }

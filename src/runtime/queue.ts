@@ -15,7 +15,7 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
   const items = [item, ...resumed.filter(({ id }) => id !== item.id)].toSorted(
     (left, right) => left.id - right.id,
   ) as [QueueItem, ...QueueItem[]];
-  const root = items.find(({ root }) => root) ?? item;
+  const root = items.find(({ root: isRoot }) => isRoot) ?? item;
   const run: QueueRun = {
     items,
     rootId: root.id,

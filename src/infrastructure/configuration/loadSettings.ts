@@ -38,7 +38,7 @@ function readYaml(path: string): unknown {
   return YAML.parse(readFileSync(path, "utf8")) as unknown;
 }
 function readPrompt(path: string, context: { cwd: string }, nonEmpty = false) {
-  const content = readFileSync(path, "utf8").trimEnd().replaceAll("${cwd}", context.cwd);
+  const content = readFileSync(path, "utf8").trimEnd().replaceAll(`\${cwd}`, context.cwd);
   if (nonEmpty && content.length === 0) {
     throw new Error(`提示词文件不能为空：${path}`);
   }

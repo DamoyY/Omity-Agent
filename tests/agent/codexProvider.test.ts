@@ -91,7 +91,7 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
     },
     method: "POST",
   });
-  const request = requests[0];
+  const [request] = requests;
   expect(request).toBeDefined();
   expect(request?.url).toBe("https://chatgpt.com/backend-api/codex/responses");
   expect(request?.headers.get("authorization")).toBe("Bearer test-access-token");
