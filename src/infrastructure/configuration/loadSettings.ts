@@ -6,11 +6,9 @@ import { loadHookRules } from "./hookRules";
 import { resolveConfiguredPath } from "./configuredPath";
 import { parseMainSettings, parseModelSettings } from "./settingsSchema";
 import { normalizeWorkspacePath } from "./workspacePath";
-
 export interface LoadSettingsOptions {
   cwd?: string;
 }
-
 export function loadSettings(root = process.cwd(), options: LoadSettingsOptions = {}): Settings {
   const configRoot = resolve(root);
   const cwd = normalizeWorkspacePath(options.cwd ?? configRoot, configRoot);
@@ -36,11 +34,9 @@ export function loadSettings(root = process.cwd(), options: LoadSettingsOptions 
     paths: { dataDir },
   };
 }
-
 function readYaml(path: string): unknown {
   return YAML.parse(readFileSync(path, "utf8")) as unknown;
 }
-
 function readPrompt(path: string, context: { cwd: string }, nonEmpty = false) {
   const content = readFileSync(path, "utf8").trimEnd().replaceAll("${cwd}", context.cwd);
   if (nonEmpty && content.length === 0) {

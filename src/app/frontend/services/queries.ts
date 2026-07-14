@@ -6,16 +6,13 @@ import { readDeletedEvent, readSessionEvent, readSessionsEvent } from "./events/
 import { reportError } from "./errors";
 import { reportSessionErrors } from "./events/reporting";
 import { transcriptKey } from "./transcript/query";
-
 export interface BootstrapData {
   attachments: AttachmentSettings;
   cwd: string;
   frontend: FrontendSettings;
   sessions: SessionInfo[];
 }
-
 export { transcriptKey, useSessionTranscript, type TranscriptData } from "./transcript/query";
-
 export const bootstrapKey = ["bootstrap"] as const;
 export function useBootstrap() {
   const queryClient = useQueryClient();
@@ -77,13 +74,11 @@ export function useBootstrap() {
   }, [query.data]);
   return query;
 }
-
 export function addSession(queryClient: QueryClient, session: SessionInfo) {
   queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) =>
     current ? { ...current, sessions: upsertSessionList(current.sessions, session) } : current,
   );
 }
-
 export function removeSession(queryClient: QueryClient, sessionId: string) {
   queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) =>
     current
@@ -95,7 +90,6 @@ export function removeSession(queryClient: QueryClient, sessionId: string) {
   );
   queryClient.removeQueries({ queryKey: transcriptKey(sessionId) });
 }
-
 function replaceCachedSessions(queryClient: QueryClient, sessions: SessionInfo[]) {
   let replaced = false;
   queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) => {
@@ -105,7 +99,6 @@ function replaceCachedSessions(queryClient: QueryClient, sessions: SessionInfo[]
   });
   return replaced;
 }
-
 function updateCachedSessions(
   queryClient: QueryClient,
   update: (sessions: SessionInfo[]) => SessionInfo[],
@@ -114,13 +107,11 @@ function updateCachedSessions(
     current ? { ...current, sessions: update(current.sessions) } : current,
   );
 }
-
 export function upsertSessionList(sessions: SessionInfo[], session: SessionInfo) {
   return [session, ...sessions.filter(({ id }) => id !== session.id)].sort(
     (left, right) => right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
   );
 }
-
 export function withoutSession(sessions: SessionInfo[], sessionId: string) {
   return sessions.filter(({ id }) => id !== sessionId);
 }

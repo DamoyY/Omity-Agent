@@ -10,7 +10,6 @@ import {
   type PendingAttachment,
   validateAttachmentBatch,
 } from "./contract";
-
 export async function saveMessageAttachments(
   settings: Settings,
   sessionId: string,
@@ -21,7 +20,6 @@ export async function saveMessageAttachments(
   const selected = attachments.filter(({ id }) => referenced.has(id));
   validateSelected(selected, referenced, settings);
   if (selected.length === 0) return saved(content, []);
-
   const session = resolveSessionPaths(settings, sessionId);
   const directory = join(session.dir, "attachments");
   await mkdir(directory, { recursive: true });
@@ -44,14 +42,12 @@ export async function saveMessageAttachments(
     throw error;
   }
 }
-
 function saved(content: string, paths: string[]) {
   return {
     content,
     discard: () => Promise.all(paths.map((path) => rm(path, { force: true }))),
   };
 }
-
 function validateSelected(
   selected: PendingAttachment[],
   referenced: Set<string>,
@@ -74,7 +70,6 @@ function validateSelected(
     }
   }
 }
-
 function safeFilename(name: string) {
   const source = basename(name).normalize("NFC");
   const suffix = fileSuffix(source);
@@ -85,7 +80,6 @@ function safeFilename(name: string) {
     .slice(0, 96);
   return `${stem || "file"}${suffix}`;
 }
-
 function replacePlaceholder(content: string, id: string, path: string) {
   const pattern = new RegExp(String.raw`\{\{file:${id}:[^{}\r\n]+\}\}`, "giu");
   return content.replaceAll(pattern, () => path);

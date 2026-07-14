@@ -1,5 +1,4 @@
 import { css } from "styled-system/css";
-
 export const composerFrame = css({
   bg: "surface",
   borderTopWidth: "1px",
@@ -13,7 +12,6 @@ export const composerFrame = css({
   p: { base: "3", md: "6" },
   w: "full",
 });
-
 export const composerActions = css({
   display: "flex",
   flexDirection: { base: "row", md: "column" },
@@ -22,13 +20,11 @@ export const composerActions = css({
   justifyContent: { base: "space-between", md: "initial" },
   minW: { md: "controlColumn" },
 });
-
 export const composerControls = css({
   display: "grid",
   gap: "2",
   gridAutoFlow: { base: "column", md: "row" },
 });
-
 export const composerRole = css({
   alignItems: "center",
   color: "mutedStrong",

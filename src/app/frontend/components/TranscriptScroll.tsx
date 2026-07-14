@@ -8,13 +8,10 @@ import {
 } from "react";
 import type { TimelineMessage } from "../../timeline";
 import { scroll } from "../design";
-
 const followBottomThreshold = 48;
-
 function isNearBottom(element: HTMLElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= followBottomThreshold;
 }
-
 export function useFollowBottom<T extends HTMLElement>({
   enabled = true,
   ref,
@@ -27,24 +24,19 @@ export function useFollowBottom<T extends HTMLElement>({
   version: unknown;
 }) {
   const followingRef = useRef(true);
-
   useLayoutEffect(() => {
     followingRef.current = true;
   }, [resetKey]);
-
   useLayoutEffect(() => {
     const element = ref.current;
     if (!enabled || !element || !followingRef.current) return;
     element.scrollTop = element.scrollHeight;
   }, [enabled, ref, resetKey, version]);
-
   const onScroll = useCallback<UIEventHandler<T>>((event) => {
     followingRef.current = isNearBottom(event.currentTarget);
   }, []);
-
   return onScroll;
 }
-
 export function TranscriptScroll({
   activeId,
   children,
@@ -60,7 +52,6 @@ export function TranscriptScroll({
     resetKey: activeId,
     version: view,
   });
-
   return (
     <section className={scroll} ref={scrollRef} onScroll={onScroll}>
       {children}

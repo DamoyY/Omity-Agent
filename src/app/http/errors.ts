@@ -1,12 +1,10 @@
 import { DomainError, type DomainErrorCode } from "../../errors";
-
 export type ApiErrorCode =
   | DomainErrorCode
   | "BAD_REQUEST"
   | "NOT_FOUND"
   | "PAYLOAD_TOO_LARGE"
   | "INTERNAL_ERROR";
-
 const domainStatuses: Record<DomainErrorCode, number> = {
   SESSION_NOT_FOUND: 404,
   SESSION_CONFLICT: 409,
@@ -17,10 +15,8 @@ const domainStatuses: Record<DomainErrorCode, number> = {
   ATTACHMENT_INVALID: 400,
   ATTACHMENT_TOO_LARGE: 413,
 };
-
 export class HttpError extends Error {
   readonly code: ApiErrorCode;
-
   constructor(
     readonly status: number,
     message: string,
@@ -30,7 +26,6 @@ export class HttpError extends Error {
     this.code = code ?? httpCode(status);
   }
 }
-
 export function errorResponse(error: unknown) {
   const normalized = normalizeError(error);
   if (normalized.status === 500) console.error(error);
@@ -41,7 +36,6 @@ export function errorResponse(error: unknown) {
     },
   };
 }
-
 export function normalizeError(error: unknown) {
   if (error instanceof HttpError) return error;
   if (error instanceof DomainError) {
@@ -49,12 +43,10 @@ export function normalizeError(error: unknown) {
   }
   return new HttpError(500, errorMessage(error), "INTERNAL_ERROR");
 }
-
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message || error.name;
   return String(error);
 }
-
 function httpCode(status: number): ApiErrorCode {
   if (status === 400) return "BAD_REQUEST";
   if (status === 404) return "NOT_FOUND";

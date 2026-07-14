@@ -2,9 +2,7 @@ import { AIMessage, ToolMessage, mapChatMessagesToStoredMessages } from "@langch
 import { afterEach, expect, test } from "bun:test";
 import { BunSqliteSaver } from "../../src/checkpointer";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
-
 afterEach(cleanupDatabaseDirs);
-
 test("one database stores each message body once and clears terminal recovery data", async () => {
   const db = makeDb();
   db.resetSession("session", workspace);
@@ -13,7 +11,6 @@ test("one database stores each message body once and clears terminal recovery da
   const toolText = "unique-tool-body-a913";
   db.appendUser("session", userText);
   db.startQueue("session", required(db.nextQueue("session")));
-
   const toolOutput = new ToolMessage({
     id: "hook-output",
     content: toolText,
@@ -57,7 +54,6 @@ test("one database stores each message body once and clears terminal recovery da
     ],
     "task",
   );
-
   const tables = new Set(tableNames(db.db));
   for (const table of [
     "sessions",
@@ -86,9 +82,7 @@ test("one database stores each message body once and clears terminal recovery da
   expect(
     db.db.query<{ content: string | null }, []>("SELECT content FROM queue").get()?.content,
   ).toBeNull();
-
   await saver.deleteThread("session:1");
-
   expect(rowCount(db.db, "checkpoints")).toBe(0);
   expect(rowCount(db.db, "writes")).toBe(0);
   expect(rowCount(db.db, "hook_usage")).toBe(0);
@@ -97,7 +91,6 @@ test("one database stores each message body once and clears terminal recovery da
   expect(storedOccurrences(db.db, assistantText)).toBe(1);
   db.close();
 });
-
 function checkpoint(messages: unknown[]) {
   return {
     v: 4,
@@ -108,14 +101,12 @@ function checkpoint(messages: unknown[]) {
     versions_seen: {},
   };
 }
-
 function tableNames(db: ReturnType<typeof makeDb>["db"]) {
   return db
     .query<{ name: string }, []>("SELECT name FROM sqlite_schema WHERE type = 'table'")
     .all()
     .map((row) => row.name);
 }
-
 function storedOccurrences(db: ReturnType<typeof makeDb>["db"], text: string) {
   return required(
     db
@@ -125,7 +116,6 @@ function storedOccurrences(db: ReturnType<typeof makeDb>["db"], text: string) {
       .get(text),
   ).count;
 }
-
 function rawRecoveryContains(db: ReturnType<typeof makeDb>["db"], value: string) {
   const checkpointCount = required(
     db
@@ -143,7 +133,6 @@ function rawRecoveryContains(db: ReturnType<typeof makeDb>["db"], value: string)
   ).count;
   return checkpointCount + writeCount > 0;
 }
-
 function rowCount(db: ReturnType<typeof makeDb>["db"], table: string) {
   if (!/^[a-z_]+$/.test(table)) throw new Error(`测试表名无效：${table}`);
   return required(db.query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM ${table}`).get())

@@ -9,15 +9,12 @@ import { safeId, sessionPaths } from "../../src/infrastructure/configuration/ses
 import { loadHookRules } from "../../src/infrastructure/configuration/hookRules";
 import { resolveHookArgs } from "../../src/hooks/variables";
 import { writeTestConfiguration } from "../support/configuration";
-
 const dirs: string[] = [];
-
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 test("settings yaml resolves AppData data directory", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
   const appData = join(root, "app-data");
@@ -42,7 +39,6 @@ test("settings yaml resolves AppData data directory", () => {
     expect(() => sessionPaths(settings, "abc:def")).toThrow("路径 ID 无效");
   });
 });
-
 test("prompt files expand current working directory placeholder", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
   const workspace = join(root, "workspace");
@@ -52,14 +48,11 @@ test("prompt files expand current working directory placeholder", () => {
     systemPrompt: "workspace: ${cwd}",
     skillsPrompt: "skills from ${cwd}",
   });
-
   const settings = loadSettings(root, { cwd: workspace });
-
   expect(settings.paths.dataDir).toBe(resolve(root, "data"));
   expect(settings.agent.systemPrompt).toBe(`workspace: ${workspace}`);
   expect(settings.skills.usagePrompt).toBe(`skills from ${workspace}`);
 });
-
 test("model yaml selects a named profile from multiple profiles", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-config-"));
   dirs.push(root);
@@ -78,20 +71,17 @@ profiles:
     timeoutMs: 2000
 `,
   });
-
   expect(loadSettings(root).model).toEqual({
     adapter: "codex",
     model: "codex-model",
     timeoutMs: 2000,
   });
 });
-
 test("model yaml rejects an unknown profile", () => {
   expect(() => parseModelSettings({ profile: "missing", profiles: {} })).toThrow(
     "Profile 不存在：missing",
   );
 });
-
 test("hook config parses targets, timing, and modes", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-hooks-config-"));
   const path = join(root, "hooks.yaml");
@@ -129,7 +119,6 @@ test("hook config parses targets, timing, and modes", () => {
     args: {}
 `,
   );
-
   expect(loadHookRules(path).map(({ target, when, mode }) => [target, when, mode])).toEqual([
     ["agent", "before", "takeover"],
     ["agent", "after", "takeover"],
@@ -137,7 +126,6 @@ test("hook config parses targets, timing, and modes", () => {
     ["write", "after", "takeover"],
   ]);
 });
-
 test("hook variables preserve exact values and reject ambiguous output", () => {
   const previous = { files: ["a.ts", "b.ts"] };
   expect(
@@ -156,7 +144,6 @@ test("hook variables preserve exact values and reject ambiguous output", () => {
     "没有可用的前序工具输出",
   );
 });
-
 function withAppDataRoot(path: string, callback: () => void) {
   const previous = {
     APPDATA: process.env["APPDATA"],
@@ -174,7 +161,6 @@ function withAppDataRoot(path: string, callback: () => void) {
     restoreEnv("XDG_DATA_HOME", previous.XDG_DATA_HOME);
   }
 }
-
 function restoreEnv(name: string, value: string | undefined) {
   if (value === undefined) {
     Reflect.deleteProperty(process.env, name);

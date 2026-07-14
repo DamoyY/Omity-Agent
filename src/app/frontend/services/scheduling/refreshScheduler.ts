@@ -3,13 +3,11 @@ export class RefreshScheduler {
   private queued = false;
   private running = false;
   private timer?: ReturnType<typeof setTimeout>;
-
   constructor(
     private readonly intervalMs: number,
     private readonly refresh: () => Promise<unknown>,
     private readonly onError: (error: unknown) => void,
   ) {}
-
   request() {
     this.queued = true;
     if (this.running || this.timer !== undefined) return;
@@ -20,13 +18,11 @@ export class RefreshScheduler {
       void this.run();
     }, delay);
   }
-
   dispose() {
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
     this.queued = false;
   }
-
   private async run() {
     if (!this.queued) return;
     this.queued = false;
@@ -41,7 +37,6 @@ export class RefreshScheduler {
       if (this.hasQueuedRequest()) this.request();
     }
   }
-
   private hasQueuedRequest() {
     return this.queued;
   }

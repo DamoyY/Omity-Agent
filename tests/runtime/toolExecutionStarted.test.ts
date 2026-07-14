@@ -2,7 +2,6 @@ import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { expect, test } from "bun:test";
 import { ToolExecutions } from "../../src/agent/toolExecutions";
 import { recordToolExecutionStarted } from "../../src/runtime/stream";
-
 test("only the next pending tool call is marked as started", () => {
   const started: string[] = [];
   const executions = new ToolExecutions();
@@ -28,7 +27,6 @@ test("only the next pending tool call is marked as started", () => {
     ],
     1,
   );
-
   expect(started).toEqual(["call-2"]);
   expect(executions.cancel("call-1")).toBe(false);
   expect(executions.cancel("call-2")).toBe(true);

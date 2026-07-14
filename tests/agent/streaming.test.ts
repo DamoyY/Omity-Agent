@@ -7,9 +7,7 @@ import { Logger } from "../../src/infrastructure/logging/logger";
 import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
 import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
-
 afterEach(cleanupDatabaseDirs);
-
 test("streams every model delta once across the recoverable task boundary", async () => {
   const db = makeDb();
   db.resetSession("session", workspace);
@@ -49,7 +47,6 @@ test("streams every model delta once across the recoverable task boundary", asyn
     sessionId: "session",
     settings: testSettings(workspace),
   } as never;
-
   try {
     const stream = await graph.stream(
       { messages: [new HumanMessage("开始")] },
@@ -62,7 +59,6 @@ test("streams every model delta once across the recoverable task boundary", asyn
     for await (const event of stream) {
       handleStreamEvent(context, event, state, 1);
     }
-
     expect(reasoning).toEqual(["分析"]);
     expect(tokens).toEqual(["重", "重"]);
   } finally {

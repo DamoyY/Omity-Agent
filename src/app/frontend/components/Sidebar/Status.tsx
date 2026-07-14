@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { css, cva, cx } from "styled-system/css";
 import type { SessionStatus } from "../../../../types";
 import type { ErrorDetails } from "../../../../failures/details";
-
 const indicator = cva({
   base: {
     alignItems: "center",
@@ -22,9 +21,7 @@ const indicator = cva({
     },
   },
 });
-
 const activeIcon = css({ animation: "pulse 1.8s ease-in-out infinite" });
-
 const statusMeta: Record<SessionStatus, { icon: LucideIcon; label: string; active?: boolean }> = {
   tool: { icon: Wrench, label: "statusTool", active: true },
   model: { icon: Bot, label: "statusModel", active: true },
@@ -32,7 +29,6 @@ const statusMeta: Record<SessionStatus, { icon: LucideIcon; label: string; activ
   paused: { icon: Pause, label: "statusPaused" },
   error: { icon: CircleAlert, label: "statusError" },
 };
-
 export function Status({
   compact = false,
   error,

@@ -1,17 +1,14 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { customTool } from "@langchain/openai";
 import { z } from "zod";
-
 export interface FreeformMcpTools {
   modelTools: StructuredToolInterface[];
   parameters: ReadonlyMap<string, string>;
 }
-
 const toolJsonSchema = z.looseObject({
   properties: z.record(z.string(), z.unknown()),
 });
 const stringParameterSchema = z.looseObject({ type: z.literal("string") });
-
 export function normalizeFreeformToolInputs(
   value: unknown,
   path = "settings/mcp.yaml.freeformToolInputs",
@@ -20,7 +17,6 @@ export function normalizeFreeformToolInputs(
   if (!Array.isArray(value)) {
     throw new Error(`MCP free-form 工具配置 ${path} 必须是数组`);
   }
-
   const names = new Set<string>();
   for (const [index, name] of value.entries()) {
     if (typeof name !== "string" || name.length === 0) {
@@ -33,14 +29,12 @@ export function normalizeFreeformToolInputs(
   }
   return [...names];
 }
-
 export function configureFreeformMcpTools(
   tools: StructuredToolInterface[],
   names: string[],
 ): FreeformMcpTools {
   const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
   const parameters = new Map<string, string>();
-
   for (const name of names) {
     const tool = toolsByName.get(name);
     if (!tool) {
@@ -48,7 +42,6 @@ export function configureFreeformMcpTools(
     }
     parameters.set(name, singleStringParameter(tool));
   }
-
   return {
     parameters,
     modelTools: tools.map((tool) => {
@@ -61,7 +54,6 @@ export function configureFreeformMcpTools(
     }),
   };
 }
-
 function singleStringParameter(tool: StructuredToolInterface) {
   const schema: unknown = tool.schema;
   const parsed = toolJsonSchema.safeParse(schema);
@@ -71,7 +63,6 @@ function singleStringParameter(tool: StructuredToolInterface) {
       `MCP free-form 工具 ${tool.name} 必须恰好声明一个输入参数，实际为 ${entries.length.toString()} 个`,
     );
   }
-
   const [entry] = entries;
   if (!entry) throw new Error(`MCP free-form 工具 ${tool.name} 缺少输入参数`);
   const [parameter, definition] = entry;

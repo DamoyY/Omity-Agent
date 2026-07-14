@@ -21,10 +21,8 @@ import {
 import { rowToTuple } from "./tuple";
 import { putCheckpoint, putPendingWrites } from "./write";
 import { deleteThreadData } from "./lifecycle";
-
 export class BunSqliteSaver extends BaseCheckpointSaver {
   private isSetup = false;
-
   constructor(
     readonly db: Database,
     private readonly sessionId?: string,
@@ -32,7 +30,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
   ) {
     super(serde);
   }
-
   protected setup() {
     if (this.isSetup) return;
     for (const sql of setupSql) {
@@ -40,7 +37,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     }
     this.isSetup = true;
   }
-
   async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
     this.setup();
     const thread_id = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
@@ -67,7 +63,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
         };
     return this.decodeRow(row, finalConfig);
   }
-
   async *list(
     config: RunnableConfig,
     options?: CheckpointListOptions,
@@ -84,7 +79,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       });
     }
   }
-
   async put(
     config: RunnableConfig,
     checkpoint: Checkpoint,
@@ -100,25 +94,21 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       this.resolveSessionId(config),
     );
   }
-
   async putWrites(config: RunnableConfig, writes: PendingWrite[], taskId: string): Promise<void> {
     this.setup();
     await putPendingWrites(this.db, this.serde, config, writes, taskId);
   }
-
   deleteThread(threadId: string): Promise<void> {
     this.setup();
     deleteThreadData(this.db, threadId);
     return Promise.resolve();
   }
-
   private decodeRow(row: CheckpointRow, config: RunnableConfig): Promise<CheckpointTuple> {
     return rowToTuple(row, config, {
       db: this.db,
       serde: this.serde,
     });
   }
-
   private resolveSessionId(config: RunnableConfig) {
     if (this.sessionId) return this.sessionId;
     const threadId = requiredConfigString(config.configurable?.["thread_id"], "thread_id");

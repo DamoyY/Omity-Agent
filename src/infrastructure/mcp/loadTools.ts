@@ -9,14 +9,12 @@ import { renameMcpTools } from "./nameOverrides";
 import { disableMcpRequestTimeout } from "./requestTimeout";
 import { collectReadableZodIssues } from "./schemaIssues";
 import { createMcpToolFailureClient } from "./toolFailures";
-
 interface LoadedMcp {
   tools: StructuredToolInterface[];
   modelTools: StructuredToolInterface[];
   freeformToolParameters: ReadonlyMap<string, string>;
   close: () => Promise<void>;
 }
-
 export function createMcpLoadError(error: unknown): Error {
   const details = collectReadableZodIssues(error);
   if (details.length === 0) {
@@ -27,7 +25,6 @@ export function createMcpLoadError(error: unknown): Error {
     cause: error,
   });
 }
-
 export async function loadMcp(root: string, logger: Logger): Promise<LoadedMcp> {
   const path = resolve(root, "settings", "mcp.yaml");
   if (!existsSync(path)) {
@@ -43,7 +40,6 @@ export async function loadMcp(root: string, logger: Logger): Promise<LoadedMcp> 
   }
   return connectMcp(configuration, names, logger);
 }
-
 async function connectMcp(
   configuration: ReturnType<typeof readMcpConfiguration>,
   names: string[],
@@ -81,7 +77,6 @@ async function connectMcp(
     end();
   }
 }
-
 async function loadServerTools(client: MultiServerMCPClient, names: string[]) {
   return (
     await Promise.all(
@@ -99,7 +94,6 @@ async function loadServerTools(client: MultiServerMCPClient, names: string[]) {
     )
   ).flat();
 }
-
 function validateConfiguredServers(
   configuration: ReturnType<typeof readMcpConfiguration>,
   names: string[],
@@ -112,7 +106,6 @@ function validateConfiguredServers(
     throw new Error("MCP free-form 工具配置需要至少配置一个 MCP 服务器");
   }
 }
-
 function emptyMcp(): LoadedMcp {
   return {
     tools: [],

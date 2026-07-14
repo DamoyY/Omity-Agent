@@ -1,12 +1,10 @@
 import { ToolMessage, type BaseMessage, type ContentBlock } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
 import type { ModelApi } from "../types";
-
 export interface ToolImage {
   src: string;
   mimeType: string;
 }
-
 export function createModelImageMiddleware(api: ModelApi) {
   return createMiddleware({
     name: "model-images",
@@ -17,13 +15,11 @@ export function createModelImageMiddleware(api: ModelApi) {
       }),
   });
 }
-
 export function prepareModelImageMessages(messages: BaseMessage[], api: ModelApi): BaseMessage[] {
   return api === "responses"
     ? prepareResponsesMessages(messages)
     : prepareCompletionsMessages(messages);
 }
-
 export function extractToolImages(content: unknown): ToolImage[] {
   const parsed = parseStructuredString(content);
   if (parsed !== content) return extractToolImages(parsed);
@@ -35,7 +31,6 @@ export function extractToolImages(content: unknown): ToolImage[] {
   const image = readImage(content);
   return image ? [image] : [];
 }
-
 export function toolContentText(content: unknown): string {
   const parsed = parseStructuredString(content);
   if (parsed !== content) return toolContentText(parsed);
@@ -64,7 +59,6 @@ export function toolContentText(content: unknown): string {
   if (readImage(content)) return "";
   return JSON.stringify(content);
 }
-
 function prepareResponsesMessages(messages: BaseMessage[]) {
   return messages.map((message) => {
     if (!ToolMessage.isInstance(message)) return message;
@@ -82,7 +76,6 @@ function prepareResponsesMessages(messages: BaseMessage[]) {
     return copyToolMessage(message, content);
   });
 }
-
 function prepareCompletionsMessages(messages: BaseMessage[]) {
   return messages.map((message) => {
     if (!ToolMessage.isInstance(message)) return message;
@@ -93,7 +86,6 @@ function prepareCompletionsMessages(messages: BaseMessage[]) {
     return copyToolMessage(message, [text, notice].filter((part) => part.length > 0).join("\n\n"));
   });
 }
-
 function copyToolMessage(message: ToolMessage, content: ContentBlock[] | string) {
   const artifact: unknown = message.artifact;
   return new ToolMessage({
@@ -108,7 +100,6 @@ function copyToolMessage(message: ToolMessage, content: ContentBlock[] | string)
     metadata: message.metadata,
   });
 }
-
 function readImage(value: Record<string, unknown>): ToolImage | null {
   if (value["type"] === "image") {
     const data = value["data"];
@@ -124,12 +115,10 @@ function readImage(value: Record<string, unknown>): ToolImage | null {
   const src = typeof raw === "string" ? raw : isRecord(raw) ? raw["url"] : null;
   return typeof src === "string" ? parseImageDataUrl(src) : null;
 }
-
 function parseImageDataUrl(src: string): ToolImage | null {
   const match = /^data:([^;,]+)(?:;[^,]*)*;base64,/i.exec(src);
   return match?.[1] ? { src, mimeType: match[1] } : null;
 }
-
 function parseStructuredString(value: unknown): unknown {
   if (typeof value !== "string") return value;
   try {
@@ -139,14 +128,12 @@ function parseStructuredString(value: unknown): unknown {
     return value;
   }
 }
-
 function isStructuredContent(value: unknown) {
   return (
     Array.isArray(value) ||
     (isRecord(value) && (Array.isArray(value["content"]) || typeof value["type"] === "string"))
   );
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

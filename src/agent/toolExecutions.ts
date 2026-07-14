@@ -3,7 +3,6 @@ export interface ToolExecutionHandle {
   cancellationDurationMs(): number | undefined;
   complete(): void;
 }
-
 interface ToolExecution {
   announcedAt: number;
   cancelledAt?: number;
@@ -12,27 +11,21 @@ interface ToolExecution {
   requestStarted: boolean;
   timer?: ReturnType<typeof setInterval>;
 }
-
 const executionsBySignal = new WeakMap<AbortSignal, ToolExecution>();
-
 interface ToolExecutionsOptions {
   cancellationRequested?: (callId: string) => boolean;
   now?: () => number;
   pollMs?: number;
 }
-
 export class ToolExecutions {
   private readonly executions = new Map<string, ToolExecution>();
   private readonly now: () => number;
-
   constructor(private readonly options: ToolExecutionsOptions = {}) {
     this.now = options.now ?? Date.now;
   }
-
   announce(callId: string) {
     this.executions.set(callId, this.createExecution());
   }
-
   begin(callId: string, parentSignal?: AbortSignal): ToolExecutionHandle {
     const execution = this.executions.get(callId) ?? this.createExecution();
     if (executionsBySignal.has(execution.controller.signal)) {
@@ -58,7 +51,6 @@ export class ToolExecutions {
       },
     };
   }
-
   cancel(callId: string) {
     const execution = this.executions.get(callId);
     if (!execution || execution.cancelledAt !== undefined || execution.requestCompleted) {
@@ -68,7 +60,6 @@ export class ToolExecutions {
     abortCancelledRequest(execution);
     return true;
   }
-
   private createExecution(): ToolExecution {
     return {
       announcedAt: this.now(),
@@ -77,7 +68,6 @@ export class ToolExecutions {
       requestStarted: false,
     };
   }
-
   private startPolling(callId: string, execution: ToolExecution) {
     if (!this.options.cancellationRequested) return;
     const check = () => {
@@ -91,19 +81,16 @@ export class ToolExecutions {
     execution.timer.unref();
   }
 }
-
 export function markMcpRequestStarted(signal?: AbortSignal) {
   const execution = signal ? executionsBySignal.get(signal) : undefined;
   if (!execution) return;
   execution.requestStarted = true;
   abortCancelledRequest(execution);
 }
-
 export function markMcpRequestCompleted(signal?: AbortSignal) {
   const execution = signal ? executionsBySignal.get(signal) : undefined;
   if (execution) execution.requestCompleted = true;
 }
-
 function abortCancelledRequest(execution: ToolExecution) {
   if (execution.cancelledAt === undefined || !execution.requestStarted) return;
   execution.controller.abort(new Error("用户手动终止工具"));

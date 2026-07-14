@@ -7,15 +7,11 @@ import type {
   SessionSubmission,
 } from "../attachments/contract";
 import { HttpError } from "./errors";
-
 export const requestBodyLimit = 1024 * 1024;
-
 const nonEmptyMessage = z.string().refine((value) => value.trim().length > 0);
-
 const historySchema = z.array(
   z.object({ user: nonEmptyMessage, assistant: nonEmptyMessage }).strict(),
 );
-
 const messageFieldsSchema = z.object({
   content: nonEmptyMessage,
   draftRevision: z
@@ -24,7 +20,6 @@ const messageFieldsSchema = z.object({
     .transform(Number)
     .pipe(z.number().int().nonnegative()),
 });
-
 const sessionFieldsSchema = z.object({
   workspace: z.string().trim().min(1).max(32_767),
   message: nonEmptyMessage,
@@ -39,7 +34,6 @@ export const composerDraftBody = z
 export const controlBody = z.object({ control: z.enum(["running", "pause", "cancel"]) }).strict();
 export const cancelToolBody = z.object({ toolCallId: z.string().min(1).max(1024) }).strict();
 export const forkBody = z.object({ beforeMessageId: z.number().int().positive() }).strict();
-
 export async function readJson<T>(request: HonoRequest, schema: z.ZodType<T>): Promise<T> {
   let parsed: unknown;
   try {
@@ -56,7 +50,6 @@ export async function readJson<T>(request: HonoRequest, schema: z.ZodType<T>): P
   }
   return result.data;
 }
-
 export async function readMessageForm(request: HonoRequest): Promise<MessageSubmission> {
   const form = await readFormData(request);
   const fields = {
@@ -70,7 +63,6 @@ export async function readMessageForm(request: HonoRequest): Promise<MessageSubm
   const attachments = readAttachments(form, new Set(Object.keys(fields)));
   return { ...result.data, attachments };
 }
-
 export async function readSessionForm(request: HonoRequest): Promise<SessionSubmission> {
   const form = await readFormData(request);
   const fields = {
@@ -90,7 +82,6 @@ export async function readSessionForm(request: HonoRequest): Promise<SessionSubm
   const attachments = readAttachments(form, new Set(["workspace", "message", "history"]));
   return { ...result.data, attachments };
 }
-
 async function readFormData(request: HonoRequest) {
   try {
     return await request.formData();
@@ -98,7 +89,6 @@ async function readFormData(request: HonoRequest) {
     throw new HttpError(400, "请求体不是有效的 multipart/form-data");
   }
 }
-
 function readAttachments(form: FormData, fields: Set<string>) {
   return [...form.entries()].flatMap(([key, value]): PendingAttachment[] => {
     if (fields.has(key)) return [];
@@ -110,7 +100,6 @@ function readAttachments(form: FormData, fields: Set<string>) {
     return [{ id: match[1] ?? "", file: value }];
   });
 }
-
 function singleText(form: FormData, name: string) {
   const values = form.getAll(name);
   if (values.length !== 1 || typeof values[0] !== "string") {
@@ -118,7 +107,6 @@ function singleText(form: FormData, name: string) {
   }
   return values[0];
 }
-
 export function decodeSessionId(value: string) {
   let decoded: string;
   try {

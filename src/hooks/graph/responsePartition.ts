@@ -1,5 +1,4 @@
 import type { AIMessage } from "@langchain/core/messages";
-
 export function partitionToolResponse(
   original: AIMessage,
   callId: string,
@@ -12,7 +11,6 @@ export function partitionToolResponse(
     usage_metadata: includeResponse ? original.usage_metadata : undefined,
   };
 }
-
 function partitionAdditionalKwargs(original: AIMessage, callId: string, includeResponse: boolean) {
   const allCallIds = toolCallIds(original);
   return Object.fromEntries(
@@ -27,7 +25,6 @@ function partitionAdditionalKwargs(original: AIMessage, callId: string, includeR
     }),
   );
 }
-
 function partitionResponseMetadata(original: AIMessage, callId: string, includeResponse: boolean) {
   const responseMetadata = includeResponse ? { ...original.response_metadata } : {};
   const output = original.response_metadata["output"];
@@ -37,7 +34,6 @@ function partitionResponseMetadata(original: AIMessage, callId: string, includeR
   else delete responseMetadata["output"];
   return responseMetadata;
 }
-
 function partitionCallItems(
   items: unknown[],
   allCallIds: Set<string>,
@@ -51,7 +47,6 @@ function partitionCallItems(
   const partition = [...response, ...scoped];
   return partition.length > 0 ? partition : undefined;
 }
-
 function partitionCallRecord(
   value: Record<string, unknown>,
   allCallIds: Set<string>,
@@ -67,7 +62,6 @@ function partitionCallRecord(
   );
   return Object.keys(partition).length > 0 ? partition : undefined;
 }
-
 function itemCallId(item: unknown, allCallIds: Set<string>) {
   if (!isRecord(item)) return undefined;
   const callId = item["call_id"];
@@ -75,11 +69,9 @@ function itemCallId(item: unknown, allCallIds: Set<string>) {
   const id = item["id"];
   return typeof id === "string" && allCallIds.has(id) ? id : undefined;
 }
-
 function toolCallIds(message: AIMessage) {
   return new Set(message.tool_calls?.flatMap((call) => (call.id ? [call.id] : [])));
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

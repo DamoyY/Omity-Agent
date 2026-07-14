@@ -1,9 +1,7 @@
 import { expect, test } from "bun:test";
 import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
 import { buildTimeline } from "../../../src/app/timeline";
-
 const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
-
 test("persisted content hides only its identified stream", () => {
   const messages: DisplayMessage[] = [assistant({ id: 1, sourceId: "message-1", content: "完成" })];
   const events = [
@@ -13,13 +11,10 @@ test("persisted content hides only its identified stream", () => {
       text: "完成",
     }),
   ];
-
   const view = buildTimeline(messages, queue, events);
-
   expect(view[0]?.content).toBe("完成");
   expect(view[0]?.parts).toEqual([{ type: "content", content: "完成" }]);
 });
-
 test("persisted reasoning hides its identified stream", () => {
   const messages: DisplayMessage[] = [
     assistant({ id: 1, sourceId: "message-1", reasoning: "已思考" }),
@@ -31,12 +26,9 @@ test("persisted reasoning hides its identified stream", () => {
       text: "已思考",
     }),
   ];
-
   const view = buildTimeline(messages, queue, events);
-
   expect(view[0]?.parts).toEqual([{ type: "reasoning", content: "已思考" }]);
 });
-
 test("streamed reasoning is shown before answer text", () => {
   const events = [
     event("reasoning", {
@@ -45,15 +37,12 @@ test("streamed reasoning is shown before answer text", () => {
     }),
     event("token", { kind: "assistant_text_delta", text: "答案" }, 2),
   ];
-
   const view = buildTimeline([], queue, events);
-
   expect(view[0]?.parts).toEqual([
     { type: "reasoning", content: "分析" },
     { type: "content", content: "答案" },
   ]);
 });
-
 test("old tool stream is hidden after answer text starts", () => {
   const events = [
     event("tool_call", {
@@ -62,13 +51,10 @@ test("old tool stream is hidden after answer text starts", () => {
     }),
     event("token", { kind: "assistant_text_delta", text: "done" }, 2),
   ];
-
   const view = buildTimeline([], queue, events);
-
   expect(view[0]?.content).toBe("done");
   expect(toolCalls(view[0])).toEqual([]);
 });
-
 test("tool stream reconciles by message identity and index", () => {
   const messages: DisplayMessage[] = [
     assistant({
@@ -91,10 +77,8 @@ test("tool stream reconciles by message identity and index", () => {
       call: { args: '{"cmd":', index: 0 },
     }),
   ];
-
   expect(toolCalls(buildTimeline(messages, queue, events)[0])).toHaveLength(1);
 });
-
 test("equal tool inputs do not hide unidentified calls", () => {
   const messages: DisplayMessage[] = [
     assistant({
@@ -114,37 +98,28 @@ test("equal tool inputs do not hide unidentified calls", () => {
       call: { args: '{"command":"pwd"}', index: 0, name: "send" },
     }),
   ];
-
   const calls = toolCalls(buildTimeline(messages, queue, events)[0]);
-
   expect(calls.map((call) => call.id)).toEqual(["call-1", "i:0"]);
 });
-
 test("repeated assistant content and tool inputs remain visible", () => {
   const messages: DisplayMessage[] = [
     assistant({ id: 1, content: "完成", call: call("call-1") }),
     assistant({ id: 2, content: "完成", call: call("call-2") }),
   ];
-
   const view = buildTimeline(messages, [], []);
-
   expect(view[0]?.content).toBe("完成\n\n完成");
   expect(toolCalls(view[0]).map((item) => item.id)).toEqual(["call-1", "call-2"]);
 });
-
 test("equal reasoning from distinct model responses remains visible", () => {
   const messages: DisplayMessage[] = [
     assistant({ id: 1, reasoning: "独立分析", call: call("call-1") }),
     assistant({ id: 2, reasoning: "独立分析", call: call("call-2") }),
   ];
-
   const reasoning = buildTimeline(messages, [], [])[0]?.parts.flatMap((part) =>
     part.type === "reasoning" ? [part.content] : [],
   );
-
   expect(reasoning).toEqual(["独立分析", "独立分析"]);
 });
-
 function assistant(options: {
   id: number;
   content?: string;
@@ -164,15 +139,12 @@ function assistant(options: {
     createdAt: options.id,
   };
 }
-
 function call(id: string) {
   return { id, index: 0, inputTokens: 1, name: "read", input: {} };
 }
-
 function event(message: string, payload: Record<string, unknown>, id = 1): DisplayEvent {
   return { id, message, payload: { ...payload, queueId: 1 } };
 }
-
 function toolCalls(message: ReturnType<typeof buildTimeline>[number] | undefined) {
   return message?.parts.flatMap((part) => (part.type === "tool" ? [part.call] : [])) ?? [];
 }

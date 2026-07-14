@@ -1,6 +1,5 @@
 import type { Database } from "bun:sqlite";
 import { pruneMessageBlobs } from "../infrastructure/database/records/messages/blobStore";
-
 export function deleteThreadData(db: Database, threadId: string) {
   db.transaction(() => {
     db.query("DELETE FROM checkpoints WHERE thread_id = ?").run(threadId);
@@ -8,7 +7,6 @@ export function deleteThreadData(db: Database, threadId: string) {
     if (hasTable(db, "message_blobs")) pruneMessageBlobs(db);
   })();
 }
-
 function hasTable(db: Database, name: string) {
   return (
     db

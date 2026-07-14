@@ -1,13 +1,11 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-
 interface TestConfigurationOptions {
   dataDir?: string;
   modelYaml?: string;
   systemPrompt?: string;
   skillsPrompt?: string;
 }
-
 const defaultModelYaml = `profile: test
 profiles:
   test:
@@ -19,7 +17,6 @@ profiles:
     reasoning_effort: medium
     timeoutMs: 1000
 `;
-
 export function writeTestConfiguration(root: string, options: TestConfigurationOptions = {}) {
   const settingsDir = join(root, "settings");
   const promptsDir = join(settingsDir, "prompts");

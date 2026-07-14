@@ -2,7 +2,6 @@ import type { Database } from "bun:sqlite";
 import type { Settings } from "../types";
 import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../infrastructure/database/agentDatabase";
-
 export function readSessionDraft(settings: Settings, sessionId: string) {
   return withSessionDatabase(settings, sessionId, (db) => {
     const row = db
@@ -17,7 +16,6 @@ export function readSessionDraft(settings: Settings, sessionId: string) {
     };
   });
 }
-
 export function writeSessionDraft(
   settings: Settings,
   sessionId: string,
@@ -47,7 +45,6 @@ export function writeSessionDraft(
     return save();
   });
 }
-
 export function clearSessionDraft(settings: Settings, sessionId: string, revision: number) {
   withSessionDatabase(settings, sessionId, (db) => {
     db.run(
@@ -62,7 +59,6 @@ export function clearSessionDraft(settings: Settings, sessionId: string, revisio
     );
   });
 }
-
 function withSessionDatabase<T>(
   settings: Settings,
   sessionId: string,

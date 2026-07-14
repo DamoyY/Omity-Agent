@@ -8,7 +8,6 @@ import type { buildGraph } from "../agent";
 import { BaseMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import type { ToolExecutions } from "../agent/toolExecutions";
-
 type AgentGraph = ReturnType<typeof buildGraph>["graph"];
 type HostGraph = Omit<AgentGraph, "getState"> & {
   getState: (...args: Parameters<AgentGraph["getState"]>) => Promise<unknown>;
@@ -19,7 +18,6 @@ export interface HostObserver {
   transcript?(sessionId: string, event: StreamEvent): void;
   token(sessionId: string, queueId: number, text: string): void;
 }
-
 export interface HostContext {
   settings: Settings;
   logger: Logger;
@@ -34,12 +32,10 @@ export interface HostContext {
   wake?: (delayMs: number) => Promise<void>;
   observer?: HostObserver;
 }
-
 export function waitForWake(ctx: HostContext, delayMs: number) {
   if (!ctx.wake) return abortableSleep(delayMs, ctx.controller.signal);
   return ctx.wake(delayMs);
 }
-
 async function abortableSleep(delayMs: number, signal: AbortSignal) {
   try {
     await sleep(delayMs, undefined, { signal });
@@ -47,7 +43,6 @@ async function abortableSleep(delayMs: number, signal: AbortSignal) {
     if (!signal.aborted) throw error;
   }
 }
-
 interface RuntimeGraphState extends Record<string, unknown> {
   values: Record<string, unknown> & {
     messages: BaseMessage[];
@@ -57,7 +52,6 @@ interface RuntimeGraphState extends Record<string, unknown> {
   next: string[];
   tasks: (Record<string, unknown> & { name: string })[];
 }
-
 const graphMessageSchema = z.custom<BaseMessage>((value) => BaseMessage.isInstance(value));
 const graphValuesSchema = z.looseObject({
   messages: z.preprocess(
@@ -79,7 +73,6 @@ const graphStateSchema = z.looseObject({
     }),
   ),
 });
-
 export function readGraphState(value: unknown): RuntimeGraphState {
   if (typeof value !== "object" || value === null) {
     throw new Error("LangGraph 状态无效");

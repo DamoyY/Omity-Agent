@@ -3,7 +3,6 @@ import type { Database } from "bun:sqlite";
 import { syncMessages } from "./records/messages/history";
 import { appendUserQueue } from "./records/queue/operations";
 import { requireSessionRecord, touchSessionRecord } from "./records/sessions";
-
 export function initializeConversation(
   db: Database,
   sessionId: string,

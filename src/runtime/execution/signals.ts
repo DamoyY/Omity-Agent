@@ -1,5 +1,4 @@
 import type { Logger } from "../../infrastructure/logging/logger";
-
 interface HostSignalOptions {
   enabled: boolean;
   force: AbortController;
@@ -7,7 +6,6 @@ interface HostSignalOptions {
   stopping: AbortController;
   timeoutMs: number;
 }
-
 export function wireHostSignals(options: HostSignalOptions) {
   if (!options.enabled) return () => undefined;
   let timeout: ReturnType<typeof setTimeout> | undefined;

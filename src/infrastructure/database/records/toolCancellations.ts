@@ -1,6 +1,5 @@
 import type { Database } from "bun:sqlite";
 import { toolNotRunning } from "../../../errors";
-
 export function requestToolCancellation(db: Database, sessionId: string, callId: string) {
   const running = db
     .query<{ found: number }, [string, string]>(
@@ -20,7 +19,6 @@ export function requestToolCancellation(db: Database, sessionId: string, callId:
      DO UPDATE SET requested_at = excluded.requested_at`,
   ).run(sessionId, callId, Date.now());
 }
-
 export function takeToolCancellation(db: Database, sessionId: string, callId: string) {
   return (
     db
@@ -28,7 +26,6 @@ export function takeToolCancellation(db: Database, sessionId: string, callId: st
       .run(sessionId, callId).changes > 0
   );
 }
-
 export function clearToolCancellations(db: Database, sessionId: string) {
   db.query("DELETE FROM tool_cancellations WHERE session_id = ?").run(sessionId);
 }

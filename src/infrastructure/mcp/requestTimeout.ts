@@ -1,11 +1,8 @@
 import { Protocol } from "@modelcontextprotocol/sdk/shared/protocol.js";
-
 const setupTimeoutMethod = "_setupTimeout";
-
 function skipRequestTimeout() {
   return undefined;
 }
-
 export function disableMcpRequestTimeout() {
   const prototype = Protocol.prototype as unknown as Record<string, unknown>;
   const setupTimeout = prototype[setupTimeoutMethod];

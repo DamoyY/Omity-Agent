@@ -1,5 +1,4 @@
 import type { BaseMessage } from "@langchain/core/messages";
-
 export function freeformCallIds(message: BaseMessage) {
   const ids = new Set<string>();
   const idMap = message.additional_kwargs["__openai_custom_tool_call_ids__"];
@@ -19,7 +18,6 @@ export function freeformCallIds(message: BaseMessage) {
   }
   return ids;
 }
-
 export function rawFreeformInput(input: unknown) {
   if (isRecord(input) && typeof input["input"] === "string") {
     return input["input"];
@@ -27,7 +25,6 @@ export function rawFreeformInput(input: unknown) {
   if (typeof input === "string") return input;
   throw new Error("Freeform 工具调用缺少原始字符串输入");
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

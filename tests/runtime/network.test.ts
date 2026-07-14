@@ -11,7 +11,6 @@ import { captureError } from "../../src/failures/details";
 import { buildModel } from "../../src/agent/model";
 import { parseModelSettings } from "../../src/infrastructure/configuration/settingsSchema";
 import { testSettings } from "../support/settings";
-
 test("detects retryable model network errors", () => {
   expect(isModelNetworkError(new TypeError("fetch failed"))).toBe(true);
   expect(isModelNetworkError({ code: "ECONNRESET" })).toBe(true);
@@ -21,7 +20,6 @@ test("detects retryable model network errors", () => {
   expect(isModelNetworkError(new ModelEmptyResponseError())).toBe(true);
   expect(isModelNetworkError({ name: "AbortError" })).toBe(false);
 });
-
 test("does not guess network failures from broad error messages", () => {
   expect(isModelNetworkError(new Error("fetch failed"))).toBe(false);
   expect(isModelNetworkError(new Error("network policy rejected request"))).toBe(false);
@@ -30,13 +28,11 @@ test("does not guess network failures from broad error messages", () => {
     false,
   );
 });
-
 test("model network retry delay grows with a cap", () => {
   expect(modelNetworkRetryDelayMs(1)).toBe(1_000);
   expect(modelNetworkRetryDelayMs(2)).toBe(2_000);
   expect(modelNetworkRetryDelayMs(99)).toBe(30_000);
 });
-
 test("model clients disable dependency network retries", () => {
   const previousKey = process.env["TEST_KEY"];
   process.env["TEST_KEY"] = "test-key";
@@ -53,7 +49,6 @@ test("model clients disable dependency network retries", () => {
     else process.env["TEST_KEY"] = previousKey;
   }
 });
-
 test("model settings reject dependency retry configuration", () => {
   expect(() =>
     parseModelSettings({
@@ -69,7 +64,6 @@ test("model settings reject dependency retry configuration", () => {
     }),
   ).toThrow("Unrecognized key");
 });
-
 test("warns on every model network error even when the host is stopping", async () => {
   const warn = spyOn(console, "warn").mockImplementation(() => undefined);
   const stop = mock(() => undefined);
@@ -84,7 +78,6 @@ test("warns on every model network error even when the host is stopping", async 
     userMessageId: 1,
     root: true,
   };
-
   try {
     const shouldRetry = await waitBeforeModelNetworkRetry(
       { controller } as HostContext,
@@ -97,7 +90,6 @@ test("warns on every model network error even when the host is stopping", async 
         cancel: () => Promise.resolve(),
       },
     );
-
     expect(shouldRetry).toBe(false);
     expect(stop).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledTimes(1);

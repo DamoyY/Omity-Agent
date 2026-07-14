@@ -1,8 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-
 const execFileAsync = promisify(execFile);
-
 const windowsFolderPicker = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -Language CSharp -TypeDefinition @'
@@ -108,13 +106,11 @@ public interface IShellItem
     void Compare(IShellItem psi, uint hint, out int piOrder);
 }
 '@
-
 $workspace = [NativeFolderPicker]::Pick()
 if (![String]::IsNullOrWhiteSpace($workspace)) {
   [Console]::WriteLine($workspace)
 }
 `;
-
 export async function pickWorkspaceDirectory() {
   if (process.platform !== "win32") {
     throw new Error("当前系统不支持本地文件夹选择器");

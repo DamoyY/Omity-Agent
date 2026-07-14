@@ -1,13 +1,11 @@
 import type { HostContext } from "../context";
 import { waitForWake } from "../context";
 import { CanceledRun, cancelRun, setRunStatus, type QueueRun } from "../run";
-
 export function pauseForStop(ctx: HostContext, run: QueueRun) {
   if (!ctx.stopping?.aborted && !ctx.controller.signal.aborted) return false;
   setRunStatus(ctx, run, "paused");
   return true;
 }
-
 export async function waitIfPaused(ctx: HostContext, run: QueueRun) {
   let pauseLogged = false;
   for (;;) {

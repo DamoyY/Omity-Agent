@@ -6,9 +6,7 @@ import { HostLeaseLostError } from "../../src/runtime/execution/lease";
 import { processQueue } from "../../src/runtime/queue";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
-
 afterEach(cleanupDatabaseDirs);
-
 test("graceful stop waits for the active graph stream boundary", async () => {
   const db = runningDatabase();
   const started = Promise.withResolvers<undefined>();
@@ -26,17 +24,14 @@ test("graceful stop waits for the active graph stream boundary", async () => {
   const context = makeContext(db, graph, stopping.signal);
   const processing = processQueue(context, required(db.nextQueue("123")));
   await started.promise;
-
   stopping.abort(new Error("graceful stop"));
   expect(context.controller.signal.aborted).toBe(false);
   release.resolve(undefined);
   await processing;
-
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
   db.close();
 });
-
 test("stop between queue status and claim cannot leave orphan running", async () => {
   const db = runningDatabase();
   const stopping = new AbortController();
@@ -52,15 +47,12 @@ test("stop between queue status and claim cannot leave orphan running", async ()
     },
     token: () => undefined,
   };
-
   await processQueue(context, required(db.nextQueue("123")));
-
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
   expect(db.history("123")).toEqual([]);
   db.close();
 });
-
 test("wrapped abort cannot let a former lease owner pause the run", async () => {
   const db = runningDatabase();
   let leaseLost = false;
@@ -77,7 +69,6 @@ test("wrapped abort cannot let a former lease owner pause the run", async () => 
   context.assertLease = () => {
     if (leaseLost) throw new HostLeaseLostError("lease lost");
   };
-
   let failure: unknown;
   try {
     await processQueue(context, required(db.nextQueue("123")));
@@ -89,14 +80,12 @@ test("wrapped abort cannot let a former lease owner pause the run", async () => 
   expect(db.control("123")).toBe("running");
   db.close();
 });
-
 function runningDatabase() {
   const db = makeDb();
   db.resetSession("123", workspace);
   db.appendUser("123", "需要恢复的输入");
   return db;
 }
-
 function makeContext(db: AgentDatabase, graph: unknown, stopping: AbortSignal): HostContext {
   return {
     settings: testSettings(workspace),

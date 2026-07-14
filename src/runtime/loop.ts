@@ -1,6 +1,5 @@
 import { waitForWake, type HostContext } from "./context";
 import { processQueue } from "./queue";
-
 export async function hostLoop(ctx: HostContext) {
   let lastIdle = 0;
   while (!ctx.controller.signal.aborted) {

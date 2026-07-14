@@ -12,9 +12,7 @@ import type { HostContext } from "../../src/runtime/context";
 import { processQueue } from "../../src/runtime/queue";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
-
 afterEach(cleanupDatabaseDirs);
-
 test("append during model execution continues after the agent boundary", async () => {
   const db = makeDb();
   db.resetSession("session", workspace);
@@ -76,7 +74,6 @@ test("append during model execution continues after the agent boundary", async (
     db.close();
   }
 });
-
 test("append before a pending model replaces its scheduled route", async () => {
   const db = makeDb();
   db.resetSession("session", workspace);
@@ -135,7 +132,6 @@ test("append before a pending model replaces its scheduled route", async () => {
     db.close();
   }
 });
-
 function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
   return {
     settings: testSettings(workspace),

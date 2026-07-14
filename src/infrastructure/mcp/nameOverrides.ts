@@ -1,7 +1,5 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
-
 type McpToolNameOverrides = Record<string, string>;
-
 export function normalizeMcpToolNameOverrides(
   value: unknown,
   path = "settings/mcp.yaml.toolNameOverrides",
@@ -24,7 +22,6 @@ export function normalizeMcpToolNameOverrides(
     }),
   );
 }
-
 export function renameMcpTools(tools: StructuredToolInterface[], overrides: McpToolNameOverrides) {
   const originalNames = new Set<string>();
   for (const tool of tools) {
@@ -33,13 +30,11 @@ export function renameMcpTools(tools: StructuredToolInterface[], overrides: McpT
     }
     originalNames.add(tool.name);
   }
-
   for (const from of Object.keys(overrides)) {
     if (!originalNames.has(from)) {
       throw new Error(`MCP 工具重命名配置引用了不存在的工具：${from}`);
     }
   }
-
   const finalNames = new Set<string>();
   for (const tool of tools) {
     const name = overrides[tool.name] ?? tool.name;
@@ -48,13 +43,11 @@ export function renameMcpTools(tools: StructuredToolInterface[], overrides: McpT
     }
     finalNames.add(name);
   }
-
   for (const tool of tools) {
     tool.name = overrides[tool.name] ?? tool.name;
   }
   return tools;
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

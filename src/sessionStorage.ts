@@ -4,7 +4,6 @@ import { loadSettings } from "./infrastructure/configuration/loadSettings";
 import { resolveSessionPaths } from "./infrastructure/configuration/sessionPaths";
 import { removeDatabaseDirectory } from "./infrastructure/database/connection";
 import { AgentDatabase } from "./infrastructure/database/agentDatabase";
-
 export function deleteHostSession(sessionId: string, root = process.cwd()) {
   const settings = loadSettings(root);
   const paths = resolveSessionPaths(settings, sessionId);
@@ -13,7 +12,6 @@ export function deleteHostSession(sessionId: string, root = process.cwd()) {
   }
   removeDatabaseDirectory(paths.dir);
 }
-
 export function requestHostToolCancellation(
   sessionId: string,
   callId: string,

@@ -18,13 +18,11 @@ import type { AppInstanceOwner } from "./runtime/instanceLock";
 import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
 import { createAppFork, createAppSession } from "./runtime/sessionActions";
 import { cancelSessionTool } from "./sessionCommands";
-
 export class AppController {
   readonly events: AppEvents;
   private readonly settings: Settings;
   private readonly registry: AppRegistry;
   private readonly hosts: AppHosts;
-
   constructor(
     private readonly appRoot: string,
     options: {
@@ -51,9 +49,7 @@ export class AppController {
       this.settings.host.shutdownTimeoutMs,
     );
   }
-
   close = () => this.hosts.close();
-
   bootstrap() {
     return {
       attachments: this.settings.attachments,
@@ -62,17 +58,13 @@ export class AppController {
       sessions: this.sessions(),
     };
   }
-
   sessions() {
     return this.registry.list().map((session) => this.sessionInfo(session));
   }
-
   assertSession(sessionId: string) {
     this.registry.require(sessionId);
   }
-
   pickWorkspace = () => pickWorkspaceDirectory();
-
   async createSession(submission: SessionSubmission) {
     const created = await createAppSession(this.appRoot, submission);
     const session = this.registry.refresh(created.sessionId);
@@ -81,7 +73,6 @@ export class AppController {
     this.events.notifySession(info);
     return info;
   }
-
   async sendMessage(sessionId: string, submission: MessageSubmission) {
     const session = this.registry.require(sessionId);
     const result = await enqueueMessageWithAttachments(
@@ -97,17 +88,14 @@ export class AppController {
     this.publishChange(sessionId);
     return result;
   }
-
   composerDraft(sessionId: string) {
     this.registry.require(sessionId);
     return readSessionDraft(this.settings, sessionId);
   }
-
   saveComposerDraft(sessionId: string, content: string, revision: number) {
     this.registry.require(sessionId);
     return writeSessionDraft(this.settings, sessionId, content, revision);
   }
-
   async control(sessionId: string, control: Control) {
     const session = this.registry.require(sessionId);
     if (control === "running") {
@@ -117,14 +105,12 @@ export class AppController {
     this.publishChange(sessionId);
     return result;
   }
-
   cancelTool(sessionId: string, toolCallId: string) {
     this.registry.require(sessionId);
     const result = cancelSessionTool(this.hosts, this.appRoot, sessionId, toolCallId);
     this.publishChange(sessionId);
     return result;
   }
-
   async forkSession(sessionId: string, beforeMessageId: number) {
     const session = this.registry.require(sessionId);
     const id = await createAppFork({
@@ -140,7 +126,6 @@ export class AppController {
     this.events.notifySession(info);
     return info;
   }
-
   async deleteSession(sessionId: string) {
     this.registry.require(sessionId);
     await this.hosts.stop(sessionId);
@@ -150,26 +135,22 @@ export class AppController {
     this.events.notifyDeleted(sessionId);
     return { deleted: sessionId };
   }
-
   transcript(sessionId: string) {
     this.registry.require(sessionId);
     return loadSessionTranscript(this.settings, sessionId);
   }
-
   private ensureHost(session: RegisteredSession) {
     if (!this.hosts.has(session.id) && hasLiveHostLease(this.settings, session.id)) {
       return Promise.resolve();
     }
     return this.hosts.ensure(session.id, session.workspace);
   }
-
   private publishChange(sessionId: string) {
     this.events.wake(sessionId);
     const info = this.sessionInfo(this.registry.refresh(sessionId));
     this.events.notifySession(info);
     this.events.invalidateTranscript(sessionId);
   }
-
   private sessionInfo(session: RegisteredSession): SessionInfo {
     return projectSession(session, this.hosts.activity(session.id), this.hosts.error(session.id));
   }

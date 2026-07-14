@@ -4,34 +4,28 @@ import { tmpdir } from "node:os";
 import { afterEach, expect, test } from "bun:test";
 import { BunSqliteSaver } from "../../src/checkpointer";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
-
 afterEach(() => {
   for (const db of databases.splice(0)) db.close();
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 function makePath() {
   const dir = mkdtempSync(join(tmpdir(), "agent-checkpoint-"));
   dirs.push(dir);
   return join(dir, "checkpoints.sqlite");
 }
-
 function openSaver(path = makePath()) {
   const db = new AgentDatabase(path);
   databases.push(db);
   return { db, saver: new BunSqliteSaver(db.db, "session") };
 }
-
 function closeDatabase(db: AgentDatabase) {
   db.close();
   databases.splice(databases.indexOf(db), 1);
 }
-
 test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   const path = makePath();
   const first = openSaver(path);
@@ -51,7 +45,6 @@ test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   );
   await saver.putWrites(saved, [["messages", "pending"]], "task-1");
   closeDatabase(first.db);
-
   const reopenedDatabase = openSaver(path);
   const reopened = reopenedDatabase.saver;
   const loaded = await reopened.getTuple({
@@ -64,7 +57,6 @@ test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   expect(await reopened.getTuple({ configurable: { thread_id: "thread-1" } })).toBeUndefined();
   closeDatabase(reopenedDatabase.db);
 });
-
 test("pending writes keep deterministic order and per-channel conflicts", async () => {
   const { saver } = openSaver();
   const saved = await putCheckpoint(saver, "thread", "", checkpointId(1));
@@ -85,16 +77,13 @@ test("pending writes keep deterministic order and per-channel conflicts", async 
     "task-b",
   );
   await saver.putWrites(saved, [["messages", "first task"]], "task-a");
-
   const loaded = await saver.getTuple(saved);
-
   expect(loaded?.pendingWrites).toEqual([
     ["task-a", "messages", "first task"],
     ["task-b", "__error__", "new error"],
     ["task-b", "messages", "old message"],
   ]);
 });
-
 function putCheckpoint(saver: BunSqliteSaver, threadId: string, checkpointNs: string, id: string) {
   return saver.put(
     { configurable: { thread_id: threadId, checkpoint_ns: checkpointNs } },
@@ -102,7 +91,6 @@ function putCheckpoint(saver: BunSqliteSaver, threadId: string, checkpointNs: st
     { source: "input", step: -1, parents: {} },
   );
 }
-
 function checkpoint(id: string) {
   return {
     v: 4,
@@ -113,7 +101,6 @@ function checkpoint(id: string) {
     versions_seen: {},
   };
 }
-
 function checkpointId(index: number) {
   return `00000000-0000-6000-8000-${index.toString().padStart(12, "0")}`;
 }

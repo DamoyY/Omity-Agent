@@ -5,7 +5,6 @@ import type { Settings } from "../../types";
 import type { SessionSubmission } from "../attachments/contract";
 import { createSessionWithAttachments } from "../attachments/session";
 import { forkSessionStorage, removeSessionStorage } from "./sessionStorage";
-
 export async function createAppSession(appRoot: string, submission: SessionSubmission) {
   const workspace = normalizeWorkspacePath(submission.workspace, appRoot);
   const settings = loadSettings(appRoot, { cwd: workspace });
@@ -20,7 +19,6 @@ export async function createAppSession(appRoot: string, submission: SessionSubmi
   });
   return { sessionId, workspace };
 }
-
 export async function createAppFork(options: {
   beforeMessageId: number;
   pauseSource: () => Promise<unknown>;

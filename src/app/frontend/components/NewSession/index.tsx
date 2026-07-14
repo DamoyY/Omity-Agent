@@ -16,7 +16,6 @@ import { Button } from "../ParkUI";
 import { PendingAttachments } from "../Chat/Composer/attachments";
 import { MessageStack, type EditablePair } from "./MessageStack";
 import { WorkspacePicker } from "./WorkspacePicker";
-
 const scroll = css({ minH: 0, overflowY: "auto" });
 const scrollContent = css({
   display: "grid",
@@ -34,7 +33,6 @@ const setup = css({
   w: "full",
 });
 const messageFlow = css({ alignSelf: "end" });
-
 export function NewSessionPage({
   attachmentSettings,
   pageClassName,

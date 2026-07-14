@@ -5,7 +5,6 @@ import {
 } from "@langchain/core/messages";
 import { expect, test } from "bun:test";
 import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
-
 test("stream messages persist only assistant text chunks", () => {
   const stream = makeStreamRecorder();
   handleStreamEvent(
@@ -20,10 +19,8 @@ test("stream messages persist only assistant text chunks", () => {
     createStreamLogState(),
     1,
   );
-
   expect(stream.tokens).toEqual([{ queueId: 1, text: "hello" }]);
 });
-
 test("stream messages persist assistant reasoning chunks", () => {
   const stream = makeStreamRecorder();
   handleStreamEvent(
@@ -41,10 +38,8 @@ test("stream messages persist assistant reasoning chunks", () => {
     createStreamLogState(),
     2,
   );
-
   expect(stream.reasoning).toEqual([{ messageId: "message-1", queueId: 2, text: "分析中" }]);
 });
-
 test("stream messages persist assistant tool call chunks", () => {
   const stream = makeStreamRecorder();
   handleStreamEvent(
@@ -70,7 +65,6 @@ test("stream messages persist assistant tool call chunks", () => {
     createStreamLogState(),
     2,
   );
-
   expect(stream.toolCalls).toEqual([
     {
       call: {
@@ -84,7 +78,6 @@ test("stream messages persist assistant tool call chunks", () => {
     },
   ]);
 });
-
 test("stream messages preserve Freeform tool call markers", () => {
   const stream = makeStreamRecorder();
   const call: RawInputToolCallChunk = {
@@ -101,7 +94,6 @@ test("stream messages preserve Freeform tool call markers", () => {
     createStreamLogState(),
     2,
   );
-
   expect(stream.toolCalls[0]?.call).toEqual({
     args: "*** Begin Patch\n",
     freeform: true,
@@ -110,7 +102,6 @@ test("stream messages preserve Freeform tool call markers", () => {
     name: "apply_patch",
   });
 });
-
 function makeStreamRecorder() {
   const tokens: {
     messageId?: string;

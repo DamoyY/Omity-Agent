@@ -1,7 +1,6 @@
 import type { AppHosts } from "./hosts";
 import { toolNotRunning } from "../errors";
 import { requestHostToolCancellation } from "../sessionStorage";
-
 export function cancelSessionTool(
   hosts: AppHosts,
   root: string,

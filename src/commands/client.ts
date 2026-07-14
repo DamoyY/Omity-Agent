@@ -1,18 +1,14 @@
 import { Command } from "@oclif/core";
 import { parseClientIntent, runClient } from "../client";
-
 export default class Client extends Command {
   static override strict = false;
-
   static override summary = "向 Host 会话发送消息或控制指令";
-
   static override usage = [
     "client <session-id> append=<text>",
     "client <session-id> pause",
     "client <session-id> continue",
     "client <session-id> cancel",
   ];
-
   static override examples = [
     {
       command: '<%= config.bin %> client 123 append="你好"',
@@ -28,7 +24,6 @@ export default class Client extends Command {
       description: "关闭 Host",
     },
   ];
-
   override run() {
     const [sessionId, ...tokens] = this.argv;
     if (!sessionId) {

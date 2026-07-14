@@ -6,7 +6,6 @@ import remarkGfm from "remark-gfm";
 import { css } from "styled-system/css";
 import { HighlightedCode } from "./HighlightedCode";
 import { Code } from "./ParkUI";
-
 const markdown = css({
   lineHeight: "1.7",
   maxW: "full",
@@ -20,7 +19,6 @@ const markdown = css({
   "& table": { borderCollapse: "collapse", w: "full" },
   "& th, & td": { borderWidth: "1px", borderColor: "line", p: "2" },
 });
-
 const inlineCode = css({
   display: "inline",
   fontSize: "sm",
@@ -29,7 +27,6 @@ const inlineCode = css({
   py: "0.5",
   verticalAlign: "baseline",
 });
-
 const components: Components = {
   pre: ({ children }) => <>{children}</>,
   a: (props) => <a {...props} rel="noopener noreferrer" target="_blank" />,
@@ -47,7 +44,6 @@ const components: Components = {
     );
   },
 };
-
 function codeText(value: ReactNode): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "bigint") {
@@ -56,7 +52,6 @@ function codeText(value: ReactNode): string {
   if (Array.isArray(value)) return value.map(codeText).join("");
   return "";
 }
-
 export function MarkdownView({
   content,
   preserveLineBreaks = false,

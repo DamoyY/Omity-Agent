@@ -15,15 +15,12 @@ import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HookRule } from "../../src/types";
 import { required } from "../support/database";
 import { testSettings } from "../support/settings";
-
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
-
 afterEach(() => {
   for (const db of databases.splice(0)) db.close();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
-
 test("takeover hooks bracket an agent tool without recursive hooks", async () => {
   const calls: string[] = [];
   const hookTool = makeTool("hook", () => calls.push("hook"));
@@ -52,12 +49,10 @@ test("takeover hooks bracket an agent tool without recursive hooks", async () =>
     hooks,
     checkpointer: new MemorySaver(),
   });
-
   const result = await graph.invoke(
     { messages: [{ role: "user", content: "run" }] },
     { configurable: { thread_id: "thread" } },
   );
-
   expect(calls).toEqual(["hook", "hook", "original", "hook"]);
   const hookCallIds = result.messages
     .filter((message) => AIMessage.isInstance(message))
@@ -78,7 +73,6 @@ test("takeover hooks bracket an agent tool without recursive hooks", async () =>
   ]);
   assertToolProtocol(result.messages);
 });
-
 test("each hook execution commits one hooks node boundary", async () => {
   const calls: string[] = [];
   const hookTool = makeTool("hook", () => calls.push(`call-${(calls.length + 1).toString()}`));
@@ -98,7 +92,6 @@ test("each hook execution commits one hooks node boundary", async () => {
     configurable: { thread_id: "boundaries" },
     interruptAfter: ["invoke_tool"] as never,
   };
-
   await invokeBoundary(
     graph,
     {
@@ -110,12 +103,10 @@ test("each hook execution commits one hooks node boundary", async () => {
   expect(calls).toEqual(["call-1"]);
   expect(model.callCount).toBe(0);
   expect((await graph.getState(config)).next).toEqual(["hooks"]);
-
   await invokeBoundary(graph, null, config);
   expect(calls).toEqual(["call-1", "call-2"]);
   expect(model.callCount).toBe(0);
 });
-
 async function invokeBoundary(
   graph: ReturnType<typeof createAgentGraph>,
   input: Parameters<typeof graph.invoke>[0],
@@ -128,7 +119,6 @@ async function invokeBoundary(
     await graph.invoke(null, config);
   }
 }
-
 function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const dir = mkdtempSync(join(tmpdir(), "agent-hooks-"));
   dirs.push(dir);
@@ -137,7 +127,6 @@ function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   databases.push(db);
   return new HookRuntime(rules, tools, db.db, new Logger("error", true), "session", dir);
 }
-
 function makeTool(name: string, record: () => void) {
   return tool(
     () => {
@@ -147,11 +136,9 @@ function makeTool(name: string, record: () => void) {
     { name, description: name, schema: z.object({}) },
   );
 }
-
 function takeover(id: string, target: string, when: HookRule["when"]): HookRule {
   return { ...silent(id, target, when), mode: "takeover" };
 }
-
 function silent(
   id: string,
   target: string,
@@ -169,7 +156,6 @@ function silent(
     args: {},
   };
 }
-
 function assertToolProtocol(messages: BaseMessage[]) {
   for (const [index, message] of messages.entries()) {
     if (!AIMessage.isInstance(message)) continue;

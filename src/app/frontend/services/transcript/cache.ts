@@ -6,7 +6,6 @@ import {
   type DisplayQueue,
   type TimelineMessage,
 } from "../../../timeline";
-
 export interface TranscriptSnapshot {
   control: Control;
   queue: DisplayQueue[];
@@ -14,11 +13,9 @@ export interface TranscriptSnapshot {
   events: DisplayEvent[];
   eventCursor: number;
 }
-
 export interface TranscriptData extends TranscriptSnapshot {
   view: TimelineMessage[];
 }
-
 export function emptyTranscriptData(): TranscriptData {
   return {
     control: "running",
@@ -29,7 +26,6 @@ export function emptyTranscriptData(): TranscriptData {
     view: [],
   };
 }
-
 export function reconcileTranscript(
   snapshot: TranscriptSnapshot,
   current?: TranscriptData,
@@ -44,7 +40,6 @@ export function reconcileTranscript(
     optimisticMessages(current),
   );
 }
-
 export function appendTranscriptEvents(current: TranscriptData, incoming: DisplayEvent[]) {
   const events = [
     ...new Map(
@@ -61,18 +56,15 @@ export function appendTranscriptEvents(current: TranscriptData, incoming: Displa
     optimisticMessages(current),
   );
 }
-
 export function rebuildTranscript(
   current: TranscriptData,
   changes: Partial<Pick<TranscriptData, "queue" | "messages" | "events">>,
 ) {
   return buildTranscript({ ...current, ...changes }, optimisticMessages(current));
 }
-
 export function withoutOptimistic(current: TranscriptData, key: string): TranscriptData {
   return { ...current, view: current.view.filter((item) => item.key !== key) };
 }
-
 function buildTranscript(
   snapshot: TranscriptSnapshot,
   optimistic: TimelineMessage[],
@@ -82,7 +74,6 @@ function buildTranscript(
     view: [...buildTimeline(snapshot.messages, snapshot.queue, snapshot.events), ...optimistic],
   };
 }
-
 function optimisticMessages(current?: TranscriptData) {
   return current?.view.filter((item) => item.key.startsWith("optimistic-")) ?? [];
 }

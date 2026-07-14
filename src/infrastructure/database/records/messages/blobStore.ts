@@ -2,12 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import { messageInsert, messageRowsToChatMessages } from "./serialization";
-
 export interface StoredMessageRef {
   sourceId: string;
   digest: string;
 }
-
 export function loadMessagesByRefs(db: Database, refs: StoredMessageRef[]) {
   const select = db.prepare<{ message_json: string }, [string]>(
     "SELECT message_json FROM message_blobs WHERE digest = ?",
@@ -24,7 +22,6 @@ export function loadMessagesByRefs(db: Database, refs: StoredMessageRef[]) {
     select.finalize();
   }
 }
-
 export function messageRef(message: BaseMessage): StoredMessageRef {
   message.id ??= randomUUID();
   const item = messageInsert(message);
@@ -33,14 +30,12 @@ export function messageRef(message: BaseMessage): StoredMessageRef {
     digest: createHash("sha256").update(item.messageJson).digest("base64url"),
   };
 }
-
 export function persistMessageBlob(db: Database, message: BaseMessage) {
   const item = messageInsert(message);
   const ref = messageRef(message);
   internMessage(db, ref, item.messageJson);
   return ref;
 }
-
 export function pruneMessageBlobs(db: Database) {
   db.run(
     `DELETE FROM message_blobs
@@ -49,7 +44,6 @@ export function pruneMessageBlobs(db: Database) {
        AND digest NOT IN (SELECT digest FROM write_blob_refs)`,
   );
 }
-
 export function replaceCheckpointBlobRefs(
   db: Database,
   key: { threadId: string; checkpointNs: string; checkpointId: string },
@@ -72,7 +66,6 @@ export function replaceCheckpointBlobRefs(
     insert.finalize();
   }
 }
-
 export function replaceWriteBlobRefs(
   db: Database,
   key: {
@@ -110,7 +103,6 @@ export function replaceWriteBlobRefs(
     insert.finalize();
   }
 }
-
 function internMessage(db: Database, ref: StoredMessageRef, messageJson: string) {
   db.query("INSERT OR IGNORE INTO message_blobs (digest, message_json) VALUES (?, ?)").run(
     ref.digest,

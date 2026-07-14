@@ -7,9 +7,7 @@ import type { HostContext } from "../../src/runtime/context";
 import { processQueue } from "../../src/runtime/queue";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
-
 afterEach(cleanupDatabaseDirs);
-
 test("restart completes every consumed queue item in the run", async () => {
   const db = pausedRunWithAppend();
   const messages = [...db.history("session"), new AIMessage({ id: "final", content: "done" })];
@@ -20,7 +18,6 @@ test("restart completes every consumed queue item in the run", async () => {
   expect(db.nextQueue("session")).toBeNull();
   db.close();
 });
-
 test("an empty final response cannot reuse a previous answer", async () => {
   const db = makeDb();
   db.resetSession("session", workspace);
@@ -36,7 +33,6 @@ test("an empty final response cannot reuse a previous answer", async () => {
   expect(db.nextQueue("session")?.status).toBe("paused");
   db.close();
 });
-
 function pausedRunWithAppend() {
   const db = makeDb();
   db.resetSession("session", workspace);
@@ -50,7 +46,6 @@ function pausedRunWithAppend() {
   db.setQueueStatus(second.id, "paused");
   return db;
 }
-
 function terminalGraph(messages: BaseMessage[], finalMessageId: string) {
   return {
     stream: () => ({
@@ -70,7 +65,6 @@ function terminalGraph(messages: BaseMessage[], finalMessageId: string) {
       }),
   };
 }
-
 function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
   return {
     settings: testSettings(workspace),

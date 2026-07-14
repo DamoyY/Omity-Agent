@@ -8,20 +8,16 @@ import { safeId } from "../infrastructure/configuration/sessionPaths";
 import type { Settings } from "../types";
 import { inspectToolTextContent } from "./outputText";
 import { countTokens } from "./tokenizer";
-
 const outputFileIdBytes = 16;
-
 interface LargeOutputRuntimeContext {
   sessionId: string;
 }
-
 interface LargeToolOutputOptions {
   dataDir: string;
   maxTokens: number;
   sessionId: string;
   outputId?: string;
 }
-
 export function createLargeToolOutputMiddleware(settings: Settings) {
   return createMiddleware({
     name: "large-tool-output",
@@ -37,7 +33,6 @@ export function createLargeToolOutputMiddleware(settings: Settings) {
     },
   });
 }
-
 export async function redirectLargeToolOutput(
   message: ToolMessage,
   options: LargeToolOutputOptions,
@@ -52,7 +47,6 @@ export async function redirectLargeToolOutput(
       ? message
       : copyToolMessage(message, normalized.normalized);
   if (tokens <= options.maxTokens) return normalizedMessage;
-
   const outputPath = await writeLargeToolOutput(
     original,
     options.dataDir,
@@ -65,7 +59,6 @@ export async function redirectLargeToolOutput(
     tokens,
   });
 }
-
 function copyToolMessage(
   message: ToolMessage,
   content: MessageContent,
@@ -84,14 +77,12 @@ function copyToolMessage(
     metadata: mergeMetadata(message.metadata, largeOutput),
   });
 }
-
 function getSessionId(context: unknown) {
   if (!isLargeOutputRuntimeContext(context)) {
     throw new Error("工具输出重定向缺少运行时 sessionId");
   }
   return context.sessionId;
 }
-
 function mergeMetadata(
   metadata: unknown,
   largeOutput: { path: string; tokens: number } | undefined,
@@ -101,11 +92,9 @@ function mergeMetadata(
   }
   return { ...metadata, ...(largeOutput ? { largeOutput } : {}) };
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
 function isLargeOutputRuntimeContext(value: unknown): value is LargeOutputRuntimeContext {
   return (
     typeof value === "object" &&
@@ -115,7 +104,6 @@ function isLargeOutputRuntimeContext(value: unknown): value is LargeOutputRuntim
     value.sessionId.length > 0
   );
 }
-
 async function writeLargeToolOutput(
   content: string,
   dataDir: string,
@@ -129,7 +117,6 @@ async function writeLargeToolOutput(
   await writeFile(path, content, "utf8");
   return path;
 }
-
 function createOutputFileId(outputId: string | undefined) {
   const bytes = outputId
     ? createHash("sha256").update(outputId).digest().subarray(0, outputFileIdBytes)

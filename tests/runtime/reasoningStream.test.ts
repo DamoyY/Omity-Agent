@@ -5,7 +5,6 @@ import {
   messageReasoning,
   streamedMessageReasoning,
 } from "../../src/runtime/content";
-
 test("streamed reasoning separates summary parts and reasoning items", () => {
   const state = createReasoningStreamState();
   const chunks = [
@@ -17,12 +16,10 @@ test("streamed reasoning separates summary parts and reasoning items", () => {
     reasoningChunk({ parts: [{ index: 0, text: "**Third**" }] }),
     new AIMessageChunk({ content: [] }),
   ];
-
   expect(chunks.map((chunk) => streamedMessageReasoning(chunk, state)).join("")).toBe(
     "**First** detail\n\n**Second**\n\n**Third**",
   );
 });
-
 test("persisted reasoning is rebuilt from Responses API summary parts", () => {
   const first = reasoningItem("rs_1", ["**First**", "**Second**"]);
   const second = reasoningItem("rs_2", ["**Third**"]);
@@ -31,10 +28,8 @@ test("persisted reasoning is rebuilt from Responses API summary parts", () => {
     additional_kwargs: { reasoning: second },
     response_metadata: { output: [first, second] },
   });
-
   expect(messageReasoning(message)).toBe("**First**\n\n**Second**\n\n**Third**");
 });
-
 test("existing summary newlines are not duplicated", () => {
   const message = new AIMessage({
     content: [],
@@ -42,10 +37,8 @@ test("existing summary newlines are not duplicated", () => {
       reasoning: reasoningItem("rs_1", ["First\n", "\nSecond"]),
     },
   });
-
   expect(messageReasoning(message)).toBe("First\n\nSecond");
 });
-
 test("adjacent bold summaries in one part are separated across deltas", () => {
   const state = createReasoningStreamState();
   const chunks = [
@@ -53,12 +46,10 @@ test("adjacent bold summaries in one part are separated across deltas", () => {
     reasoningChunk({ parts: [{ index: 0, text: "***Refining**" }] }),
     new AIMessageChunk({ content: [] }),
   ];
-
   expect(chunks.map((chunk) => streamedMessageReasoning(chunk, state)).join("")).toBe(
     "**Planning**\n\n**Refining**",
   );
 });
-
 test("persisted adjacent bold summaries in one part are separated", () => {
   const message = new AIMessage({
     content: [],
@@ -66,10 +57,8 @@ test("persisted adjacent bold summaries in one part are separated", () => {
       reasoning: reasoningItem("rs_1", ["**Planning****Refining**"]),
     },
   });
-
   expect(messageReasoning(message)).toBe("**Planning**\n\n**Refining**");
 });
-
 function reasoningChunk({ id, parts }: { id?: string; parts: { index: number; text: string }[] }) {
   return new AIMessageChunk({
     content: [],
@@ -85,7 +74,6 @@ function reasoningChunk({ id, parts }: { id?: string; parts: { index: number; te
     },
   });
 }
-
 function reasoningItem(id: string, texts: string[]) {
   return {
     id,

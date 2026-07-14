@@ -6,7 +6,6 @@ interface ZodIssueLike {
   received?: unknown;
   unionErrors?: { issues?: ZodIssueLike[] }[];
 }
-
 export function collectReadableZodIssues(error: unknown): string[] {
   const issues = getZodIssues(error);
   if (issues.length === 0) {
@@ -14,14 +13,12 @@ export function collectReadableZodIssues(error: unknown): string[] {
   }
   return [...new Set(flattenBestIssues(issues).map(formatZodIssue))];
 }
-
 function getZodIssues(error: unknown): ZodIssueLike[] {
   if (isRecord(error) && Array.isArray(error["issues"])) {
     return error["issues"].filter(isZodIssueLike);
   }
   return [];
 }
-
 function flattenBestIssues(issues: ZodIssueLike[]): ZodIssueLike[] {
   return issues.flatMap((issue) => {
     if (issue.code !== "invalid_union" || issue.unionErrors === undefined) {
@@ -34,7 +31,6 @@ function flattenBestIssues(issues: ZodIssueLike[]): ZodIssueLike[] {
     return best ?? [issue];
   });
 }
-
 function formatZodIssue(issue: ZodIssueLike): string {
   const path = formatIssuePath(issue.path);
   if (issue.path?.at(-1) === "args" && issue.expected === "array") {
@@ -48,25 +44,21 @@ function formatZodIssue(issue: ZodIssueLike): string {
   }
   return `${path} ${issue.message ?? "配置无效"}`;
 }
-
 function formatIssuePath(path: (string | number)[] | undefined): string {
   if (path === undefined || path.length === 0) {
     return "settings/mcp.yaml";
   }
   return `settings/mcp.yaml.${path.join(".")}`;
 }
-
 function formatValue(value: unknown): string {
   if (value === undefined) {
     return "未填写";
   }
   return JSON.stringify(value);
 }
-
 function isZodIssueLike(value: unknown): value is ZodIssueLike {
   return isRecord(value);
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

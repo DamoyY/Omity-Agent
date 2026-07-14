@@ -5,7 +5,6 @@ import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import { storeMessage } from "../infrastructure/database/records/messages/history";
 import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { contentToText } from "../runtime/content";
-
 interface MessageRow {
   id: number;
   source_id: string;
@@ -13,7 +12,6 @@ interface MessageRow {
   position: number;
   created_at: number;
 }
-
 interface ForkOptions {
   source: AgentDatabase;
   target: AgentDatabase;
@@ -22,7 +20,6 @@ interface ForkOptions {
   workspace: string;
   beforeMessageId: number;
 }
-
 export function forkDatabaseBeforeMessage(options: ForkOptions) {
   const forkPoint = assertForkPoint(
     options.source.db,
@@ -41,7 +38,6 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
   });
   tx();
 }
-
 function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   if (!Number.isSafeInteger(messageId) || messageId <= 0) {
     throw new Error(`Fork 消息 ID 无效：${messageId.toString()}`);
@@ -65,7 +61,6 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   }
   return row;
 }
-
 function forkMessages(db: Database, sessionId: string, beforePosition: number) {
   const query = db.prepare<MessageRow, [string, number]>(
     `SELECT m.id, m.source_id, b.message_json, m.position, m.created_at
@@ -78,7 +73,6 @@ function forkMessages(db: Database, sessionId: string, beforePosition: number) {
     query.finalize();
   }
 }
-
 function insertMessages(db: Database, sessionId: string, messages: MessageRow[]) {
   for (const [position, message] of messages.entries()) {
     const [chatMessage] = messageRowsToChatMessages([message]);
@@ -87,7 +81,6 @@ function insertMessages(db: Database, sessionId: string, messages: MessageRow[])
     storeMessage(db, sessionId, chatMessage, position, undefined, message.created_at);
   }
 }
-
 function storedMessageType(value: string) {
   const parsed = JSON.parse(value) as unknown;
   if (!isRecord(parsed) || typeof parsed["type"] !== "string") {
@@ -95,13 +88,11 @@ function storedMessageType(value: string) {
   }
   return parsed["type"];
 }
-
 function messageContent(value: string) {
   const [message] = messageRowsToChatMessages([{ message_json: value }]);
   if (!message) throw new Error("无法还原 Fork 消息");
   return contentToText(message.content);
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

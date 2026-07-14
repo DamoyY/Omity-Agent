@@ -3,7 +3,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { markMcpRequestStarted, ToolExecutions } from "../../src/agent/toolExecutions";
-
 test("aborting a cancellable MCP request sends notifications/cancelled", async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test-client", version: "1" });

@@ -4,7 +4,6 @@ import {
   parseHostOwner,
   type ProcessOwner,
 } from "../../infrastructure/process/ownership";
-
 export function recoverHostSession(
   db: AgentDatabase,
   sessionId: string,
@@ -19,7 +18,6 @@ export function recoverHostSession(
     ...(confirmedDeadOwnerId ? { confirmedDeadOwnerId } : {}),
   });
 }
-
 function confirmedDeadLease(
   lease: ReturnType<AgentDatabase["hostLease"]>,
   now: number,

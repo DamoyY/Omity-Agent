@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import { AppEvents } from "../../src/app/events";
 import { createApi, type ApiController } from "../../src/app/http/handler";
-
 test("tool cancellation validates and forwards the tool call ID", async () => {
   const calls: unknown[] = [];
   const controller = {
@@ -21,7 +20,6 @@ test("tool cancellation validates and forwards the tool call ID", async () => {
   });
   expect(response.status).toBe(200);
   expect(calls).toEqual([["test", "call-1"]]);
-
   const invalid = await api.request("/api/sessions/test/tools/cancel", {
     method: "POST",
     body: JSON.stringify({ toolCallId: "" }),

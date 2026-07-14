@@ -8,7 +8,6 @@ import { ToolCall } from "../Details/ToolCall";
 import { MarkdownView } from "../MarkdownView";
 import { IconButton } from "../ParkUI";
 import { CopyButton } from "./CopyButton";
-
 const row = css({
   alignItems: "start",
   display: "flex",
@@ -17,14 +16,11 @@ const row = css({
   minW: 0,
   w: "full",
 });
-
 const userRow = css({ justifyContent: "flex-end" });
-
 const forkButton = css({
   borderWidth: "0",
   flexShrink: 0,
 });
-
 const message = cva({
   base: {
     bg: "surface",
@@ -50,7 +46,6 @@ const message = cva({
     },
   },
 });
-
 const roleTone = cva({
   variants: {
     role: {
@@ -60,7 +55,6 @@ const roleTone = cva({
     },
   },
 });
-
 const header = css({
   alignItems: "center",
   display: "flex",
@@ -72,7 +66,6 @@ const header = css({
   w: "full",
   zIndex: "1",
 });
-
 const actions = cva({
   base: {
     alignItems: "center",
@@ -88,7 +81,6 @@ const actions = cva({
     },
   },
 });
-
 export function Message({
   canFork,
   forkDisabled,

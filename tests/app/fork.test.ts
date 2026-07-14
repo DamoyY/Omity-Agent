@@ -3,9 +3,7 @@ import { afterEach, expect, test } from "bun:test";
 import { forkDatabaseBeforeMessage } from "../../src/app/fork";
 import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
-
 afterEach(cleanupDatabaseDirs);
-
 test("fork copies messages before selected user message", () => {
   const source = makeDb();
   const target = makeDb();
@@ -18,7 +16,6 @@ test("fork copies messages before selected user message", () => {
   source.startQueue("source", required(source.nextQueue("source")));
   appendAssistantMessage(source.db, "source", "也不要复制");
   const forkMessageId = userMessageId(source, forkPoint);
-
   forkDatabaseBeforeMessage({
     source,
     target,
@@ -27,7 +24,6 @@ test("fork copies messages before selected user message", () => {
     workspace,
     beforeMessageId: forkMessageId,
   });
-
   expect(target.history("target").map((message) => message.text)).toEqual(["第一条", "第一条回复"]);
   expect(target.control("target")).toBe("running");
   expect(readOnlyQueue(target)).toMatchObject({
@@ -38,7 +34,6 @@ test("fork copies messages before selected user message", () => {
   source.close();
   target.close();
 });
-
 test("first user message cannot fork", () => {
   const source = makeDb();
   const target = makeDb();
@@ -46,7 +41,6 @@ test("first user message cannot fork", () => {
   const first = source.appendUser("source", "第一条");
   source.startQueue("source", required(source.nextQueue("source")));
   const firstMessageId = userMessageId(source, first);
-
   expect(() => {
     forkDatabaseBeforeMessage({
       source,
@@ -60,7 +54,6 @@ test("first user message cannot fork", () => {
   source.close();
   target.close();
 });
-
 function userMessageId(db: ReturnType<typeof makeDb>, queueId: number) {
   const query = db.db.prepare<{ id: number }, [number]>(
     "SELECT id FROM messages WHERE queue_id = ?",
@@ -71,7 +64,6 @@ function userMessageId(db: ReturnType<typeof makeDb>, queueId: number) {
     query.finalize();
   }
 }
-
 function readOnlyQueue(db: ReturnType<typeof makeDb>) {
   const query = db.db.prepare<
     { content: string; status: string; user_message_id: number | null },
@@ -87,7 +79,6 @@ function readOnlyQueue(db: ReturnType<typeof makeDb>) {
     query.finalize();
   }
 }
-
 test("fork point must be a user message", () => {
   const source = makeDb();
   const target = makeDb();
@@ -96,7 +87,6 @@ test("fork point must be a user message", () => {
   source.startQueue("source", required(source.nextQueue("source")));
   appendAssistantMessage(source.db, "source", "回答");
   const assistantRow = latestMessageId(source);
-
   expect(() => {
     forkDatabaseBeforeMessage({
       source,
@@ -110,7 +100,6 @@ test("fork point must be a user message", () => {
   source.close();
   target.close();
 });
-
 function latestMessageId(db: ReturnType<typeof makeDb>) {
   const query = db.db.prepare<{ id: number }, []>(
     "SELECT id FROM messages ORDER BY id DESC LIMIT 1",
@@ -121,7 +110,6 @@ function latestMessageId(db: ReturnType<typeof makeDb>) {
     query.finalize();
   }
 }
-
 test("fork preserves completed takeover pairs in an editable draft", () => {
   const source = makeDb();
   const target = makeDb();
@@ -145,7 +133,6 @@ test("fork preserves completed takeover pairs in an editable draft", () => {
   const appendItem = required(source.pendingAppends("source")[0]);
   source.startQueue("source", appendItem);
   const forkPoint = { id: userMessageId(source, appended) };
-
   forkDatabaseBeforeMessage({
     source,
     target,
@@ -154,7 +141,6 @@ test("fork preserves completed takeover pairs in an editable draft", () => {
     workspace,
     beforeMessageId: forkPoint.id,
   });
-
   expect(target.history("target").map((message) => message.type)).toEqual([
     "human",
     "ai",

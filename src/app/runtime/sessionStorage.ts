@@ -5,7 +5,6 @@ import { removeDatabaseDirectory } from "../../infrastructure/database/connectio
 import { initializeConversation } from "../../infrastructure/database/initialConversation";
 import { forkDatabaseBeforeMessage } from "../fork";
 import { initialHistory, type InitialMessagePair } from "../initialState";
-
 export function createSessionStorage(
   settings: Settings,
   sessionId: string,
@@ -25,7 +24,6 @@ export function createSessionStorage(
     if (!initialized) removeDatabaseDirectory(paths.dir);
   }
 }
-
 export function forkSessionStorage({
   settings,
   sourceSessionId,
@@ -68,7 +66,6 @@ export function forkSessionStorage({
     }
   }
 }
-
 export function removeSessionStorage(settings: Settings, sessionId: string) {
   removeDatabaseDirectory(resolveSessionPaths(settings, sessionId).dir);
 }

@@ -33,7 +33,6 @@ import {
 import { normalizeTaskConfig } from "./taskConfig";
 import { createToolInvoker } from "./toolExecution";
 import { ToolExecutions } from "./toolExecutions";
-
 const AgentState = Annotation.Root({
   ...MessagesAnnotation.spec,
   hookPendingUserIds: Annotation<string[]>({
@@ -49,9 +48,7 @@ const AgentState = Annotation.Root({
     default: () => undefined,
   }),
 });
-
 type GraphState = typeof AgentState.State;
-
 interface AgentGraphOptions {
   settings: Settings;
   model: BaseChatModel;
@@ -63,7 +60,6 @@ interface AgentGraphOptions {
   checkpointer?: BaseCheckpointSaver;
   skillsMessage?: string | null;
 }
-
 export function buildGraph(
   settings: Settings,
   tools: StructuredToolInterface[],
@@ -93,7 +89,6 @@ export function buildGraph(
   });
   return { graph, checkpointer };
 }
-
 export function createAgentGraph(options: AgentGraphOptions) {
   const model = bindModelTools(options.model, options.modelTools ?? options.tools);
   const invokeTool = createToolInvoker(options.tools, {
@@ -122,7 +117,6 @@ export function createAgentGraph(options: AgentGraphOptions) {
   const consumeHook = async (hookId: string, limit: number) =>
     (await consumeHookTask(hookId, limit)).consumed;
   const runHooks = createHookNode(options.hooks, consumeHook, runTool);
-
   const callModel = async (state: GraphState) => {
     const response = await requestModel(
       modelMessages(options.settings, options.skillsMessage, state.messages),
@@ -134,12 +128,10 @@ export function createAgentGraph(options: AgentGraphOptions) {
         : agentPlan("after", [response.id], state.hookPreviousOutput),
     };
   };
-
   const callTool = async (state: GraphState) => {
     const call = pendingToolCall(state.messages);
     return { messages: [await runTool(call)] };
   };
-
   return new StateGraph(AgentState)
     .addNode(hookNode, runHooks, {
       ends: [hookNode, modelNode, toolsNode, END],
@@ -151,7 +143,6 @@ export function createAgentGraph(options: AgentGraphOptions) {
     .addEdge(toolsNode, hookNode)
     .compile({ checkpointer: options.checkpointer });
 }
-
 function pendingToolCall(messages: BaseMessage[]): ToolCall {
   const completed = new Set(
     messages

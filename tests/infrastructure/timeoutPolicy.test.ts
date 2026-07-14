@@ -1,10 +1,8 @@
 import { expect, test } from "bun:test";
 import { Protocol } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { disableMcpRequestTimeout } from "../../src/infrastructure/mcp/requestTimeout";
-
 test("mcp request timeout is disabled", () => {
   disableMcpRequestTimeout();
-
   const prototype = Protocol.prototype as unknown as Record<string, unknown>;
   const setupTimeout = prototype["_setupTimeout"];
   if (typeof setupTimeout !== "function") {
@@ -19,6 +17,5 @@ test("mcp request timeout is disabled", () => {
     onTimeout: () => void,
   ) => void;
   invokeSetupTimeout.call({ _timeoutInfo: timeoutInfo }, 1, 1, undefined, () => undefined);
-
   expect(timeoutInfo.size).toBe(0);
 });

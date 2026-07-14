@@ -23,7 +23,6 @@ import {
   replaceCheckpointBlobRefs,
   replaceWriteBlobRefs,
 } from "../infrastructure/database/records/messages/blobStore";
-
 export async function putCheckpoint(
   db: Database,
   serde: SerializerProtocol,
@@ -78,7 +77,6 @@ export async function putCheckpoint(
     configurable: { thread_id, checkpoint_ns, checkpoint_id: checkpoint.id },
   };
 }
-
 export async function putPendingWrites(
   db: Database,
   serde: SerializerProtocol,
@@ -129,7 +127,6 @@ export async function putPendingWrites(
     ignore.finalize();
   }
 }
-
 interface PendingWriteRow {
   replace: boolean;
   bindings: SqlBinding[];
@@ -142,7 +139,6 @@ interface PendingWriteRow {
   };
   messages?: BaseMessage[];
 }
-
 async function pendingWriteRows(
   serde: SerializerProtocol,
   writes: PendingWrite[],

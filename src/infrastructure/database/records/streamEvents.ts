@@ -1,24 +1,20 @@
 import type { Database } from "bun:sqlite";
-
 export type StreamToolCallDelta = Partial<
   Record<"args" | "id" | "name", string> & {
     freeform: boolean;
     index: number;
   }
 >;
-
 export type StreamEventKind =
   | "assistant_reasoning_delta"
   | "assistant_text_delta"
   | "tool_call_delta"
   | "tool_started";
-
 interface StreamEventBase {
   id: number;
   queueId: number;
   messageId?: string;
 }
-
 export type StreamEvent = StreamEventBase &
   (
     | {
@@ -28,7 +24,6 @@ export type StreamEvent = StreamEventBase &
     | { kind: "tool_call_delta"; value: StreamToolCallDelta }
     | { kind: "tool_started"; value: string }
   );
-
 function insertStreamEvent(
   db: Database,
   sessionId: string,
@@ -54,7 +49,6 @@ function insertStreamEvent(
     ...(messageId ? { messageId } : {}),
   };
 }
-
 export function insertStreamToken(
   db: Database,
   sessionId: string,
@@ -71,7 +65,6 @@ export function insertStreamToken(
     messageId,
   ) as StreamEvent & { kind: "assistant_text_delta"; value: string };
 }
-
 export function insertStreamReasoning(
   db: Database,
   sessionId: string,
@@ -88,7 +81,6 @@ export function insertStreamReasoning(
     messageId,
   ) as StreamEvent & { kind: "assistant_reasoning_delta"; value: string };
 }
-
 export function insertStreamToolCall(
   db: Database,
   sessionId: string,
@@ -105,7 +97,6 @@ export function insertStreamToolCall(
     messageId,
   ) as StreamEvent & { kind: "tool_call_delta"; value: StreamToolCallDelta };
 }
-
 export function insertToolStarted(
   db: Database,
   sessionId: string,
@@ -117,11 +108,9 @@ export function insertToolStarted(
     value: string;
   };
 }
-
 export function clearStreamEvents(db: Database, sessionId: string) {
   db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);
 }
-
 export function clearQueueStreamEvents(db: Database, queueId: number) {
   db.query("DELETE FROM events WHERE queue_id = ?").run(queueId);
 }

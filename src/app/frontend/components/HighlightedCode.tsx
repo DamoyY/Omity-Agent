@@ -4,20 +4,17 @@ import { useRef } from "react";
 import { css, cx } from "styled-system/css";
 import { CopyButton } from "./Chat/CopyButton";
 import { useFollowBottom } from "./TranscriptScroll";
-
 const container = css({
   maxW: "full",
   minW: 0,
   position: "relative",
 });
-
 const copyButton = css({
   position: "absolute",
   right: "2",
   top: "2",
   zIndex: "1",
 });
-
 const block = css({
   bg: "surfaceInset",
   borderWidth: "1px",
@@ -57,7 +54,6 @@ const block = css({
   "& .hljs-deletion": { color: "syntaxDeletion" },
   "& .hljs-addition": { color: "syntaxAddition" },
 });
-
 const codeElement = css({
   bg: "transparent",
   color: "inherit",
@@ -68,7 +64,6 @@ const codeElement = css({
   minW: "fit-content",
   whiteSpace: "inherit",
 });
-
 export function HighlightedCode({
   autoFollow,
   className,
@@ -86,7 +81,6 @@ export function HighlightedCode({
     ref: blockRef,
     version: code,
   });
-
   return (
     <div className={container}>
       <CopyButton className={copyButton} value={code} />
@@ -101,7 +95,6 @@ export function HighlightedCode({
     </div>
   );
 }
-
 function highlight(code: string, language?: string) {
   const normalized = normalizeLanguage(language);
   if (normalized && hljs.getLanguage(normalized)) {
@@ -112,7 +105,6 @@ function highlight(code: string, language?: string) {
   }
   return hljs.highlightAuto(code).value;
 }
-
 function normalizeLanguage(language?: string) {
   return language
     ?.replace(/^language-/, "")

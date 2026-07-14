@@ -10,13 +10,10 @@ import {
   messageRowsToChatMessages,
 } from "../../src/infrastructure/database/records/messages/serialization";
 import { testSettings } from "../support/settings";
-
 const servers: ReturnType<typeof Bun.serve>[] = [];
-
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.stop(true)));
 });
-
 test("custom MCP tool output completes a Responses API round trip", async () => {
   const requests: Record<string, unknown>[] = [];
   const server = Bun.serve({
@@ -45,7 +42,6 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
     },
   });
   servers.push(server);
-
   const tool = new DynamicStructuredTool({
     name: "apply_patch",
     description: "Apply a patch",
@@ -93,17 +89,14 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
   const output = await invokeTool(call, {
     configurable: { thread_id: "test-thread" },
   } as never);
-
   const final = await model.invoke(
     modelMessages(responsesSettings(), null, [human, hydrated, output]),
   );
-
   expect(final.text).toBe("Patch applied");
   expect(requests).toHaveLength(2);
   expect(requests[1]?.["previous_response_id"]).toBeUndefined();
   expect(requests[1]?.["prompt_cache_key"]).toBe("test-session");
 });
-
 function customToolResponse() {
   return response([
     {
@@ -116,7 +109,6 @@ function customToolResponse() {
     },
   ]);
 }
-
 function textResponse() {
   return response([
     {
@@ -128,7 +120,6 @@ function textResponse() {
     },
   ]);
 }
-
 function response(output: unknown[]) {
   return {
     id: "resp_1",
@@ -147,11 +138,9 @@ function response(output: unknown[]) {
     },
   };
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
-
 function responsesSettings() {
   const settings = testSettings("data");
   settings.model.adapter = "responses";

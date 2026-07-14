@@ -11,7 +11,6 @@ import {
   configureFreeformMcpTools,
   normalizeFreeformToolInputs,
 } from "../../src/infrastructure/mcp/freeformInputs";
-
 test("normalizes free-form tool names", () => {
   expect(normalizeFreeformToolInputs(undefined)).toEqual([]);
   expect(normalizeFreeformToolInputs(["apply_patch"])).toEqual(["apply_patch"]);
@@ -22,17 +21,14 @@ test("normalizes free-form tool names", () => {
     "MCP free-form 工具配置包含重复工具：apply_patch",
   );
 });
-
 test("creates a custom model tool from the only string parameter", () => {
   const original = makeTool("apply_patch", {
     patch: { type: "string" },
   });
   const untouched = makeTool("search", { query: { type: "string" } });
-
   const configured = configureFreeformMcpTools([original, untouched], ["apply_patch"]);
   const modelTool = configured.modelTools[0];
   if (!modelTool) throw new Error("缺少 apply_patch 工具");
-
   expect(configured.parameters).toEqual(new Map([["apply_patch", "patch"]]));
   expect(modelTool).not.toBe(original);
   expect(toolMetadata(modelTool)).toEqual({
@@ -43,7 +39,6 @@ test("creates a custom model tool from the only string parameter", () => {
     },
   });
   expect(configured.modelTools[1]).toBe(untouched);
-
   const model = new ChatOpenAIResponses({ model: "test", apiKey: "test" });
   expect(model.invocationParams({ tools: [modelTool] }).tools).toEqual([
     {
@@ -54,7 +49,6 @@ test("creates a custom model tool from the only string parameter", () => {
     },
   ]);
 });
-
 test("rejects invalid free-form MCP tool schemas", () => {
   expect(() => configureFreeformMcpTools([], ["missing"])).toThrow(
     "MCP free-form 工具配置引用了不存在的工具：missing",
@@ -74,7 +68,6 @@ test("rejects invalid free-form MCP tool schemas", () => {
     configureFreeformMcpTools([makeTool("numeric", { count: { type: "number" } })], ["numeric"]),
   ).toThrow("MCP free-form 工具 numeric 的唯一输入参数 count 必须是字符串");
 });
-
 test("maps custom tool text without changing its contents", () => {
   const input = '*** Begin Patch\n+const value = \\"quoted\\";\\path\n';
   const call = {
@@ -84,13 +77,10 @@ test("maps custom tool text without changing its contents", () => {
     args: { input },
     isCustomTool: true,
   } as ToolCall;
-
   const executable = materializeFreeformToolCall(call, new Map([["apply_patch", "patch"]]));
-
   expect(executable.args).toEqual({ patch: input });
   expect(call.args).toEqual({ input });
 });
-
 test("maps free-form input after streaming tool-call aggregation", () => {
   const input = "*** Begin Patch\n*** End Patch\n";
   const rawCall: RawInputToolCallChunk = {
@@ -107,13 +97,10 @@ test("maps free-form input after streaming tool-call aggregation", () => {
   });
   const call = chunk.tool_calls?.[0];
   if (!call) throw new Error("缺少流式聚合后的 apply_patch 调用");
-
   const executable = materializeFreeformToolCall(call, new Map([["apply_patch", "patch"]]));
-
   expect(call.args).toEqual({ input });
   expect(executable.args).toEqual({ patch: input });
 });
-
 test("does not remap structured hook calls", () => {
   const call: ToolCall = {
     name: "apply_patch",
@@ -121,10 +108,8 @@ test("does not remap structured hook calls", () => {
     type: "tool_call",
     args: { patch: "content" },
   };
-
   expect(materializeFreeformToolCall(call, new Map([["apply_patch", "patch"]]))).toBe(call);
 });
-
 function makeTool(name: string, properties: Record<string, { type: "number" | "string" }>) {
   return new DynamicStructuredTool({
     name,
@@ -138,7 +123,6 @@ function makeTool(name: string, properties: Record<string, { type: "number" | "s
     func: () => Promise.resolve("ok"),
   });
 }
-
 function toolMetadata(tool: unknown) {
   return typeof tool === "object" && tool !== null && "metadata" in tool
     ? tool.metadata

@@ -8,14 +8,12 @@ import { createApi } from "./http/handler";
 import { appUrl } from "./launch";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
 import { AppInstanceLock } from "./runtime/instanceLock";
-
 export interface AppServerOptions {
   root: string;
   host: string;
   port: number;
   onReady?: (url: string) => void;
 }
-
 export async function startAppServer(options: AppServerOptions) {
   const lock = AppInstanceLock.acquire(loadSettings(options.root).paths.dataDir);
   const shutdown = waitForShutdownSignal();
@@ -62,14 +60,12 @@ export async function startAppServer(options: AppServerOptions) {
     lock.release();
   }
 }
-
 function listeningPort(address: string | AddressInfo | null) {
   if (!address || typeof address === "string") {
     throw new Error("无法获取 WebUI 监听端口");
   }
   return address.port;
 }
-
 function sendViteError(res: ServerResponse, error: unknown) {
   const normalized = errorResponse(error);
   res.writeHead(normalized.status, {
@@ -77,7 +73,6 @@ function sendViteError(res: ServerResponse, error: unknown) {
   });
   res.end(JSON.stringify(normalized.body));
 }
-
 function waitForShutdownSignal() {
   return new Promise<void>((resolve) => {
     const stop = () => {
@@ -89,7 +84,6 @@ function waitForShutdownSignal() {
     process.once("SIGTERM", stop);
   });
 }
-
 function closeServer(server: ReturnType<typeof createServer>) {
   return new Promise<void>((resolve, reject) => {
     server.close((error) => {

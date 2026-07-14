@@ -11,18 +11,14 @@ import {
 } from "../../src/infrastructure/configuration/settingsSchema";
 import { createCodexClientFields } from "../../src/infrastructure/openai/codexAuthentication";
 import type { Settings } from "../../src/types";
-
 const dirs: string[] = [];
-
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 test("codex adapter does not require OpenAI-compatible connection settings", () => {
   const settings = codexSettings();
-
   expect(settings.model).toEqual({
     adapter: "codex",
     model: "gpt-5.3-codex",
@@ -33,11 +29,9 @@ test("codex adapter does not require OpenAI-compatible connection settings", () 
   expect(Object.hasOwn(settings.model, "apiKeyEnv")).toBe(false);
   expect(Object.hasOwn(settings.model, "baseURL")).toBe(false);
 });
-
 test("codex adapter builds a Responses API model without an API key env", () => {
   const settings = codexSettings();
   const model = buildModel(settings, "session-1", "system instructions");
-
   expect(resolveModelApi(settings.model)).toBe("responses");
   expect(model).toBeInstanceOf(ChatOpenAIResponses);
   expect((model as ChatOpenAIResponses).zdrEnabled).toBeTrue();
@@ -53,7 +47,6 @@ test("codex adapter builds a Responses API model without an API key env", () => 
     "system instructions",
   );
 });
-
 test("codex client reads auth.json and authenticates the Codex endpoint", async () => {
   const root = mkdtempSync(join(tmpdir(), "omity-codex-auth-"));
   const authFilePath = join(root, "auth.json");
@@ -86,7 +79,6 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
     authFilePath,
     fetch: upstreamFetch,
   });
-
   await fields.configuration.fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -99,7 +91,6 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
       max_output_tokens: 100,
     }),
   });
-
   const request = requests[0];
   expect(request).toBeDefined();
   expect(request?.url).toBe("https://chatgpt.com/backend-api/codex/responses");
@@ -112,13 +103,11 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
     store: false,
   });
 });
-
 interface CapturedRequest {
   url: string;
   headers: Headers;
   body: unknown;
 }
-
 function codexSettings(): Settings {
   const main = parseMainSettings({
     paths: { dataDir: "./data" },

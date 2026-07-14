@@ -7,7 +7,6 @@ import { codexClientFields } from "../infrastructure/openai/codexAuthentication"
 import { CompatibleChatOpenAIResponses } from "../infrastructure/openai/compatibleResponses";
 import { prepareModelImageMessages } from "../runtime/modelImages";
 import type { ModelApi, ModelSettings, Settings } from "../types";
-
 export function buildModel(settings: Settings, sessionId: string, instructions?: string) {
   const api = resolveModelApi(settings.model);
   const fields = {
@@ -45,13 +44,11 @@ export function buildModel(settings: Settings, sessionId: string, instructions?:
           : { reasoning: { effort: settings.model.reasoning_effort } }),
       });
 }
-
 export function bindModelTools(model: BaseChatModel, tools: StructuredToolInterface[]) {
   if (tools.length === 0) return model;
   if (!model.bindTools) throw new Error("模型不支持工具绑定");
   return model.bindTools(tools);
 }
-
 export function modelMessages(
   settings: Settings,
   skillsMessage: string | null | undefined,
@@ -68,14 +65,12 @@ export function modelMessages(
     ...prepared,
   ];
 }
-
 export function restoreResponsesCustomToolCalls(messages: BaseMessage[]) {
   return messages.map((message) => {
     if (!AIMessage.isInstance(message)) return message;
     const output = message.response_metadata["output"];
     const toolOutputs = message.additional_kwargs["tool_outputs"];
     if (!Array.isArray(output) || !Array.isArray(toolOutputs)) return message;
-
     const customCalls = new Map(
       toolOutputs.filter(isCustomToolCallItem).map((item) => [item.call_id, item]),
     );
@@ -99,18 +94,15 @@ export function restoreResponsesCustomToolCalls(messages: BaseMessage[]) {
     });
   });
 }
-
 export function buildResponsesInstructions(
   systemPrompt: string,
   skillsMessage: string | null | undefined,
 ) {
   return [systemPrompt, skillsMessage].filter(Boolean).join("\n\n");
 }
-
 export function resolveModelApi(model: ModelSettings): ModelApi {
   return model.adapter === "codex" ? "responses" : model.adapter;
 }
-
 function modelClientFields(model: ModelSettings) {
   if (model.adapter === "codex") return codexClientFields();
   const apiKey = process.env[model.apiKeyEnv];
@@ -123,7 +115,6 @@ function modelClientFields(model: ModelSettings) {
     },
   };
 }
-
 function isCustomToolCallItem(
   value: unknown,
 ): value is Record<string, unknown> & { call_id: string } {
@@ -131,7 +122,6 @@ function isCustomToolCallItem(
     isRecord(value) && value["type"] === "custom_tool_call" && typeof value["call_id"] === "string"
   );
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

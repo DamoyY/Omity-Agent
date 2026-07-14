@@ -2,17 +2,14 @@ import { ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { afterEach } from "bun:test";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
-
 const servers: ReturnType<typeof Bun.serve>[] = [];
 const databases: AgentDatabase[] = [];
-
 export function cacheTestCleanup() {
   afterEach(async () => {
     for (const database of databases.splice(0)) database.close();
     await Promise.all(servers.splice(0).map((server) => server.stop(true)));
   });
 }
-
 export function persist(messages: BaseMessage[]) {
   const database = new AgentDatabase(":memory:");
   databases.push(database);
@@ -20,7 +17,6 @@ export function persist(messages: BaseMessage[]) {
   database.syncHistory("session", messages);
   return database.history("session");
 }
-
 export function lookupTool() {
   return new DynamicStructuredTool({
     name: "lookup",
@@ -34,7 +30,6 @@ export function lookupTool() {
     func: () => Promise.resolve("unused"),
   });
 }
-
 export function imageToolOutput() {
   return new ToolMessage({
     id: "tool-1",
@@ -49,7 +44,6 @@ export function imageToolOutput() {
     ],
   });
 }
-
 export function mockCompletions(requests: Record<string, unknown>[]) {
   return mockOpenAI(requests, () => ({
     id: "completion",
@@ -66,7 +60,6 @@ export function mockCompletions(requests: Record<string, unknown>[]) {
     usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
   }));
 }
-
 export function mockResponses(requests: Record<string, unknown>[]) {
   return mockOpenAI(requests, () => ({
     id: `response-${requests.length.toString()}`,
@@ -87,12 +80,10 @@ export function mockResponses(requests: Record<string, unknown>[]) {
     usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
   }));
 }
-
 export function requiredArray(value: unknown): unknown[] {
   if (!Array.isArray(value)) throw new Error("模型请求缺少数组输入");
   return value;
 }
-
 function mockOpenAI(requests: Record<string, unknown>[], response: () => unknown) {
   const server = Bun.serve({
     port: 0,

@@ -15,7 +15,6 @@ import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import { required } from "../support/database";
 import { testSettings } from "../support/settings";
-
 test("host restart resumes after one committed hook boundary", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
   const path = join(dir, "agent.sqlite");
@@ -52,9 +51,7 @@ test("host restart resumes after one committed hook boundary", async () => {
       firstContext.controller.abort(new Error("test host restart"));
       return Promise.resolve();
     };
-
     await processQueue(firstContext, required(db.nextQueue("session")));
-
     expect(hookCalls).toBe(1);
     expect(received).toEqual([undefined]);
     expect(db.nextQueue("session")?.status).toBe("paused");
@@ -82,7 +79,6 @@ test("host restart resumes after one committed hook boundary", async () => {
       makeContext(db, recoveredGraph, recoveredCheckpointer, dir),
       required(db.nextQueue("session")),
     );
-
     expect(hookCalls).toBe(2);
     expect(received).toEqual([undefined, "ok"]);
     expect(db.nextQueue("session")).toBeNull();
@@ -97,7 +93,6 @@ test("host restart resumes after one committed hook boundary", async () => {
     await removeDirectory(dir);
   }
 });
-
 async function removeDirectory(dir: string) {
   for (let attempt = 0; ; attempt++) {
     try {
@@ -114,7 +109,6 @@ async function removeDirectory(dir: string) {
     }
   }
 }
-
 function runtime(db: AgentDatabase, hookTool: StructuredToolInterface, dir: string) {
   return new HookRuntime(
     [
@@ -144,7 +138,6 @@ function runtime(db: AgentDatabase, hookTool: StructuredToolInterface, dir: stri
     dir,
   );
 }
-
 function makeContext(
   db: AgentDatabase,
   graph: unknown,

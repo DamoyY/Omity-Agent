@@ -1,27 +1,19 @@
 export type Control = "running" | "pause" | "cancel" | "pause_cancel";
-
 export type SessionStatus = "tool" | "model" | "idle" | "paused" | "error";
-
 export interface HostMode {
   kind: "new" | "load" | "overwrite";
   sessionId: string;
 }
-
 export type QueueStatus = "draft" | "pending" | "running" | "paused" | "done" | "canceled";
-
 export type LogLevel = "debug" | "info" | "warn" | "error";
-
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
-
 export type ModelApi = "responses" | "completions";
-
 interface SharedModelSettings {
   model: string;
   temperature?: number;
   reasoning_effort?: ReasoningEffort;
   timeoutMs: number;
 }
-
 export type ModelSettings = SharedModelSettings &
   (
     | {
@@ -35,13 +27,9 @@ export type ModelSettings = SharedModelSettings &
         baseURL?: never;
       }
   );
-
 export type HookMode = "silent" | "takeover";
-
 export type HookWhen = "before" | "after";
-
 export type HookTrigger = `${string}:${HookWhen}`;
-
 export interface HookRule {
   id: string;
   target: string;
@@ -51,7 +39,6 @@ export interface HookRule {
   tool: string;
   args: Record<string, unknown>;
 }
-
 export interface Settings {
   paths: {
     dataDir: string;
@@ -93,13 +80,11 @@ export interface Settings {
     skillEnabled: Record<string, boolean>;
   };
 }
-
 export interface SkillInfo {
   name: string;
   description: string;
   source: string;
 }
-
 export interface QueueItem {
   id: number;
   runId: number | null;

@@ -15,7 +15,6 @@ import type { HostContext } from "../../../src/runtime/context";
 import { processQueue } from "../../../src/runtime/queue";
 import { required } from "../../support/database";
 import { testSettings } from "../../support/settings";
-
 test("restart injects a consumed append missing from the checkpoint", async () => {
   const fixture = createFixture();
   let db = fixture.db;
@@ -25,11 +24,9 @@ test("restart injects a consumed append missing from the checkpoint", async () =
     db.startQueue("session", required(db.nextQueue("session")));
     const initial = graph(db, fixture.dir, fakeModel());
     await commitModelBoundary(initial.graph, db.history("session"), [firstId]);
-
     const secondId = db.appendUser("session", "second");
     db.startQueue("session", required(db.pendingAppends("session")[0]));
     db.close();
-
     db = new AgentDatabase(fixture.path);
     const modelInputs: string[][] = [];
     const recovered = graph(
@@ -44,7 +41,6 @@ test("restart injects a consumed append missing from the checkpoint", async () =
       context(db, recovered.graph, recovered.checkpointer, fixture.dir),
       required(db.nextQueue("session")),
     );
-
     expect(modelInputs).toEqual([["first", "second"]]);
     expect(db.nextQueue("session")).toBeNull();
     expect(humanContents(db.history("session"))).toEqual(["first", "second"]);
@@ -54,7 +50,6 @@ test("restart injects a consumed append missing from the checkpoint", async () =
     removeFixture(fixture.dir);
   }
 });
-
 test("restart does not inject consumed messages already in the checkpoint", async () => {
   const fixture = createFixture();
   let db = fixture.db;
@@ -67,7 +62,6 @@ test("restart does not inject consumed messages already in the checkpoint", asyn
     const initial = graph(db, fixture.dir, fakeModel());
     await commitModelBoundary(initial.graph, db.history("session"), [firstId, secondId]);
     db.close();
-
     db = new AgentDatabase(fixture.path);
     const recovered = graph(db, fixture.dir, fakeModel().respond(new AIMessage("done")));
     const inputs: unknown[] = [];
@@ -82,7 +76,6 @@ test("restart does not inject consumed messages already in the checkpoint", asyn
       context(db, observedGraph, recovered.checkpointer, fixture.dir),
       required(db.nextQueue("session")),
     );
-
     expect(inputs[0]).toBeNull();
     expect(humanContents(db.history("session"))).toEqual(["first", "second"]);
   } finally {
@@ -90,7 +83,6 @@ test("restart does not inject consumed messages already in the checkpoint", asyn
     removeFixture(fixture.dir);
   }
 });
-
 function graph(
   db: AgentDatabase,
   dir: string,
@@ -109,7 +101,6 @@ function graph(
     }),
   };
 }
-
 async function commitModelBoundary(
   graph: ReturnType<typeof createAgentGraph>,
   messages: BaseMessage[],
@@ -130,7 +121,6 @@ async function commitModelBoundary(
     "model_request",
   ]);
 }
-
 function context(
   db: AgentDatabase,
   graph: unknown,
@@ -147,7 +137,6 @@ function context(
     controller: new AbortController(),
   };
 }
-
 function humanContents(messages: BaseMessage[]) {
   return messages
     .filter((message) => message.type === "human")
@@ -158,13 +147,11 @@ function humanContents(messages: BaseMessage[]) {
       return message.content;
     });
 }
-
 function createFixture() {
   const dir = mkdtempSync(join(tmpdir(), "agent-append-recovery-"));
   const path = join(dir, "agent.sqlite");
   return { dir, path, db: new AgentDatabase(path) };
 }
-
 function removeFixture(dir: string) {
   rmSync(dir, { recursive: true, force: true });
 }

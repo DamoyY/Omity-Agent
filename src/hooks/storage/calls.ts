@@ -1,19 +1,15 @@
 import { createHash } from "node:crypto";
 import type { HookRule, HookTrigger, HookWhen } from "../../types";
-
 export interface HookCallDetails {
   trigger: HookTrigger;
   sourceId: string;
   hookId: string;
 }
-
 const hookCallPrefix = "omity-hook:";
 const hookCallPattern = /^omity-hook:[A-Za-z0-9_-]{43}$/;
-
 export function hookTrigger(target: string, when: HookWhen): HookTrigger {
   return `${target}:${when}`;
 }
-
 export function hookCallDetails(rule: HookRule, sourceId: string): HookCallDetails {
   return {
     trigger: hookTrigger(rule.target, rule.when),
@@ -21,7 +17,6 @@ export function hookCallDetails(rule: HookRule, sourceId: string): HookCallDetai
     hookId: rule.id,
   };
 }
-
 export function createHookCallId(sessionId: string, threadId: string, details: HookCallDetails) {
   const identity = JSON.stringify([
     sessionId,
@@ -33,7 +28,6 @@ export function createHookCallId(sessionId: string, threadId: string, details: H
   const digest = createHash("sha256").update(identity).digest("base64url");
   return `${hookCallPrefix}${digest}`;
 }
-
 export function isHookCallId(id: string | undefined): id is string {
   return id !== undefined && hookCallPattern.test(id);
 }

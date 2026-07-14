@@ -11,13 +11,9 @@ import {
   reconcileTranscript,
   type TranscriptData,
 } from "./cache";
-
 export type { TranscriptData } from "./cache";
-
 export const transcriptKey = (sessionId: string) => ["transcript", sessionId] as const;
-
 const emptyTranscript = emptyTranscriptData();
-
 export function useSessionTranscript(
   sessionId: string | undefined,
   refreshIntervalMs: number | undefined,
@@ -35,7 +31,6 @@ export function useSessionTranscript(
     },
     enabled: sessionId !== undefined,
   });
-
   useEffect(() => {
     if (!sessionId || refreshIntervalMs === undefined) return;
     const events = sessionEvents(sessionId);
@@ -74,10 +69,8 @@ export function useSessionTranscript(
       events.close();
     };
   }, [queryClient, refreshIntervalMs, sessionId]);
-
   return query.data ?? emptyTranscript;
 }
-
 async function refreshTranscript(
   queryClient: ReturnType<typeof useQueryClient>,
   sessionId: string,
@@ -89,7 +82,6 @@ async function refreshTranscript(
     await queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });
   }
 }
-
 function requiredId(sessionId: string | undefined) {
   if (!sessionId) throw new Error("Transcript 查询缺少 sessionId");
   return sessionId;

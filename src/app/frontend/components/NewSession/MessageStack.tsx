@@ -10,11 +10,9 @@ import {
 } from "../Chat/Composer/layout";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { Button } from "../ParkUI";
-
 export interface EditablePair extends InitialMessagePair {
   id: string;
 }
-
 const stack = css({ alignSelf: "end" });
 export function MessageStack({
   pairs,
@@ -58,7 +56,6 @@ export function MessageStack({
     </div>
   );
 }
-
 function MessageEditor({
   label,
   role,

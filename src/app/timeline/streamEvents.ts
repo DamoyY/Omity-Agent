@@ -1,7 +1,6 @@
 import type { DisplayEvent, DisplayToolCall } from "./types";
 import { countTokens } from "../../runtime/tokenizer";
 import type { StreamEvent } from "../../infrastructure/database/records/streamEvents";
-
 export function displayStreamEvent(event: StreamEvent): DisplayEvent {
   const payload =
     event.kind === "tool_call_delta"
@@ -20,7 +19,6 @@ export function displayStreamEvent(event: StreamEvent): DisplayEvent {
     },
   };
 }
-
 interface ToolCallAccumulator {
   freeform?: boolean;
   id?: string;
@@ -29,27 +27,22 @@ interface ToolCallAccumulator {
   messageId?: string;
   name: string;
 }
-
 export function eventText(event: DisplayEvent, queueId: number) {
   return assistantDelta(event, queueId, "assistant_text_delta");
 }
-
 export function eventReasoning(event: DisplayEvent, queueId: number) {
   return assistantDelta(event, queueId, "assistant_reasoning_delta");
 }
-
 export function eventQueueId(event: DisplayEvent) {
   return isRecord(event.payload) && typeof event.payload["queueId"] === "number"
     ? event.payload["queueId"]
     : undefined;
 }
-
 export function eventMessageId(event: DisplayEvent) {
   return isRecord(event.payload) && typeof event.payload["messageId"] === "string"
     ? event.payload["messageId"]
     : undefined;
 }
-
 export function eventStartedCallId(event: DisplayEvent) {
   return isRecord(event.payload) &&
     event.payload["kind"] === "tool_started" &&
@@ -57,7 +50,6 @@ export function eventStartedCallId(event: DisplayEvent) {
     ? event.payload["callId"]
     : undefined;
 }
-
 export function currentToolCallEvents(events: DisplayEvent[]) {
   const lastTextIndex = events.findLastIndex((event) => {
     const queueId = eventQueueId(event) ?? -1;
@@ -65,7 +57,6 @@ export function currentToolCallEvents(events: DisplayEvent[]) {
   });
   return events.slice(lastTextIndex + 1);
 }
-
 export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
   const calls: ToolCallAccumulator[] = [];
   for (const event of events) {
@@ -95,7 +86,6 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
     streaming: true,
   }));
 }
-
 function matchesDelta(
   call: ToolCallAccumulator,
   delta: NonNullable<ReturnType<typeof toolCallDelta>>,
@@ -107,7 +97,6 @@ function matchesDelta(
     (!delta.id || !call.id || delta.id === call.id)
   );
 }
-
 function mergeCall(target: ToolCallAccumulator, source: ToolCallAccumulator) {
   target.freeform ??= source.freeform;
   target.id ??= source.id;
@@ -116,7 +105,6 @@ function mergeCall(target: ToolCallAccumulator, source: ToolCallAccumulator) {
   target.inputText = appendArguments(target.inputText, source.inputText);
   target.name += source.name;
 }
-
 function mergeDelta(
   target: ToolCallAccumulator,
   delta: NonNullable<ReturnType<typeof toolCallDelta>>,
@@ -128,7 +116,6 @@ function mergeDelta(
   target.inputText = appendArguments(target.inputText, delta.args);
   target.name += delta.name ?? "";
 }
-
 function toolCallDelta(event: DisplayEvent) {
   if (!isRecord(event.payload) || event.payload["kind"] !== "tool_call_delta") {
     return null;
@@ -144,13 +131,11 @@ function toolCallDelta(event: DisplayEvent) {
     name: typeof call["name"] === "string" ? call["name"] : undefined,
   };
 }
-
 function appendArguments(current = "", delta?: string) {
   if (!delta) return current;
   if (current.length === 0 || delta.startsWith(current)) return delta;
   return current + delta;
 }
-
 function assistantDelta(
   event: DisplayEvent,
   queueId: number,
@@ -160,7 +145,6 @@ function assistantDelta(
   if (event.payload["kind"] !== kind) return "";
   return typeof event.payload["text"] === "string" ? event.payload["text"] : "";
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

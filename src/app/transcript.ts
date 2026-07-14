@@ -16,7 +16,6 @@ import { type DisplayMessage, type DisplayToolCall } from "./timeline";
 import { modelTokenUsage, toolInputTokens, toolOutputTokens } from "./timeline/tokenCounts";
 import { freeformCallIds, rawFreeformInput } from "./timeline/freeform";
 import { z } from "zod";
-
 interface MessageRow {
   id: number;
   source_id: string;
@@ -40,7 +39,6 @@ const storedMessageSchema = z.looseObject({
   type: z.string(),
   data: z.record(z.string(), z.unknown()),
 });
-
 export function loadSessionTranscript(settings: Settings, sessionId: string) {
   const paths = resolveSessionPaths(settings, sessionId);
   if (!existsSync(paths.dbPath)) throw sessionNotFound(sessionId);
@@ -51,7 +49,6 @@ export function loadSessionTranscript(settings: Settings, sessionId: string) {
     db.close();
   }
 }
-
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const control = db.control(sessionId);
   const messages = db.db
@@ -95,7 +92,6 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
   }
   return { control, queue, messages, events, eventCursor };
 }
-
 function toDisplayMessage(row: MessageRow): DisplayMessage {
   const stored = parseStored(row.message_json);
   stored.data.id = row.source_id;
@@ -123,7 +119,6 @@ function toDisplayMessage(row: MessageRow): DisplayMessage {
     createdAt: row.created_at,
   };
 }
-
 function parseStored(value: string): StoredMessage {
   const parsed: unknown = JSON.parse(value);
   const result = storedMessageSchema.safeParse(parsed);

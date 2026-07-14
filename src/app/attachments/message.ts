@@ -2,7 +2,6 @@ import { runClient } from "../../client";
 import type { Settings } from "../../types";
 import type { PendingAttachment } from "./contract";
 import { saveMessageAttachments } from "./storage";
-
 export async function enqueueMessageWithAttachments(
   settings: Settings,
   appRoot: string,

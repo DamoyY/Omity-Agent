@@ -1,5 +1,4 @@
 import { css } from "styled-system/css";
-
 export const layout = css({
   bg: "canvas",
   color: "text",
@@ -16,7 +15,6 @@ export const layout = css({
   h: "100vh",
   overflow: "hidden",
 });
-
 export const sidebar = css({
   bg: "sidebar",
   borderRightWidth: "1px",
@@ -28,7 +26,6 @@ export const sidebar = css({
   overflow: "hidden",
   w: { lg: "appSidebar" },
 });
-
 export const main = css({
   bg: "surfaceInset",
   h: "full",
@@ -36,7 +33,6 @@ export const main = css({
   minW: 0,
   overflow: "hidden",
 });
-
 export const scroll = css({
   minH: 0,
   overflowY: "auto",

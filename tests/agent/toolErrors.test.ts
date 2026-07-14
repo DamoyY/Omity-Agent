@@ -5,18 +5,14 @@ import { createToolInvoker } from "../../src/agent/toolExecution";
 import { ToolExecutions } from "../../src/agent/toolExecutions";
 import { createMcpToolFailureClient } from "../../src/infrastructure/mcp/toolFailures";
 import { testSettings } from "../support/settings";
-
 const rejection = "Rejected the request with HTTP 402. Check the input URL and parameters.";
-
 test("MCP protocol errors reach the tool message without adapter wrappers", async () => {
   const output = await invokeMcpTool(() => Promise.reject(new McpError(-32602, rejection)));
-
   expect(output.status).toBe("error");
   expect(output.name).toBe("search_query");
   expect(output.tool_call_id).toBe("call-1");
   expect(output.content).toBe(`MCP error -32602: ${rejection}`);
 });
-
 test("MCP error results reach the tool message without adapter wrappers", async () => {
   const output = await invokeMcpTool(() =>
     Promise.resolve({
@@ -24,11 +20,9 @@ test("MCP error results reach the tool message without adapter wrappers", async 
       content: [{ type: "text" as const, text: rejection }],
     }),
   );
-
   expect(output.status).toBe("error");
   expect(output.content).toBe(rejection);
 });
-
 test("manual cancellation stops the MCP request and returns elapsed time", async () => {
   let requestSignal: AbortSignal | undefined;
   const pending = Promise.withResolvers<unknown>();
@@ -46,14 +40,12 @@ test("manual cancellation stops the MCP request and returns elapsed time", async
     );
     return pending.promise;
   }, executions);
-
   await Bun.sleep(0);
   now = 5600;
   expect(executions.cancel("call-1")).toBe(true);
   expect(requestSignal?.aborted).toBe(true);
   expect((await output).content).toBe("工具运行 5.6 秒 后被用户手动终止。");
 });
-
 async function invokeMcpTool(
   callTool: (
     params?: unknown,

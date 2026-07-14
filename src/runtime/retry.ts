@@ -2,17 +2,14 @@ import type { QueueItem } from "../types";
 import { waitForWake, type HostContext } from "./context";
 import { modelNetworkRetryDelayMs } from "./network";
 import { captureError } from "../failures/details";
-
 interface RetriedRun {
   items: [QueueItem, ...QueueItem[]];
 }
-
 interface RetryControls {
   pause: () => Promise<boolean>;
   stop: () => void;
   cancel: () => Promise<void>;
 }
-
 export async function waitBeforeModelNetworkRetry(
   ctx: HostContext,
   run: RetriedRun,

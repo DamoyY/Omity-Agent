@@ -18,7 +18,6 @@ import {
   markdownSyntax,
   root,
 } from "./theme";
-
 function historyBinding(
   key: "ArrowDown" | "ArrowUp",
   direction: HistoryDirection,
@@ -49,7 +48,6 @@ function historyBinding(
     },
   };
 }
-
 export function MarkdownEditor({
   bare = false,
   disabled,

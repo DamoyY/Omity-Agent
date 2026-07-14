@@ -1,14 +1,10 @@
 import { defineConfig } from "@pandacss/dev";
 import { createPreset } from "@park-ui/panda-preset";
 import neutral from "@park-ui/panda-preset/colors/neutral";
-
 export default defineConfig({
   preflight: true,
-
   include: ["./src/app/frontend/**/*.{js,jsx,ts,tsx}"],
-
   exclude: [],
-
   presets: [
     createPreset({
       accentColor: neutral,
@@ -16,7 +12,6 @@ export default defineConfig({
       radius: "none",
     }),
   ],
-
   theme: {
     extend: {
       tokens: {
@@ -98,7 +93,6 @@ export default defineConfig({
       },
     },
   },
-
   globalCss: {
     "html, body, #root": {
       minHeight: "100%",
@@ -113,6 +107,5 @@ export default defineConfig({
       boxSizing: "border-box",
     },
   },
-
   outdir: "styled-system",
 });

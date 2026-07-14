@@ -2,7 +2,6 @@ import { HumanMessage } from "@langchain/core/messages";
 import { queueMessageId } from "../infrastructure/database/records/messages/history";
 import type { HostContext } from "./context";
 import type { QueueRun } from "./run";
-
 export function consumeBoundaryAppends(ctx: HostContext, run: QueueRun, state: BoundaryState) {
   if (hasPendingTools(state) || blocksAppend(state.values?.hookPlan)) return null;
   const appends = ctx.db.pendingAppends(ctx.sessionId);
@@ -28,7 +27,6 @@ export function consumeBoundaryAppends(ctx: HostContext, run: QueueRun, state: B
     ],
   };
 }
-
 export function recoverConsumedAppends(ctx: HostContext, run: QueueRun, state: BoundaryState) {
   const consumedIds = new Set(run.items.map((item) => queueMessageId(ctx.sessionId, item.id)));
   for (const message of state.values?.messages ?? []) {
@@ -37,7 +35,6 @@ export function recoverConsumedAppends(ctx: HostContext, run: QueueRun, state: B
     }
   }
   if (consumedIds.size === 0) return null;
-
   const messages = ctx.db
     .history(ctx.sessionId)
     .filter(
@@ -59,7 +56,6 @@ export function recoverConsumedAppends(ctx: HostContext, run: QueueRun, state: B
     hookPendingUserIds: [...new Set([...pendingUserIds(state), ...consumedIds])],
   };
 }
-
 interface BoundaryState {
   values?: {
     messages?: unknown[];
@@ -67,7 +63,6 @@ interface BoundaryState {
     hookPendingUserIds?: unknown;
   };
 }
-
 function blocksAppend(plan: unknown) {
   return (
     plan !== null &&
@@ -75,12 +70,10 @@ function blocksAppend(plan: unknown) {
     (!isRecord(plan) || plan["kind"] !== "agent" || plan["when"] !== "after")
   );
 }
-
 function pendingUserIds(state: BoundaryState) {
   const value = state.values?.hookPendingUserIds;
   return Array.isArray(value) && value.every((id) => typeof id === "string") ? value : [];
 }
-
 function hasPendingTools(state: BoundaryState) {
   const messages = state.values?.messages;
   if (!Array.isArray(messages)) return false;
@@ -88,17 +81,14 @@ function hasPendingTools(state: BoundaryState) {
   const lastAi = messages.findLast(isAiMessage);
   return Boolean(lastAi?.tool_calls?.some((call) => !toolIds.has(call.id)));
 }
-
 function isToolMessage(message: unknown): message is { type: "tool"; tool_call_id: string } {
   return (
     isRecord(message) && message["type"] === "tool" && typeof message["tool_call_id"] === "string"
   );
 }
-
 function isAiMessage(message: unknown): message is { type: "ai"; tool_calls?: { id: string }[] } {
   return isRecord(message) && message["type"] === "ai";
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

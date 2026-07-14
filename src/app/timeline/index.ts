@@ -17,7 +17,6 @@ import type {
   TimelineMessage,
   TimelinePart,
 } from "./types";
-
 export type {
   DisplayEvent,
   DisplayImage,
@@ -30,7 +29,6 @@ export type {
   TimelinePart,
 } from "./types";
 export { displayStreamEvent } from "./streamEvents";
-
 export function buildTimeline(
   messages: DisplayMessage[],
   queue: DisplayQueue[],
@@ -67,7 +65,6 @@ export function buildTimeline(
     .filter((item) => item.parts.length > 0);
   return groupAssistantMessages([...visible, ...live, ...pending]);
 }
-
 function streamMessage(
   item: DisplayQueue,
   events: DisplayEvent[],
@@ -109,7 +106,6 @@ function streamMessage(
     startedCallIds,
   );
 }
-
 function withParts(
   message: DisplayMessage,
   key: string,
@@ -137,7 +133,6 @@ function withParts(
     ],
   };
 }
-
 function synthetic(role: DisplayRole, content: string, key: string): TimelineMessage {
   return {
     id: -1,
@@ -148,7 +143,6 @@ function synthetic(role: DisplayRole, content: string, key: string): TimelineMes
     parts: content.trim() ? [{ type: "content", content }] : [],
   };
 }
-
 function toolParts(message: TimelineMessage) {
   return message.parts.filter(
     (part): part is Extract<TimelinePart, { type: "tool" }> => part.type === "tool",

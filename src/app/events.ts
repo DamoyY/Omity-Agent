@@ -4,12 +4,10 @@ import { streamSSE } from "hono/streaming";
 import mitt from "mitt";
 import type { DisplayEvent } from "./timeline";
 import type { SessionInfo } from "./sessionState";
-
 interface TranscriptDelta {
   sessionId: string;
   event: DisplayEvent;
 }
-
 interface Events {
   [key: string]: unknown;
   [key: symbol]: unknown;
@@ -19,32 +17,24 @@ interface Events {
   transcriptDelta: TranscriptDelta;
   wake: string;
 }
-
 type WriteEvent = (event: string, data: unknown) => void;
-
 export class AppEvents {
   private readonly bus = mitt<Events>();
-
   notifySession(session: SessionInfo) {
     this.bus.emit("session", session);
   }
-
   notifyDeleted(sessionId: string) {
     this.bus.emit("deleted", sessionId);
   }
-
   invalidateTranscript(sessionId: string) {
     this.bus.emit("transcriptChanged", sessionId);
   }
-
   notifyTranscript(sessionId: string, event: DisplayEvent) {
     this.bus.emit("transcriptDelta", { sessionId, event });
   }
-
   wake(sessionId: string) {
     this.bus.emit("wake", sessionId);
   }
-
   wait(sessionId: string, delayMs: number) {
     return new Promise<void>((resolve) => {
       let settled = false;
@@ -62,7 +52,6 @@ export class AppEvents {
       void sleep(delayMs).then(done);
     });
   }
-
   streamSessions(c: Context, getSessions: () => SessionInfo[]) {
     return this.stream(c, (write) => {
       const session = (value: SessionInfo) => {
@@ -80,7 +69,6 @@ export class AppEvents {
       };
     });
   }
-
   streamTranscript(c: Context, sessionId: string) {
     return this.stream(c, (write) => {
       const changed = (changedSessionId: string) => {
@@ -98,7 +86,6 @@ export class AppEvents {
       };
     });
   }
-
   private stream(c: Context, subscribe: (write: WriteEvent) => () => void) {
     const response = streamSSE(c, async (stream) => {
       let pending = Promise.resolve();

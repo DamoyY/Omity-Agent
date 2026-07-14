@@ -4,13 +4,10 @@ import type { HookRule } from "../../types";
 import type { AgentHookPlan, HookPlan, ToolHookPlan } from "../plan";
 import type { HookRuntime } from "../runtime";
 import { partitionToolResponse } from "./responsePartition";
-
 export const hookNode = "hooks";
 export const modelNode = "model_request";
 export const toolsNode = "tools";
-
 type HookExecution = NonNullable<Awaited<ReturnType<HookRuntime["run"]>>>;
-
 export function hookCommand(
   plan: AgentHookPlan | ToolHookPlan,
   rule: HookRule,
@@ -46,7 +43,6 @@ export function hookCommand(
     goto: hookNode,
   });
 }
-
 export function originalToolCommand(plan: ToolHookPlan, original: AIMessage, call: ToolCall) {
   if (!call.id) throw new Error(`工具调用缺少 ID：${call.name}`);
   const includeResponse = !plan.responseEmitted;
@@ -71,7 +67,6 @@ export function originalToolCommand(plan: ToolHookPlan, original: AIMessage, cal
     goto: toolsNode,
   });
 }
-
 export function finishAgent(plan: AgentHookPlan, clearPending: boolean) {
   if (plan.when === "before") {
     return command(null, modelNode, clearPending, plan.previousOutput);
@@ -80,7 +75,6 @@ export function finishAgent(plan: AgentHookPlan, clearPending: boolean) {
   if (!finalMessageId) throw new Error("Agent after Hook 缺少最终消息 ID");
   return command({ kind: "done", finalMessageId }, END, clearPending, plan.previousOutput);
 }
-
 export function command(
   plan: HookPlan | null,
   goto: string,

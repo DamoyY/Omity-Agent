@@ -11,13 +11,11 @@ import {
   type HostLeaseRecord,
 } from "./hostLeases";
 import { readControlRecord, writeControlRecord } from "./sessions";
-
 export interface InterruptedSessionClaim {
   sessionId: string;
   now: number;
   confirmedDeadOwnerId?: string;
 }
-
 export type InterruptedSessionRecovery =
   | { status: "blocked"; lease: HostLeaseRecord }
   | {
@@ -25,7 +23,6 @@ export type InterruptedSessionRecovery =
       action: "paused" | "canceled" | "none";
       activeItems: number;
     };
-
 export function recoverInterruptedSessionRecord(
   db: Database,
   claim: InterruptedSessionClaim,
@@ -34,7 +31,6 @@ export function recoverInterruptedSessionRecord(
   if (lease && lease.expiresAt > claim.now && lease.ownerId !== claim.confirmedDeadOwnerId) {
     return { status: "blocked", lease };
   }
-
   const active = activeQueueRows(db, claim.sessionId);
   const control = readControlRecord(db, claim.sessionId);
   let action: "paused" | "canceled" | "none" = "none";
@@ -61,7 +57,6 @@ export function recoverInterruptedSessionRecord(
   }
   return { status: "recovered", action, activeItems: active.length };
 }
-
 function cancelActiveRuns(
   db: Database,
   sessionId: string,
@@ -93,37 +88,29 @@ function cancelActiveRuns(
   }
   pruneMessageBlobs(db);
 }
-
 export class RecoverableDatabase {
   constructor(readonly db: Database) {}
-
   hostLease(sessionId: string) {
     return readHostLeaseRecord(this.db, sessionId);
   }
-
   activeQueue(sessionId: string) {
     return activeQueueRows(this.db, sessionId);
   }
-
   pauseRun(sessionId: string, runId: number, error?: ErrorDetails) {
     return this.db.transaction(() => {
       writeControlRecord(this.db, sessionId, "pause");
       return pauseRunRecord(this.db, sessionId, runId, error);
     })();
   }
-
   recoverInterruptedSession(claim: InterruptedSessionClaim) {
     return this.db.transaction(() => recoverInterruptedSessionRecord(this.db, claim))();
   }
-
   acquireHostLease(claim: HostLeaseClaim) {
     return acquireHostLeaseRecord(this.db, claim);
   }
-
   renewHostLease(claim: HostLeaseClaim) {
     return renewHostLeaseRecord(this.db, claim);
   }
-
   releaseHostLease(sessionId: string, ownerId: string) {
     return releaseHostLeaseRecord(this.db, sessionId, ownerId);
   }

@@ -6,16 +6,12 @@ import type { SessionInfo } from "../../sessionState";
 import type { TranscriptSnapshot } from "./transcript/cache";
 import type { AttachmentSettings, PendingAttachment } from "../../attachments/contract";
 import { appendAttachments } from "../../attachments/contract";
-
 export { ApiError } from "./request";
-
 export type { SessionInfo } from "../../sessionState";
-
 export interface FrontendSettings {
   draftSaveDelayMs: number;
   transcriptRefreshIntervalMs: number;
 }
-
 export async function bootstrap(signal?: AbortSignal) {
   return request<{
     attachments: AttachmentSettings;
@@ -24,7 +20,6 @@ export async function bootstrap(signal?: AbortSignal) {
     sessions: SessionInfo[];
   }>("/api/bootstrap", { signal });
 }
-
 export async function createSession(
   workspace: string,
   initialState: InitialSessionState,
@@ -40,39 +35,32 @@ export async function createSession(
     body,
   });
 }
-
 export async function deleteSession(sessionId: string) {
   return request<{ deleted: string }>(`/api/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
   });
 }
-
 export async function pickWorkspace() {
   return request<{ workspace: string | null }>("/api/workspace-picker", {
     method: "POST",
   });
 }
-
 export async function loadTranscript(sessionId: string, signal?: AbortSignal) {
   return request<TranscriptSnapshot>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`, {
     signal,
   });
 }
-
 export function sessionEvents(sessionId: string) {
   return eventSource(`/api/sessions/${encodeURIComponent(sessionId)}/events`);
 }
-
 export function appEvents() {
   return eventSource("/api/events");
 }
-
 export async function loadComposerDraft(sessionId: string) {
   return request<{ content: string | null; revision: number }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
   );
 }
-
 export async function saveComposerDraft(sessionId: string, content: string, revision: number) {
   return request<{ revision: number }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
@@ -82,7 +70,6 @@ export async function saveComposerDraft(sessionId: string, content: string, revi
     },
   );
 }
-
 export function beaconComposerDraft(sessionId: string, content: string, revision: number) {
   const body = new Blob([JSON.stringify({ content, revision })], {
     type: "application/json",
@@ -92,7 +79,6 @@ export function beaconComposerDraft(sessionId: string, content: string, revision
     body,
   );
 }
-
 export async function sendMessage(
   sessionId: string,
   content: string,
@@ -111,7 +97,6 @@ export async function sendMessage(
     },
   );
 }
-
 export async function setControl(
   sessionId: string,
   control: Extract<Control, "running" | "pause" | "cancel">,
@@ -121,7 +106,6 @@ export async function setControl(
     body: JSON.stringify({ control }),
   });
 }
-
 export async function cancelTool(sessionId: string, toolCallId: string) {
   return request<{ toolCallId: string }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/tools/cancel`,
@@ -131,14 +115,12 @@ export async function cancelTool(sessionId: string, toolCallId: string) {
     },
   );
 }
-
 export async function forkSession(sessionId: string, beforeMessageId: number) {
   return request<{ session: SessionInfo }>(`/api/sessions/${encodeURIComponent(sessionId)}/fork`, {
     method: "POST",
     body: JSON.stringify({ beforeMessageId }),
   });
 }
-
 function eventSource(path: string) {
   const events = new EventSource(path);
   events.addEventListener("error", (error) => {

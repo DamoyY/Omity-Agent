@@ -6,14 +6,11 @@ import {
   standaloneOwner,
   type ProcessOwner,
 } from "../../infrastructure/process/ownership";
-
 export class HostLeaseLostError extends Error {}
-
 export class HostLease {
   private readonly ownerId: string;
   private readonly timer: ReturnType<typeof setInterval>;
   private error?: Error;
-
   constructor(
     private readonly db: AgentDatabase,
     private readonly logger: Logger,
@@ -41,7 +38,6 @@ export class HostLease {
     );
     this.timer.unref();
   }
-
   assertOwned() {
     if (this.error) throw this.error;
     if (this.db.hostLease(this.sessionId)?.ownerId !== this.ownerId) {
@@ -50,12 +46,10 @@ export class HostLease {
       throw error;
     }
   }
-
   close() {
     clearInterval(this.timer);
     this.db.releaseHostLease(this.sessionId, this.ownerId);
   }
-
   private renew() {
     try {
       const renewed = this.db.renewHostLease({
@@ -71,7 +65,6 @@ export class HostLease {
       this.fail(error instanceof Error ? error : new Error(String(error)));
     }
   }
-
   private fail(error: Error) {
     this.error = error;
     this.controller.abort(error);

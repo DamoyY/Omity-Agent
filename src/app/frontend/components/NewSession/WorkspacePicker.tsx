@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
 import { Button, Field, Input } from "../ParkUI";
-
 const row = css({
   display: "grid",
   gap: "2",
@@ -14,7 +13,6 @@ const row = css({
   },
   minW: 0,
 });
-
 const pathInput = css({ minW: 0, textOverflow: "ellipsis" });
 const recent = css({ display: "grid", gap: "2" });
 const recentLabel = css({ color: "muted", fontSize: "xs" });
@@ -25,7 +23,6 @@ const recentPath = css({
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 });
-
 export function WorkspacePicker({
   recentWorkspaces,
   workspace,

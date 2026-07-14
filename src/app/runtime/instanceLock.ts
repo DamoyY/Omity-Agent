@@ -11,23 +11,18 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { isProcessRunning } from "../../infrastructure/process/ownership";
-
 const ownerSchema = z.object({
   pid: z.number().int().positive(),
   token: z.uuid(),
 });
-
 export type AppInstanceOwner = z.infer<typeof ownerSchema>;
-
 export class AppInstanceLock {
   private released = false;
-
   private constructor(
     private readonly path: string,
     readonly owner: AppInstanceOwner,
     readonly abandonedOwner?: AppInstanceOwner,
   ) {}
-
   static acquire(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
     const path = resolve(dataDir, "app.lock");
@@ -59,7 +54,6 @@ export class AppInstanceLock {
     }
     throw new Error(`无法获取 App 实例锁：${path}`);
   }
-
   release() {
     if (this.released) return;
     const owner = readOwner(this.path);
@@ -70,7 +64,6 @@ export class AppInstanceLock {
     this.released = true;
   }
 }
-
 function readOwner(path: string) {
   if (!existsSync(path)) throw new Error(`App 实例锁不存在：${path}`);
   const value: unknown = JSON.parse(readFileSync(path, "utf8"));
@@ -78,11 +71,9 @@ function readOwner(path: string) {
   if (!parsed.success) throw new Error(`App 实例锁内容无效：${path}`);
   return parsed.data;
 }
-
 function isExistsError(error: unknown) {
   return isErrorCode(error, "EEXIST");
 }
-
 function isErrorCode(error: unknown, code: string) {
   return (
     error instanceof Error && "code" in error && (error as Error & { code?: unknown }).code === code

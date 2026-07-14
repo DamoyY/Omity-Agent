@@ -28,7 +28,6 @@ import {
   removeOptimisticUser,
 } from "./services/transcript/optimistic";
 import { recentWorkspaces } from "./services/recentWorkspaces";
-
 export function App() {
   const queryClient = useQueryClient();
   const bootstrap = useBootstrap();
@@ -46,19 +45,15 @@ export function App() {
     activeSession?.id,
     bootstrap.data?.frontend.transcriptRefreshIntervalMs,
   );
-
   const navigate = useCallback((nextPage: Page, replace = false) => {
     writePage(nextPage, replace);
     setPage(nextPage);
   }, []);
-
   usePageNavigation(page, currentPage, setPage);
-
   const pausing =
     pausingSessionId === activeSession?.id &&
     transcript.control === "running" &&
     transcript.queue.some((item) => item.status === "running");
-
   return (
     <div className={cx("dark", layout)}>
       <aside className={sidebar}>

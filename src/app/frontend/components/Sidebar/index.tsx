@@ -5,7 +5,6 @@ import type { SessionInfo } from "../../services/client";
 import { Button } from "../ParkUI";
 import { SessionGroup } from "./SessionGroup";
 import { groupSessions } from "./sessions";
-
 const panel = css({
   alignItems: "center",
   bg: "sidebar",
@@ -41,7 +40,6 @@ const list = css({
   px: "2",
   scrollbarGutter: "stable",
 });
-
 interface SidebarProps {
   sessions: SessionInfo[];
   activeId?: string;
@@ -49,7 +47,6 @@ interface SidebarProps {
   onCreate: () => void;
   onSelect: (id: string) => void;
 }
-
 export function Sidebar({ sessions, activeId, showCreate, onCreate, onSelect }: SidebarProps) {
   const { t } = useTranslation();
   return (

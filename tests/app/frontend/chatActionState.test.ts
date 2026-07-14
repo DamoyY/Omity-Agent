@@ -4,7 +4,6 @@ import {
   type ChatActionState,
 } from "../../../src/app/frontend/components/Chat/actionState";
 import type { Control, SessionStatus } from "../../../src/types";
-
 interface MatrixCase {
   name: string;
   control: Control;
@@ -13,7 +12,6 @@ interface MatrixCase {
   sessionStatus: SessionStatus;
   expected: ChatActionState;
 }
-
 const matrix: MatrixCase[] = [
   {
     name: "idle session without active queue",
@@ -81,7 +79,6 @@ const matrix: MatrixCase[] = [
     expected: state("pause", false, "pause", true, false),
   },
 ];
-
 test.each(matrix)("derives chat actions for $name", (entry) => {
   expect(
     deriveChatActionState({
@@ -92,7 +89,6 @@ test.each(matrix)("derives chat actions for $name", (entry) => {
     }),
   ).toEqual(entry.expected);
 });
-
 function state(
   controlState: ChatActionState["controlState"],
   controlDisabled: boolean,

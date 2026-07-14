@@ -4,14 +4,11 @@ import matter from "gray-matter";
 import untildify from "untildify";
 import { z } from "zod";
 import type { Settings, SkillInfo } from "./types";
-
 const skillMetaSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
 });
-
 type SkillMeta = z.infer<typeof skillMetaSchema>;
-
 export function loadSkills(settings: Settings): SkillInfo[] {
   if (!settings.skills.enabled) return [];
   const skillsDir = resolveUserPath(settings.skills.directory);
@@ -32,7 +29,6 @@ export function loadSkills(settings: Settings): SkillInfo[] {
   }
   return skills.filter((skill) => settings.skills.skillEnabled[skill.name] ?? true);
 }
-
 export function buildSkillsMessage(settings: Settings) {
   const skills = loadSkills(settings);
   if (!settings.skills.enabled) return null;
@@ -45,21 +41,18 @@ export function buildSkillsMessage(settings: Settings) {
   if (skills.length === 0) lines.push("- 当前没有启用的 Skill。");
   return lines.join("\n");
 }
-
 function readSkill(skillDir: string): SkillInfo {
   const source = join(skillDir, "SKILL.md");
   if (!existsSync(source)) throw new Error(`缺少 Skill 文件：${source}`);
   const meta = parseSkillMeta(readFileSync(source, "utf8"), source);
   return { ...meta, source };
 }
-
 function parseSkillMeta(content: string, source: string): SkillMeta {
   if (!matter.test(content)) {
     throw new Error(`Skill 缺少 YAML front matter：${source}`);
   }
   return skillMetaSchema.parse(matter(content).data);
 }
-
 function resolveUserPath(path: string) {
   const expanded = untildify(path);
   return isAbsolute(expanded) ? expanded : resolve(process.cwd(), expanded);

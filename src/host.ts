@@ -16,7 +16,6 @@ import { wireHostSignals } from "./runtime/execution/signals";
 import { HookRuntime } from "./hooks/runtime";
 import type { HostMode } from "./types";
 import { ToolExecutions } from "./agent/toolExecutions";
-
 export async function runHost(mode: HostMode, root = process.cwd(), options: HostRunOptions = {}) {
   await runHostSession(mode, root, {
     ...options,
@@ -24,7 +23,6 @@ export async function runHost(mode: HostMode, root = process.cwd(), options: Hos
     wireSigint: options.wireSigint ?? true,
   });
 }
-
 export async function runHostSession(
   mode: HostMode,
   root = process.cwd(),
@@ -131,7 +129,6 @@ export async function runHostSession(
     }
   }
 }
-
 function prepareWritableSession(settings: ReturnType<typeof loadSettings>, mode: HostMode) {
   const planned = resolveSessionPaths(settings, mode.sessionId);
   const exists = existsSync(planned.dir);
@@ -146,7 +143,6 @@ function prepareWritableSession(settings: ReturnType<typeof loadSettings>, mode:
   }
   return sessionPaths(settings, mode.sessionId);
 }
-
 function openHostDatabase(
   path: string,
   mode: HostMode,

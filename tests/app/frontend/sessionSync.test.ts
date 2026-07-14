@@ -2,21 +2,16 @@ import { expect, mock, spyOn, test } from "bun:test";
 import { upsertSessionList, withoutSession } from "../../../src/app/frontend/services/queries";
 import type { SessionInfo } from "../../../src/app/sessionState";
 import { appEvents } from "../../../src/app/frontend/services/client";
-
 test("session upserts are idempotent across SSE and HTTP responses", () => {
   const idle = session("idle", 1);
   const running = session("model", 2);
-
   const sessions = upsertSessionList(upsertSessionList([idle], running), running);
-
   expect(sessions).toEqual([running]);
 });
-
 test("session deletion is idempotent", () => {
   const once = withoutSession([session("idle", 1)], "session");
   expect(withoutSession(once, "session")).toEqual([]);
 });
-
 test("SSE closes after the first network error instead of reconnecting", () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "EventSource");
   const log = spyOn(console, "error").mockImplementation(() => undefined);
@@ -27,11 +22,9 @@ test("SSE closes after the first network error instead of reconnecting", () => {
     configurable: true,
     value: TestEventSource,
   });
-
   try {
     const events = appEvents() as unknown as TestEventSource;
     events.dispatchEvent(new Event("error"));
-
     expect(events.close).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledTimes(1);
   } finally {
@@ -40,7 +33,6 @@ test("SSE closes after the first network error instead of reconnecting", () => {
     else Reflect.deleteProperty(globalThis, "EventSource");
   }
 });
-
 function session(status: SessionInfo["status"], updatedAt: number): SessionInfo {
   return {
     id: "session",

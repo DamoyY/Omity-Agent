@@ -1,10 +1,8 @@
 import type { ToolMessage } from "@langchain/core/messages";
-
 export interface HookToolOutput {
   output: unknown;
   structuredOutput?: unknown;
 }
-
 export function readToolOutput(message: ToolMessage): HookToolOutput {
   const structuredOutput = extractStructuredOutput(message.artifact);
   return {
@@ -12,7 +10,6 @@ export function readToolOutput(message: ToolMessage): HookToolOutput {
     ...(structuredOutput === undefined ? {} : { structuredOutput }),
   };
 }
-
 function extractStructuredOutput(value: unknown) {
   if (!isUnknownArray(value)) return undefined;
   const artifacts = value.filter(isStructuredArtifact);
@@ -26,17 +23,14 @@ function extractStructuredOutput(value: unknown) {
   }
   return artifact["data"];
 }
-
 function isStructuredArtifact(
   value: unknown,
 ): value is Record<string, unknown> & { type: "mcp_structured_content" } {
   return isRecord(value) && value["type"] === "mcp_structured_content";
 }
-
 function isUnknownArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

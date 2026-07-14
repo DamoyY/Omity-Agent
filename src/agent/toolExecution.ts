@@ -6,16 +6,13 @@ import { requireCallId } from "../hooks/plan";
 import { redirectLargeToolOutput } from "../runtime/largeOutput";
 import type { Settings } from "../types";
 import { ToolExecutions } from "./toolExecutions";
-
 interface ToolInvokerOptions {
   settings: Settings;
   sessionId: string;
   freeformToolParameters: ReadonlyMap<string, string>;
   toolExecutions?: ToolExecutions;
 }
-
 type ToolInvoker = (call: ToolCall, config: LangGraphRunnableConfig) => Promise<ToolMessage>;
-
 export function createToolInvoker(
   tools: StructuredToolInterface[],
   options: ToolInvokerOptions,
@@ -57,7 +54,6 @@ export function createToolInvoker(
     return customToolCall ? markCustomToolOutput(normalizedOutput) : normalizedOutput;
   };
 }
-
 function cancelledToolOutput(call: ToolCall, callId: string, durationMs: number) {
   return new ToolMessage({
     status: "error",
@@ -66,7 +62,6 @@ function cancelledToolOutput(call: ToolCall, callId: string, durationMs: number)
     content: `工具运行 ${formatDuration(durationMs)} 后被用户手动终止。`,
   });
 }
-
 export function formatDuration(durationMs: number) {
   if (durationMs < 1000) return `${Math.round(durationMs).toString()} 毫秒`;
   const seconds = durationMs / 1000;
@@ -79,7 +74,6 @@ export function formatDuration(durationMs: number) {
     ? `${minutes.toString()} 分钟`
     : `${minutes.toString()} 分 ${remainder.toString()} 秒`;
 }
-
 function toolErrorOutput(call: ToolCall, callId: string, error: unknown) {
   return new ToolMessage({
     status: "error",
@@ -88,16 +82,13 @@ function toolErrorOutput(call: ToolCall, callId: string, error: unknown) {
     content: error instanceof Error ? error.message || error.name : String(error),
   });
 }
-
 export function materializeFreeformToolCall(
   call: ToolCall,
   parameters: ReadonlyMap<string, string>,
 ): ToolCall {
   const parameter = parameters.get(call.name);
   if (!parameter) return call;
-
   if (!isFreeformModelToolCall(call, parameters)) return call;
-
   const args: unknown = call.args;
   const input = isRecord(args) ? args["input"] : undefined;
   if (typeof input !== "string") {
@@ -105,15 +96,12 @@ export function materializeFreeformToolCall(
   }
   return { ...call, args: { [parameter]: input } };
 }
-
 function isCustomToolCall(call: ToolCall) {
   return isRecord(call) && call["isCustomTool"] === true;
 }
-
 function isFreeformModelToolCall(call: ToolCall, parameters: ReadonlyMap<string, string>) {
   return parameters.has(call.name) && (isCustomToolCall(call) || isRawFreeformInput(call.args));
 }
-
 function markCustomToolOutput(message: ToolMessage) {
   const artifact: unknown = message.artifact;
   return new ToolMessage({
@@ -128,11 +116,9 @@ function markCustomToolOutput(message: ToolMessage) {
     metadata: message.metadata,
   });
 }
-
 function isRawFreeformInput(args: unknown) {
   return isRecord(args) && Object.keys(args).length === 1 && typeof args["input"] === "string";
 }
-
 function singleToolOutput(value: unknown, callId: string) {
   if (!isRecord(value) || !Array.isArray(value["messages"])) {
     throw new Error("工具节点没有返回 messages");
@@ -146,7 +132,6 @@ function singleToolOutput(value: unknown, callId: string) {
   }
   return messages[0];
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

@@ -3,9 +3,7 @@ import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import { messageRowsToChatMessages, type MessageRow } from "./serialization";
 import { persistMessageBlob, pruneMessageBlobs } from "./blobStore";
-
 const messageColumns = "b.message_json AS message_json, m.source_id AS source_id";
-
 export function insertUserMessage(
   db: Database,
   sessionId: string,
@@ -20,11 +18,9 @@ export function insertUserMessage(
     queueId,
   );
 }
-
 export function queueMessageId(sessionId: string, queueId: number) {
   return `queue:${sessionId}:${queueId.toString()}`;
 }
-
 export function messageQueueId(sessionId: string, message: BaseMessage) {
   if (message.type !== "human" || !message.id) return undefined;
   const prefix = `queue:${sessionId}:`;
@@ -38,7 +34,6 @@ export function messageQueueId(sessionId: string, message: BaseMessage) {
   }
   return queueId;
 }
-
 export function appendAssistantMessage(db: Database, sessionId: string, content: string) {
   storeMessage(
     db,
@@ -47,7 +42,6 @@ export function appendAssistantMessage(db: Database, sessionId: string, content:
     nextPosition(db, sessionId),
   );
 }
-
 export function syncMessages(db: Database, sessionId: string, messages: BaseMessage[]) {
   for (const message of messages) message.id ??= randomUUID();
   const tx = db.transaction(() => {
@@ -62,7 +56,6 @@ export function syncMessages(db: Database, sessionId: string, messages: BaseMess
   });
   return tx();
 }
-
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   const query = db.prepare<MessageRow, [string]>(
     `SELECT ${messageColumns} FROM messages m
@@ -77,7 +70,6 @@ export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   }
   return messageRowsToChatMessages(rows);
 }
-
 export function storeMessage(
   db: Database,
   sessionId: string,
@@ -105,7 +97,6 @@ export function storeMessage(
   if (!row) throw new Error(`消息写入失败：${ref.sourceId}`);
   return row.id;
 }
-
 export function pruneUnreferencedMessages(db: Database, sessionId: string) {
   db.run(
     `DELETE FROM messages
@@ -114,7 +105,6 @@ export function pruneUnreferencedMessages(db: Database, sessionId: string) {
   );
   pruneMessageBlobs(db);
 }
-
 function nextPosition(db: Database, sessionId: string) {
   const row = db
     .query<{ position: number }, [string]>(

@@ -1,25 +1,21 @@
 import type { Database } from "bun:sqlite";
 import { requireSessionRecord } from "./sessions";
-
 export interface HostLeaseClaim {
   sessionId: string;
   ownerId: string;
   now: number;
   ttlMs: number;
 }
-
 export interface HostLeaseRecord {
   sessionId: string;
   ownerId: string;
   expiresAt: number;
 }
-
 interface HostLeaseRow {
   session_id: string;
   owner_id: string;
   expires_at: number;
 }
-
 export function readHostLeaseRecord(db: Database, sessionId: string): HostLeaseRecord | null {
   requireSessionRecord(db, sessionId);
   const row = db
@@ -36,7 +32,6 @@ export function readHostLeaseRecord(db: Database, sessionId: string): HostLeaseR
       }
     : null;
 }
-
 export function acquireHostLeaseRecord(db: Database, claim: HostLeaseClaim) {
   requireSessionRecord(db, claim.sessionId);
   const result = db.run(
@@ -51,7 +46,6 @@ export function acquireHostLeaseRecord(db: Database, claim: HostLeaseClaim) {
   );
   return result.changes === 1;
 }
-
 export function renewHostLeaseRecord(db: Database, claim: HostLeaseClaim) {
   const result = db.run(
     "UPDATE host_leases SET expires_at = ? WHERE session_id = ? AND owner_id = ?",
@@ -59,7 +53,6 @@ export function renewHostLeaseRecord(db: Database, claim: HostLeaseClaim) {
   );
   return result.changes === 1;
 }
-
 export function releaseHostLeaseRecord(db: Database, sessionId: string, ownerId: string) {
   const result = db.run("DELETE FROM host_leases WHERE session_id = ? AND owner_id = ?", [
     sessionId,

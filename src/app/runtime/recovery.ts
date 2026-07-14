@@ -3,11 +3,9 @@ import { resolveSessionPaths } from "../../infrastructure/configuration/sessionP
 import { AgentDatabase } from "../../infrastructure/database/agentDatabase";
 import { recoverHostSession } from "../../runtime/execution/recovery";
 import type { AppInstanceOwner } from "./instanceLock";
-
 interface RecoverableSession {
   id: string;
 }
-
 export function recoverAppSessions(
   settings: Settings,
   sessions: RecoverableSession[],
@@ -36,7 +34,6 @@ export function recoverAppSessions(
     }
   });
 }
-
 export function hasLiveHostLease(settings: Settings, sessionId: string) {
   const path = resolveSessionPaths(settings, sessionId).dbPath;
   const db = new AgentDatabase(path);

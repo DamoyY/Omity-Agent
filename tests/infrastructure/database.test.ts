@@ -8,9 +8,7 @@ import {
   required,
   workspace,
 } from "../support/database";
-
 afterEach(cleanupDatabaseDirs);
-
 test("queue append and transcript lifecycle", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
@@ -24,14 +22,12 @@ test("queue append and transcript lifecycle", () => {
   expect(db.history("123").at(-1)?.text).toBe("你好，有什么可以帮你？");
   db.close();
 });
-
 test("database waits for transient writer contention", () => {
   const db = makeDb();
   const row = db.db.query<{ timeout: number }, []>("PRAGMA busy_timeout").get();
   expect(row?.timeout).toBe(sqliteBusyTimeoutMs);
   db.close();
 });
-
 test("existing sessions are explicit", () => {
   const db = makeDb();
   expect(db.hasSession("123")).toBe(false);
@@ -42,7 +38,6 @@ test("existing sessions are explicit", () => {
   }).toThrow("会话已存在：123");
   db.close();
 });
-
 test("client operations reject missing sessions", () => {
   const db = makeDb();
   expect(() => db.appendUser("missing", "你好")).toThrow("会话不存在：missing");
@@ -51,13 +46,11 @@ test("client operations reject missing sessions", () => {
   }).toThrow("会话不存在：missing");
   db.close();
 });
-
 test("host lease excludes concurrent owners and permits takeover after expiry", () => {
   const databases = makeDatabases(2);
   const first = required(databases[0]);
   const second = required(databases[1]);
   first.resetSession("123", workspace);
-
   expect(
     first.acquireHostLease({
       sessionId: "123",
@@ -95,15 +88,12 @@ test("host lease excludes concurrent owners and permits takeover after expiry", 
   first.close();
   second.close();
 });
-
 test("queue start atomically rejects a stale claim", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   db.appendUser("123", "只应写入一次");
   const stale = required(db.nextQueue("123"));
-
   db.startQueue("123", stale);
-
   expect(() => db.startQueue("123", stale)).toThrow("队列认领冲突");
   expect(db.history("123").map((message) => message.text)).toEqual(["只应写入一次"]);
   db.close();

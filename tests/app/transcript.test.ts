@@ -5,9 +5,7 @@ import { buildTimeline, displayStreamEvent } from "../../src/app/timeline";
 import type { StreamEvent } from "../../src/infrastructure/database/records/streamEvents";
 import { countTokens } from "../../src/runtime/tokenizer";
 import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
-
 afterEach(cleanupDatabaseDirs);
-
 test("transcript exposes Responses API token and cache usage", () => {
   const db = makeDb();
   db.resetSession("usage-session", workspace);
@@ -23,9 +21,7 @@ test("transcript exposes Responses API token and cache usage", () => {
       },
     }),
   ]);
-
   const transcript = loadTranscript(db, "usage-session");
-
   expect(view(transcript).at(-1)?.usage).toEqual({
     inputTokens: 1200,
     outputTokens: 300,
@@ -33,7 +29,6 @@ test("transcript exposes Responses API token and cache usage", () => {
   });
   db.close();
 });
-
 test("transcript counts raw tool input and output text", () => {
   const db = makeDb();
   const args = { command: "echo 你好" };
@@ -47,19 +42,16 @@ test("transcript counts raw tool input and output text", () => {
     }),
     new ToolMessage({ content: output, tool_call_id: "call-1" }),
   ]);
-
   const transcript = loadTranscript(db, "tool-token-session");
   const part = view(transcript)
     .flatMap((message) => message.parts)
     .find((item) => item.type === "tool");
-
   expect(part?.type).toBe("tool");
   if (part?.type !== "tool") throw new Error("工具调用未显示");
   expect(part.call.inputTokens).toBe(countTokens(JSON.stringify(args)));
   expect(part.output?.outputTokens).toBe(countTokens(output));
   db.close();
 });
-
 test("transcript exposes original Freeform tool input", () => {
   const db = makeDb();
   const input = "*** Begin Patch\n*** End Patch";
@@ -73,15 +65,12 @@ test("transcript exposes original Freeform tool input", () => {
       },
     }),
   ]);
-
   const part = view(loadTranscript(db, "freeform-session"))
     .flatMap((message) => message.parts)
     .find((item) => item.type === "tool");
-
   expect(part?.type === "tool" ? part.call.rawInput : undefined).toBe(input);
   db.close();
 });
-
 test("transcript keeps the original token count for redirected output", () => {
   const db = makeDb();
   db.resetSession("large-output-session", workspace);
@@ -96,36 +85,29 @@ test("transcript keeps the original token count for redirected output", () => {
       metadata: { largeOutput: { path: "output.txt", tokens: 12_345 } },
     }),
   ]);
-
   const part = view(loadTranscript(db, "large-output-session"))
     .flatMap((message) => message.parts)
     .find((item) => item.type === "tool");
-
   expect(part?.output?.outputTokens).toBe(12_345);
   db.close();
 });
-
 test("live stream events match persisted snapshots and keep their cursor", () => {
   const db = makeDb();
   db.resetSession("stream-session", workspace);
   const queueId = db.appendUser("stream-session", "question");
   const emitted: StreamEvent[] = [];
   db.onChange((event) => emitted.push(event));
-
   const event = db.streamToken("stream-session", queueId, "hello", "message-1");
   const streaming = loadTranscript(db, "stream-session");
-
   expect(emitted).toEqual([event]);
   expect(streaming.events).toEqual([displayStreamEvent(event)]);
   expect(streaming.eventCursor).toBe(event.id);
-
   db.syncHistory("stream-session", [new HumanMessage("question"), new AIMessage("hello")]);
   const completed = loadTranscript(db, "stream-session");
   expect(completed.events).toEqual([]);
   expect(completed.eventCursor).toBe(event.id);
   db.close();
 });
-
 function view(transcript: ReturnType<typeof loadTranscript>) {
   return buildTimeline(transcript.messages, transcript.queue, transcript.events);
 }

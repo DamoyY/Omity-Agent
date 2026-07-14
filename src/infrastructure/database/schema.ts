@@ -1,6 +1,5 @@
 import type { Database } from "bun:sqlite";
 import { assertCoreSchema } from "./validateSchema";
-
 export const migrationSql = [
   `
     CREATE TABLE IF NOT EXISTS sessions (
@@ -149,7 +148,6 @@ export const migrationSql = [
     )
   `,
 ] as const;
-
 export function applySchema(db: Database) {
   for (const sql of migrationSql) db.run(sql);
   assertCoreSchema(db);

@@ -4,13 +4,11 @@ import { stringifyError, type ErrorDetails } from "../../../../failures/details"
 import type { QueueItem, QueueStatus } from "../../../../types";
 import { insertUserMessage } from "../messages/history";
 import { toQueueItem, type QueueRow } from "./rowMapping";
-
 const queueSelect = `
   SELECT q.id, q.root_id, COALESCE(q.content, '') AS content,
     q.status, m.id AS user_message_id
   FROM queue q
   LEFT JOIN messages m ON m.queue_id = q.id`;
-
 export function appendUserQueue(db: Database, sessionId: string, content: string) {
   db.query("DELETE FROM queue WHERE session_id = ? AND status = 'draft'").run(sessionId);
   const activeRun = db
@@ -29,14 +27,12 @@ export function appendUserQueue(db: Database, sessionId: string, content: string
   db.query("UPDATE queue SET root_id = ? WHERE id = ?").run(queueId, queueId);
   return queueId;
 }
-
 export function appendDraftQueue(db: Database, sessionId: string, content: string) {
   const result = db
     .query("INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'draft')")
     .run(sessionId, content);
   return Number(result.lastInsertRowid);
 }
-
 export function pendingAppendRows(db: Database, sessionId: string): QueueItem[] {
   const query = db.prepare<QueueRow, [string]>(
     `${queueSelect}
@@ -48,7 +44,6 @@ export function pendingAppendRows(db: Database, sessionId: string): QueueItem[] 
     query.finalize();
   }
 }
-
 export function consumedRunRows(
   db: Database,
   sessionId: string,
@@ -68,7 +63,6 @@ export function consumedRunRows(
     query.finalize();
   }
 }
-
 export function nextQueueRow(db: Database, sessionId: string): QueueItem | null {
   const query = db.prepare<QueueRow, [string]>(
     `${queueSelect}
@@ -83,7 +77,6 @@ export function nextQueueRow(db: Database, sessionId: string): QueueItem | null 
   }
   return row ? toQueueItem(row) : null;
 }
-
 export function startQueueRecord(db: Database, sessionId: string, item: QueueItem) {
   if (item.userMessageId !== null) {
     const result = db.run(
@@ -112,11 +105,9 @@ export function startQueueRecord(db: Database, sessionId: string, item: QueueIte
   }
   return messageId;
 }
-
 function queueClaimConflict(queueId: number) {
   return new DomainError("QUEUE_CLAIM_CONFLICT", `队列认领冲突：${queueId.toString()}`);
 }
-
 export function setQueueStatusRecord(
   db: Database,
   queueId: number,
@@ -133,7 +124,6 @@ export function setQueueStatusRecord(
     queueId,
   ]);
 }
-
 export function queueStatusRecord(db: Database, queueId: number) {
   const row = db
     .query<{ status: QueueStatus }, [number]>("SELECT status FROM queue WHERE id = ?")
@@ -141,7 +131,6 @@ export function queueStatusRecord(db: Database, queueId: number) {
   if (!row) throw new Error(`队列不存在：${queueId.toString()}`);
   return row.status;
 }
-
 function appendToRun(db: Database, sessionId: string, rootId: number, content: string) {
   const result = db
     .query("INSERT INTO queue (session_id, root_id, content, status) VALUES (?, ?, ?, 'pending')")

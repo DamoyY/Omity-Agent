@@ -6,15 +6,12 @@ import { ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { redirectLargeToolOutput } from "../../src/runtime/largeOutput";
 import { countTokens } from "../../src/runtime/tokenizer";
-
 const dirs: string[] = [];
-
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 test("normalizes MCP text content before size handling", async () => {
   const root = makeDir();
   const short = "短输出";
@@ -31,7 +28,6 @@ test("normalizes MCP text content before size handling", async () => {
     tool_call_id: "call-1",
     name: "demo_tool",
   });
-
   const normalized = await redirectLargeToolOutput(shortMessage, {
     dataDir: root,
     maxTokens: countTokens(short),
@@ -51,7 +47,6 @@ test("normalizes MCP text content before size handling", async () => {
     "large_output",
     `${outputFileId("call-1")}.txt`,
   );
-
   expect(normalized.content).toBe(short);
   expect(readFileSync(outputPath, "utf8")).toBe(original);
   expect(redirected.content).toBe(
@@ -59,7 +54,6 @@ test("normalizes MCP text content before size handling", async () => {
   );
   expect(redirected.name).toBe("demo_tool");
 });
-
 test("accepts hook call IDs when writing large output", async () => {
   const root = makeDir();
   const outputId = "omity-hook:session/thread:tool";
@@ -80,11 +74,9 @@ test("accepts hook call IDs when writing large output", async () => {
     "large_output",
     `${outputFileId(outputId)}.txt`,
   );
-
   expect(readFileSync(outputPath, "utf8")).toBe(original);
   expect(redirected.content).toContain(outputPath);
 });
-
 test("uses compact URL-safe large output file names", async () => {
   const root = makeDir();
   await redirectLargeToolOutput(new ToolMessage({ content: "long output", tool_call_id: "call" }), {
@@ -93,11 +85,9 @@ test("uses compact URL-safe large output file names", async () => {
     sessionId: "demo-session",
   });
   const names = readdirSync(join(root, "sessions", "demo-session", "large_output"));
-
   expect(names).toHaveLength(1);
   expect(names[0]).toMatch(/^[A-Za-z0-9_-]{22}\.txt$/);
 });
-
 test("keeps MCP images outside the text size limit", async () => {
   const root = makeDir();
   const imageData = "A".repeat(1024 * 1024);
@@ -114,7 +104,6 @@ test("keeps MCP images outside the text size limit", async () => {
     }),
     tool_call_id: "call-3",
   });
-
   const imageRedirected = await redirectLargeToolOutput(imageMessage, {
     dataDir: root,
     maxTokens: 1,
@@ -127,13 +116,11 @@ test("keeps MCP images outside the text size limit", async () => {
     sessionId: "demo",
     outputId: "call-3",
   });
-
   expect(imageRedirected.content).toEqual([
     { type: "image", data: imageData, mimeType: "image/png" },
   ]);
   expect(errorRedirected).toBe(errorMessage);
 });
-
 test("redirects mixed output text without removing its image", async () => {
   const root = makeDir();
   const text = "long text ".repeat(100);
@@ -155,19 +142,16 @@ test("redirects mixed output text without removing its image", async () => {
       outputId: "call-4",
     },
   );
-
   expect(redirected.content).toEqual([
     { type: "text", text: expect.stringContaining("工具输出过长") },
     image,
   ]);
 });
-
 function makeDir() {
   const dir = mkdtempSync(join(tmpdir(), "agent-large-output-"));
   dirs.push(dir);
   return dir;
 }
-
 function outputFileId(outputId: string) {
   return createHash("sha256").update(outputId).digest().subarray(0, 16).toString("base64url");
 }

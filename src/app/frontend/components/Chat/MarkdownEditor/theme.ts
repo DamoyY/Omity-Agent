@@ -2,7 +2,6 @@ import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { css } from "styled-system/css";
-
 export const root = css({
   bg: "surfaceInset",
   borderColor: "lineStrong",
@@ -16,27 +15,21 @@ export const root = css({
     outlineWidth: "1px",
   },
 });
-
 export const fixedRoot = css({ h: "composerEditor" });
-
 export const disabledRoot = css({
   borderColor: "line",
   opacity: 0.65,
 });
-
 export const bareRoot = css({
   alignSelf: "start",
   borderWidth: "0",
   _focusWithin: { outlineOffset: "-1px" },
 });
-
 export const codeMirror = css({ cursor: "text" });
-
 export const fixedCodeMirror = css({
   h: "full",
   "& > .cm-editor": { h: "full" },
 });
-
 export const editorTheme = EditorView.theme(
   {
     "&": {
@@ -76,7 +69,6 @@ export const editorTheme = EditorView.theme(
   },
   { dark: true },
 );
-
 const markdownHighlight = HighlightStyle.define([
   { tag: tags.heading, color: "var(--colors-syntax-title)", fontWeight: "700" },
   { tag: tags.strong, color: "var(--colors-syntax-number)", fontWeight: "700" },
@@ -102,9 +94,7 @@ const markdownHighlight = HighlightStyle.define([
   { tag: tags.meta, color: "var(--colors-syntax-comment)" },
   { tag: tags.contentSeparator, color: "var(--colors-syntax-comment)" },
 ]);
-
 export const markdownSyntax = syntaxHighlighting(markdownHighlight);
-
 export const fluidTheme = EditorView.theme({
   "&": { height: "auto" },
   ".cm-content": { minHeight: "2.5rem" },
@@ -112,7 +102,6 @@ export const fluidTheme = EditorView.theme({
   ".cm-placeholder": { color: "var(--colors-muted-strong)" },
   ".cm-scroller": { overflow: "visible" },
 });
-
 export const fixedTheme = EditorView.theme({
   "&": { height: "100%" },
   ".cm-content": { minHeight: "100%" },

@@ -9,7 +9,6 @@ import { Message } from "./Message";
 import type { InitialSessionState } from "../../../initialState";
 import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
 import { deriveChatActionState } from "./actionState";
-
 const page = css({
   display: "grid",
   gridTemplateRows: "minmax(0, 1fr) auto",
@@ -18,14 +17,12 @@ const page = css({
   minW: 0,
   overflow: "hidden",
 });
-
 const empty = css({
   color: "muted",
   display: "grid",
   h: "full",
   placeItems: "center",
 });
-
 function findLatestDetail(view: TimelineMessage[]) {
   for (let messageIndex = view.length - 1; messageIndex >= 0; messageIndex -= 1) {
     const item = view[messageIndex];
@@ -35,7 +32,6 @@ function findLatestDetail(view: TimelineMessage[]) {
   }
   return undefined;
 }
-
 export function ChatPage({
   activeId,
   attachmentSettings,
@@ -92,7 +88,6 @@ export function ChatPage({
   const forkDraft = queue.find((item) => item.status === "draft")?.content;
   const latestDetail = findLatestDetail(view);
   const latestUsage = view.findLast((item) => item.usage !== undefined)?.usage ?? null;
-
   if (!activeId) {
     if (newSession) {
       return (

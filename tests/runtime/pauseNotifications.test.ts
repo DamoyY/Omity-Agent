@@ -3,9 +3,7 @@ import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HostContext } from "../../src/runtime/context";
 import { processQueue } from "../../src/runtime/queue";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
-
 afterEach(cleanupDatabaseDirs);
-
 test("paused polling publishes the state only once", async () => {
   const db = makeDb();
   db.resetSession("123", workspace);
@@ -29,11 +27,9 @@ test("paused polling publishes the state only once", async () => {
       token: () => undefined,
     },
   } as unknown as HostContext;
-
   const running = processQueue(context, item);
   await Bun.sleep(10);
   expect(changes).toBe(1);
-
   controller.abort();
   await running;
   db.close();

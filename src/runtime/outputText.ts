@@ -1,12 +1,10 @@
 import type { ContentBlock, MessageContent } from "@langchain/core/messages";
-
 export interface ToolTextContent {
   text: string;
   isError: boolean;
   normalized: MessageContent;
   replaceText: (replacement: string) => MessageContent;
 }
-
 export function inspectToolTextContent(content: MessageContent): ToolTextContent | null {
   const parsed = parseMcpContent(content);
   if (parsed === null) return null;
@@ -29,7 +27,6 @@ export function inspectToolTextContent(content: MessageContent): ToolTextContent
       hasNonText ? replaceTextBlocks(value, replacement) : replacement,
   };
 }
-
 function parseMcpContent(
   content: MessageContent,
 ): { value: string | unknown[]; isError: boolean } | null {
@@ -47,7 +44,6 @@ function parseMcpContent(
   if (isTextBlock(parsed)) return { value: [parsed], isError: false };
   return { value: content, isError: false };
 }
-
 function replaceTextBlocks(blocks: unknown[], replacement: string) {
   const firstText = blocks.findIndex((block) => blockText(block) !== null);
   if (firstText < 0) {
@@ -60,12 +56,10 @@ function replaceTextBlocks(blocks: unknown[], replacement: string) {
     }),
   );
 }
-
 function blockText(block: unknown): string | null {
   if (typeof block === "string") return block;
   return isTextBlock(block) ? block.text : null;
 }
-
 function isTextBlock(value: unknown): value is { text: string } {
   return (
     isRecord(value) &&
@@ -73,11 +67,9 @@ function isTextBlock(value: unknown): value is { text: string } {
     typeof value["text"] === "string"
   );
 }
-
 function asContentBlocks(value: unknown[]) {
   return value as ContentBlock[];
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -1,7 +1,6 @@
 import { AIMessage, type BaseMessage, type ToolMessage } from "@langchain/core/messages";
 import { countTokens } from "../../runtime/tokenizer";
 import type { TokenUsage } from "./types";
-
 export function toolInputTokens(call: Record<string, unknown>, input: unknown) {
   if (call["isCustomTool"] === true) {
     if (!isRecord(input) || typeof input["input"] !== "string") {
@@ -14,7 +13,6 @@ export function toolInputTokens(call: Record<string, unknown>, input: unknown) {
   if (typeof serialized !== "string") throw new Error("工具输入无法序列化");
   return countTokens(serialized);
 }
-
 export function toolOutputTokens(message: ToolMessage, text: string) {
   const largeOutput: unknown = message.metadata?.["largeOutput"];
   if (largeOutput === undefined) return countTokens(text);
@@ -25,7 +23,6 @@ export function toolOutputTokens(message: ToolMessage, text: string) {
   }
   return tokens as number;
 }
-
 export function modelTokenUsage(message: BaseMessage): TokenUsage | undefined {
   if (!AIMessage.isInstance(message) || !message.usage_metadata) {
     return undefined;
@@ -50,7 +47,6 @@ export function modelTokenUsage(message: BaseMessage): TokenUsage | undefined {
   }
   return { inputTokens, outputTokens, cacheReadTokens };
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

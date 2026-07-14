@@ -3,9 +3,7 @@ import type { HostMode, SessionStatus } from "../types";
 import { captureError, type ErrorDetails } from "../failures/details";
 import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 import type { ProcessOwner } from "../infrastructure/process/ownership";
-
 type HostActivity = Extract<SessionStatus, "tool" | "model" | "idle">;
-
 interface RunningHost {
   activity: HostActivity;
   done: Promise<void>;
@@ -14,46 +12,37 @@ interface RunningHost {
   stopping: AbortController;
   cancelTool(callId: string): boolean;
 }
-
 export interface AppHostEvents {
   activity(sessionId: string): void;
   changed(sessionId: string): void;
   transcript(sessionId: string, event: StreamEvent): void;
   wait(sessionId: string, delayMs: number): Promise<void>;
 }
-
 export class AppHosts {
   private readonly running = new Map<string, RunningHost>();
   private readonly errors = new Map<string, ErrorDetails>();
   private closing = false;
-
   constructor(
     private readonly appRoot: string,
     private readonly events: AppHostEvents,
     private readonly owner: ProcessOwner,
     private readonly shutdownTimeoutMs: number,
   ) {}
-
   has(sessionId: string) {
     return this.running.has(sessionId);
   }
-
   error(sessionId: string) {
     return this.errors.get(sessionId) ?? null;
   }
-
   activity(sessionId: string): HostActivity {
     return this.running.get(sessionId)?.activity ?? "idle";
   }
-
   clearError(sessionId: string) {
     this.errors.delete(sessionId);
   }
-
   ensure(sessionId: string, root: string) {
     return this.running.get(sessionId)?.ready ?? this.start(sessionId, root, "load");
   }
-
   start(sessionId: string, root: string, kind: HostMode["kind"]) {
     if (this.closing) return Promise.reject(new Error("App 正在关闭，不能启动 Host"));
     const existing = this.running.get(sessionId);
@@ -99,12 +88,10 @@ export class AppHosts {
     });
     return ready.promise;
   }
-
   cancelTool(sessionId: string, callId: string) {
     const host = this.running.get(sessionId);
     return host?.cancelTool(callId) ?? false;
   }
-
   async stop(sessionId: string) {
     const host = this.running.get(sessionId);
     if (!host) return;
@@ -112,7 +99,6 @@ export class AppHosts {
     this.events.changed(sessionId);
     await host.done;
   }
-
   async close() {
     this.closing = true;
     const hosts = [...this.running.entries()];
@@ -122,7 +108,6 @@ export class AppHosts {
     }
     await Promise.all(hosts.map(([, host]) => this.stopAtDeadline(host)));
   }
-
   private observer(force: AbortController) {
     return {
       activity: (changedSessionId: string, activity: HostActivity) => {
@@ -140,7 +125,6 @@ export class AppHosts {
       token: () => undefined,
     };
   }
-
   private async stopAtDeadline(host: RunningHost) {
     const stopped = await Promise.race([
       host.done.then(() => true),

@@ -5,7 +5,6 @@ import type {
 } from "../../infrastructure/database/records/streamEvents";
 import type { DisplayEvent } from "./types";
 import { displayStreamEvent } from "./streamEvents";
-
 export interface PersistedEventRow {
   id: number;
   queue_id: number;
@@ -13,7 +12,6 @@ export interface PersistedEventRow {
   kind: StreamEventKind;
   payload_json: string;
 }
-
 const payloadSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.enum(["assistant_reasoning_delta", "assistant_text_delta"]),
@@ -31,7 +29,6 @@ const payloadSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("tool_started"), value: z.string() }),
 ]);
-
 export function persistedDisplayEvent(row: PersistedEventRow): DisplayEvent {
   const parsed = payloadSchema.safeParse({
     kind: row.kind,

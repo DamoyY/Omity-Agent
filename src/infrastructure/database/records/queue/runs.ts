@@ -3,9 +3,7 @@ import { stringifyError, type ErrorDetails } from "../../../../failures/details"
 import type { QueueItem } from "../../../../types";
 import { requireSessionRecord } from "../sessions";
 import { toQueueItem, type QueueRow } from "./rowMapping";
-
 const activeStatuses = "('pending', 'running', 'paused')";
-
 export function activeQueueRows(db: Database, sessionId: string): QueueItem[] {
   requireSessionRecord(db, sessionId);
   const query = db.prepare<QueueRow, [string]>(
@@ -22,7 +20,6 @@ export function activeQueueRows(db: Database, sessionId: string): QueueItem[] {
     query.finalize();
   }
 }
-
 export function pauseRunRecord(
   db: Database,
   sessionId: string,

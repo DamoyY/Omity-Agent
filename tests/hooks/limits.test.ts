@@ -15,7 +15,6 @@ import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HookRule } from "../../src/types";
 import { testSettings } from "../support/settings";
-
 test("runLimit is enforced atomically across graph threads", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-limits-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
@@ -42,7 +41,6 @@ test("runLimit is enforced atomically across graph threads", async () => {
       hooks,
       checkpointer: new MemorySaver(),
     });
-
     for (let index = 0; index < 3; index++) {
       await graph.invoke(
         {
@@ -52,14 +50,12 @@ test("runLimit is enforced atomically across graph threads", async () => {
         { configurable: { thread_id: `thread:${index.toString()}` } },
       );
     }
-
     expect(calls).toEqual(["limited", "limited"]);
   } finally {
     db.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 test("thread cleanup retains session hook usage", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-usage-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
@@ -67,7 +63,6 @@ test("thread cleanup retains session hook usage", async () => {
   try {
     expect(consumeHookUsage(db.db, "session", "limited", 1)).toBeTrue();
     await new BunSqliteSaver(db.db, "session").deleteThread("thread:1");
-
     expect(consumeHookUsage(db.db, "session", "limited", 1)).toBeFalse();
     expect(
       db.db.query<{ used_count: number }, []>("SELECT used_count FROM hook_usage").get()
@@ -78,7 +73,6 @@ test("thread cleanup retains session hook usage", async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 function makeTool(name: string, record: () => void) {
   return tool(
     () => {
@@ -88,7 +82,6 @@ function makeTool(name: string, record: () => void) {
     { name, description: name, schema: z.object({}) },
   );
 }
-
 function silent(id: string, toolName: string, runLimit: number): HookRule {
   return {
     id,

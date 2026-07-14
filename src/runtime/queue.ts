@@ -9,7 +9,6 @@ import { queueMessageId } from "../infrastructure/database/records/messages/hist
 import { consumeBoundaryAppends, recoverConsumedAppends } from "./appends";
 import { captureError } from "../failures/details";
 import { pauseForStop, waitIfPaused } from "./execution/pause";
-
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id.toString()}`);
   const resumed = ctx.db.consumedRunItems(ctx.sessionId, item.runId);
@@ -48,11 +47,9 @@ export async function processQueue(ctx: HostContext, item: QueueItem) {
     end();
   }
 }
-
 function isTerminal(status: QueueItem["status"]) {
   return status === "done" || status === "canceled";
 }
-
 async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
   const [item] = run.items;
   const config = {

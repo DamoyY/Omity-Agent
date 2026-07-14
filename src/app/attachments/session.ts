@@ -3,7 +3,6 @@ import type { InitialMessagePair } from "../initialState";
 import { createSessionStorage, removeSessionStorage } from "../runtime/sessionStorage";
 import type { PendingAttachment } from "./contract";
 import { saveMessageAttachments } from "./storage";
-
 export async function createSessionWithAttachments(options: {
   settings: Settings;
   sessionId: string;

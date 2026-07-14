@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import { AppEvents } from "../../src/app/events";
 import { createApi, type ApiController } from "../../src/app/http/handler";
-
 test("global SSE starts with a full session snapshot and sends mutations", async () => {
   const abort = new AbortController();
   const controller = apiController();
@@ -26,7 +25,6 @@ test("global SSE starts with a full session snapshot and sends mutations", async
   abort.abort();
   await frames.cancel();
 });
-
 test("session SSE sends ordered deltas only for the target session", async () => {
   const abort = new AbortController();
   const controller = apiController();
@@ -46,7 +44,6 @@ test("session SSE sends ordered deltas only for the target session", async () =>
   abort.abort();
   await frames.cancel();
 });
-
 function apiController() {
   return {
     bootstrap: () => ({
@@ -66,7 +63,6 @@ function apiController() {
     events: new AppEvents(),
   } as unknown as ApiController;
 }
-
 function sseFrames(response: Response) {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("SSE 响应缺少 body");

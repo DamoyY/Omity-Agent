@@ -1,5 +1,4 @@
 import type { Settings } from "../../src/types";
-
 export function testSettings(dataDir: string): Settings {
   return {
     paths: { dataDir },

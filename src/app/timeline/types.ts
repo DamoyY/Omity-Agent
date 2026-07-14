@@ -1,10 +1,8 @@
 export type DisplayRole = "user" | "assistant" | "tool";
-
 export interface DisplayImage {
   src: string;
   mimeType: string;
 }
-
 export interface DisplayToolCall {
   id: string;
   index: number;
@@ -16,13 +14,11 @@ export interface DisplayToolCall {
   rawInput?: string;
   streaming?: boolean;
 }
-
 export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
 }
-
 export interface DisplayMessage {
   id: number;
   sourceId?: string;
@@ -37,7 +33,6 @@ export interface DisplayMessage {
   usage?: TokenUsage;
   createdAt: number;
 }
-
 export interface DisplayQueue {
   id: number;
   content: string;
@@ -46,13 +41,11 @@ export interface DisplayQueue {
   userMessageId?: number | null;
   root?: boolean;
 }
-
 export interface DisplayEvent {
   id: number;
   message: string;
   payload: unknown;
 }
-
 export interface TimelineMessage {
   id: number;
   key: string;
@@ -62,7 +55,6 @@ export interface TimelineMessage {
   usage?: TokenUsage;
   parts: TimelinePart[];
 }
-
 export type TimelinePart =
   | { type: "content"; content: string }
   | { type: "reasoning"; content: string }

@@ -13,7 +13,6 @@ import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HookRule } from "../../src/types";
 import { testSettings } from "../support/settings";
-
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
@@ -81,7 +80,6 @@ test("mixed hook modes resolve variables in config order", async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 test("user takeover receives the preceding silent hook output", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-user-hook-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));
@@ -146,7 +144,6 @@ test("user takeover receives the preceding silent hook output", async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 function rules(): HookRule[] {
   return [
     hookRule("before-silent", "before", "silent", {
@@ -173,7 +170,6 @@ function rules(): HookRule[] {
     ),
   ];
 }
-
 function hookRule(
   id: string,
   when: HookRule["when"],

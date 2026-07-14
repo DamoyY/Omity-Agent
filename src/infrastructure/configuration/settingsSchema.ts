@@ -1,14 +1,11 @@
 import { z } from "zod";
-
 const reasoningEffortSchema = z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]);
-
 const sharedModelSettings = {
   model: z.string().min(1),
   temperature: z.number().optional(),
   reasoning_effort: reasoningEffortSchema.optional(),
   timeoutMs: z.number().int().positive(),
 };
-
 const modelSettingsSchema = z.discriminatedUnion("adapter", [
   z
     .object({
@@ -25,14 +22,12 @@ const modelSettingsSchema = z.discriminatedUnion("adapter", [
     })
     .strict(),
 ]);
-
 const modelFileSchema = z
   .object({
     profile: z.string().min(1),
     profiles: z.record(z.string().min(1), modelSettingsSchema),
   })
   .strict();
-
 const suffixSchema = z
   .string()
   .trim()
@@ -40,7 +35,6 @@ const suffixSchema = z
   .min(2)
   .max(32)
   .regex(/^\.[a-z0-9][a-z0-9_+-]*$/u);
-
 const mainSettingsSchema = z
   .object({
     paths: z.object({
@@ -94,11 +88,9 @@ const mainSettingsSchema = z
     }),
   })
   .strict();
-
 export function parseMainSettings(value: unknown) {
   return mainSettingsSchema.parse(value);
 }
-
 export function parseModelSettings(value: unknown) {
   const { profile, profiles } = modelFileSchema.parse(value);
   const model = profiles[profile];

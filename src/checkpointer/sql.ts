@@ -1,9 +1,7 @@
 import type { SQLQueryBindings } from "bun:sqlite";
 import type { CheckpointListOptions } from "@langchain/langgraph-checkpoint";
 import type { RunnableConfig } from "@langchain/core/runnables";
-
 export type SqlBinding = SQLQueryBindings;
-
 export interface CheckpointRow {
   thread_id: string;
   checkpoint_ns: string;
@@ -14,7 +12,6 @@ export interface CheckpointRow {
   metadata: Uint8Array | string;
   pending_writes: string;
 }
-
 export interface WriteJson {
   task_id: string;
   idx: number;
@@ -22,7 +19,6 @@ export interface WriteJson {
   type: string;
   value: string;
 }
-
 export const setupSql = [
   `
     CREATE TABLE IF NOT EXISTS checkpoints (
@@ -50,7 +46,6 @@ export const setupSql = [
     )
   `,
 ] as const;
-
 export function checkpointSelectColumns() {
   return `
     SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id,
@@ -73,14 +68,12 @@ export function checkpointSelectColumns() {
         ) as pw
       ) as pending_writes`;
 }
-
 export function selectCheckpoint(withCheckpoint: boolean) {
   return `${checkpointSelectColumns()}
     FROM checkpoints
     WHERE thread_id = ? AND checkpoint_ns = ?
     ${withCheckpoint ? "AND checkpoint_id = ?" : "ORDER BY checkpoint_id DESC LIMIT 1"}`;
 }
-
 export function filterBinding(value: unknown): SqlBinding {
   if (
     typeof value === "string" ||
@@ -93,7 +86,6 @@ export function filterBinding(value: unknown): SqlBinding {
   }
   return JSON.stringify(value);
 }
-
 export function optionalConfigString(value: unknown, name: string) {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "string") {
@@ -101,13 +93,11 @@ export function optionalConfigString(value: unknown, name: string) {
   }
   return value;
 }
-
 export function requiredConfigString(value: unknown, name: string) {
   const parsed = optionalConfigString(value, name);
   if (!parsed) throw new Error(`缺少 ${name}`);
   return parsed;
 }
-
 export function buildListQuery(config: RunnableConfig, options?: CheckpointListOptions) {
   const { limit, before, filter } = options ?? {};
   const clauses: string[] = [];
@@ -148,7 +138,6 @@ export function buildListQuery(config: RunnableConfig, options?: CheckpointListO
   }
   return { sql, args };
 }
-
 function requireRecord(value: unknown, name: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`${name} 必须是对象`);

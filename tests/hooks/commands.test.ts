@@ -3,13 +3,11 @@ import { expect, test } from "bun:test";
 import { originalToolCommand } from "../../src/hooks/graph/commands";
 import { restoreOriginal, toolPlan, type ToolHookPlan } from "../../src/hooks/plan";
 import { messageReasoning } from "../../src/runtime/content";
-
 test("parallel tool messages own response and provider metadata exactly once", () => {
   const original = responseWithParallelCalls();
   let plan = toolPlan(original);
   const messages: AIMessage[] = [];
   const calls = required(original.tool_calls);
-
   for (const [toolIndex, call] of calls.entries()) {
     const command = originalToolCommand({ ...plan, toolIndex }, original, call);
     const update = command.update as {
@@ -19,7 +17,6 @@ test("parallel tool messages own response and provider metadata exactly once", (
     messages.push(required(update.messages[0]));
     plan = update.hookPlan;
   }
-
   expect(messages.map((message) => required(message.tool_calls)[0]?.id)).toEqual([
     "call-1",
     "call-2",
@@ -69,7 +66,6 @@ test("parallel tool messages own response and provider metadata exactly once", (
   ]);
   expect(restoreOriginal(plan.original)).toEqual(original);
 });
-
 function responseWithParallelCalls() {
   return new AIMessage({
     id: "response-1",
@@ -122,7 +118,6 @@ function responseWithParallelCalls() {
     },
   });
 }
-
 function required<T>(value: T | undefined): T {
   if (value === undefined) throw new Error("测试消息缺失");
   return value;

@@ -3,11 +3,8 @@ import YAML from "yaml";
 import { normalizeFreeformToolInputs } from "./freeformInputs";
 import { normalizeMcpToolNameOverrides } from "./nameOverrides";
 import { z } from "zod";
-
 const envPlaceholder = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
-
 type McpServers = Record<string, unknown>;
-
 const mcpServerSchema = z.looseObject({});
 const mcpServersSchema = z.record(z.string(), mcpServerSchema);
 const mcpConfigurationSchema = z
@@ -21,7 +18,6 @@ const stdioServerSchema = z.looseObject({
   command: z.string(),
   args: z.array(z.string()).optional(),
 });
-
 export function readMcpConfiguration(path: string) {
   const parsed = expandEnvPlaceholders(YAML.parse(readFileSync(path, "utf8")) ?? {});
   const result = mcpConfigurationSchema.safeParse(parsed);
@@ -39,7 +35,6 @@ export function readMcpConfiguration(path: string) {
     freeformToolInputs: normalizeFreeformToolInputs(configuration.freeformToolInputs),
   };
 }
-
 export function expandEnvPlaceholders(value: unknown, path = "settings/mcp.yaml"): unknown {
   if (typeof value === "string") {
     return value.replaceAll(envPlaceholder, (_match, name: string) => {
@@ -63,13 +58,11 @@ export function expandEnvPlaceholders(value: unknown, path = "settings/mcp.yaml"
   }
   return value;
 }
-
 export function normalizeMcpServers(mcpServers: McpServers): McpServers {
   return Object.fromEntries(
     Object.entries(mcpServers).map(([name, server]) => [name, normalizeMcpServer(server)]),
   );
 }
-
 function normalizeMcpServer(server: unknown): unknown {
   if (!isRecord(server)) return server;
   if ("command" in server) {
@@ -94,7 +87,6 @@ function normalizeMcpServer(server: unknown): unknown {
     reconnect: { enabled: false, maxAttempts: 0 },
   };
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

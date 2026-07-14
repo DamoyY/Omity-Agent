@@ -6,9 +6,7 @@ import {
   normalizeResponsesStreamEvent,
 } from "../../src/agent";
 import type { ModelApi, Settings } from "../../src/types";
-
 const savedEnv = new Map<string, string | undefined>();
-
 afterEach(() => {
   for (const [key, value] of savedEnv) {
     if (value === undefined) {
@@ -19,14 +17,12 @@ afterEach(() => {
   }
   savedEnv.clear();
 });
-
 function setEnv(key: string, value: string) {
   if (!savedEnv.has(key)) {
     savedEnv.set(key, process.env[key]);
   }
   process.env[key] = value;
 }
-
 function makeSettings(api: ModelApi): Settings {
   return {
     paths: { dataDir: "data" },
@@ -70,68 +66,55 @@ function makeSettings(api: ModelApi): Settings {
     },
   };
 }
-
 test("buildModel passes reasoning_effort to OpenAI Completions API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const settings = makeSettings("completions");
   settings.model.model = "gpt-5";
   settings.model.reasoning_effort = "high";
   const model = buildModel(settings, "session-1");
-
   expect(model).toBeInstanceOf(ChatOpenAICompletions);
   expect((model as ChatOpenAICompletions).invocationParams().reasoning_effort).toBe("high");
 });
-
 test("buildModel passes reasoning_effort to OpenAI Responses API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const settings = makeSettings("responses");
   settings.model.model = "gpt-5";
   settings.model.reasoning_effort = "low";
   const model = buildModel(settings, "session-1");
-
   expect(model).toBeInstanceOf(ChatOpenAIResponses);
   expect((model as ChatOpenAIResponses).invocationParams().reasoning).toEqual({
     effort: "low",
     summary: "detailed",
   });
 });
-
 test("buildModel disables remote storage and enables ZDR for all APIs", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const completions = buildModel(makeSettings("completions"), "session-1");
   const responses = buildModel(makeSettings("responses"), "session-1");
-
   expect((completions as ChatOpenAICompletions).zdrEnabled).toBeTrue();
   expect((completions as ChatOpenAICompletions).invocationParams().store).toBeFalse();
   expect((responses as ChatOpenAIResponses).zdrEnabled).toBeTrue();
   expect((responses as ChatOpenAIResponses).invocationParams().store).toBeFalse();
 });
-
 test("buildModel requests encrypted reasoning from OpenAI Responses API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const settings = makeSettings("responses");
   settings.model.model = "gpt-5";
   const model = buildModel(settings, "session-1");
-
   expect((model as ChatOpenAIResponses).invocationParams().include).toEqual([
     "reasoning.encrypted_content",
   ]);
 });
-
 test("buildModel passes instructions to OpenAI Responses API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const model = buildModel(makeSettings("responses"), "session-1", "system\n\nskills");
-
   expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe("system\n\nskills");
 });
-
 test("buildModel uses the session ID as the Responses prompt cache key", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const model = buildModel(makeSettings("responses"), "session-1");
-
   expect((model as ChatOpenAIResponses).invocationParams().prompt_cache_key).toBe("session-1");
 });
-
 test("normalizes missing Responses API output_text annotations", () => {
   const response = {
     output: [
@@ -141,7 +124,6 @@ test("normalizes missing Responses API output_text annotations", () => {
       },
     ],
   };
-
   expect(normalizeResponsesPayload(response as unknown)).toEqual({
     output: [
       {
@@ -151,7 +133,6 @@ test("normalizes missing Responses API output_text annotations", () => {
     ],
   });
 });
-
 test("normalizes completed Responses API stream events", () => {
   const event = {
     type: "response.completed",
@@ -164,7 +145,6 @@ test("normalizes completed Responses API stream events", () => {
       ],
     },
   };
-
   const normalized = normalizeResponsesStreamEvent(
     event as Parameters<typeof normalizeResponsesStreamEvent>[0],
   );

@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
 import { formatTokens } from "../../src/app/frontend/tokenUnits";
-
 test("formats token counts with dynamic context units", () => {
   expect(formatTokens(1000)).toBe("1000 Tokens");
   expect(formatTokens(1001)).toBe("1K Tokens");

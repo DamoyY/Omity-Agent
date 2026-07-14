@@ -1,16 +1,13 @@
 import type { SessionInfo } from "../../services/client";
-
 export interface SessionGroup {
   workspace: string;
   sessions: SessionInfo[];
   runningCount: number;
   updatedAt: number;
 }
-
 export function isRunning(session: SessionInfo) {
   return session.status === "model" || session.status === "tool";
 }
-
 export function groupSessions(sessions: SessionInfo[]): SessionGroup[] {
   const byWorkspace = new Map<string, SessionInfo[]>();
   for (const session of sessions) {
@@ -18,19 +15,15 @@ export function groupSessions(sessions: SessionInfo[]): SessionGroup[] {
     if (group) group.push(session);
     else byWorkspace.set(session.workspace, [session]);
   }
-
   return [...byWorkspace].map(toGroup).sort(compareGroups);
 }
-
 export function workspaceLabel(workspace: string) {
   const parts = workspace.split(/[\\/]+/u).filter(Boolean);
   return parts.at(-1) ?? workspace;
 }
-
 export function sessionLabel(id: string) {
   return id.slice(-6).toUpperCase();
 }
-
 export function formatUpdatedAt(updatedAt: number, locale: string, now = Date.now()) {
   const elapsedSeconds = Math.max(0, Math.floor(now / 1000) - updatedAt);
   const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
@@ -44,7 +37,6 @@ export function formatUpdatedAt(updatedAt: number, locale: string, now = Date.no
     day: "numeric",
   }).format(updatedAt * 1000);
 }
-
 function toGroup([workspace, source]: [string, SessionInfo[]]): SessionGroup {
   const sessions = [...source].sort(compareSessions);
   return {
@@ -54,7 +46,6 @@ function toGroup([workspace, source]: [string, SessionInfo[]]): SessionGroup {
     updatedAt: Math.max(...sessions.map(({ updatedAt }) => updatedAt)),
   };
 }
-
 function compareSessions(left: SessionInfo, right: SessionInfo) {
   return (
     Number(isRunning(right)) - Number(isRunning(left)) ||
@@ -63,7 +54,6 @@ function compareSessions(left: SessionInfo, right: SessionInfo) {
     left.id.localeCompare(right.id)
   );
 }
-
 function compareGroups(left: SessionGroup, right: SessionGroup) {
   return (
     Number(right.runningCount > 0) - Number(left.runningCount > 0) ||

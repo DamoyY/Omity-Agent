@@ -9,7 +9,6 @@ import {
 } from "@langchain/core/messages";
 import type { HookWhen } from "../types";
 import { readToolOutput, type HookToolOutput } from "./storage/outputs";
-
 export interface AgentHookPlan {
   kind: "agent";
   when: HookWhen;
@@ -18,7 +17,6 @@ export interface AgentHookPlan {
   hookIndex: number;
   previousOutput?: HookToolOutput;
 }
-
 export interface ToolHookPlan {
   kind: "tools";
   original: StoredMessage;
@@ -30,16 +28,13 @@ export interface ToolHookPlan {
   replaceMessageId?: string;
   awaiting?: { callId: string };
 }
-
 export type HookPlan = AgentHookPlan | ToolHookPlan | { kind: "done"; finalMessageId: string };
-
 export interface HookState {
   messages: BaseMessage[];
   hookPendingUserIds: string[];
   hookPlan: HookPlan | null;
   hookPreviousOutput?: HookToolOutput;
 }
-
 export function agentPlan(
   when: HookWhen,
   sources: string[],
@@ -54,7 +49,6 @@ export function agentPlan(
     previousOutput,
   };
 }
-
 export function toolPlan(message: AIMessage): ToolHookPlan {
   if (!message.id) throw new Error("工具调用消息缺少 ID");
   return {
@@ -67,13 +61,11 @@ export function toolPlan(message: AIMessage): ToolHookPlan {
     replaceMessageId: message.id,
   };
 }
-
 export function restoreOriginal(stored: StoredMessage) {
   const [message] = mapStoredMessagesToChatMessages([stored]);
   if (!AIMessage.isInstance(message)) throw new Error("Hook 工具计划无效");
   return message;
 }
-
 export function finishAwaited(plan: ToolHookPlan, messages: BaseMessage[]): ToolHookPlan {
   if (!plan.awaiting) return plan;
   const output = completedOutput(messages, plan.awaiting.callId);
@@ -86,7 +78,6 @@ export function finishAwaited(plan: ToolHookPlan, messages: BaseMessage[]): Tool
     previousOutput: readToolOutput(output),
   };
 }
-
 export function nextToolStage(plan: ToolHookPlan): ToolHookPlan {
   if (plan.stage === "before") {
     return { ...plan, stage: "original", hookIndex: 0 };
@@ -98,18 +89,15 @@ export function nextToolStage(plan: ToolHookPlan): ToolHookPlan {
     hookIndex: 0,
   };
 }
-
 export function requireCallId(call: ToolCall) {
   if (!call.id) throw new Error(`工具调用缺少 ID：${call.name}`);
   return call.id;
 }
-
 function completedOutput(messages: BaseMessage[], id: string) {
   return messages.findLast(
     (message) => ToolMessage.isInstance(message) && message.tool_call_id === id,
   ) as ToolMessage | undefined;
 }
-
 function storeMessage(message: BaseMessage) {
   const [stored] = mapChatMessagesToStoredMessages([message]);
   if (!stored) throw new Error("无法序列化 Hook 原始工具调用消息");

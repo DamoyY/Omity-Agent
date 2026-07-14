@@ -14,10 +14,8 @@ import {
 } from "../plan";
 import type { HookRuntime } from "../runtime";
 import { command, finishAgent, hookCommand, modelNode, originalToolCommand } from "./commands";
-
 type ConsumeHook = (hookId: string, limit: number) => Promise<boolean>;
 type InvokeGraphTool = (call: ToolCall) => Promise<ToolMessage>;
-
 export function createHookNode(
   hooks: HookRuntime,
   consumeHook: ConsumeHook,
@@ -34,7 +32,6 @@ export function createHookNode(
     if (!plan) return command(null, modelNode, clearPending);
     if (plan.kind === "done") return command(plan, END, clearPending);
     if (plan.kind === "tools") plan = finishAwaited(plan, state.messages);
-
     for (;;) {
       if (plan.kind === "agent") {
         const sourceId = plan.sources[plan.sourceIndex];
@@ -57,7 +54,6 @@ export function createHookNode(
         if (!result) continue;
         return hookCommand(plan, rule, result, clearPending);
       }
-
       const original = restoreOriginal(plan.original);
       const call = original.tool_calls?.[plan.toolIndex];
       if (!call) {
@@ -86,12 +82,10 @@ export function createHookNode(
     }
   };
 }
-
 function initialPlan(state: HookState): HookPlan | null {
   if (state.hookPlan) return state.hookPlan;
   return state.hookPendingUserIds.length > 0 ? agentPlan("before", state.hookPendingUserIds) : null;
 }
-
 function executeHook(
   plan: AgentHookPlan | ToolHookPlan,
   rule: HookRule,
@@ -107,7 +101,6 @@ function executeHook(
     invoke: invokeTool,
   });
 }
-
 export function requireThreadId(configurable: Record<string, unknown> | undefined) {
   const threadId = configurable?.["thread_id"];
   if (typeof threadId !== "string" || !threadId) {
@@ -115,5 +108,4 @@ export function requireThreadId(configurable: Record<string, unknown> | undefine
   }
   return threadId;
 }
-
 export { hookNode } from "./commands";

@@ -7,16 +7,13 @@ import * as callStorage from "./storage/calls";
 import { readToolOutput, type HookToolOutput } from "./storage/outputs";
 import { consumeHookUsage } from "./storage/usage";
 import { resolveHookArgs } from "./variables";
-
 interface RunOptions {
   previousOutput?: HookToolOutput;
   consume: (hookId: string, limit: number) => Promise<boolean>;
   invoke: (call: ReturnType<HookRuntime["resolvedCall"]>) => Promise<ToolMessage>;
 }
-
 export class HookRuntime {
   private readonly toolNames: Set<string>;
-
   constructor(
     readonly rules: HookRule[],
     tools: StructuredToolInterface[],
@@ -34,15 +31,12 @@ export class HookRuntime {
       if (rule.target !== "agent") this.requireTool(rule.target, `Hook ${rule.id} 目标`);
     }
   }
-
   matching(target: string, when: HookWhen) {
     return this.rules.filter((rule) => rule.target === target && rule.when === when);
   }
-
   consume(hookId: string, limit: number) {
     return consumeHookUsage(this.db, this.sessionId, hookId, limit);
   }
-
   async run(rule: HookRule, sourceId: string, threadId: string, options: RunOptions) {
     if (!(await options.consume(rule.id, rule.runLimit))) {
       return null;
@@ -58,7 +52,6 @@ export class HookRuntime {
     const output = await options.invoke(call);
     return { call, output, value: readToolOutput(output) };
   }
-
   resolvedCall(
     rule: HookRule,
     sourceId: string,
@@ -76,7 +69,6 @@ export class HookRuntime {
       type: "tool_call" as const,
     };
   }
-
   private requireTool(name: string, description: string) {
     if (!this.toolNames.has(name)) {
       throw new Error(`${description} 引用了不存在的 MCP 工具：${name}`);

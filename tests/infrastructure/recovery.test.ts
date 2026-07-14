@@ -1,9 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { captureError, parseError, stringifyError } from "../../src/failures/details";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
-
 afterEach(cleanupDatabaseDirs);
-
 test("recovery refuses a live lease unless its exact owner is confirmed dead", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
@@ -119,7 +117,6 @@ test("pauseRun is atomic, preserves pending work and omitted errors", () => {
      WHEN OLD.id = ${appended.toString()} AND NEW.status = 'paused'
      BEGIN SELECT RAISE(ABORT, 'injected failure'); END`,
   );
-
   expect(() => db.pauseRun("123", root)).toThrow("injected failure");
   expect(db.control("123")).toBe("running");
   expect(db.activeQueue("123").map(({ status }) => status)).toEqual([
@@ -127,7 +124,6 @@ test("pauseRun is atomic, preserves pending work and omitted errors", () => {
     "running",
     "pending",
   ]);
-
   db.db.run("DROP TRIGGER fail_group_pause");
   expect(db.pauseRun("123", root)).toBe(2);
   expect(db.control("123")).toBe("pause");
@@ -144,7 +140,6 @@ test("pauseRun is atomic, preserves pending work and omitted errors", () => {
   });
   expect(rows[1]?.error).toBeNull();
   expect(rows[2]?.error).toBeNull();
-
   const replacement = captureError(new Error("新错误"));
   expect(db.pauseRun("123", root, replacement)).toBe(2);
   const errors = db.db
@@ -155,7 +150,6 @@ test("pauseRun is atomic, preserves pending work and omitted errors", () => {
   expect(errors[2]?.error).toBeNull();
   db.close();
 });
-
 function insertThreadData(db: ReturnType<typeof makeDb>, threadId: string) {
   db.db.run(
     `INSERT INTO checkpoints (thread_id, checkpoint_id)
@@ -169,7 +163,6 @@ function insertThreadData(db: ReturnType<typeof makeDb>, threadId: string) {
     [threadId],
   );
 }
-
 function count(
   db: ReturnType<typeof makeDb>,
   table: "events" | "checkpoints" | "writes",

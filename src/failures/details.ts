@@ -1,6 +1,5 @@
 import { serializeError } from "serialize-error";
 import { z } from "zod";
-
 export type ErrorValue =
   | null
   | boolean
@@ -9,7 +8,6 @@ export type ErrorValue =
   | ErrorValue[]
   | ErrorDetails
   | { [key: string]: ErrorValue };
-
 export interface ErrorDetails {
   name: string;
   message: string;
@@ -17,7 +15,6 @@ export interface ErrorDetails {
   cause?: ErrorDetails;
   details?: Record<string, ErrorValue>;
 }
-
 const errorValueSchema: z.ZodType<ErrorValue> = z.lazy(() =>
   z.union([
     z.null(),
@@ -28,7 +25,6 @@ const errorValueSchema: z.ZodType<ErrorValue> = z.lazy(() =>
     z.record(z.string(), errorValueSchema),
   ]),
 );
-
 const errorDetailsSchema: z.ZodType<ErrorDetails> = z.lazy(() =>
   z.strictObject({
     name: z.string(),
@@ -38,7 +34,6 @@ const errorDetailsSchema: z.ZodType<ErrorDetails> = z.lazy(() =>
     details: z.record(z.string(), errorValueSchema).optional(),
   }),
 );
-
 export function captureError(error: unknown): ErrorDetails {
   const serializedError: unknown = serializeError(error);
   const json = JSON.stringify(serializedError);
@@ -54,25 +49,21 @@ export function captureError(error: unknown): ErrorDetails {
     adaptSerializedError(isRecord(serialized) ? serialized : {}, error),
   );
 }
-
 export function stringifyError(error: ErrorDetails) {
   return JSON.stringify(error);
 }
-
 export function parseError(value: string): ErrorDetails {
   const parsed: unknown = JSON.parse(value);
   const result = errorDetailsSchema.safeParse(parsed);
   if (!result.success) throw new Error("队列错误详情无效");
   return result.data;
 }
-
 function adaptSerializedError(serialized: Record<string, unknown>, source?: unknown): ErrorDetails {
   const details: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(serialized)) {
     if (["name", "message", "stack", "cause"].includes(key)) continue;
     details[key] = sourceProperty(source, key, value);
   }
-
   const cause = serialized["cause"];
   return {
     name: typeof serialized["name"] === "string" ? serialized["name"] : valueName(source),
@@ -89,7 +80,6 @@ function adaptSerializedError(serialized: Record<string, unknown>, source?: unkn
     ...(Object.keys(details).length > 0 ? { details: details as Record<string, ErrorValue> } : {}),
   };
 }
-
 function sourceProperty(source: unknown, key: string, serialized: unknown) {
   if (!isRecord(source)) return serialized;
   try {
@@ -99,7 +89,6 @@ function sourceProperty(source: unknown, key: string, serialized: unknown) {
     return serialized;
   }
 }
-
 function nonErrorValue(value: unknown, serialized: unknown): unknown {
   if (value === null || ["string", "boolean"].includes(typeof value)) {
     return value;
@@ -116,14 +105,12 @@ function nonErrorValue(value: unknown, serialized: unknown): unknown {
   }
   return serialized;
 }
-
 function valueName(value: unknown) {
   if (value === null) return "null";
   if (typeof value !== "object") return typeof value;
   const constructor = value.constructor;
   return typeof constructor === "function" && constructor.name ? constructor.name : "Object";
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

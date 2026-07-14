@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionInfo } from "../../src/app/frontend/services/client";
 import { groupSessions, isRunning } from "../../src/app/frontend/components/Sidebar/sessions";
-
 describe("侧栏会话排序", () => {
   test("运行工作区和运行会话优先，同时保持工作区聚类", () => {
     const input = [
@@ -11,9 +10,7 @@ describe("侧栏会话排序", () => {
       session("alpha-model", "F:/alpha", "model", 200),
       session("beta-new", "F:/beta", "idle", 800),
     ];
-
     const groups = groupSessions(input);
-
     expect(groups.map(({ workspace }) => workspace)).toEqual(["F:/beta", "F:/alpha", "F:/history"]);
     expect(groups.map(({ sessions }) => sessions.map(({ id }) => id))).toEqual([
       ["beta-tool", "beta-new"],
@@ -28,7 +25,6 @@ describe("侧栏会话排序", () => {
       "beta-new",
     ]);
   });
-
   test("只有模型和工具状态属于运行中", () => {
     expect(
       ["model", "tool"].map((status) =>
@@ -41,7 +37,6 @@ describe("侧栏会话排序", () => {
       ),
     ).toEqual([false, false, false]);
   });
-
   test("相同时间使用创建时间和 id 得到确定顺序", () => {
     const groups = groupSessions([
       session("z", "F:/same", "idle", 100, 10),
@@ -51,7 +46,6 @@ describe("侧栏会话排序", () => {
     expect(groups[0]?.sessions.map(({ id }) => id)).toEqual(["a", "b", "z"]);
   });
 });
-
 function session(
   id: string,
   workspace: string,

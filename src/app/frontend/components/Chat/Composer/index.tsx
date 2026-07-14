@@ -14,7 +14,6 @@ import { PendingAttachments } from "./attachments";
 import { UserMessageHistory, type HistoryDirection } from "./history";
 import { composerFrame } from "./layout";
 import type { ComposerProps } from "./props";
-
 export function Composer({
   disabled,
   attachmentSettings,
@@ -41,11 +40,9 @@ export function Composer({
   const saverRef = useRef<DraftSaver | undefined>(undefined);
   const submittingRef = useRef(false);
   const sessionId = draftTarget.kind === "session" ? draftTarget.sessionId : undefined;
-
   useEffect(() => {
     attachmentsRef.current.configure(attachmentSettings);
   }, [attachmentSettings]);
-
   useEffect(() => {
     let current = true;
     const target: ComposerDraftTarget = sessionId
@@ -65,7 +62,6 @@ export function Composer({
       current = false;
     };
   }, [draft, sessionId]);
-
   useEffect(() => {
     if (draftSaveDelayMs === undefined) return;
     const target: ComposerDraftTarget = sessionId
@@ -78,7 +74,6 @@ export function Composer({
       reportPromiseErrors(saver.flush());
     };
   }, [draftSaveDelayMs, sessionId]);
-
   useEffect(() => {
     const target: ComposerDraftTarget = sessionId
       ? { kind: "session", sessionId }
@@ -91,7 +86,6 @@ export function Composer({
       window.removeEventListener("pagehide", flush);
     };
   }, [sessionId]);
-
   const updateContent = (nextContent: string) => {
     if (nextContent === contentRef.current) return;
     contentRef.current = nextContent;
@@ -99,14 +93,12 @@ export function Composer({
     revisionRef.current += 1;
     saverRef.current?.schedule(nextContent, revisionRef.current);
   };
-
   const navigateHistory = (direction: HistoryDirection) => {
     const nextContent = historyRef.current.navigate(direction, contentRef.current, userMessages);
     if (nextContent === undefined) return undefined;
     updateContent(nextContent);
     return nextContent;
   };
-
   const submit = async () => {
     const submittedContent = contentRef.current;
     if (submittingRef.current || !submittedContent.trim()) return;
@@ -136,7 +128,6 @@ export function Composer({
       setSubmitting(false);
     }
   };
-
   const editorDisabled = disabled || loading || submitting;
   return (
     <form

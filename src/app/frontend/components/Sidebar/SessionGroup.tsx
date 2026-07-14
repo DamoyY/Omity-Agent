@@ -13,13 +13,11 @@ import {
   workspaceLabel,
   type SessionGroup as Group,
 } from "./sessions";
-
 interface Props {
   group: Group;
   activeId?: string;
   onSelect: (id: string) => void;
 }
-
 export function SessionGroup({ group, activeId, onSelect }: Props) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(true);

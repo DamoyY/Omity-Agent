@@ -1,6 +1,5 @@
 import { sameToolCall } from "./identity";
 import type { TimelineMessage, TimelinePart } from "./types";
-
 export function groupAssistantMessages(messages: TimelineMessage[]) {
   const result: TimelineMessage[] = [];
   let currentAssistant: TimelineMessage | undefined;
@@ -20,7 +19,6 @@ export function groupAssistantMessages(messages: TimelineMessage[]) {
   }
   return result;
 }
-
 function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
   target.content = [target.content, source.content]
     .filter((content) => content.trim().length > 0)
@@ -37,7 +35,6 @@ function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
   }
   if (source.usage) target.usage = source.usage;
 }
-
 function toolParts(message: TimelineMessage) {
   return message.parts.filter(
     (part): part is Extract<TimelinePart, { type: "tool" }> => part.type === "tool",

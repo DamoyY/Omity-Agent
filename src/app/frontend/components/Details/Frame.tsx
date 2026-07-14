@@ -1,7 +1,6 @@
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { sva } from "styled-system/css";
-
 const frame = sva({
   slots: ["root", "summary", "disclosure", "icon", "title"],
   base: {
@@ -58,7 +57,6 @@ const frame = sva({
     },
   },
 });
-
 export function Frame({
   accessory,
   children,

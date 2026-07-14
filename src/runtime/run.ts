@@ -4,15 +4,12 @@ import { contentToText } from "./content";
 import type { HostContext } from "./context";
 import { deleteThreadData } from "../checkpointer/lifecycle";
 import type { ErrorDetails } from "../failures/details";
-
 export class CanceledRun extends Error {}
-
 export interface QueueRun {
   items: [QueueItem, ...QueueItem[]];
   rootId: number;
   threadId: string;
 }
-
 export function finishRun(
   ctx: HostContext,
   run: QueueRun,
@@ -30,7 +27,6 @@ export function finishRun(
   ctx.logger.info("队列完成", { queueId: lastItem.id, chars: content.length });
   if (ctx.settings.logging.streamTokens) process.stdout.write("\n");
 }
-
 function requireFinalMessageId(plan: unknown) {
   if (
     typeof plan !== "object" ||
@@ -44,14 +40,12 @@ function requireFinalMessageId(plan: unknown) {
   }
   return plan.finalMessageId;
 }
-
 export function cancelRun(ctx: HostContext, run: QueueRun) {
   finalizeRun(ctx, run, "canceled");
   ctx.controller.abort(new CanceledRun("运行已取消"));
   ctx.observer?.changed?.(ctx.sessionId);
   ctx.logger.warn("队列已取消，Host 已关闭", { queueId: run.items[0].id });
 }
-
 function finalizeRun(ctx: HostContext, run: QueueRun, status: "done" | "canceled") {
   ctx.db.db.transaction(() => {
     for (const item of run.items) ctx.db.setQueueStatus(item.id, status);
@@ -59,7 +53,6 @@ function finalizeRun(ctx: HostContext, run: QueueRun, status: "done" | "canceled
     deleteThreadData(ctx.db.db, run.threadId);
   })();
 }
-
 export function setRunStatus(
   ctx: HostContext,
   run: QueueRun,

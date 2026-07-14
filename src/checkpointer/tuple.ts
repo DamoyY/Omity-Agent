@@ -10,12 +10,10 @@ import type { CheckpointRow, WriteJson } from "./sql";
 import { deserialize } from "./serde";
 import { hydrateCheckpoint, hydratePendingValue } from "./messageRefs";
 import { z } from "zod";
-
 interface TupleContext {
   db: Database;
   serde: SerializerProtocol;
 }
-
 const writeRowSchema = z.looseObject({
   task_id: z.string(),
   idx: z.number(),
@@ -48,7 +46,6 @@ export async function rowToTuple(
     pendingWrites: await pendingWrites(row, ctx),
   };
 }
-
 async function pendingWrites(
   row: CheckpointRow,
   ctx: TupleContext,
@@ -64,7 +61,6 @@ async function pendingWrites(
     ),
   );
 }
-
 function parseWriteRows(value: string): WriteJson[] {
   const parsed: unknown = JSON.parse(value);
   const result = z.array(writeRowSchema).safeParse(parsed);

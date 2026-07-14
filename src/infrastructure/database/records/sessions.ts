@@ -1,7 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { sessionConflict, sessionNotFound } from "../../../errors";
 import type { Control } from "../../../types";
-
 export function createSessionRecord(db: Database, sessionId: string, workspace: string) {
   if (hasSessionRecord(db, sessionId)) {
     throw sessionConflict(sessionId);
@@ -13,7 +12,6 @@ export function createSessionRecord(db: Database, sessionId: string, workspace: 
     .run(sessionId, workspace);
   if (result.changes !== 1) throw sessionConflict(sessionId);
 }
-
 export function hasSessionRecord(db: Database, sessionId: string) {
   const query = db.prepare<{ value: number }, [string]>(
     "SELECT 1 AS value FROM sessions WHERE id = ?",
@@ -26,13 +24,11 @@ export function hasSessionRecord(db: Database, sessionId: string) {
   }
   return row !== null;
 }
-
 export function requireSessionRecord(db: Database, sessionId: string) {
   if (!hasSessionRecord(db, sessionId)) {
     throw sessionNotFound(sessionId);
   }
 }
-
 export function readWorkspaceRecord(db: Database, sessionId: string) {
   requireSessionRecord(db, sessionId);
   const row = db
@@ -41,12 +37,10 @@ export function readWorkspaceRecord(db: Database, sessionId: string) {
   if (!row) throw sessionNotFound(sessionId);
   return row.workspace;
 }
-
 export function touchSessionRecord(db: Database, sessionId: string) {
   requireSessionRecord(db, sessionId);
   db.query("UPDATE sessions SET updated_at = unixepoch() WHERE id = ?").run(sessionId);
 }
-
 export function readControlRecord(db: Database, sessionId: string): Control {
   requireSessionRecord(db, sessionId);
   const query = db.prepare<{ control: Control }, [string]>(
@@ -61,7 +55,6 @@ export function readControlRecord(db: Database, sessionId: string): Control {
   if (!row) throw sessionNotFound(sessionId);
   return row.control;
 }
-
 export function writeControlRecord(db: Database, sessionId: string, control: Control) {
   requireSessionRecord(db, sessionId);
   db.query("UPDATE sessions SET control = ?, updated_at = unixepoch() WHERE id = ?").run(

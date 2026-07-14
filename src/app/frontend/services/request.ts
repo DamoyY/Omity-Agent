@@ -1,10 +1,8 @@
 import { z } from "zod";
 import { reportError } from "./errors";
-
 const errorResponse = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
 });
-
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -14,7 +12,6 @@ export class ApiError extends Error {
     super(message);
   }
 }
-
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     const response = await fetch(path, {

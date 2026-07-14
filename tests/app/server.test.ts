@@ -12,15 +12,12 @@ import { captureError } from "../../src/failures/details";
 import { AppInstanceLock } from "../../src/app/runtime/instanceLock";
 import { required } from "../support/database";
 import { writeTestConfiguration } from "../support/configuration";
-
 const dirs: string[] = [];
-
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
 test("app session summaries expose paused queue errors", async () => {
   const root = makeRoot();
   const workspace = join(root, "workspace");
@@ -31,7 +28,6 @@ test("app session summaries expose paused queue errors", async () => {
   const queueId = db.appendUser("failed-session", "test");
   db.setQueueStatus(queueId, "paused", captureError(new Error("model request failed")));
   db.close();
-
   const controller = new AppController(root);
   expect(controller.bootstrap().sessions[0]).toMatchObject({
     id: "failed-session",
@@ -40,7 +36,6 @@ test("app session summaries expose paused queue errors", async () => {
   });
   await controller.close();
 });
-
 test("app registry serves a memory projection refreshed one session at a time", () => {
   const root = makeRoot();
   const workspace = join(root, "workspace");
@@ -50,7 +45,6 @@ test("app registry serves a memory projection refreshed one session at a time", 
   const db = new AgentDatabase(paths.dbPath);
   db.createSession("cli-session", workspace);
   db.close();
-
   const registry = new AppRegistry(settings);
   const sessions = registry.list();
   expect(sessions).toHaveLength(1);
@@ -59,37 +53,30 @@ test("app registry serves a memory projection refreshed one session at a time", 
   expect(session.workspace).toBe(workspace);
   expect(typeof session.createdAt).toBe("number");
   expect(typeof session.updatedAt).toBe("number");
-
   const secondPaths = sessionPaths(settings, "second-session");
   const second = new AgentDatabase(secondPaths.dbPath);
   second.createSession("second-session", workspace);
   second.close();
   expect(registry.list()).toHaveLength(1);
-
   expect(registry.refresh("second-session").control).toBe("running");
   const changed = new AgentDatabase(secondPaths.dbPath);
   changed.setControl("second-session", "pause");
   changed.close();
   expect(registry.require("second-session").control).toBe("running");
   expect(registry.refresh("second-session").control).toBe("pause");
-
   rmSync(secondPaths.dir, { recursive: true, force: true });
   registry.remove("second-session");
   expect(() => registry.require("second-session")).toThrow("会话不存在");
   expect(existsSync(join(settings.paths.dataDir, "app.sqlite"))).toBe(false);
 });
-
 test("app instance lock rejects a second server for the same data directory", () => {
   const root = makeRoot();
   const dataDir = loadSettings(root).paths.dataDir;
   const lock = AppInstanceLock.acquire(dataDir);
-
   expect(() => AppInstanceLock.acquire(dataDir)).toThrow("数据目录已有 App 在运行");
-
   lock.release();
   expect(existsSync(join(dataDir, "app.lock"))).toBe(false);
 });
-
 test("session status prioritizes errors and pauses over host activity", () => {
   const running = { control: "running" as const, paused: false, error: null };
   const failure = captureError(new Error("Run failed"));
@@ -98,7 +85,6 @@ test("session status prioritizes errors and pauses over host activity", () => {
   expect(resolveSessionStatus({ ...running, paused: true }, "tool", null)).toBe("paused");
   expect(resolveSessionStatus({ ...running, error: failure }, "model", null)).toBe("error");
 });
-
 test("session state exposes host errors before queue errors", () => {
   const runError = captureError(new Error("Run failed"));
   const hostError = captureError(new Error("Host failed"));
@@ -116,7 +102,6 @@ test("session state exposes host errors before queue errors", () => {
     error: runError,
   });
 });
-
 function makeRoot() {
   const root = mkdtempSync(join(tmpdir(), "agent-registry-"));
   dirs.push(root);

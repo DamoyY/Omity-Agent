@@ -14,7 +14,6 @@ import {
   readSessionForm,
   requestBodyLimit,
 } from "./request";
-
 export type ApiController = Pick<
   AppController,
   | "bootstrap"
@@ -32,7 +31,6 @@ export type ApiController = Pick<
   | "assertSession"
   | "events"
 >;
-
 export function createApi(controller: ApiController) {
   const app = new Hono();
   const attachmentBodyLimit = requestBodyLimit + controller.bootstrap().attachments.maxSizeBytes;
@@ -48,7 +46,6 @@ export function createApi(controller: ApiController) {
       throw new HttpError(413, `请求体不能超过 ${requestBodyLimit.toString()} 字节`);
     },
   });
-
   app.use("/api/sessions/:sessionId/messages", attachmentRequestLimit);
   app.get("/api/bootstrap", (c) => c.json(controller.bootstrap()));
   app.get("/api/sessions", (c) => c.json({ sessions: controller.sessions() }));
@@ -98,7 +95,6 @@ export function createApi(controller: ApiController) {
       session: await controller.forkSession(sessionId(c), body.beforeMessageId),
     });
   });
-
   app.notFound((c) => {
     throw new HttpError(404, `未知 API：${c.req.path}`);
   });
@@ -108,7 +104,6 @@ export function createApi(controller: ApiController) {
   });
   return app;
 }
-
 function sessionId(c: Context) {
   const value = c.req.param("sessionId");
   if (value === undefined) throw new HttpError(400, "请求缺少 Session ID");

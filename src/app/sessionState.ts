@@ -1,7 +1,6 @@
 import type { ErrorDetails } from "../failures/details";
 import type { SessionStatus } from "../types";
 import type { RegisteredSession } from "./registry";
-
 export interface SessionInfo {
   id: string;
   workspace: string;
@@ -10,7 +9,6 @@ export interface SessionInfo {
   status: SessionStatus;
   error: ErrorDetails | null;
 }
-
 export function projectSession(
   session: RegisteredSession,
   activity: Extract<SessionStatus, "tool" | "model" | "idle">,
@@ -24,7 +22,6 @@ export function projectSession(
     ...resolveSessionState(session, activity, hostError),
   };
 }
-
 export function resolveSessionState(
   session: Pick<RegisteredSession, "control" | "paused" | "error">,
   activity: Extract<SessionStatus, "tool" | "model" | "idle">,
@@ -35,7 +32,6 @@ export function resolveSessionState(
     error: hostError ?? session.error,
   };
 }
-
 export function resolveSessionStatus(
   session: Pick<RegisteredSession, "control" | "paused" | "error">,
   activity: Extract<SessionStatus, "tool" | "model" | "idle">,

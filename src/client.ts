@@ -4,18 +4,15 @@ import { loadSettings } from "./infrastructure/configuration/loadSettings";
 import { resolveSessionPaths } from "./infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "./infrastructure/database/agentDatabase";
 import type { Control } from "./types";
-
 export interface ClientCommand {
   sessionId: string;
   append?: string;
   control?: Control;
 }
-
 export interface ClientResult {
   queueId?: number;
   control?: Control;
 }
-
 export function runClient(command: ClientCommand, root = process.cwd()) {
   if ((command.append === undefined ? 0 : 1) + (command.control ? 1 : 0) !== 1) {
     throw new Error("client 需要且仅需要一个 append、pause、continue、resume 或 cancel 指令");
@@ -49,7 +46,6 @@ export function runClient(command: ClientCommand, root = process.cwd()) {
     db.close();
   }
 }
-
 export function parseClientIntent(tokens: string[]): Omit<ClientCommand, "sessionId"> {
   const [head, ...tail] = tokens;
   if (!head) {
@@ -73,13 +69,11 @@ export function parseClientIntent(tokens: string[]): Omit<ClientCommand, "sessio
   }
   throw new Error("client 需要 append=<文本>、pause、continue、resume 或 cancel");
 }
-
 function requireNoExtraTokens(command: string, tail: string[]) {
   if (tail.length > 0) {
     throw new Error(`${command} 后面不应再跟其他内容`);
   }
 }
-
 function requireMessage(message: string) {
   if (message.trim().length === 0) {
     throw new Error("append 内容不能为空");

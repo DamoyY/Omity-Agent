@@ -11,9 +11,7 @@ import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
 } from "../../src/infrastructure/mcp/nameOverrides";
-
 const savedEnv = new Map<string, string | undefined>();
-
 afterEach(() => {
   for (const [key, value] of savedEnv) {
     if (value === undefined) {
@@ -24,18 +22,15 @@ afterEach(() => {
   }
   savedEnv.clear();
 });
-
 function setEnv(key: string, value: string) {
   if (!savedEnv.has(key)) {
     savedEnv.set(key, process.env[key]);
   }
   process.env[key] = value;
 }
-
 test("mcp config expands env placeholders recursively", () => {
   setEnv("MCP_API_KEY", "secret");
   setEnv("MCP_TOKEN", "token");
-
   expect(
     expandEnvPlaceholders({
       mcpServers: {
@@ -68,13 +63,11 @@ test("mcp config expands env placeholders recursively", () => {
     },
   });
 });
-
 test("mcp config reports missing env placeholders", () => {
   expect(() => expandEnvPlaceholders({ env: { API_KEY: "${MISSING_MCP_KEY}" } })).toThrow(
     "MCP 配置 settings/mcp.yaml.env.API_KEY 引用了未设置的环境变量 MISSING_MCP_KEY",
   );
 });
-
 test("mcp config rejects unknown top-level fields", () => {
   const directory = mkdtempSync(join(tmpdir(), "omity-mcp-"));
   const path = join(directory, "mcp.yaml");
@@ -85,7 +78,6 @@ test("mcp config rejects unknown top-level fields", () => {
     rmSync(directory, { recursive: true });
   }
 });
-
 test("mcp stdio config fills omitted args and suppresses stderr", () => {
   expect(
     normalizeMcpServers({
@@ -117,7 +109,6 @@ test("mcp stdio config fills omitted args and suppresses stderr", () => {
     },
   });
 });
-
 test("mcp stdio config rejects non-array args", () => {
   expect(() =>
     normalizeMcpServers({
@@ -125,23 +116,19 @@ test("mcp stdio config rejects non-array args", () => {
     }),
   ).toThrow();
 });
-
 test("mcp config rejects renaming a tool to agent", () => {
   expect(() => normalizeMcpToolNameOverrides({ web__search: "agent" })).toThrow(
     "MCP 工具重命名配置 settings/mcp.yaml.toolNameOverrides.web__search 不能命名为 agent",
   );
 });
-
 test("mcp tool name overrides rename loaded tools", () => {
   const tools = toolNames(["web__search", "web__crawl"]);
-
   expect(
     renameMcpTools(tools, {
       web__search: "search",
     }).map((tool) => tool.name),
   ).toEqual(["search", "web__crawl"]);
 });
-
 test("mcp tool name overrides report missing source tools", () => {
   expect(() =>
     renameMcpTools(toolNames(["web__search"]), {
@@ -149,7 +136,6 @@ test("mcp tool name overrides report missing source tools", () => {
     }),
   ).toThrow("MCP 工具重命名配置引用了不存在的工具：web__missing");
 });
-
 test("mcp tool name overrides report renamed conflicts", () => {
   expect(() =>
     renameMcpTools(toolNames(["web__search", "web__crawl"]), {
@@ -157,7 +143,6 @@ test("mcp tool name overrides report renamed conflicts", () => {
     }),
   ).toThrow("MCP 工具重命名后名称冲突：web__crawl");
 });
-
 function toolNames(names: string[]) {
   return names.map((name) => ({ name })) as never;
 }

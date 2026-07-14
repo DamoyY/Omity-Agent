@@ -1,10 +1,8 @@
 import type { ProcessOwner } from "../../infrastructure/process/ownership";
 import type { HostObserver } from "../context";
-
 export interface HostControls {
   cancelTool(callId: string): boolean;
 }
-
 export interface HostRunOptions {
   controller?: AbortController;
   cwd?: string;

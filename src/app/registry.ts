@@ -7,7 +7,6 @@ import { closeDatabase, configureReadonlyDatabase } from "../infrastructure/data
 import { assertCoreSchema } from "../infrastructure/database/validateSchema";
 import type { Control, Settings } from "../types";
 import { parseError, type ErrorDetails } from "../failures/details";
-
 export interface RegisteredSession {
   id: string;
   workspace: string;
@@ -17,7 +16,6 @@ export interface RegisteredSession {
   paused: boolean;
   error: ErrorDetails | null;
 }
-
 interface SessionRow {
   id: string;
   workspace: string;
@@ -27,7 +25,6 @@ interface SessionRow {
   paused: number;
   error: string | null;
 }
-
 const sessionSelect = `
   SELECT s.id, s.workspace, s.created_at, s.updated_at, s.control,
     EXISTS(
@@ -41,50 +38,41 @@ const sessionSelect = `
       ORDER BY q.id DESC LIMIT 1
     ) AS error
   FROM sessions s`;
-
 export class AppRegistry {
   private readonly sessionsDir: string;
   private readonly sessions = new Map<string, RegisteredSession>();
-
   constructor(private readonly settings: Settings) {
     this.sessionsDir = resolve(settings.paths.dataDir, "sessions");
     for (const session of scanSessions(this.settings, this.sessionsDir)) {
       this.sessions.set(session.id, session);
     }
   }
-
   list() {
     return [...this.sessions.values()].sort(compareSessions);
   }
-
   require(id: string) {
     const session = this.sessions.get(id);
     if (!session) throw sessionNotFound(id);
     return session;
   }
-
   refresh(id: string) {
     const session = readSession(resolveSessionPaths(this.settings, id).dbPath, id, false);
     this.sessions.set(id, session);
     return session;
   }
-
   remove(id: string) {
     if (!this.sessions.delete(id)) throw sessionNotFound(id);
   }
 }
-
 function scanSessions(settings: Settings, sessionsDir: string) {
   if (!existsSync(sessionsDir)) return [];
   return readdirSync(sessionsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => readSession(resolveSessionPaths(settings, entry.name).dbPath, undefined, true));
 }
-
 function compareSessions(left: RegisteredSession, right: RegisteredSession) {
   return right.updatedAt - left.updatedAt || right.createdAt - left.createdAt;
 }
-
 function readSession(dbPath: string, id?: string, validate = false) {
   if (!existsSync(dbPath)) throw sessionNotFound(id ?? dbPath);
   const db = new Database(dbPath, {
@@ -113,7 +101,6 @@ function readSession(dbPath: string, id?: string, validate = false) {
     closeDatabase(db);
   }
 }
-
 function toSession(row: SessionRow): RegisteredSession {
   return {
     id: row.id,

@@ -9,7 +9,6 @@ import {
   prepareModelImageMessages,
   toolContentText,
 } from "../../src/runtime/modelImages";
-
 test("extracts unbounded MCP base64 images and their text", () => {
   const data = "A".repeat(1024 * 1024);
   const content = JSON.stringify({
@@ -18,13 +17,11 @@ test("extracts unbounded MCP base64 images and their text", () => {
       { type: "image", data, mimeType: "image/png" },
     ],
   });
-
   expect(toolContentText(content)).toBe("screenshot");
   expect(extractToolImages(content)).toEqual([
     { src: `data:image/png;base64,${data}`, mimeType: "image/png" },
   ]);
 });
-
 test("prepares provider-native tool image output for Responses API", () => {
   const src = "data:image/webp;base64,AAAA";
   const message = new ToolMessage({
@@ -35,10 +32,8 @@ test("prepares provider-native tool image output for Responses API", () => {
     tool_call_id: "call-1",
     name: "screenshot",
   });
-
   const [prepared] = prepareModelImageMessages([message], "responses");
   if (!prepared) throw new Error("模型图片消息未生成");
-
   expect(prepared).toBeInstanceOf(ToolMessage);
   expect(prepared.content).toEqual([
     { type: "input_text", text: "result" },
@@ -63,7 +58,6 @@ test("prepares provider-native tool image output for Responses API", () => {
     },
   ]);
 });
-
 test("adds image notices to Completions tool results", () => {
   const firstSrc = "data:image/png;base64,AAAA";
   const messages = [
@@ -88,9 +82,7 @@ test("adds image notices to Completions tool results", () => {
     }),
     new AIMessage("next"),
   ];
-
   const prepared = prepareModelImageMessages(messages, "completions");
-
   expect(prepared.map((message) => message.type)).toEqual(["ai", "tool", "tool", "ai"]);
   expect(prepared[1]?.content).toBe(
     "first\n\n工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",

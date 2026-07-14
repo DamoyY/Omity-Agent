@@ -7,16 +7,13 @@ import {
   type ReasoningStreamState,
   streamedMessageReasoning,
 } from "./content";
-
 const omitted = Symbol("omitted");
 type DiffResult = { value: unknown } | typeof omitted;
-
 export interface StreamLogState {
   reasoning: ReasoningStreamState;
   seenFacts: Set<string>;
   seenStructures: Set<string>;
 }
-
 export function createStreamLogState(): StreamLogState {
   return {
     reasoning: createReasoningStreamState(),
@@ -24,7 +21,6 @@ export function createStreamLogState(): StreamLogState {
     seenStructures: new Set(),
   };
 }
-
 export function handleStreamEvent(
   ctx: HostContext,
   event: unknown,
@@ -67,7 +63,6 @@ export function handleStreamEvent(
   const delta = incrementalSummary(payload, state);
   if (delta !== undefined) ctx.logger.debug("调试事件增量", delta);
 }
-
 export function recordToolExecutionStarted(
   ctx: HostContext,
   messages: BaseMessage[],
@@ -87,12 +82,10 @@ export function recordToolExecutionStarted(
   ctx.toolExecutions?.announce(call.id);
   ctx.db.toolStarted(ctx.sessionId, queueId, call.id);
 }
-
 export function incrementalSummary(value: unknown, state: StreamLogState): unknown {
   const delta = diffSeen(value, state, "$");
   return delta === omitted ? undefined : summarize(delta.value);
 }
-
 function diffSeen(value: unknown, state: StreamLogState, key: string): DiffResult {
   if (isRecord(value)) {
     const hash = stableStringify(value);
@@ -118,11 +111,9 @@ function diffSeen(value: unknown, state: StreamLogState, key: string): DiffResul
   state.seenFacts.add(fact);
   return { value };
 }
-
 function isIncluded(value: DiffResult): value is { value: unknown } {
   return value !== omitted;
 }
-
 function summarize(value: unknown) {
   if (value === undefined) return undefined;
   const json = JSON.stringify(value, (_key, current: unknown) =>
@@ -130,19 +121,15 @@ function summarize(value: unknown) {
   );
   return JSON.parse(json) as unknown;
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
 function isAiChunk(value: unknown): value is AIMessageChunk {
   return AIMessageChunk.isInstance(value);
 }
-
 function readMessageId(value: unknown) {
   return isRecord(value) && typeof value["id"] === "string" ? value["id"] : undefined;
 }
-
 function toolCallDeltas(chunk: unknown) {
   if (!isRecord(chunk) || !Array.isArray(chunk["tool_call_chunks"])) {
     return [];

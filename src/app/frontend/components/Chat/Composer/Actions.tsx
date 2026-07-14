@@ -6,9 +6,7 @@ import { reportPromiseErrors } from "../../../services/errors";
 import { ContextUsage } from "../ContextUsage";
 import { DeleteSessionButton } from "../DeleteSessionButton";
 import { composerActions, composerControls } from "./layout";
-
 type ControlState = "pause" | "pausing" | "resume";
-
 export function Actions({
   controlDisabled,
   controlState,

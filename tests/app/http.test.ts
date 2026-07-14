@@ -4,7 +4,6 @@ import { normalizeError } from "../../src/app/http/errors";
 import { createApi, type ApiController } from "../../src/app/http/handler";
 import { decodeSessionId, requestBodyLimit } from "../../src/app/http/request";
 import { DomainError, sessionNotFound } from "../../src/errors";
-
 test("API JSON validation rejects invalid controls and empty messages", async () => {
   const api = createApi(apiController());
   const invalidControl = await api.request(
@@ -21,7 +20,6 @@ test("API JSON validation rejects invalid controls and empty messages", async ()
   });
   expect(emptyMessage.status).toBe(400);
 });
-
 test("message multipart validation forwards placeholders and files", async () => {
   const calls: unknown[] = [];
   const controller = apiController();
@@ -32,12 +30,10 @@ test("message multipart validation forwards placeholders and files", async () =>
   const id = "123e4567-e89b-42d3-a456-426614174000";
   const body = messageForm(`查看 {{file:${id}:notes.txt}}`, 3);
   body.append(`file:${id}`, new File(["hello"], "notes.txt"));
-
   const response = await createApi(controller).request("/api/sessions/test/messages", {
     method: "POST",
     body,
   });
-
   expect(response.status).toBe(200);
   expect(calls).toHaveLength(1);
   expect(calls[0]).toMatchObject([
@@ -49,7 +45,6 @@ test("message multipart validation forwards placeholders and files", async () =>
     },
   ]);
 });
-
 test("session creation validates and forwards the complete initial state", async () => {
   const calls: unknown[] = [];
   const controller = apiController();
@@ -81,7 +76,6 @@ test("session creation validates and forwards the complete initial state", async
       },
     ],
   ]);
-
   const incompleteBody = sessionForm("F:/workspace", [{ user: "", assistant: "回答" }], "新问题");
   const incomplete = await api.request("/api/sessions", {
     method: "POST",
@@ -89,7 +83,6 @@ test("session creation validates and forwards the complete initial state", async
   });
   expect(incomplete.status).toBe(400);
 });
-
 test("API JSON reader enforces the body size limit", async () => {
   const body = `"${"x".repeat(requestBodyLimit)}"`;
   const response = await createApi(apiController()).request("/api/sessions/test/control", {
@@ -104,7 +97,6 @@ test("API JSON reader enforces the body size limit", async () => {
     },
   });
 });
-
 test("API returns the existing JSON 404 contract", async () => {
   const response = await createApi(apiController()).request("/api/unknown");
   expect(response.status).toBe(404);
@@ -112,13 +104,11 @@ test("API returns the existing JSON 404 contract", async () => {
     error: { code: "NOT_FOUND", message: "未知 API：/api/unknown" },
   });
 });
-
 test("API validates encoded session IDs without path normalization", () => {
   expect(decodeSessionId("web-123")).toBe("web-123");
   expect(() => decodeSessionId("abc%2Fdef")).toThrow("路径 ID 无效");
   expect(() => decodeSessionId("%E0%A4%A")).toThrow("Session ID 编码无效");
 });
-
 test("API maps missing sessions and conflicts to explicit status codes", () => {
   expect(normalizeError(sessionNotFound("123"))).toMatchObject({
     status: 404,
@@ -139,18 +129,15 @@ test("API maps missing sessions and conflicts to explicit status codes", () => {
     normalizeError(new DomainError("ATTACHMENT_TOO_LARGE", "附件总大小超过上限")),
   ).toMatchObject({ status: 413, code: "ATTACHMENT_TOO_LARGE" });
 });
-
 function jsonRequest(body: unknown): RequestInit {
   return { method: "POST", body: JSON.stringify(body) };
 }
-
 function messageForm(content: string, draftRevision: number) {
   const body = new FormData();
   body.set("content", content);
   body.set("draftRevision", draftRevision.toString());
   return body;
 }
-
 function sessionForm(
   workspace: string,
   history: { user: string; assistant: string }[],
@@ -162,7 +149,6 @@ function sessionForm(
   body.set("message", message);
   return body;
 }
-
 function apiController() {
   return {
     bootstrap: () => ({

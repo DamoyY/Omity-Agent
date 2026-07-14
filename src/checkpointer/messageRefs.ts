@@ -14,15 +14,12 @@ import {
   type StoredMessageRef,
 } from "../infrastructure/database/records/messages/blobStore";
 import { syncMessages } from "../infrastructure/database/records/messages/history";
-
 const messageRefsKey = "__omity_message_refs__";
 const storedMessageRefKey = "__omity_stored_message_ref__";
-
 interface MessageRefs {
   [messageRefsKey]: StoredMessageRef[];
   shape: "array" | "single";
 }
-
 export function normalizeCheckpoint(checkpoint: Checkpoint) {
   const messages = checkpoint.channel_values["messages"];
   const normalizedMessages = isMessageArray(messages) ? messages : undefined;
@@ -41,7 +38,6 @@ export function normalizeCheckpoint(checkpoint: Checkpoint) {
     referencedMessages: plan.messages,
   };
 }
-
 export function persistCheckpointMessages(
   db: Database,
   sessionId: string,
@@ -51,7 +47,6 @@ export function persistCheckpointMessages(
   if (messages) syncMessages(db, sessionId, messages);
   for (const message of referencedMessages) persistMessageBlob(db, message);
 }
-
 export function hydrateCheckpoint(db: Database, checkpoint: Checkpoint) {
   const marker = parseMessageRefs(checkpoint.channel_values["messages"]);
   const hydrated: Checkpoint = {
@@ -64,7 +59,6 @@ export function hydrateCheckpoint(db: Database, checkpoint: Checkpoint) {
   hydrated.channel_values["hookPlan"] = hydrateHookPlan(db, hydrated.channel_values["hookPlan"]);
   return hydrated;
 }
-
 export function normalizePendingValue(value: unknown) {
   if (BaseMessage.isInstance(value)) {
     ensureMessageIds([value]);
@@ -77,11 +71,9 @@ export function normalizePendingValue(value: unknown) {
   const plan = normalizeHookPlan(value);
   return plan.messages.length > 0 ? { value: plan.value, messages: plan.messages } : { value };
 }
-
 export function persistPendingMessages(db: Database, messages: BaseMessage[] | undefined) {
   for (const message of messages ?? []) persistMessageBlob(db, message);
 }
-
 export function hydratePendingValue(db: Database, value: unknown) {
   const marker = parseMessageRefs(value);
   if (!marker) return hydrateHookPlan(db, value);
@@ -91,14 +83,12 @@ export function hydratePendingValue(db: Database, value: unknown) {
   if (!message) throw new Error("checkpoint 单消息引用为空");
   return message;
 }
-
 function messageRefs(messages: BaseMessage[], shape: MessageRefs["shape"]): MessageRefs {
   return {
     [messageRefsKey]: messages.map(messageRef),
     shape,
   };
 }
-
 function parseMessageRefs(value: unknown) {
   if (!isRecord(value)) return undefined;
   const refs = value[messageRefsKey];
@@ -109,21 +99,17 @@ function parseMessageRefs(value: unknown) {
     ? { refs, shape }
     : undefined;
 }
-
 function ensureMessageIds(messages: BaseMessage[]) {
   for (const message of messages) {
     message.id ??= randomUUID();
   }
 }
-
 function isMessageArray(value: unknown): value is BaseMessage[] {
   return Array.isArray(value) && value.every((item) => BaseMessage.isInstance(item));
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
-
 function normalizeHookPlan(value: unknown) {
   if (!isRecord(value) || !isStoredMessage(value["original"])) {
     return { value, messages: [] as BaseMessage[] };
@@ -139,7 +125,6 @@ function normalizeHookPlan(value: unknown) {
     messages: [message],
   };
 }
-
 function hydrateHookPlan(db: Database, value: unknown) {
   if (!isRecord(value)) return value;
   const original = value["original"];
@@ -152,11 +137,9 @@ function hydrateHookPlan(db: Database, value: unknown) {
   if (!stored) throw new Error("无法还原 Hook plan 原消息");
   return { ...value, original: stored };
 }
-
 function isStoredMessage(value: unknown): value is StoredMessage {
   return isRecord(value) && typeof value["type"] === "string" && isRecord(value["data"]);
 }
-
 function isMessageRef(value: unknown): value is StoredMessageRef {
   return (
     isRecord(value) && typeof value["sourceId"] === "string" && typeof value["digest"] === "string"

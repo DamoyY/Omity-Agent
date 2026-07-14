@@ -1,50 +1,40 @@
 import { DomainError } from "../../errors";
 import type { InitialMessagePair } from "../initialState";
-
 export interface PendingAttachment {
   id: string;
   file: File;
 }
-
 export interface MessageSubmission {
   content: string;
   draftRevision: number;
   attachments: PendingAttachment[];
 }
-
 export interface SessionSubmission {
   workspace: string;
   history: InitialMessagePair[];
   message: string;
   attachments: PendingAttachment[];
 }
-
 export interface AttachmentSettings {
   allowedSuffixes: string[];
   maxSizeBytes: number;
 }
-
 export function appendAttachments(body: FormData, attachments: PendingAttachment[]) {
   for (const { id, file } of attachments) body.append(`file:${id}`, file);
 }
-
 const placeholderPattern = /\{\{file:([0-9a-f-]{36}):([^{}\r\n]+)\}\}/giu;
-
 export function attachmentPlaceholder(id: string, name: string) {
   return `{{file:${id}:${name.replaceAll(/[{}\r\n]/gu, "_")}}}`;
 }
-
 export function attachmentIds(content: string) {
   return new Set(
     [...content.matchAll(placeholderPattern)].map((match) => (match[1] ?? "").toLowerCase()),
   );
 }
-
 export function fileSuffix(name: string) {
   const index = name.lastIndexOf(".");
   return index > 0 ? name.slice(index).toLowerCase() : "";
 }
-
 export function validateAttachment(
   file: Pick<File, "name" | "size">,
   settings: AttachmentSettings,
@@ -63,7 +53,6 @@ export function validateAttachment(
     );
   }
 }
-
 export function validateAttachmentBatch(
   files: Pick<File, "name" | "size">[],
   settings: AttachmentSettings,

@@ -1,13 +1,11 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import untildify from "untildify";
-
 export function resolveConfiguredPath(root: string, path: string) {
   const withAppData = path.replaceAll("${appData}", appDataRoot());
   const expanded = untildify(withAppData);
   return isAbsolute(expanded) ? resolve(expanded) : resolve(root, expanded);
 }
-
 export function appDataRoot() {
   if (process.platform === "win32") {
     const path = process.env["APPDATA"];

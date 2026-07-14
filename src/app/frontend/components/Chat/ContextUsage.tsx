@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { TokenUsage } from "../../../timeline";
 import { formatTokens } from "../../tokenUnits";
-
 const panel = css({
   alignItems: "end",
   color: "muted",
@@ -19,15 +18,12 @@ const panel = css({
   w: "full",
   whiteSpace: "nowrap",
 });
-
 const row = css({
   alignItems: "center",
   display: "flex",
   gap: "1.5",
 });
-
 const value = css({ color: "mutedStrong" });
-
 export function ContextUsage({ usage }: { usage: TokenUsage | null }) {
   const { t } = useTranslation();
   const totalTokens = usage

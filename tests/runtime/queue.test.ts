@@ -8,9 +8,7 @@ import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import type { Settings } from "../../src/types";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
-
 afterEach(cleanupDatabaseDirs);
-
 test("unexpected errors pause the queue", async () => {
   const db = makeDb();
   db.resetSession("123", workspace);
@@ -19,13 +17,10 @@ test("unexpected errors pause the queue", async () => {
   const graph = {
     stream: () => Promise.reject(new Error("boom")),
   };
-
   const context = makeContext(db, graph);
   await processQueue(context, required(item));
-
   context.controller.abort();
   await processQueue(context, required(db.nextQueue("123")));
-
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
   const stored = db.db.query<{ error: string }, []>("SELECT error FROM queue LIMIT 1").get();
@@ -35,7 +30,6 @@ test("unexpected errors pause the queue", async () => {
   });
   db.close();
 });
-
 test("observer errors cannot revive a terminal queue", async () => {
   const db = makeDb();
   db.resetSession("123", workspace);
@@ -62,34 +56,28 @@ test("observer errors cannot revive a terminal queue", async () => {
     },
     token: () => undefined,
   };
-
   let terminalError: unknown;
   try {
     await processQueue(context, item);
   } catch (error) {
     terminalError = error;
   }
-
   expect(terminalError).toMatchObject({ message: "observer failed" });
   expect(db.queueStatus(item.id)).toBe("done");
   expect(db.nextQueue("123")).toBeNull();
   db.close();
 });
-
 test("cancel while paused stops host without ending pause", async () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   db.appendUser("123", "暂停中的输入");
   db.setControl("123", "pause_cancel");
   const item = db.nextQueue("123");
-
   await processQueue(makeContext(db, {}), required(item));
-
   expect(db.control("123")).toBe("pause");
   expect(db.nextQueue("123")?.status).toBe("paused");
   db.close();
 });
-
 test("ctrl-c while paused stops host without ending pause", async () => {
   const db = makeDb();
   db.resetSession("123", workspace);
@@ -98,14 +86,11 @@ test("ctrl-c while paused stops host without ending pause", async () => {
   const item = db.nextQueue("123");
   const context = makeContext(db, {});
   context.controller.abort();
-
   await processQueue(context, required(item));
-
   expect(db.control("123")).toBe("pause");
   expect(db.nextQueue("123")?.status).toBe("paused");
   db.close();
 });
-
 test("host abort cancels an active graph stream", async () => {
   const db = makeDb();
   db.resetSession("123", workspace);
@@ -133,15 +118,12 @@ test("host abort cancels an active graph stream", async () => {
   const context = makeContext(db, graph);
   const processing = processQueue(context, item);
   await started.promise;
-
   context.controller.abort(new Error("test stop"));
   await processing;
-
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
   db.close();
 });
-
 function makeContext(db: AgentDatabase, graph: unknown): HostContext {
   return {
     settings: makeSettings(),
@@ -153,7 +135,6 @@ function makeContext(db: AgentDatabase, graph: unknown): HostContext {
     controller: new AbortController(),
   };
 }
-
 function makeSettings(): Settings {
   return {
     paths: { dataDir: "data" },
