@@ -6,6 +6,7 @@ import { required } from "../support/database";
 import { saveMessageAttachments } from "../../src/app/attachments/storage";
 import { testSettings } from "../support/settings";
 import { tmpdir } from "node:os";
+
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {

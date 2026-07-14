@@ -9,6 +9,7 @@ import type { HostContext } from "../../src/runtime/context";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import { createAgentGraph } from "../../src/agent";
 import { testSettings } from "../support/settings";
+
 afterEach(cleanupDatabaseDirs);
 test("streams every model delta once across the recoverable task boundary", async () => {
   const db = makeDb();

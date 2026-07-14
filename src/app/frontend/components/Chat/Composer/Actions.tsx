@@ -7,6 +7,7 @@ import type { TokenUsage } from "../../../../timeline";
 import { reportPromiseErrors } from "../../../services/errors";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+
 type ControlState = "pause" | "pausing" | "resume";
 export function Actions({
   controlDisabled,

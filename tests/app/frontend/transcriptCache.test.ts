@@ -6,6 +6,7 @@ import {
 } from "../../../src/app/frontend/services/transcript/cache";
 import { expect, test } from "bun:test";
 import type { DisplayEvent } from "../../../src/app/timeline";
+
 test("replays deltas that arrive after an older snapshot", () => {
   const current = appendTranscriptEvents(emptyTranscriptData(), [textEvent(2, "B")]);
   const data = reconcileTranscript(snapshot(1, [textEvent(1, "A")]), current);

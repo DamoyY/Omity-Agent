@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { TimelineMessage } from "../../timeline";
 import { scroll } from "../design";
+
 const followBottomThreshold = 48;
 function isNearBottom(element: HTMLElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= followBottomThreshold;

@@ -11,6 +11,7 @@ import { expect, test } from "bun:test";
 import { ChatOpenAIResponses } from "@langchain/openai";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { materializeFreeformToolCall } from "../../src/agent/toolExecution";
+
 test("normalizes free-form tool names", () => {
   expect(normalizeFreeformToolInputs(undefined)).toEqual([]);
   expect(normalizeFreeformToolInputs(["apply_patch"])).toEqual(["apply_patch"]);

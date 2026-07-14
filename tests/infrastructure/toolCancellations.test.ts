@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { makeDb, required, workspace } from "../support/database";
 import { insertToolStarted } from "../../src/infrastructure/database/records/streamEvents";
 import { toolNotRunning } from "../../src/errors";
+
 test("tool cancellation requests are persisted and consumed once", () => {
   const db = makeDb();
   try {

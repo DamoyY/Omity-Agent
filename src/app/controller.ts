@@ -17,6 +17,7 @@ import { loadSessionTranscript } from "./transcript";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
 import { pickWorkspaceDirectory } from "./workspacePicker";
 import { runClient } from "../client";
+
 export class AppController {
   readonly events: AppEvents;
   private readonly settings: Settings;

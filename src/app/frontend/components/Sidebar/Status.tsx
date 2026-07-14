@@ -3,6 +3,7 @@ import { css, cva, cx } from "styled-system/css";
 import type { ErrorDetails } from "../../../../failures/details";
 import type { SessionStatus } from "../../../../types";
 import { useTranslation } from "react-i18next";
+
 const indicator = cva({
   base: {
     alignItems: "center",

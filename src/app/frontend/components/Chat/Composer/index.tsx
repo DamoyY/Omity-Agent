@@ -14,6 +14,7 @@ import { MarkdownEditor } from "../MarkdownEditor";
 import { PendingAttachments } from "./attachments";
 import { composerFrame } from "./layout";
 import { useTranslation } from "react-i18next";
+
 export function Composer({
   disabled,
   attachmentSettings,

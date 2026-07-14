@@ -4,6 +4,7 @@ import {
   parseHostOwner,
 } from "../../infrastructure/process/ownership";
 import type { AgentDatabase } from "../../infrastructure/database/agentDatabase";
+
 export function recoverHostSession(
   db: AgentDatabase,
   sessionId: string,

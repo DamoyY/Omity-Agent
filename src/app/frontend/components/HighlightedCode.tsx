@@ -4,6 +4,7 @@ import { CopyButton } from "./Chat/CopyButton";
 import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/common";
 import { useFollowBottom } from "./TranscriptScroll";
+
 const container = css({
   maxW: "full",
   minW: 0,

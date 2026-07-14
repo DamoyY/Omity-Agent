@@ -14,6 +14,7 @@ import { queueMessageId } from "../../../src/infrastructure/database/records/mes
 import { required } from "../../support/database";
 import { testSettings } from "../../support/settings";
 import { tmpdir } from "node:os";
+
 test("restart injects a consumed append missing from the checkpoint", async () => {
   const fixture = createFixture();
   let { db } = fixture;

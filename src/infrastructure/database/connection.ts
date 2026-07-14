@@ -1,6 +1,7 @@
 import { parse, resolve } from "node:path";
 import type { Database } from "bun:sqlite";
 import { rmSync } from "node:fs";
+
 export const sqliteBusyTimeoutMs = 5000;
 export function configureDatabase(db: Database) {
   db.run(`PRAGMA busy_timeout = ${sqliteBusyTimeoutMs.toString()}`);

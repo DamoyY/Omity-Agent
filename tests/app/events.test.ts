@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { createApi } from "../../src/app/http/handler";
 import { createApiController } from "./support/apiController";
+
 test("global SSE starts with a full session snapshot and sends mutations", async () => {
   const abort = new AbortController();
   const controller = createApiController();

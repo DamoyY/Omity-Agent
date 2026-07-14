@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { DraftSaver } from "../../../src/app/frontend/services/scheduling/draftSaver";
+
 test("draft saver coalesces rapid edits into the latest revision", async () => {
   const saved: { content: string; revision: number }[] = [];
   const saver = new DraftSaver(

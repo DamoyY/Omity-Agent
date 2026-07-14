@@ -1,6 +1,7 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { customTool } from "@langchain/openai";
 import { z } from "zod";
+
 export interface FreeformMcpTools {
   modelTools: StructuredToolInterface[];
   parameters: ReadonlyMap<string, string>;

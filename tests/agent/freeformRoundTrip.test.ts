@@ -10,6 +10,7 @@ import { configureFreeformMcpTools } from "../../src/infrastructure/mcp/freeform
 import { createToolInvoker } from "../../src/agent/toolExecution";
 import { modelMessages } from "../../src/agent/model";
 import { testSettings } from "../support/settings";
+
 const servers: ReturnType<typeof Bun.serve>[] = [];
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.stop(true)));

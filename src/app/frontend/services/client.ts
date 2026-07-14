@@ -15,6 +15,7 @@ import type { Control } from "../../../types";
 import type { InitialSessionState } from "../../initialState";
 import { reportError } from "./errors";
 import { request } from "./request";
+
 export { ApiError } from "./request";
 export type { SessionInfo } from "../../sessionState";
 export interface FrontendSettings {

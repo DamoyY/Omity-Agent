@@ -13,6 +13,7 @@ import {
 } from "./request";
 import type { AppController } from "../controller";
 import { bodyLimit } from "hono/body-limit";
+
 export type ApiController = Pick<
   AppController,
   | "bootstrap"

@@ -6,6 +6,7 @@ import {
   validateAttachmentBatch,
 } from "../../../../attachments/contract";
 import { reportError } from "../../../services/errors";
+
 export class PendingAttachments {
   private readonly entries = new Map<string, PendingAttachment>();
   constructor(private settings?: AttachmentSettings) {}

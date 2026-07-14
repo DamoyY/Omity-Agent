@@ -5,6 +5,7 @@ import { createSessionWithAttachments } from "../attachments/session";
 import { loadSettings } from "../../infrastructure/configuration/loadSettings";
 import { normalizeWorkspacePath } from "../../infrastructure/configuration/workspacePath";
 import { randomUUID } from "node:crypto";
+
 export async function createAppSession(appRoot: string, submission: SessionSubmission) {
   const workspace = normalizeWorkspacePath(submission.workspace, appRoot);
   const settings = loadSettings(appRoot, { cwd: workspace });

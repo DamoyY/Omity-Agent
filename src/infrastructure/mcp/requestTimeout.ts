@@ -1,4 +1,5 @@
 import { Protocol } from "@modelcontextprotocol/sdk/shared/protocol.js";
+
 const setupTimeoutMethod = "_setupTimeout";
 function skipRequestTimeout() {
   return undefined;

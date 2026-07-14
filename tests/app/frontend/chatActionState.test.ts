@@ -4,6 +4,7 @@ import {
 } from "../../../src/app/frontend/components/Chat/actionState";
 import type { Control, SessionStatus } from "../../../src/types";
 import { expect, test } from "bun:test";
+
 interface MatrixCase {
   name: string;
   control: Control;

@@ -9,6 +9,7 @@ import { parseModelSettings } from "../../src/infrastructure/configuration/setti
 import { resolveHookArgs } from "../../src/hooks/variables";
 import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
+
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {

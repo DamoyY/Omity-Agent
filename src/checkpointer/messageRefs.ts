@@ -14,6 +14,7 @@ import type { Checkpoint } from "@langchain/langgraph-checkpoint";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import { syncMessages } from "../infrastructure/database/records/messages/history";
+
 const messageRefsKey = "__omity_message_refs__";
 const storedMessageRefKey = "__omity_stored_message_ref__";
 interface MessageRefs {

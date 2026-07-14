@@ -8,8 +8,9 @@ import { expect, spyOn, test } from "bun:test";
 import type { SessionInfo } from "../../src/app/frontend/services/client";
 import { reportError } from "../../src/app/frontend/services/errors";
 import { reportSessionErrors } from "../../src/app/frontend/services/events/reporting";
+
 test("session errors are logged once until they clear", () => {
-  const log = spyOn(console, "error").mockImplementation(() => undefined);
+  const log = spyOn(console, "error").mockReturnValue(undefined);
   const reported = new Set<string>();
   const failed = session(captureError(new Error("failed")));
   reportSessionErrors([failed], reported);
@@ -25,7 +26,7 @@ test("session errors are logged once until they clear", () => {
   log.mockRestore();
 });
 test("the same error object is printed only once across reporting boundaries", () => {
-  const log = spyOn(console, "error").mockImplementation(() => undefined);
+  const log = spyOn(console, "error").mockReturnValue(undefined);
   const error = new Error("failed");
   reportError(error, { path: "/api/test" });
   reportError(error);

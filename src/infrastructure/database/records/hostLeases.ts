@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { requireSessionRecord } from "./sessions";
+
 export interface HostLeaseClaim {
   sessionId: string;
   ownerId: string;

@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import { AIMessage } from "@langchain/core/messages";
 import { messageReasoning } from "../../src/runtime/content";
 import { originalToolCommand } from "../../src/hooks/graph/commands";
+
 test("parallel tool messages own response and provider metadata exactly once", () => {
   const original = responseWithParallelCalls();
   let plan = toolPlan(original);

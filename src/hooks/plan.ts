@@ -9,6 +9,7 @@ import {
 } from "@langchain/core/messages";
 import { type HookToolOutput, readToolOutput } from "./storage/outputs";
 import type { HookWhen } from "../types";
+
 export interface AgentHookPlan {
   kind: "agent";
   when: HookWhen;

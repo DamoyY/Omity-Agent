@@ -2,6 +2,7 @@ import { expect, mock, spyOn, test } from "bun:test";
 import { upsertSessionList, withoutSession } from "../../../src/app/frontend/services/queries";
 import type { SessionInfo } from "../../../src/app/sessionState";
 import { appEvents } from "../../../src/app/frontend/services/client";
+
 test("session upserts are idempotent across SSE and HTTP responses", () => {
   const idle = session("idle", 1);
   const running = session("model", 2);
@@ -14,7 +15,7 @@ test("session deletion is idempotent", () => {
 });
 test("SSE closes after the first network error instead of reconnecting", () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "EventSource");
-  const log = spyOn(console, "error").mockImplementation(() => undefined);
+  const log = spyOn(console, "error").mockReturnValue(undefined);
   const created: TestEventSource[] = [];
   class TestEventSource extends EventTarget {
     close = mock(() => undefined);

@@ -2,6 +2,7 @@ import type { HostContext } from "./context";
 import { HumanMessage } from "@langchain/core/messages";
 import type { QueueRun } from "./run";
 import { queueMessageId } from "../infrastructure/database/records/messages/history";
+
 export function consumeBoundaryAppends(ctx: HostContext, run: QueueRun, state: BoundaryState) {
   if (hasPendingTools(state) || blocksAppend(state.values?.hookPlan)) {
     return null;

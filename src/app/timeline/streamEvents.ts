@@ -1,13 +1,14 @@
 import type { DisplayEvent, DisplayToolCall } from "./types";
 import type { StreamEvent } from "../../infrastructure/database/records/streamEvents";
 import { countTokens } from "../../runtime/tokenizer";
+
 export function displayStreamEvent(event: StreamEvent): DisplayEvent {
   const payload =
     event.kind === "tool_call_delta"
       ? { call: event.value }
-      : event.kind === "tool_started"
+      : (event.kind === "tool_started"
         ? { callId: event.value }
-        : { text: event.value };
+        : { text: event.value });
   return {
     id: event.id,
     message: event.kind,

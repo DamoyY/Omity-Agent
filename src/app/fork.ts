@@ -5,6 +5,7 @@ import { contentToText } from "../runtime/content";
 import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { randomUUID } from "node:crypto";
 import { storeMessage } from "../infrastructure/database/records/messages/history";
+
 interface MessageRow {
   id: number;
   source_id: string;

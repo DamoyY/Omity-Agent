@@ -10,6 +10,7 @@ import { getRequestListener } from "@hono/node-server";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
 import { once } from "node:events";
 import { promisify } from "node:util";
+
 export interface AppServerOptions {
   root: string;
   host: string;

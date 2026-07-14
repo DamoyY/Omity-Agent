@@ -6,6 +6,7 @@ import { CompatibleChatOpenAIResponses } from "../infrastructure/openai/compatib
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { codexClientFields } from "../infrastructure/openai/codexAuthentication";
 import { prepareModelImageMessages } from "../runtime/modelImages";
+
 export function buildModel(settings: Settings, sessionId: string, instructions?: string) {
   const api = resolveModelApi(settings.model);
   const fields = {

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+
 export type Page = { kind: "new" } | { kind: "session"; id: string };
 const sessionPrefix = "/sessions/";
 export function readPage(): Page {

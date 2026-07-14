@@ -1,4 +1,5 @@
 import type { Logger } from "../../infrastructure/logging/logger";
+
 interface HostSignalOptions {
   enabled: boolean;
   force: AbortController;

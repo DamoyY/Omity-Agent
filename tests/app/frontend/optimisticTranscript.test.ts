@@ -11,6 +11,7 @@ import {
 } from "../../../src/app/frontend/services/transcript/cache";
 import { expect, test } from "bun:test";
 import { QueryClient } from "@tanstack/react-query";
+
 test("optimistic user appears before a transcript has loaded", () => {
   const client = new QueryClient();
   addOptimisticUser(client, "session", "hello");

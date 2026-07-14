@@ -11,6 +11,7 @@ import { messageRowsToChatMessages } from "../infrastructure/database/records/me
 import { parseError } from "../failures/details";
 import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import { sessionNotFound } from "../errors";
+
 interface MessageRow {
   id: number;
   source_id: string;
@@ -27,6 +28,7 @@ interface QueueRow {
   root_id: number | null;
 }
 import { type PersistedEventRow, persistedDisplayEvent } from "./timeline/persistedEvent";
+
 interface SequenceRow {
   seq: number;
 }

@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+
 export function consumeHookUsage(
   db: Database,
   sessionId: string,

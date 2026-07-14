@@ -7,6 +7,7 @@ import {
 } from "./content";
 import type { HostContext } from "./context";
 import stableStringify from "fast-json-stable-stringify";
+
 const omitted = Symbol("omitted");
 type DiffResult = { value: unknown } | typeof omitted;
 export interface StreamLogState {

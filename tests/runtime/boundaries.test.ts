@@ -10,6 +10,7 @@ import { createAgentGraph } from "../../src/agent";
 import { fakeModel } from "@langchain/core/testing";
 import { processQueue } from "../../src/runtime/queue";
 import { testSettings } from "../support/settings";
+
 afterEach(cleanupDatabaseDirs);
 test("restart completes every consumed queue item in the run", async () => {
   const db = pausedRunWithAppend();

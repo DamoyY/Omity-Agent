@@ -1,5 +1,6 @@
 import { DomainError } from "../../errors";
 import type { InitialMessagePair } from "../initialState";
+
 export interface PendingAttachment {
   id: string;
   file: File;

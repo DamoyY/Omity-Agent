@@ -6,6 +6,7 @@ import {
   buildTimeline,
 } from "../../../timeline";
 import type { Control } from "../../../../types";
+
 export interface TranscriptSnapshot {
   control: Control;
   queue: DisplayQueue[];

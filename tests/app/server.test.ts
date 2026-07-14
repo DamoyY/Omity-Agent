@@ -12,6 +12,7 @@ import { required } from "../support/database";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
+
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {

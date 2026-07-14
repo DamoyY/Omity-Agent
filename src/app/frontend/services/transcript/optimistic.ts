@@ -1,6 +1,7 @@
 import { type TranscriptData, transcriptKey } from "../queries";
 import { emptyTranscriptData, rebuildTranscript, withoutOptimistic } from "./cache";
 import type { QueryClient } from "@tanstack/react-query";
+
 export function addOptimisticUser(queryClient: QueryClient, sessionId: string, content: string) {
   const key = `optimistic-${crypto.randomUUID()}`;
   queryClient.setQueryData<TranscriptData>(transcriptKey(sessionId), (current) => {

@@ -1,6 +1,7 @@
 import type { Settings } from "../../types";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+
 export function sessionPaths(settings: Settings, sessionId: string) {
   const paths = resolveSessionPaths(settings, sessionId);
   mkdirSync(paths.dir, { recursive: true });

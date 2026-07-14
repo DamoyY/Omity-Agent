@@ -1,5 +1,6 @@
 import type { TimelineMessage, TimelinePart } from "./types";
 import { sameToolCall } from "./identity";
+
 export function groupAssistantMessages(messages: TimelineMessage[]) {
   const result: TimelineMessage[] = [];
   let currentAssistant: TimelineMessage | undefined;

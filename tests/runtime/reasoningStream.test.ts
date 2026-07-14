@@ -5,6 +5,7 @@ import {
   streamedMessageReasoning,
 } from "../../src/runtime/content";
 import { expect, test } from "bun:test";
+
 test("streamed reasoning separates summary parts and reasoning items", () => {
   const state = createReasoningStreamState();
   const chunks = [

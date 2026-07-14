@@ -4,6 +4,7 @@ import type { SessionInfo } from "./sessionState";
 import mitt from "mitt";
 import { setTimeout as sleep } from "node:timers/promises";
 import { streamSSE } from "hono/streaming";
+
 interface TranscriptDelta {
   sessionId: string;
   event: DisplayEvent;

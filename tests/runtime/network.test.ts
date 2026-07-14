@@ -18,6 +18,7 @@ import { fakeModel } from "@langchain/core/testing";
 import { parseModelSettings } from "../../src/infrastructure/configuration/settingsSchema";
 import { testSettings } from "../support/settings";
 import { waitBeforeModelNetworkRetry } from "../../src/runtime/retry";
+
 afterEach(cleanupDatabaseDirs);
 test("detects retryable model network errors", () => {
   expect(isModelNetworkError(new TypeError("fetch failed"))).toBe(true);
@@ -73,7 +74,7 @@ test("model settings reject dependency retry configuration", () => {
   ).toThrow("Unrecognized key");
 });
 test("warns on every model network error even when the host is stopping", async () => {
-  const warn = spyOn(console, "warn").mockImplementation(() => undefined);
+  const warn = spyOn(console, "warn").mockReturnValue(undefined);
   const stop = mock(() => undefined);
   const controller = new AbortController();
   controller.abort();

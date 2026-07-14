@@ -3,6 +3,7 @@ import { type MessageRow, messageRowsToChatMessages } from "./serialization";
 import { persistMessageBlob, pruneMessageBlobs } from "./blobStore";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
+
 const messageColumns = "b.message_json AS message_json, m.source_id AS source_id";
 export function insertUserMessage(
   db: Database,

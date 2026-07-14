@@ -2,6 +2,7 @@ import { Args, Command } from "@oclif/core";
 import type { HostMode } from "../types";
 import { deleteHostSession } from "../sessionStorage";
 import { runHost } from "../host";
+
 const hostActions = ["new", "load", "delete", "overwrite"] as const;
 type HostAction = (typeof hostActions)[number];
 export default class Host extends Command {

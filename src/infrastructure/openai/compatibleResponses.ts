@@ -1,6 +1,7 @@
 import { normalizeResponsesPayload, normalizeResponsesStream } from "./normalizeResponse";
 import { ChatOpenAIResponses } from "@langchain/openai";
 import type { OpenAI } from "openai";
+
 export class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
   override completionWithRetry(
     request: OpenAI.Responses.ResponseCreateParamsStreaming,

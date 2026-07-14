@@ -6,6 +6,7 @@ import type { Settings } from "../../src/types";
 import { join } from "node:path";
 import { modelMessages } from "../../src/agent";
 import { tmpdir } from "node:os";
+
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {

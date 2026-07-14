@@ -11,6 +11,7 @@ import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { css } from "styled-system/css";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+
 export interface EditablePair extends InitialMessagePair {
   id: string;
 }

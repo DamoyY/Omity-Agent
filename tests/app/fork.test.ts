@@ -3,6 +3,7 @@ import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
 import { forkDatabaseBeforeMessage } from "../../src/app/fork";
+
 afterEach(cleanupDatabaseDirs);
 test("fork copies messages before selected user message", () => {
   const source = makeDb();

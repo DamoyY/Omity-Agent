@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 interface TestConfigurationOptions {
   dataDir?: string;
   modelYaml?: string;

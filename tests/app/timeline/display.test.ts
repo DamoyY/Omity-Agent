@@ -5,6 +5,7 @@ import {
   buildTimeline,
 } from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
+
 test("streaming tool call is hidden after the final tool call is visible", () => {
   const messages: DisplayMessage[] = [
     {

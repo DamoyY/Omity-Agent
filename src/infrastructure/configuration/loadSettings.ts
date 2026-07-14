@@ -6,6 +6,7 @@ import YAML from "yaml";
 import { loadHookRules } from "./hookRules";
 import { normalizeWorkspacePath } from "./workspacePath";
 import { resolveConfiguredPath } from "./configuredPath";
+
 export interface LoadSettingsOptions {
   cwd?: string;
 }

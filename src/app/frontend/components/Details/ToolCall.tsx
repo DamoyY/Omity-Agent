@@ -9,6 +9,7 @@ import { formatTokens } from "../../tokenUnits";
 import { formatToolInput } from "./toolInput";
 import { reportPromiseErrors } from "../../services/errors";
 import { useTranslation } from "react-i18next";
+
 const ioGrid = css({
   borderTopColor: "line",
   borderTopWidth: "1px",

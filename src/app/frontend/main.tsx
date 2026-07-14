@@ -4,6 +4,7 @@ import { App } from "./App";
 import { createRoot } from "react-dom/client";
 import { i18nReady } from "./i18n";
 import { reportError } from "./services/errors";
+
 await i18nReady;
 const root = document.getElementById("root");
 if (!root) {

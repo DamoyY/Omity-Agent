@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { RefreshScheduler } from "../../../src/app/frontend/services/scheduling/refreshScheduler";
+
 test("refresh scheduler coalesces events while a refresh is running", async () => {
   let runs = 0;
   const first = Promise.withResolvers<void>();

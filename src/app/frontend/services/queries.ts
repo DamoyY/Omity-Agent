@@ -6,6 +6,7 @@ import type { AttachmentSettings } from "../../attachments/contract";
 import { reportError } from "./errors";
 import { reportSessionErrors } from "./events/reporting";
 import { transcriptKey } from "./transcript/query";
+
 export interface BootstrapData {
   attachments: AttachmentSettings;
   cwd: string;

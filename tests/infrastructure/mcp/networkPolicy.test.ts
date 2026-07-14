@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { normalizeMcpServers } from "../../../src/infrastructure/mcp/config";
+
 test("mcp http config disables dependency reconnection and transport fallback", () => {
   expect(
     normalizeMcpServers({

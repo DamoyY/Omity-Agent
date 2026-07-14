@@ -2,6 +2,7 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { css } from "styled-system/css";
 import { tags } from "@lezer/highlight";
+
 export const root = css({
   _focusWithin: {
     outlineColor: "mutedStrong",

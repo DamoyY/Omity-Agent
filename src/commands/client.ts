@@ -1,5 +1,6 @@
 import { parseClientIntent, runClient } from "../client";
 import { Command } from "@oclif/core";
+
 export default class Client extends Command {
   static override strict = false;
   static override summary = "向 Host 会话发送消息或控制指令";

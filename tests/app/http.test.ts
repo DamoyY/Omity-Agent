@@ -4,6 +4,7 @@ import { decodeSessionId, requestBodyLimit } from "../../src/app/http/request";
 import { expect, test } from "bun:test";
 import { createApiController } from "./support/apiController";
 import { normalizeError } from "../../src/app/http/errors";
+
 test("API JSON validation rejects invalid controls and empty messages", async () => {
   const api = createApi(createApiController());
   const invalidControl = await api.request(

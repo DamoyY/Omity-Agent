@@ -1,6 +1,7 @@
 import type { ErrorDetails } from "../failures/details";
 import type { RegisteredSession } from "./registry";
 import type { SessionStatus } from "../types";
+
 export interface SessionInfo {
   id: string;
   workspace: string;

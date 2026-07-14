@@ -29,6 +29,7 @@ import { Sidebar } from "./components/Sidebar";
 import { cx } from "styled-system/css";
 import { recentWorkspaces } from "./services/recentWorkspaces";
 import { useQueryClient } from "@tanstack/react-query";
+
 const emptySessions: SessionInfo[] = [];
 type ChatPageProps = ComponentProps<typeof ChatPage>;
 async function selectWorkspace() {

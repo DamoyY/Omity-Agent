@@ -11,6 +11,7 @@ import { RefreshScheduler } from "../scheduling/refreshScheduler";
 import { readTranscriptEvent } from "../events/data";
 import { reportError } from "../errors";
 import { useEffect } from "react";
+
 export type { TranscriptData } from "./cache";
 export const transcriptKey = (sessionId: string) => ["transcript", sessionId] as const;
 const emptyTranscript = emptyTranscriptData();

@@ -1,6 +1,7 @@
 import { Command, Flags } from "@oclif/core";
 import { openBrowser } from "../app/launch";
 import { startAppServer } from "../app/server";
+
 export default class App extends Command {
   static override summary = "启动本地 WebUI";
   static override examples = [

@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { queueMessageId } from "../../src/infrastructure/database/records/messages/history";
+
 afterEach(cleanupDatabaseDirs);
 test("replace history restores queue ids from user message identity", () => {
   const db = makeDb();

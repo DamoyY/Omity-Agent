@@ -9,6 +9,7 @@ import {
   prepareModelImageMessages,
   toolContentText,
 } from "../../src/runtime/modelImages";
+
 test("extracts unbounded MCP base64 images and their text", () => {
   const data = "A".repeat(1024 * 1024);
   const content = JSON.stringify({

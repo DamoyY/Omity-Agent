@@ -13,6 +13,7 @@ import { testSettings } from "../support/settings";
 import { tmpdir } from "node:os";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
+
 test("mixed hook modes resolve variables in config order", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-variables-"));
   const db = new AgentDatabase(join(dir, "app.sqlite"));

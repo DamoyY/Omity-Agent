@@ -6,6 +6,7 @@ import {
 import type { AgentDatabase } from "../../infrastructure/database/agentDatabase";
 import { DomainError } from "../../errors";
 import type { Logger } from "../../infrastructure/logging/logger";
+
 export class HostLeaseLostError extends Error {
   override readonly name = "HostLeaseLostError";
 }

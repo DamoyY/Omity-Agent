@@ -11,6 +11,7 @@ import { fakeModel } from "@langchain/core/testing";
 import { parseError } from "../../src/failures/details";
 import { processQueue } from "../../src/runtime/queue";
 import { testSettings } from "../support/settings";
+
 afterEach(cleanupDatabaseDirs);
 test("unexpected errors pause the queue", async () => {
   const db = makeDb();

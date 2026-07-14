@@ -1,4 +1,5 @@
 import { type ComposerDraftTarget, writeComposerDraft } from "../composerDrafts";
+
 interface DraftSnapshot {
   content: string;
   revision: number;

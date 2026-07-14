@@ -40,6 +40,7 @@ import type { ErrorDetails } from "../../failures/details";
 import { RecoverableDatabase } from "./records/recovery";
 import { applySchema } from "./schema";
 import { resetSessionStorage } from "./maintenance";
+
 type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown ? Args : never;
 export class AgentDatabase extends RecoverableDatabase {
   private notify?: (event: StreamEvent) => void;

@@ -1,6 +1,7 @@
 import type { CheckpointListOptions } from "@langchain/langgraph-checkpoint";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { SQLQueryBindings } from "bun:sqlite";
+
 export type SqlBinding = SQLQueryBindings;
 export interface CheckpointRow {
   thread_id: string;

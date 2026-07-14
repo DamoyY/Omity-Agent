@@ -4,6 +4,7 @@ import { loadSettings } from "./infrastructure/configuration/loadSettings";
 import { removeDatabaseDirectory } from "./infrastructure/database/connection";
 import { resolveSessionPaths } from "./infrastructure/configuration/sessionPaths";
 import { sessionNotFound } from "./errors";
+
 export function deleteHostSession(sessionId: string, root = process.cwd()) {
   const settings = loadSettings(root);
   const paths = resolveSessionPaths(settings, sessionId);

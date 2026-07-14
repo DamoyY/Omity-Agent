@@ -11,6 +11,7 @@ import { required } from "../support/database";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { tmpdir } from "node:os";
 import { writeTestConfiguration } from "../support/configuration";
+
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {

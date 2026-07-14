@@ -9,6 +9,7 @@ import { captureError } from "../failures/details";
 import { isModelNetworkError } from "./network";
 import { queueMessageId } from "../infrastructure/database/records/messages/history";
 import { waitBeforeModelNetworkRetry } from "./retry";
+
 export async function processQueue(ctx: HostContext, item: QueueItem) {
   const end = ctx.logger.child(`队列 #${item.id.toString()}`);
   const resumed = ctx.db.consumedRunItems(ctx.sessionId, item.runId);
@@ -168,9 +169,9 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       } else {
         const nextActivity = state.next.includes("tools")
           ? "tool"
-          : state.next.includes("model_request")
+          : (state.next.includes("model_request")
             ? "model"
-            : undefined;
+            : undefined);
         if (nextActivity) {
           ctx.observer?.activity?.(ctx.sessionId, nextActivity);
         }

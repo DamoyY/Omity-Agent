@@ -1,4 +1,5 @@
 import type { ToolMessage } from "@langchain/core/messages";
+
 export interface HookToolOutput {
   output: unknown;
   structuredOutput?: unknown;

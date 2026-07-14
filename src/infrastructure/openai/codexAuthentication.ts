@@ -2,6 +2,7 @@ import { DEFAULT_CODEX_BASE_URL, type FetchLike, createCodexOAuthFetch } from "o
 import { createCodexAuthFileStore } from "openai-codex-oauth/node";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
 interface CodexClientOptions {
   authFilePath?: string;
   fetch?: FetchLike;

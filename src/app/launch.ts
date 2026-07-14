@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
 import { spawn } from "node:child_process";
+
 export function appUrl(host: string, port: number) {
   return `http://${urlHost(host)}:${port.toString()}/`;
 }

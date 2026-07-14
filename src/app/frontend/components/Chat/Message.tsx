@@ -9,6 +9,7 @@ import { ToolCall } from "../Details/ToolCall";
 import { reportPromiseErrors } from "../../services/errors";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+
 const row = css({
   alignItems: "start",
   display: "flex",

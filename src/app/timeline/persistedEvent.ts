@@ -5,6 +5,7 @@ import type {
 import type { DisplayEvent } from "./types";
 import { displayStreamEvent } from "./streamEvents";
 import { z } from "zod";
+
 export interface PersistedEventRow {
   id: number;
   queue_id: number;
@@ -46,8 +47,8 @@ export function persistedDisplayEvent(row: PersistedEventRow): DisplayEvent {
   const event: StreamEvent =
     value.kind === "tool_call_delta"
       ? { ...base, kind: value.kind, value: value.value }
-      : value.kind === "tool_started"
+      : (value.kind === "tool_started"
         ? { ...base, kind: value.kind, value: value.value }
-        : { ...base, kind: value.kind, value: value.value };
+        : { ...base, kind: value.kind, value: value.value });
   return displayStreamEvent(event);
 }

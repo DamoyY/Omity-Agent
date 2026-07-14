@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { groupSessions, isRunning } from "../../src/app/frontend/components/Sidebar/sessions";
 import type { SessionInfo } from "../../src/app/frontend/services/client";
+
 describe("侧栏会话排序", () => {
   test("运行工作区和运行会话优先，同时保持工作区聚类", () => {
     const input = [

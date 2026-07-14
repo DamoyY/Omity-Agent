@@ -14,6 +14,7 @@ import type { ToolCall, ToolMessage } from "@langchain/core/messages";
 import { command, finishAgent, hookCommand, modelNode, originalToolCommand } from "./commands";
 import type { HookRule } from "../../types";
 import type { HookRuntime } from "../runtime";
+
 type ConsumeHook = (hookId: string, limit: number) => Promise<boolean>;
 type InvokeGraphTool = (call: ToolCall) => Promise<ToolMessage>;
 export function createHookNode(

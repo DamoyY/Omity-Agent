@@ -1,4 +1,5 @@
 import type { OpenAI } from "openai";
+
 export function normalizeResponsesStreamEvent(
   event: OpenAI.Responses.ResponseStreamEvent,
 ): OpenAI.Responses.ResponseStreamEvent {

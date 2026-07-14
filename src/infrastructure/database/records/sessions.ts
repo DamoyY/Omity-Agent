@@ -1,6 +1,7 @@
 import { sessionConflict, sessionNotFound } from "../../../errors";
 import type { Control } from "../../../types";
 import type { Database } from "bun:sqlite";
+
 export function createSessionRecord(db: Database, sessionId: string, workspace: string) {
   if (hasSessionRecord(db, sessionId)) {
     throw sessionConflict(sessionId);

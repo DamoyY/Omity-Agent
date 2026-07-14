@@ -1,4 +1,5 @@
 import type { SessionInfo } from "../client";
+
 export function reportSessionErrors(sessions: SessionInfo[], reported: Set<string>) {
   const current = new Set<string>();
   for (const session of sessions) {

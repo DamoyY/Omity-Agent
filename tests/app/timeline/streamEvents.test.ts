@@ -1,6 +1,7 @@
 import { type DisplayEvent, type DisplayQueue, buildTimeline } from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
 import { countTokens } from "../../../src/runtime/tokenizer";
+
 const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
 test("merges tool identity and argument chunks by index", () => {
   const calls = streamedCalls([

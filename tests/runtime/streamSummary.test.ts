@@ -1,5 +1,6 @@
 import { createStreamLogState, incrementalSummary } from "../../src/runtime/stream";
 import { expect, test } from "bun:test";
+
 test("stream debug logging keeps only incremental context", () => {
   const state = createStreamLogState();
   const first = {

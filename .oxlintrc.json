@@ -3,6 +3,7 @@
   "categories": {
     "correctness": "error",
     "nursery": "warn",
+    //"pedantic": "warn",
     "perf": "warn",
     "style": "warn",
     "suspicious": "warn"
@@ -18,26 +19,38 @@
     "react",
     "react-perf",
     "oxc",
-    "promise"
+    "import",
+    "jsdoc",
+    "promise",
+    "jest"
   ],
   "rules": {
     "typescript/no-deprecated": "error",
+    "consistent-type-specifier-style": "allow",
+    "exports-last": "allow",
     "filename-case": "allow",
     "func-style": "allow",
-    "jsx-max-depth": "allow",
+    "group-exports": "allow",
     "id-length": "allow",
+    "jsx-max-depth": "allow",
     "init-declarations": "allow",
+    "max-lines-per-function": "allow",
     "max-nested-calls": "allow",
     "max-params": "allow",
     "max-statements": "allow",
     "new-cap": "allow",
     "no-await-in-loop": "allow",
     "no-magic-numbers": "allow",
+    "no-named-export": "allow",
     "no-nested-ternary": "allow",
+    "no-nodejs-modules": "allow",
     "no-null": "allow",
     "no-ternary": "allow",
     "no-undef": "allow",
+    "no-useless-undefined": "allow",
     "parameter-properties": "allow",
+    "prefer-readonly-parameter-types": "allow",
+    "prefer-default-export": "allow",
     "react-in-jsx-scope": "allow"
   }
 }

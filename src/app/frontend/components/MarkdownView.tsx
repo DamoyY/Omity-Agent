@@ -5,6 +5,7 @@ import { HighlightedCode } from "./HighlightedCode";
 import { css } from "styled-system/css";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+
 const markdown = css({
   "& a": { color: "text", textDecoration: "underline" },
   "& code": { wordBreak: "break-word" },

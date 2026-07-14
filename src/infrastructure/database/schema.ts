@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { assertCoreSchema } from "./validateSchema";
+
 export const migrationSql = [
   `
     CREATE TABLE IF NOT EXISTS sessions (

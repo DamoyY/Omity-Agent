@@ -1,4 +1,5 @@
 import type { SessionInfo } from "../../services/client";
+
 export interface SessionGroup {
   workspace: string;
   sessions: SessionInfo[];

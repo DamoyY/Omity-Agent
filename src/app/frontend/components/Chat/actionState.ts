@@ -1,4 +1,5 @@
 import type { Control, SessionStatus } from "../../../../types";
+
 export type ChatControlState = "pause" | "pausing" | "resume";
 type RequestedControl = Extract<Control, "running" | "pause">;
 interface QueueState {
@@ -30,7 +31,7 @@ export function deriveChatActionState({
   const waitingForPause = pausing && !resumable;
   return {
     controlDisabled: waitingForPause || (!resumable && sessionStatus === "idle" && !queueRunning),
-    controlState: waitingForPause ? "pausing" : resumable ? "resume" : "pause",
+    controlState: waitingForPause ? "pausing" : (resumable ? "resume" : "pause"),
     deleteDisabled: queueRunning || sessionStatus === "model" || sessionStatus === "tool",
     nextControl: resumable ? "running" : "pause",
     queueRunning,

@@ -10,6 +10,7 @@ import { TranscriptScroll } from "../TranscriptScroll";
 import { css } from "styled-system/css";
 import { deriveChatActionState } from "./actionState";
 import { useTranslation } from "react-i18next";
+
 const page = css({
   display: "grid",
   gridTemplateRows: "minmax(0, 1fr) auto",

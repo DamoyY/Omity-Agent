@@ -2,6 +2,7 @@ import type { DisplayEvent } from "../../../timeline";
 import type { ErrorDetails } from "../../../../failures/details";
 import type { SessionInfo } from "../../../sessionState";
 import { z } from "zod";
+
 const sessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   createdAt: z.number().int(),
   error: z.custom<ErrorDetails>().nullable(),

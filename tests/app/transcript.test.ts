@@ -5,6 +5,7 @@ import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 import type { StreamEvent } from "../../src/infrastructure/database/records/streamEvents";
 import { countTokens } from "../../src/runtime/tokenizer";
 import { loadTranscript } from "../../src/app/transcript";
+
 afterEach(cleanupDatabaseDirs);
 test("transcript exposes Responses API token and cache usage", () => {
   const db = makeDb();

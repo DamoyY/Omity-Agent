@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+
 export type StreamToolCallDelta = Partial<
   Record<"args" | "id" | "name", string> & {
     freeform: boolean;

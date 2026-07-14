@@ -9,6 +9,7 @@ import { createAgentGraph } from "../../src/agent";
 import { fakeModel } from "@langchain/core/testing";
 import { readGraphState } from "../../src/runtime/context";
 import { testSettings } from "../support/settings";
+
 test("rejects an empty model response before committing it", async () => {
   const hookDatabase = new Database(":memory:");
   const model = fakeModel().respond(new AIMessage({ content: "", id: "empty" }));

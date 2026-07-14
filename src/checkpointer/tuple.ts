@@ -11,6 +11,7 @@ import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { deserialize } from "./serde";
 import { z } from "zod";
+
 interface TupleContext {
   db: Database;
   serde: SerializerProtocol;

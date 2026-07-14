@@ -1,4 +1,5 @@
 import type { SerializerProtocol } from "@langchain/langgraph-checkpoint";
+
 export async function serialize(
   serde: SerializerProtocol,
   value: unknown,

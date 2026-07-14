@@ -1,4 +1,5 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
+
 type McpToolNameOverrides = Record<string, string>;
 export function normalizeMcpToolNameOverrides(
   value: unknown,

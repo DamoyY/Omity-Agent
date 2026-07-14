@@ -3,6 +3,7 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import { appendUserQueue } from "./records/queue/operations";
 import { syncMessages } from "./records/messages/history";
+
 export function initializeConversation(
   db: Database,
   sessionId: string,

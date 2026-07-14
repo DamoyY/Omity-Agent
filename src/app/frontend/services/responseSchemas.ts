@@ -3,6 +3,7 @@ import type { ErrorDetails } from "../../../failures/details";
 import type { SessionInfo } from "../../sessionState";
 import type { TranscriptSnapshot } from "./transcript/cache";
 import { z } from "zod";
+
 const integer = z.number().int();
 const errorDetailsSchema: z.ZodType<ErrorDetails> = z.lazy(() =>
   z.object({

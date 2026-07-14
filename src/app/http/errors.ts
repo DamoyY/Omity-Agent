@@ -1,5 +1,6 @@
 import { DomainError, type DomainErrorCode } from "../../errors";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+
 export type ApiErrorCode =
   | DomainErrorCode
   | "BAD_REQUEST"

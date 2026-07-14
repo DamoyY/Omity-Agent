@@ -21,6 +21,7 @@ import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { deleteThreadData } from "./lifecycle";
 import { rowToTuple } from "./tuple";
+
 export class BunSqliteSaver extends BaseCheckpointSaver {
   private isSetup = false;
   constructor(

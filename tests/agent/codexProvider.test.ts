@@ -11,6 +11,7 @@ import type { Settings } from "../../src/types";
 import { createCodexClientFields } from "../../src/infrastructure/openai/codexAuthentication";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {

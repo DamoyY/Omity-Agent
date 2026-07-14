@@ -1,5 +1,6 @@
 import { CallbackManager } from "@langchain/core/callbacks/manager";
 import type { RunnableConfig } from "@langchain/core/runnables";
+
 export function normalizeTaskConfig<T extends RunnableConfig>(config: T): T {
   const source = config.callbacks;
   if (!(source instanceof CallbackManager)) {

@@ -22,6 +22,7 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { serialize } from "./serde";
+
 export async function putCheckpoint(
   db: Database,
   serde: SerializerProtocol,

@@ -7,6 +7,7 @@ import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { ToolMessage } from "@langchain/core/messages";
 import { consumeHookUsage } from "./storage/usage";
 import { resolveHookArgs } from "./variables";
+
 interface RunOptions {
   previousOutput?: HookToolOutput;
   consume: (hookId: string, limit: number) => Promise<boolean>;

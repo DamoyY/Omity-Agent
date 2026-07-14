@@ -4,6 +4,7 @@ import type { HostContext } from "./context";
 import type { QueueItem } from "../types";
 import { contentToText } from "./content";
 import { deleteThreadData } from "../checkpointer/lifecycle";
+
 export class CanceledRunError extends Error {
   override readonly name = "CanceledRunError";
 }

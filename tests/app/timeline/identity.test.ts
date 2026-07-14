@@ -5,6 +5,7 @@ import {
   buildTimeline,
 } from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
+
 const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
 test("persisted content hides only its identified stream", () => {
   const messages: DisplayMessage[] = [assistant({ content: "完成", id: 1, sourceId: "message-1" })];

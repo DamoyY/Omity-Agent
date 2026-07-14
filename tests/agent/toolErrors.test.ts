@@ -6,6 +6,7 @@ import { createMcpToolFailureClient } from "../../src/infrastructure/mcp/toolFai
 import { createToolInvoker } from "../../src/agent/toolExecution";
 import { loadMcpTools } from "@langchain/mcp-adapters";
 import { testSettings } from "../support/settings";
+
 const rejection = "Rejected the request with HTTP 402. Check the input URL and parameters.";
 test("MCP protocol errors reach the tool message without adapter wrappers", async () => {
   const output = await invokeMcpTool(() => Promise.reject(new McpError(-32_602, rejection)));

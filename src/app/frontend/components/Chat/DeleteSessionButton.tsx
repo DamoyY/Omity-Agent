@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
 import { useTranslation } from "react-i18next";
+
 const armed = css({
   _hover: { bg: "statusError", color: "canvas" },
   bg: "statusError",

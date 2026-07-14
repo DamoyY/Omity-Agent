@@ -16,6 +16,7 @@ import { normalizeWorkspacePath } from "./infrastructure/configuration/workspace
 import { recoverHostSession } from "./runtime/execution/recovery";
 import { removeDatabaseDirectory } from "./infrastructure/database/connection";
 import { wireHostSignals } from "./runtime/execution/signals";
+
 export async function runHost(mode: HostMode, root = process.cwd(), options: HostRunOptions = {}) {
   await runHostSession(mode, root, {
     ...options,

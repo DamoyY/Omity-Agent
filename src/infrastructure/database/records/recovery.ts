@@ -11,6 +11,7 @@ import { readControlRecord, writeControlRecord } from "./sessions";
 import type { Database } from "bun:sqlite";
 import type { ErrorDetails } from "../../../failures/details";
 import { pruneMessageBlobs } from "./messages/blobStore";
+
 export interface InterruptedSessionClaim {
   sessionId: string;
   now: number;

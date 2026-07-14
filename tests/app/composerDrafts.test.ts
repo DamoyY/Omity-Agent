@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { testSettings } from "../support/settings";
 import { tmpdir } from "node:os";
+
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {

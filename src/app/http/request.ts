@@ -7,6 +7,7 @@ import type { HonoRequest } from "hono/request";
 import { HttpError } from "./errors";
 import { safeId } from "../../infrastructure/configuration/sessionPaths";
 import { z } from "zod";
+
 export const requestBodyLimit = 1024 * 1024;
 const nonEmptyMessage = z.string().refine((value) => value.trim().length > 0);
 const historySchema = z.array(

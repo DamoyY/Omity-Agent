@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { DisplayToolCall } from "../../../src/app/timeline";
 import { formatToolInput } from "../../../src/app/frontend/components/Details/toolInput";
+
 test.each([
   ['{"command":"echo', "command: echo\n"],
   ['{"options":{"timeout":10', "options:\n  timeout: 10\n"],

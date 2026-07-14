@@ -4,6 +4,7 @@ import { type QueueRow, toQueueItem } from "./rowMapping";
 import type { Database } from "bun:sqlite";
 import { DomainError } from "../../../../errors";
 import { insertUserMessage } from "../messages/history";
+
 const queueSelect = `
   SELECT q.id, q.root_id, COALESCE(q.content, '') AS content,
     q.status, m.id AS user_message_id

@@ -1,5 +1,6 @@
 import { CanceledRunError, type QueueRun, cancelRun, setRunStatus } from "../run";
 import { type HostContext, waitForWake } from "../context";
+
 export function pauseForStop(ctx: HostContext, run: QueueRun) {
   if (!ctx.stopping?.aborted && !ctx.controller.signal.aborted) {
     return false;

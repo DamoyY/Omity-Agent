@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { initializeConversation } from "../../src/infrastructure/database/initialConversation";
+
 afterEach(cleanupDatabaseDirs);
 test("initial conversation keeps history outside the pending queue", () => {
   const db = makeDb();

@@ -1,4 +1,5 @@
 import type { BaseMessage } from "@langchain/core/messages";
+
 export function freeformCallIds(message: BaseMessage) {
   const ids = new Set<string>();
   const idMap = message.additional_kwargs["__openai_custom_tool_call_ids__"];

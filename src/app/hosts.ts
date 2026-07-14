@@ -3,6 +3,7 @@ import type { HostMode, SessionStatus } from "../types";
 import type { ProcessOwner } from "../infrastructure/process/ownership";
 import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 import { runHostSession } from "../host";
+
 type HostActivity = Extract<SessionStatus, "tool" | "model" | "idle">;
 interface RunningHost {
   activity: HostActivity;

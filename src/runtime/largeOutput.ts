@@ -8,6 +8,7 @@ import { inspectToolTextContent } from "./outputText";
 import { mkdirSync } from "node:fs";
 import { safeId } from "../infrastructure/configuration/sessionPaths";
 import { writeFile } from "node:fs/promises";
+
 const outputFileIdBytes = 16;
 interface LargeOutputRuntimeContext {
   sessionId: string;

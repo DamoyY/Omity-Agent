@@ -8,6 +8,7 @@ import {
 } from "../support/database";
 import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
 import { sqliteBusyTimeoutMs } from "../../src/infrastructure/database/connection";
+
 afterEach(cleanupDatabaseDirs);
 test("queue append and transcript lifecycle", () => {
   const db = makeDb();

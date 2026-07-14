@@ -3,6 +3,7 @@ import { Frame } from "./Frame";
 import { MarkdownView } from "../MarkdownView";
 import { css } from "styled-system/css";
 import { useTranslation } from "react-i18next";
+
 const content = css({
   borderTopColor: "line",
   borderTopWidth: "1px",

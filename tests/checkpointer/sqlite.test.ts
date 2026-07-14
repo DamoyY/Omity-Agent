@@ -4,6 +4,7 @@ import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { BunSqliteSaver } from "../../src/checkpointer";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+
 const dirs: string[] = [];
 const databases: AgentDatabase[] = [];
 afterEach(() => {

@@ -10,6 +10,7 @@ import { DomainError } from "../../errors";
 import type { Settings } from "../../types";
 import { randomUUID } from "node:crypto";
 import { resolveSessionPaths } from "../../infrastructure/configuration/sessionPaths";
+
 export async function saveMessageAttachments(
   settings: Settings,
   sessionId: string,

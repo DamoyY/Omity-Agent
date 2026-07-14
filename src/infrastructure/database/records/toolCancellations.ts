@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { toolNotRunning } from "../../../errors";
+
 export function requestToolCancellation(db: Database, sessionId: string, callId: string) {
   const running = db
     .query<{ found: number }, [string, string]>(

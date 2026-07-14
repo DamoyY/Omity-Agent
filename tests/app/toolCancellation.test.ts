@@ -1,6 +1,7 @@
 import { type ApiController, createApi } from "../../src/app/http/handler";
 import { expect, test } from "bun:test";
 import { createApiController } from "./support/apiController";
+
 test("tool cancellation validates and forwards the tool call ID", async () => {
   const calls: Parameters<ApiController["cancelTool"]>[] = [];
   const controller = createApiController({

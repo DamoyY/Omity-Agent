@@ -4,6 +4,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import matter from "gray-matter";
 import untildify from "untildify";
 import { z } from "zod";
+
 const skillMetaSchema = z.object({
   description: z.string().min(1),
   name: z.string().min(1),

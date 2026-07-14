@@ -19,6 +19,7 @@ import { indentUnit } from "@codemirror/language";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
 import { markdown } from "@codemirror/lang-markdown";
 import { useMemo } from "react";
+
 const basicSetup = {
   autocompletion: false,
   foldGutter: false,

@@ -33,6 +33,7 @@ import { createHookNode } from "../hooks/graph/node";
 import { createToolInvoker } from "./toolExecution";
 import { normalizeTaskConfig } from "./taskConfig";
 import { randomUUID } from "node:crypto";
+
 const AgentState = Annotation.Root({
   ...MessagesAnnotation.spec,
   hookPendingUserIds: Annotation<string[]>({

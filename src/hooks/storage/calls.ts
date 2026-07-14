@@ -1,5 +1,6 @@
 import type { HookRule, HookTrigger, HookWhen } from "../../types";
 import { createHash } from "node:crypto";
+
 export interface HookCallDetails {
   trigger: HookTrigger;
   sourceId: string;

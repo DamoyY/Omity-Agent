@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { clearStreamEvents } from "./records/streamEvents";
 import { createSessionRecord } from "./records/sessions";
+
 export function resetSessionStorage(db: Database, sessionId: string, workspace: string) {
   db.query("DELETE FROM writes").run();
   db.query("DELETE FROM checkpoints").run();

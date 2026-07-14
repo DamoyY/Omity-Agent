@@ -9,6 +9,7 @@ import { existsSync } from "node:fs";
 import { readMcpConfiguration } from "./config";
 import { renameMcpTools } from "./nameOverrides";
 import { resolve } from "node:path";
+
 interface LoadedMcp {
   tools: StructuredToolInterface[];
   modelTools: StructuredToolInterface[];

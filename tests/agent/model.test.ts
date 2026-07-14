@@ -6,6 +6,7 @@ import {
   normalizeResponsesPayload,
   normalizeResponsesStreamEvent,
 } from "../../src/agent";
+
 const savedEnv = new Map<string, string | undefined>();
 afterEach(() => {
   for (const [key, value] of savedEnv) {

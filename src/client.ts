@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { loadSettings } from "./infrastructure/configuration/loadSettings";
 import { resolveSessionPaths } from "./infrastructure/configuration/sessionPaths";
 import { sessionNotFound } from "./errors";
+
 export interface ClientCommand {
   sessionId: string;
   append?: string;

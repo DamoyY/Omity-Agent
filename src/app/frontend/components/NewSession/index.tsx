@@ -16,6 +16,7 @@ import { WorkspacePicker } from "./WorkspacePicker";
 import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
 import { useTranslation } from "react-i18next";
+
 const scroll = css({ minH: 0, overflowY: "auto" });
 const scrollContent = css({
   display: "grid",

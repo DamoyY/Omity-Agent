@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { UserMessageHistory } from "../../../src/app/frontend/components/Chat/Composer/history";
+
 test("user message history moves backward and forward through messages", () => {
   const history = new UserMessageHistory();
   const messages = ["first", "second", "third"];

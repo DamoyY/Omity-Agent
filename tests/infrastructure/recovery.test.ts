@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { captureError, parseError, stringifyError } from "../../src/failures/details";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
+
 afterEach(cleanupDatabaseDirs);
 test("recovery refuses a live lease unless its exact owner is confirmed dead", () => {
   const db = makeDb();

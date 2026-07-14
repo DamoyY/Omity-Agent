@@ -14,6 +14,7 @@ import { Logger } from "../../src/infrastructure/logging/logger";
 import { createAgentGraph } from "../../src/agent";
 import { fakeModel } from "@langchain/core/testing";
 import { testSettings } from "../support/settings";
+
 const databases = new Set<AgentDatabase>();
 afterEach(async () => {
   for (const db of databases) {

@@ -15,6 +15,7 @@ import { required } from "../support/database";
 import { testSettings } from "../support/settings";
 import { tmpdir } from "node:os";
 import { z } from "zod";
+
 test("host restart resumes after one committed hook boundary", async () => {
   const dir = mkdtempSync(join(tmpdir(), "agent-hook-pause-"));
   const path = join(dir, "agent.sqlite");

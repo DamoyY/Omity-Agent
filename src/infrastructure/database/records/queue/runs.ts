@@ -3,6 +3,7 @@ import { type QueueRow, toQueueItem } from "./rowMapping";
 import type { Database } from "bun:sqlite";
 import type { QueueItem } from "../../../../types";
 import { requireSessionRecord } from "../sessions";
+
 const activeStatuses = "('pending', 'running', 'paused')";
 export function activeQueueRows(db: Database, sessionId: string): QueueItem[] {
   requireSessionRecord(db, sessionId);

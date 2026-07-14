@@ -7,6 +7,7 @@ import { assertCoreSchema } from "../infrastructure/database/validateSchema";
 import { resolve } from "node:path";
 import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
 import { sessionNotFound } from "../errors";
+
 export interface RegisteredSession {
   id: string;
   workspace: string;

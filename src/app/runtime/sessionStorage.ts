@@ -5,6 +5,7 @@ import type { Settings } from "../../types";
 import { forkDatabaseBeforeMessage } from "../fork";
 import { initializeConversation } from "../../infrastructure/database/initialConversation";
 import { removeDatabaseDirectory } from "../../infrastructure/database/connection";
+
 export function createSessionStorage(
   settings: Settings,
   sessionId: string,
