@@ -1,11 +1,7 @@
 import { AIMessage } from "@langchain/core/messages";
 import { expect, test } from "bun:test";
 import { originalToolCommand } from "../../src/hooks/graph/commands";
-import {
-  restoreOriginal,
-  toolPlan,
-  type ToolHookPlan,
-} from "../../src/hooks/plan";
+import { restoreOriginal, toolPlan, type ToolHookPlan } from "../../src/hooks/plan";
 import { messageReasoning } from "../../src/runtime/content";
 
 test("parallel tool messages own response and provider metadata exactly once", () => {
@@ -24,19 +20,13 @@ test("parallel tool messages own response and provider metadata exactly once", (
     plan = update.hookPlan;
   }
 
-  expect(
-    messages.map((message) => required(message.tool_calls)[0]?.id),
-  ).toEqual(["call-1", "call-2", "call-3"]);
-  expect(messages.map((message) => messageReasoning(message))).toEqual([
-    "**Plan once**",
-    "",
-    "",
+  expect(messages.map((message) => required(message.tool_calls)[0]?.id)).toEqual([
+    "call-1",
+    "call-2",
+    "call-3",
   ]);
-  expect(messages.map((message) => message.content)).toEqual([
-    original.content,
-    "",
-    "",
-  ]);
+  expect(messages.map((message) => messageReasoning(message))).toEqual(["**Plan once**", "", ""]);
+  expect(messages.map((message) => message.content)).toEqual([original.content, "", ""]);
   expect(messages.map((message) => message.usage_metadata)).toEqual([
     original.usage_metadata,
     undefined,
@@ -66,21 +56,15 @@ test("parallel tool messages own response and provider metadata exactly once", (
         provider: "openai",
         "call-1": "fc-1",
       },
-      tool_outputs: [
-        { id: "ct-1", type: "custom_tool_call", call_id: "call-1" },
-      ],
+      tool_outputs: [{ id: "ct-1", type: "custom_tool_call", call_id: "call-1" }],
     },
     {
       __openai_function_call_ids__: { "call-2": "fc-2" },
-      tool_outputs: [
-        { id: "ct-2", type: "custom_tool_call", call_id: "call-2" },
-      ],
+      tool_outputs: [{ id: "ct-2", type: "custom_tool_call", call_id: "call-2" }],
     },
     {
       __openai_function_call_ids__: { "call-3": "fc-3" },
-      tool_outputs: [
-        { id: "ct-3", type: "custom_tool_call", call_id: "call-3" },
-      ],
+      tool_outputs: [{ id: "ct-3", type: "custom_tool_call", call_id: "call-3" }],
     },
   ]);
   expect(restoreOriginal(plan.original)).toEqual(original);

@@ -50,13 +50,7 @@ interface SidebarProps {
   onSelect: (id: string) => void;
 }
 
-export function Sidebar({
-  sessions,
-  activeId,
-  showCreate,
-  onCreate,
-  onSelect,
-}: SidebarProps) {
+export function Sidebar({ sessions, activeId, showCreate, onCreate, onSelect }: SidebarProps) {
   const { t } = useTranslation();
   return (
     <>

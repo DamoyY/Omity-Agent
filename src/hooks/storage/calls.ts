@@ -14,10 +14,7 @@ export function hookTrigger(target: string, when: HookWhen): HookTrigger {
   return `${target}:${when}`;
 }
 
-export function hookCallDetails(
-  rule: HookRule,
-  sourceId: string,
-): HookCallDetails {
+export function hookCallDetails(rule: HookRule, sourceId: string): HookCallDetails {
   return {
     trigger: hookTrigger(rule.target, rule.when),
     sourceId,
@@ -25,11 +22,7 @@ export function hookCallDetails(
   };
 }
 
-export function createHookCallId(
-  sessionId: string,
-  threadId: string,
-  details: HookCallDetails,
-) {
+export function createHookCallId(sessionId: string, threadId: string, details: HookCallDetails) {
   const identity = JSON.stringify([
     sessionId,
     threadId,

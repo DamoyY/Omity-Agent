@@ -5,22 +5,14 @@ import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HostContext } from "../../src/runtime/context";
 import { processQueue } from "../../src/runtime/queue";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
 
 afterEach(cleanupDatabaseDirs);
 
 test("restart completes every consumed queue item in the run", async () => {
   const db = pausedRunWithAppend();
-  const messages = [
-    ...db.history("session"),
-    new AIMessage({ id: "final", content: "done" }),
-  ];
+  const messages = [...db.history("session"), new AIMessage({ id: "final", content: "done" })];
   await processQueue(
     context(db, terminalGraph(messages, "final"), new MemorySaver()),
     required(db.nextQueue("session")),
@@ -79,11 +71,7 @@ function terminalGraph(messages: BaseMessage[], finalMessageId: string) {
   };
 }
 
-function context(
-  db: AgentDatabase,
-  graph: unknown,
-  checkpointer: MemorySaver,
-): HostContext {
+function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
   return {
     settings: testSettings(workspace),
     logger: new Logger("error", true),

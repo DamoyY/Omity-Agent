@@ -18,9 +18,9 @@ test("streamed reasoning separates summary parts and reasoning items", () => {
     new AIMessageChunk({ content: [] }),
   ];
 
-  expect(
-    chunks.map((chunk) => streamedMessageReasoning(chunk, state)).join(""),
-  ).toBe("**First** detail\n\n**Second**\n\n**Third**");
+  expect(chunks.map((chunk) => streamedMessageReasoning(chunk, state)).join("")).toBe(
+    "**First** detail\n\n**Second**\n\n**Third**",
+  );
 });
 
 test("persisted reasoning is rebuilt from Responses API summary parts", () => {
@@ -32,9 +32,7 @@ test("persisted reasoning is rebuilt from Responses API summary parts", () => {
     response_metadata: { output: [first, second] },
   });
 
-  expect(messageReasoning(message)).toBe(
-    "**First**\n\n**Second**\n\n**Third**",
-  );
+  expect(messageReasoning(message)).toBe("**First**\n\n**Second**\n\n**Third**");
 });
 
 test("existing summary newlines are not duplicated", () => {
@@ -56,9 +54,9 @@ test("adjacent bold summaries in one part are separated across deltas", () => {
     new AIMessageChunk({ content: [] }),
   ];
 
-  expect(
-    chunks.map((chunk) => streamedMessageReasoning(chunk, state)).join(""),
-  ).toBe("**Planning**\n\n**Refining**");
+  expect(chunks.map((chunk) => streamedMessageReasoning(chunk, state)).join("")).toBe(
+    "**Planning**\n\n**Refining**",
+  );
 });
 
 test("persisted adjacent bold summaries in one part are separated", () => {
@@ -72,13 +70,7 @@ test("persisted adjacent bold summaries in one part are separated", () => {
   expect(messageReasoning(message)).toBe("**Planning**\n\n**Refining**");
 });
 
-function reasoningChunk({
-  id,
-  parts,
-}: {
-  id?: string;
-  parts: { index: number; text: string }[];
-}) {
+function reasoningChunk({ id, parts }: { id?: string; parts: { index: number; text: string }[] }) {
   return new AIMessageChunk({
     content: [],
     additional_kwargs: {

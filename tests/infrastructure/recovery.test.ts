@@ -1,15 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
-import {
-  captureError,
-  parseError,
-  stringifyError,
-} from "../../src/failures/details";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { captureError, parseError, stringifyError } from "../../src/failures/details";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -29,9 +20,9 @@ test("recovery refuses a live lease unless its exact owner is confirmed dead", (
     ownerId: "host-a",
     expiresAt: 1_100,
   });
-  expect(
-    db.recoverInterruptedSession({ sessionId: "123", now: 1_050 }),
-  ).toMatchObject({ status: "blocked" });
+  expect(db.recoverInterruptedSession({ sessionId: "123", now: 1_050 })).toMatchObject({
+    status: "blocked",
+  });
   expect(
     db.recoverInterruptedSession({
       sessionId: "123",
@@ -58,9 +49,10 @@ test("recovery refuses a live lease unless its exact owner is confirmed dead", (
     now: 2_000,
     ttlMs: 100,
   });
-  expect(
-    db.recoverInterruptedSession({ sessionId: "123", now: 2_100 }),
-  ).toMatchObject({ status: "recovered", action: "paused" });
+  expect(db.recoverInterruptedSession({ sessionId: "123", now: 2_100 })).toMatchObject({
+    status: "recovered",
+    action: "paused",
+  });
   expect(db.hostLease("123")).toBeNull();
   db.close();
 });
@@ -73,12 +65,12 @@ test("recovery preserves pending work while normalizing an interrupted run", () 
   db.startQueue("123", required(db.nextQueue("123")));
   db.setQueueStatus(paused, "paused");
   db.setControl("123", "pause_cancel");
-  expect(
-    db.recoverInterruptedSession({ sessionId: "123", now: 1_000 }),
-  ).toEqual({ status: "recovered", action: "paused", activeItems: 3 });
-  expect(
-    db.activeQueue("123").map(({ id, status }) => ({ id, status })),
-  ).toEqual([
+  expect(db.recoverInterruptedSession({ sessionId: "123", now: 1_000 })).toEqual({
+    status: "recovered",
+    action: "paused",
+    activeItems: 3,
+  });
+  expect(db.activeQueue("123").map(({ id, status }) => ({ id, status }))).toEqual([
     { id: running, status: "paused" },
     { id: paused, status: "paused" },
     { id: pending, status: "pending" },
@@ -97,13 +89,12 @@ test("recovery completes a persisted cancel and removes only its run data", () =
   insertThreadData(db, `123:${root.toString()}`);
   insertThreadData(db, "unrelated:1");
   db.setControl("123", "cancel");
-  expect(
-    db.recoverInterruptedSession({ sessionId: "123", now: 1_000 }),
-  ).toEqual({ status: "recovered", action: "canceled", activeItems: 2 });
-  expect([db.queueStatus(root), db.queueStatus(appended)]).toEqual([
-    "canceled",
-    "canceled",
-  ]);
+  expect(db.recoverInterruptedSession({ sessionId: "123", now: 1_000 })).toEqual({
+    status: "recovered",
+    action: "canceled",
+    activeItems: 2,
+  });
+  expect([db.queueStatus(root), db.queueStatus(appended)]).toEqual(["canceled", "canceled"]);
   expect(db.control("123")).toBe("running");
   expect(count(db, "events", "session_id = '123'")).toBe(0);
   expect(count(db, "checkpoints", "thread_id LIKE '123:%'")).toBe(0);
@@ -122,10 +113,7 @@ test("pauseRun is atomic, preserves pending work and omitted errors", () => {
   db.startQueue("123", appendedItem);
   db.appendUser("123", "仍在等待");
   const oldError = captureError(new Error("旧错误"));
-  db.db.run("UPDATE queue SET error = ? WHERE id = ?", [
-    stringifyError(oldError),
-    root,
-  ]);
+  db.db.run("UPDATE queue SET error = ? WHERE id = ?", [stringifyError(oldError), root]);
   db.db.run(
     `CREATE TRIGGER fail_group_pause BEFORE UPDATE ON queue
      WHEN OLD.id = ${appended.toString()} AND NEW.status = 'paused'
@@ -149,9 +137,7 @@ test("pauseRun is atomic, preserves pending work and omitted errors", () => {
     "pending",
   ]);
   const rows = db.db
-    .query<{ id: number; error: string | null }, []>(
-      "SELECT id, error FROM queue ORDER BY id",
-    )
+    .query<{ id: number; error: string | null }, []>("SELECT id, error FROM queue ORDER BY id")
     .all();
   expect(parseError(required(rows[0]?.error))).toMatchObject({
     message: "旧错误",
@@ -191,9 +177,7 @@ function count(
 ) {
   return required(
     db.db
-      .query<{ count: number }, []>(
-        `SELECT COUNT(*) AS count FROM ${table} WHERE ${predicate}`,
-      )
+      .query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM ${table} WHERE ${predicate}`)
       .get(),
   ).count;
 }

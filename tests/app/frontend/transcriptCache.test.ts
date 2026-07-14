@@ -8,9 +8,7 @@ import {
 import type { DisplayEvent } from "../../../src/app/timeline";
 
 test("replays deltas that arrive after an older snapshot", () => {
-  const current = appendTranscriptEvents(emptyTranscriptData(), [
-    textEvent(2, "B"),
-  ]);
+  const current = appendTranscriptEvents(emptyTranscriptData(), [textEvent(2, "B")]);
   const data = reconcileTranscript(snapshot(1, [textEvent(1, "A")]), current);
 
   expect(data.eventCursor).toBe(2);
@@ -29,9 +27,7 @@ test("deduplicates event ids without collapsing repeated text", () => {
 });
 
 test("completed snapshots replace cleared stream events", () => {
-  const streaming = reconcileTranscript(
-    snapshot(2, [textEvent(1, "A"), textEvent(2, "B")]),
-  );
+  const streaming = reconcileTranscript(snapshot(2, [textEvent(1, "A"), textEvent(2, "B")]));
   const completed: TranscriptSnapshot = {
     ...snapshot(2, []),
     queue: [],
@@ -57,10 +53,7 @@ test("completed snapshots replace cleared stream events", () => {
   expect(data.view[0]?.content).toBe("AB");
 });
 
-function snapshot(
-  eventCursor: number,
-  events: DisplayEvent[],
-): TranscriptSnapshot {
+function snapshot(eventCursor: number, events: DisplayEvent[]): TranscriptSnapshot {
   return {
     control: "running",
     queue: [

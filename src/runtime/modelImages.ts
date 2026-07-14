@@ -1,8 +1,4 @@
-import {
-  ToolMessage,
-  type BaseMessage,
-  type ContentBlock,
-} from "@langchain/core/messages";
+import { ToolMessage, type BaseMessage, type ContentBlock } from "@langchain/core/messages";
 import { createMiddleware } from "langchain";
 import type { ModelApi } from "../types";
 
@@ -22,10 +18,7 @@ export function createModelImageMiddleware(api: ModelApi) {
   });
 }
 
-export function prepareModelImageMessages(
-  messages: BaseMessage[],
-  api: ModelApi,
-): BaseMessage[] {
+export function prepareModelImageMessages(messages: BaseMessage[], api: ModelApi): BaseMessage[] {
   return api === "responses"
     ? prepareResponsesMessages(messages)
     : prepareCompletionsMessages(messages);
@@ -97,17 +90,11 @@ function prepareCompletionsMessages(messages: BaseMessage[]) {
     if (imageCount === 0) return message;
     const text = toolContentText(message.content);
     const notice = `工具返回了 ${imageCount.toString()} 张图片，但 Completions API 不支持工具返回图片给模型。`;
-    return copyToolMessage(
-      message,
-      [text, notice].filter((part) => part.length > 0).join("\n\n"),
-    );
+    return copyToolMessage(message, [text, notice].filter((part) => part.length > 0).join("\n\n"));
   });
 }
 
-function copyToolMessage(
-  message: ToolMessage,
-  content: ContentBlock[] | string,
-) {
+function copyToolMessage(message: ToolMessage, content: ContentBlock[] | string) {
   const artifact: unknown = message.artifact;
   return new ToolMessage({
     content,
@@ -156,8 +143,7 @@ function parseStructuredString(value: unknown): unknown {
 function isStructuredContent(value: unknown) {
   return (
     Array.isArray(value) ||
-    (isRecord(value) &&
-      (Array.isArray(value["content"]) || typeof value["type"] === "string"))
+    (isRecord(value) && (Array.isArray(value["content"]) || typeof value["type"] === "string"))
   );
 }
 

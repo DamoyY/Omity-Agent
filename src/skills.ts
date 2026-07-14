@@ -30,9 +30,7 @@ export function loadSkills(settings: Settings): SkillInfo[] {
   for (const skillName of Object.keys(settings.skills.skillEnabled)) {
     if (!names.has(skillName)) throw new Error(`未知 Skill 开关：${skillName}`);
   }
-  return skills.filter(
-    (skill) => settings.skills.skillEnabled[skill.name] ?? true,
-  );
+  return skills.filter((skill) => settings.skills.skillEnabled[skill.name] ?? true);
 }
 
 export function buildSkillsMessage(settings: Settings) {
@@ -42,10 +40,7 @@ export function buildSkillsMessage(settings: Settings) {
     settings.skills.usagePrompt.trim(),
     "",
     "## Skills 列表",
-    ...skills.map(
-      (skill) =>
-        `- ${skill.name}: ${skill.description} (file: ${skill.source})`,
-    ),
+    ...skills.map((skill) => `- ${skill.name}: ${skill.description} (file: ${skill.source})`),
   ];
   if (skills.length === 0) lines.push("- 当前没有启用的 Skill。");
   return lines.join("\n");

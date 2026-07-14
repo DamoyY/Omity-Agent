@@ -76,6 +76,15 @@ export const migrationSql = [
     )
   `,
   `
+    CREATE TABLE IF NOT EXISTS tool_cancellations (
+      session_id TEXT NOT NULL,
+      call_id TEXT NOT NULL,
+      requested_at INTEGER NOT NULL,
+      PRIMARY KEY (session_id, call_id),
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+    )
+  `,
+  `
     CREATE TABLE IF NOT EXISTS hook_usage (
       session_id TEXT NOT NULL,
       hook_id TEXT NOT NULL,

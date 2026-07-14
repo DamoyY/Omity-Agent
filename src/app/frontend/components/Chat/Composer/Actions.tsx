@@ -42,17 +42,11 @@ export function Actions({
             type="button"
             variant="outline"
           >
-            {controlState === "resume" ? (
-              <Play size={14} />
-            ) : (
-              <Pause size={14} />
-            )}
+            {controlState === "resume" ? <Play size={14} /> : <Pause size={14} />}
             {t(controlState)}
           </Button>
         ) : null}
-        {onDelete ? (
-          <DeleteSessionButton disabled={deleteDisabled} onDelete={onDelete} />
-        ) : null}
+        {onDelete ? <DeleteSessionButton disabled={deleteDisabled} onDelete={onDelete} /> : null}
       </div>
       {usage !== undefined ? <ContextUsage usage={usage} /> : null}
     </div>

@@ -1,9 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { DomainError } from "../../../../errors";
-import {
-  stringifyError,
-  type ErrorDetails,
-} from "../../../../failures/details";
+import { stringifyError, type ErrorDetails } from "../../../../failures/details";
 import type { QueueItem, QueueStatus } from "../../../../types";
 import { insertUserMessage } from "../messages/history";
 import { toQueueItem, type QueueRow } from "./rowMapping";
@@ -14,14 +11,8 @@ const queueSelect = `
   FROM queue q
   LEFT JOIN messages m ON m.queue_id = q.id`;
 
-export function appendUserQueue(
-  db: Database,
-  sessionId: string,
-  content: string,
-) {
-  db.query("DELETE FROM queue WHERE session_id = ? AND status = 'draft'").run(
-    sessionId,
-  );
+export function appendUserQueue(db: Database, sessionId: string, content: string) {
+  db.query("DELETE FROM queue WHERE session_id = ? AND status = 'draft'").run(sessionId);
   const activeRun = db
     .query<{ root_id: number }, [string]>(
       `SELECT root_id FROM queue
@@ -32,32 +23,21 @@ export function appendUserQueue(
     .get(sessionId);
   if (activeRun) return appendToRun(db, sessionId, activeRun.root_id, content);
   const result = db
-    .query(
-      "INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'pending')",
-    )
+    .query("INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'pending')")
     .run(sessionId, content);
   const queueId = Number(result.lastInsertRowid);
   db.query("UPDATE queue SET root_id = ? WHERE id = ?").run(queueId, queueId);
   return queueId;
 }
 
-export function appendDraftQueue(
-  db: Database,
-  sessionId: string,
-  content: string,
-) {
+export function appendDraftQueue(db: Database, sessionId: string, content: string) {
   const result = db
-    .query(
-      "INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'draft')",
-    )
+    .query("INSERT INTO queue (session_id, content, status) VALUES (?, ?, 'draft')")
     .run(sessionId, content);
   return Number(result.lastInsertRowid);
 }
 
-export function pendingAppendRows(
-  db: Database,
-  sessionId: string,
-): QueueItem[] {
+export function pendingAppendRows(db: Database, sessionId: string): QueueItem[] {
   const query = db.prepare<QueueRow, [string]>(
     `${queueSelect}
      WHERE q.session_id = ? AND q.status = 'pending' ORDER BY q.id`,
@@ -89,10 +69,7 @@ export function consumedRunRows(
   }
 }
 
-export function nextQueueRow(
-  db: Database,
-  sessionId: string,
-): QueueItem | null {
+export function nextQueueRow(db: Database, sessionId: string): QueueItem | null {
   const query = db.prepare<QueueRow, [string]>(
     `${queueSelect}
      WHERE q.session_id = ? AND q.status IN ('pending', 'running', 'paused')
@@ -107,11 +84,7 @@ export function nextQueueRow(
   return row ? toQueueItem(row) : null;
 }
 
-export function startQueueRecord(
-  db: Database,
-  sessionId: string,
-  item: QueueItem,
-) {
+export function startQueueRecord(db: Database, sessionId: string, item: QueueItem) {
   if (item.userMessageId !== null) {
     const result = db.run(
       `UPDATE queue SET status = 'running'
@@ -141,10 +114,7 @@ export function startQueueRecord(
 }
 
 function queueClaimConflict(queueId: number) {
-  return new DomainError(
-    "QUEUE_CLAIM_CONFLICT",
-    `队列认领冲突：${queueId.toString()}`,
-  );
+  return new DomainError("QUEUE_CLAIM_CONFLICT", `队列认领冲突：${queueId.toString()}`);
 }
 
 export function setQueueStatusRecord(
@@ -166,24 +136,15 @@ export function setQueueStatusRecord(
 
 export function queueStatusRecord(db: Database, queueId: number) {
   const row = db
-    .query<{ status: QueueStatus }, [number]>(
-      "SELECT status FROM queue WHERE id = ?",
-    )
+    .query<{ status: QueueStatus }, [number]>("SELECT status FROM queue WHERE id = ?")
     .get(queueId);
   if (!row) throw new Error(`队列不存在：${queueId.toString()}`);
   return row.status;
 }
 
-function appendToRun(
-  db: Database,
-  sessionId: string,
-  rootId: number,
-  content: string,
-) {
+function appendToRun(db: Database, sessionId: string, rootId: number, content: string) {
   const result = db
-    .query(
-      "INSERT INTO queue (session_id, root_id, content, status) VALUES (?, ?, ?, 'pending')",
-    )
+    .query("INSERT INTO queue (session_id, root_id, content, status) VALUES (?, ?, ?, 'pending')")
     .run(sessionId, rootId, content);
   return Number(result.lastInsertRowid);
 }

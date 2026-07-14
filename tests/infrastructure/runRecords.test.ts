@@ -1,12 +1,7 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { queueMessageId } from "../../src/infrastructure/database/records/messages/history";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -32,9 +27,7 @@ test("replace history restores queue ids from user message identity", () => {
   ]);
 
   const rows = db.db
-    .query<{ queue_id: number | null }, []>(
-      "SELECT queue_id FROM messages ORDER BY id",
-    )
+    .query<{ queue_id: number | null }, []>("SELECT queue_id FROM messages ORDER BY id")
     .all();
   expect(rows.map((row) => row.queue_id)).toEqual([first, null, second, null]);
   db.close();
@@ -83,9 +76,7 @@ test("append during active run belongs to that run", () => {
   const second = db.appendUser("123", "第二条");
 
   const rows = db.db
-    .query<{ id: number; root_id: number }, []>(
-      "SELECT id, root_id FROM queue ORDER BY id",
-    )
+    .query<{ id: number; root_id: number }, []>("SELECT id, root_id FROM queue ORDER BY id")
     .all();
   expect(rows).toEqual([
     { id: first, root_id: first },
@@ -102,9 +93,7 @@ test("reset deletes self-referencing queue rows", () => {
 
   db.resetSession("123", workspace);
 
-  const row = db.db
-    .query<{ count: number }, []>("SELECT COUNT(*) count FROM queue")
-    .get();
+  const row = db.db.query<{ count: number }, []>("SELECT COUNT(*) count FROM queue").get();
   expect(row?.count).toBe(0);
   db.close();
 });
@@ -129,9 +118,7 @@ test("run activity is derived from its queue items", () => {
 function queueRoot(db: ReturnType<typeof makeDb>, queueId: number) {
   return required(
     db.db
-      .query<{ root_id: number }, [number]>(
-        "SELECT root_id FROM queue WHERE id = ?",
-      )
+      .query<{ root_id: number }, [number]>("SELECT root_id FROM queue WHERE id = ?")
       .get(queueId),
   ).root_id;
 }

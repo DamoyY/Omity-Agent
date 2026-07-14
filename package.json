@@ -1,48 +1,14 @@
 {
   "name": "omity-agent",
-  "module": "src/cli.ts",
-  "type": "module",
   "private": true,
   "bin": {
     "omity": "src/cli.ts"
   },
-  "oclif": {
-    "bin": "omity",
-    "dirname": "omity-agent",
-    "commands": "./src/commands",
-    "topicSeparator": " ",
-    "topics": {
-      "host": {
-        "description": "管理 Host 会话"
-      },
-      "client": {
-        "description": "向 Host 发送消息或控制指令"
-      },
-      "app": {
-        "description": "启动本地 WebUI"
-      }
-    }
-  },
+  "type": "module",
+  "module": "src/cli.ts",
   "scripts": {
     "omity": "bun src/cli.ts",
-    "test": "bun test",
-    "check": "tsc --noEmit && eslint --fix && prettier -w --log-level warn ."
-  },
-  "devDependencies": {
-    "@babel/core": "latest",
-    "@eslint/js": "latest",
-    "@pandacss/dev": "latest",
-    "@rolldown/plugin-babel": "latest",
-    "@types/bun": "latest",
-    "@typescript/native-preview": "latest",
-    "@vitejs/plugin-react": "latest",
-    "babel-plugin-react-compiler": "latest",
-    "eslint": "latest",
-    "eslint-plugin-react-hooks": "latest",
-    "postcss": "latest",
-    "prettier": "latest",
-    "typescript-eslint": "latest",
-    "vite": "latest"
+    "check": "tsc --noEmit && eslint --fix && oxfmt && bun test"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
@@ -89,5 +55,38 @@
     "untildify": "latest",
     "yaml": "latest",
     "zod": "latest"
+  },
+  "devDependencies": {
+    "@babel/core": "latest",
+    "@eslint/js": "latest",
+    "@pandacss/dev": "latest",
+    "@rolldown/plugin-babel": "latest",
+    "@types/bun": "latest",
+    "@typescript/native-preview": "latest",
+    "@vitejs/plugin-react": "latest",
+    "babel-plugin-react-compiler": "latest",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "oxfmt": "latest",
+    "postcss": "latest",
+    "typescript-eslint": "latest",
+    "vite": "latest"
+  },
+  "oclif": {
+    "bin": "omity",
+    "commands": "./src/commands",
+    "dirname": "omity-agent",
+    "topicSeparator": " ",
+    "topics": {
+      "app": {
+        "description": "启动本地 WebUI"
+      },
+      "client": {
+        "description": "向 Host 发送消息或控制指令"
+      },
+      "host": {
+        "description": "管理 Host 会话"
+      }
+    }
   }
 }

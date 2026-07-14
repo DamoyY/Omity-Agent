@@ -1,21 +1,8 @@
-import {
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import type { AttachmentSettings } from "../../attachments/contract";
-import {
-  bootstrap,
-  appEvents,
-  type FrontendSettings,
-  type SessionInfo,
-} from "./client";
-import {
-  readDeletedEvent,
-  readSessionEvent,
-  readSessionsEvent,
-} from "./events/data";
+import { bootstrap, appEvents, type FrontendSettings, type SessionInfo } from "./client";
+import { readDeletedEvent, readSessionEvent, readSessionsEvent } from "./events/data";
 import { reportError } from "./errors";
 import { reportSessionErrors } from "./events/reporting";
 import { transcriptKey } from "./transcript/query";
@@ -27,11 +14,7 @@ export interface BootstrapData {
   sessions: SessionInfo[];
 }
 
-export {
-  transcriptKey,
-  useSessionTranscript,
-  type TranscriptData,
-} from "./transcript/query";
+export { transcriptKey, useSessionTranscript, type TranscriptData } from "./transcript/query";
 
 export const bootstrapKey = ["bootstrap"] as const;
 export function useBootstrap() {
@@ -42,9 +25,7 @@ export function useBootstrap() {
     queryKey: bootstrapKey,
     queryFn: async ({ signal }) => {
       const data = await bootstrap(signal);
-      return streamedSessions.current
-        ? { ...data, sessions: streamedSessions.current }
-        : data;
+      return streamedSessions.current ? { ...data, sessions: streamedSessions.current } : data;
     },
   });
   useEffect(() => {
@@ -64,14 +45,9 @@ export function useBootstrap() {
       try {
         const session = readSessionEvent(event);
         if (streamedSessions.current) {
-          streamedSessions.current = upsertSessionList(
-            streamedSessions.current,
-            session,
-          );
+          streamedSessions.current = upsertSessionList(streamedSessions.current, session);
         }
-        updateCachedSessions(queryClient, (sessions) =>
-          upsertSessionList(sessions, session),
-        );
+        updateCachedSessions(queryClient, (sessions) => upsertSessionList(sessions, session));
       } catch (error) {
         reportError(error);
       }
@@ -80,14 +56,9 @@ export function useBootstrap() {
       try {
         const sessionId = readDeletedEvent(event);
         if (streamedSessions.current) {
-          streamedSessions.current = withoutSession(
-            streamedSessions.current,
-            sessionId,
-          );
+          streamedSessions.current = withoutSession(streamedSessions.current, sessionId);
         }
-        updateCachedSessions(queryClient, (sessions) =>
-          withoutSession(sessions, sessionId),
-        );
+        updateCachedSessions(queryClient, (sessions) => withoutSession(sessions, sessionId));
         queryClient.removeQueries({ queryKey: transcriptKey(sessionId) });
       } catch (error) {
         reportError(error);
@@ -109,9 +80,7 @@ export function useBootstrap() {
 
 export function addSession(queryClient: QueryClient, session: SessionInfo) {
   queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) =>
-    current
-      ? { ...current, sessions: upsertSessionList(current.sessions, session) }
-      : current,
+    current ? { ...current, sessions: upsertSessionList(current.sessions, session) } : current,
   );
 }
 
@@ -127,10 +96,7 @@ export function removeSession(queryClient: QueryClient, sessionId: string) {
   queryClient.removeQueries({ queryKey: transcriptKey(sessionId) });
 }
 
-function replaceCachedSessions(
-  queryClient: QueryClient,
-  sessions: SessionInfo[],
-) {
+function replaceCachedSessions(queryClient: QueryClient, sessions: SessionInfo[]) {
   let replaced = false;
   queryClient.setQueryData<BootstrapData>(bootstrapKey, (current) => {
     if (!current) return current;
@@ -149,13 +115,9 @@ function updateCachedSessions(
   );
 }
 
-export function upsertSessionList(
-  sessions: SessionInfo[],
-  session: SessionInfo,
-) {
+export function upsertSessionList(sessions: SessionInfo[], session: SessionInfo) {
   return [session, ...sessions.filter(({ id }) => id !== session.id)].sort(
-    (left, right) =>
-      right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
+    (left, right) => right.updatedAt - left.updatedAt || right.createdAt - left.createdAt,
   );
 }
 

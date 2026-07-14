@@ -31,8 +31,7 @@ export interface ToolHookPlan {
   awaiting?: { callId: string };
 }
 
-export type HookPlan =
-  AgentHookPlan | ToolHookPlan | { kind: "done"; finalMessageId: string };
+export type HookPlan = AgentHookPlan | ToolHookPlan | { kind: "done"; finalMessageId: string };
 
 export interface HookState {
   messages: BaseMessage[];
@@ -75,10 +74,7 @@ export function restoreOriginal(stored: StoredMessage) {
   return message;
 }
 
-export function finishAwaited(
-  plan: ToolHookPlan,
-  messages: BaseMessage[],
-): ToolHookPlan {
+export function finishAwaited(plan: ToolHookPlan, messages: BaseMessage[]): ToolHookPlan {
   if (!plan.awaiting) return plan;
   const output = completedOutput(messages, plan.awaiting.callId);
   if (!output) return plan;

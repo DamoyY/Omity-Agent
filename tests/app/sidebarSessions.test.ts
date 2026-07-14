@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionInfo } from "../../src/app/frontend/services/client";
-import {
-  groupSessions,
-  isRunning,
-} from "../../src/app/frontend/components/Sidebar/sessions";
+import { groupSessions, isRunning } from "../../src/app/frontend/components/Sidebar/sessions";
 
 describe("侧栏会话排序", () => {
   test("运行工作区和运行会话优先，同时保持工作区聚类", () => {
@@ -17,11 +14,7 @@ describe("侧栏会话排序", () => {
 
     const groups = groupSessions(input);
 
-    expect(groups.map(({ workspace }) => workspace)).toEqual([
-      "F:/beta",
-      "F:/alpha",
-      "F:/history",
-    ]);
+    expect(groups.map(({ workspace }) => workspace)).toEqual(["F:/beta", "F:/alpha", "F:/history"]);
     expect(groups.map(({ sessions }) => sessions.map(({ id }) => id))).toEqual([
       ["beta-tool", "beta-new"],
       ["alpha-model", "alpha-old"],

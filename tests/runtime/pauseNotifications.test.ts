@@ -2,12 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HostContext } from "../../src/runtime/context";
 import { processQueue } from "../../src/runtime/queue";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 

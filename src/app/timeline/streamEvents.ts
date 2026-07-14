@@ -22,6 +22,7 @@ export function displayStreamEvent(event: StreamEvent): DisplayEvent {
 }
 
 interface ToolCallAccumulator {
+  freeform?: boolean;
   id?: string;
   index?: number;
   inputText: string;
@@ -44,8 +45,7 @@ export function eventQueueId(event: DisplayEvent) {
 }
 
 export function eventMessageId(event: DisplayEvent) {
-  return isRecord(event.payload) &&
-    typeof event.payload["messageId"] === "string"
+  return isRecord(event.payload) && typeof event.payload["messageId"] === "string"
     ? event.payload["messageId"]
     : undefined;
 }
@@ -61,10 +61,7 @@ export function eventStartedCallId(event: DisplayEvent) {
 export function currentToolCallEvents(events: DisplayEvent[]) {
   const lastTextIndex = events.findLastIndex((event) => {
     const queueId = eventQueueId(event) ?? -1;
-    return (
-      eventText(event, queueId).length > 0 ||
-      eventReasoning(event, queueId).length > 0
-    );
+    return eventText(event, queueId).length > 0 || eventReasoning(event, queueId).length > 0;
   });
   return events.slice(lastTextIndex + 1);
 }
@@ -94,6 +91,7 @@ export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
     inputText: call.inputText,
     ...(call.messageId ? { messageId: call.messageId } : {}),
     name: call.name || "tool",
+    ...(call.freeform ? { rawInput: call.inputText } : {}),
     streaming: true,
   }));
 }
@@ -111,6 +109,7 @@ function matchesDelta(
 }
 
 function mergeCall(target: ToolCallAccumulator, source: ToolCallAccumulator) {
+  target.freeform ??= source.freeform;
   target.id ??= source.id;
   target.index ??= source.index;
   target.messageId ??= source.messageId;
@@ -122,6 +121,7 @@ function mergeDelta(
   target: ToolCallAccumulator,
   delta: NonNullable<ReturnType<typeof toolCallDelta>>,
 ) {
+  target.freeform ??= delta.freeform;
   target.id ??= delta.id;
   target.index ??= delta.index;
   target.messageId ??= delta.messageId;
@@ -137,6 +137,7 @@ function toolCallDelta(event: DisplayEvent) {
   if (!isRecord(call)) return null;
   return {
     args: typeof call["args"] === "string" ? call["args"] : undefined,
+    freeform: call["freeform"] === true ? true : undefined,
     id: typeof call["id"] === "string" ? call["id"] : undefined,
     index: typeof call["index"] === "number" ? call["index"] : undefined,
     messageId: eventMessageId(event),

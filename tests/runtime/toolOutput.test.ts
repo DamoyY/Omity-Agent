@@ -87,17 +87,12 @@ test("accepts hook call IDs when writing large output", async () => {
 
 test("uses compact URL-safe large output file names", async () => {
   const root = makeDir();
-  await redirectLargeToolOutput(
-    new ToolMessage({ content: "long output", tool_call_id: "call" }),
-    {
-      dataDir: root,
-      maxTokens: 1,
-      sessionId: "demo-session",
-    },
-  );
-  const names = readdirSync(
-    join(root, "sessions", "demo-session", "large_output"),
-  );
+  await redirectLargeToolOutput(new ToolMessage({ content: "long output", tool_call_id: "call" }), {
+    dataDir: root,
+    maxTokens: 1,
+    sessionId: "demo-session",
+  });
+  const names = readdirSync(join(root, "sessions", "demo-session", "large_output"));
 
   expect(names).toHaveLength(1);
   expect(names[0]).toMatch(/^[A-Za-z0-9_-]{22}\.txt$/);
@@ -174,9 +169,5 @@ function makeDir() {
 }
 
 function outputFileId(outputId: string) {
-  return createHash("sha256")
-    .update(outputId)
-    .digest()
-    .subarray(0, 16)
-    .toString("base64url");
+  return createHash("sha256").update(outputId).digest().subarray(0, 16).toString("base64url");
 }

@@ -11,12 +11,7 @@ export async function enqueueMessageWithAttachments(
   attachments: PendingAttachment[],
   ensureHost: () => Promise<void>,
 ) {
-  const saved = await saveMessageAttachments(
-    settings,
-    sessionId,
-    content,
-    attachments,
-  );
+  const saved = await saveMessageAttachments(settings, sessionId, content, attachments);
   try {
     await ensureHost();
     const result = runClient({ sessionId, append: saved.content }, appRoot);

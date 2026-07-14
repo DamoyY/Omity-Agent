@@ -11,13 +11,7 @@ const content = css({
   minW: 0,
   pt: "3",
 });
-export function Reasoning({
-  content: reasoning,
-  latest,
-}: {
-  content: string;
-  latest: boolean;
-}) {
+export function Reasoning({ content: reasoning, latest }: { content: string; latest: boolean }) {
   const { t } = useTranslation();
   return (
     <Frame

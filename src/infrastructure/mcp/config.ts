@@ -23,9 +23,7 @@ const stdioServerSchema = z.looseObject({
 });
 
 export function readMcpConfiguration(path: string) {
-  const parsed = expandEnvPlaceholders(
-    YAML.parse(readFileSync(path, "utf8")) ?? {},
-  );
+  const parsed = expandEnvPlaceholders(YAML.parse(readFileSync(path, "utf8")) ?? {});
   const result = mcpConfigurationSchema.safeParse(parsed);
   if (!result.success) {
     const rootIssue = result.error.issues.find(
@@ -37,19 +35,12 @@ export function readMcpConfiguration(path: string) {
   const configuration = result.data;
   return {
     mcpServers: normalizeMcpServers(configuration.mcpServers ?? {}),
-    toolNameOverrides: normalizeMcpToolNameOverrides(
-      configuration.toolNameOverrides,
-    ),
-    freeformToolInputs: normalizeFreeformToolInputs(
-      configuration.freeformToolInputs,
-    ),
+    toolNameOverrides: normalizeMcpToolNameOverrides(configuration.toolNameOverrides),
+    freeformToolInputs: normalizeFreeformToolInputs(configuration.freeformToolInputs),
   };
 }
 
-export function expandEnvPlaceholders(
-  value: unknown,
-  path = "settings/mcp.yaml",
-): unknown {
+export function expandEnvPlaceholders(value: unknown, path = "settings/mcp.yaml"): unknown {
   if (typeof value === "string") {
     return value.replaceAll(envPlaceholder, (_match, name: string) => {
       const envValue = process.env[name];
@@ -60,9 +51,7 @@ export function expandEnvPlaceholders(
     });
   }
   if (Array.isArray(value)) {
-    return value.map((item, index) =>
-      expandEnvPlaceholders(item, `${path}[${index.toString()}]`),
-    );
+    return value.map((item, index) => expandEnvPlaceholders(item, `${path}[${index.toString()}]`));
   }
   if (isRecord(value)) {
     return Object.fromEntries(
@@ -77,21 +66,32 @@ export function expandEnvPlaceholders(
 
 export function normalizeMcpServers(mcpServers: McpServers): McpServers {
   return Object.fromEntries(
-    Object.entries(mcpServers).map(([name, server]) => [
-      name,
-      normalizeMcpServer(server),
-    ]),
+    Object.entries(mcpServers).map(([name, server]) => [name, normalizeMcpServer(server)]),
   );
 }
 
 function normalizeMcpServer(server: unknown): unknown {
-  if (!isRecord(server) || !("command" in server)) return server;
-  const result = stdioServerSchema.safeParse(server);
-  if (!result.success) throw result.error;
+  if (!isRecord(server)) return server;
+  if ("command" in server) {
+    const result = stdioServerSchema.safeParse(server);
+    if (!result.success) throw result.error;
+    return {
+      ...result.data,
+      args: result.data.args ?? [],
+      stderr: "ignore",
+    };
+  }
+  if (server["transport"] === "sse" || server["type"] === "sse") {
+    throw new Error("MCP SSE transport 无法关闭底层自动重连，请改用 http");
+  }
+  if ("authProvider" in server) {
+    throw new Error("MCP authProvider 会在认证失败后自动重试，请改用静态 headers");
+  }
+  if (!("url" in server)) return server;
   return {
-    ...result.data,
-    args: result.data.args ?? [],
-    stderr: "ignore",
+    ...server,
+    automaticSSEFallback: false,
+    reconnect: { enabled: false, maxAttempts: 0 },
   };
 }
 

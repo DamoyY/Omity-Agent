@@ -26,13 +26,9 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
       requests.push(body);
       if (requests.length === 1) return Response.json(customToolResponse());
       const input = body["input"];
-      const output = Array.isArray(input)
-        ? (input as unknown[]).at(-1)
-        : undefined;
+      const output = Array.isArray(input) ? (input as unknown[]).at(-1) : undefined;
       const customCall = Array.isArray(input)
-        ? (input as unknown[]).find(
-            (item) => isRecord(item) && item["type"] === "custom_tool_call",
-          )
+        ? (input as unknown[]).find((item) => isRecord(item) && item["type"] === "custom_tool_call")
         : undefined;
       if (
         !isRecord(customCall) ||
@@ -128,9 +124,7 @@ function textResponse() {
       type: "message",
       status: "completed",
       role: "assistant",
-      content: [
-        { type: "output_text", text: "Patch applied", annotations: [] },
-      ],
+      content: [{ type: "output_text", text: "Patch applied", annotations: [] }],
     },
   ]);
 }

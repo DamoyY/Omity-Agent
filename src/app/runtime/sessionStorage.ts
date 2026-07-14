@@ -1,8 +1,5 @@
 import type { Settings } from "../../types";
-import {
-  resolveSessionPaths,
-  sessionPaths,
-} from "../../infrastructure/configuration/sessionPaths";
+import { resolveSessionPaths, sessionPaths } from "../../infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../../infrastructure/database/agentDatabase";
 import { removeDatabaseDirectory } from "../../infrastructure/database/connection";
 import { initializeConversation } from "../../infrastructure/database/initialConversation";

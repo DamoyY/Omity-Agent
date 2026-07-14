@@ -1,11 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import {
-  AIMessage,
-  ToolMessage,
-  type BaseMessage,
-  type ToolCall,
-} from "@langchain/core/messages";
+import { AIMessage, ToolMessage, type BaseMessage, type ToolCall } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import type { Database } from "bun:sqlite";
 import {
@@ -37,6 +32,7 @@ import {
 } from "./model";
 import { normalizeTaskConfig } from "./taskConfig";
 import { createToolInvoker } from "./toolExecution";
+import { ToolExecutions } from "./toolExecutions";
 
 const AgentState = Annotation.Root({
   ...MessagesAnnotation.spec,
@@ -62,6 +58,7 @@ interface AgentGraphOptions {
   tools: StructuredToolInterface[];
   modelTools?: StructuredToolInterface[];
   freeformToolParameters?: ReadonlyMap<string, string>;
+  toolExecutions?: ToolExecutions;
   hooks: HookRuntime;
   checkpointer?: BaseCheckpointSaver;
   skillsMessage?: string | null;
@@ -74,15 +71,12 @@ export function buildGraph(
   hooks: HookRuntime,
   toolOptions: Pick<
     AgentGraphOptions,
-    "modelTools" | "freeformToolParameters"
+    "modelTools" | "freeformToolParameters" | "toolExecutions"
   > = {},
 ) {
   const checkpointer = new BunSqliteSaver(database, hooks.sessionId);
   const skillsMessage = buildSkillsMessage(settings);
-  const instructions = buildResponsesInstructions(
-    settings.agent.systemPrompt,
-    skillsMessage,
-  );
+  const instructions = buildResponsesInstructions(settings.agent.systemPrompt, skillsMessage);
   const model = buildModel(
     settings,
     hooks.sessionId,
@@ -101,42 +95,30 @@ export function buildGraph(
 }
 
 export function createAgentGraph(options: AgentGraphOptions) {
-  const model = bindModelTools(
-    options.model,
-    options.modelTools ?? options.tools,
-  );
+  const model = bindModelTools(options.model, options.modelTools ?? options.tools);
   const invokeTool = createToolInvoker(options.tools, {
     settings: options.settings,
     sessionId: options.hooks.sessionId,
     freeformToolParameters: options.freeformToolParameters ?? new Map(),
+    toolExecutions: options.toolExecutions,
   });
-  const requestModel = task(
-    "request_model",
-    async (messages: BaseMessage[]) => {
-      const response = await model.invoke(
-        messages,
-        normalizeTaskConfig(getConfig()),
-      );
-      if (!AIMessage.isInstance(response))
-        throw new Error("没有返回 AIMessage");
-      if (!response.tool_calls?.length && !contentToText(response.content)) {
-        throw new ModelEmptyResponseError();
-      }
-      response.id ??= randomUUID();
-      return response as AIMessage & { id: string };
-    },
-  );
+  const requestModel = task("request_model", async (messages: BaseMessage[]) => {
+    const response = await model.invoke(messages, normalizeTaskConfig(getConfig()));
+    if (!AIMessage.isInstance(response)) throw new Error("没有返回 AIMessage");
+    if (!response.tool_calls?.length && !contentToText(response.content)) {
+      throw new ModelEmptyResponseError();
+    }
+    response.id ??= randomUUID();
+    return response as AIMessage & { id: string };
+  });
   const runTool = task(
     "invoke_tool",
     async (call: ToolCall): Promise<ToolMessage> =>
       invokeTool(call, normalizeTaskConfig(getConfig())),
   ) as unknown as (call: ToolCall) => Promise<ToolMessage>;
-  const consumeHookTask = task(
-    "consume_hook_usage",
-    (hookId: string, limit: number) => ({
-      consumed: options.hooks.consume(hookId, limit),
-    }),
-  );
+  const consumeHookTask = task("consume_hook_usage", (hookId: string, limit: number) => ({
+    consumed: options.hooks.consume(hookId, limit),
+  }));
   const consumeHook = async (hookId: string, limit: number) =>
     (await consumeHookTask(hookId, limit)).consumed;
   const runHooks = createHookNode(options.hooks, consumeHook, runTool);
@@ -178,9 +160,7 @@ function pendingToolCall(messages: BaseMessage[]): ToolCall {
   );
   const call = messages
     .findLast((message) => AIMessage.isInstance(message))
-    ?.tool_calls?.find(
-      (candidate) => !candidate.id || !completed.has(candidate.id),
-    );
+    ?.tool_calls?.find((candidate) => !candidate.id || !completed.has(candidate.id));
   if (!call) throw new Error("工具节点没有待执行的工具调用");
   return call;
 }

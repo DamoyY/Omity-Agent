@@ -33,9 +33,7 @@ export function normalizeCheckpoint(checkpoint: Checkpoint) {
       ...checkpoint,
       channel_values: {
         ...checkpoint.channel_values,
-        ...(normalizedMessages
-          ? { messages: messageRefs(normalizedMessages, "array") }
-          : {}),
+        ...(normalizedMessages ? { messages: messageRefs(normalizedMessages, "array") } : {}),
         ...(plan.value === undefined ? {} : { hookPlan: plan.value }),
       },
     },
@@ -63,10 +61,7 @@ export function hydrateCheckpoint(db: Database, checkpoint: Checkpoint) {
       ...(marker ? { messages: loadMessagesByRefs(db, marker.refs) } : {}),
     },
   };
-  hydrated.channel_values["hookPlan"] = hydrateHookPlan(
-    db,
-    hydrated.channel_values["hookPlan"],
-  );
+  hydrated.channel_values["hookPlan"] = hydrateHookPlan(db, hydrated.channel_values["hookPlan"]);
   return hydrated;
 }
 
@@ -80,15 +75,10 @@ export function normalizePendingValue(value: unknown) {
     return { value: messageRefs(value, "array"), messages: value };
   }
   const plan = normalizeHookPlan(value);
-  return plan.messages.length > 0
-    ? { value: plan.value, messages: plan.messages }
-    : { value };
+  return plan.messages.length > 0 ? { value: plan.value, messages: plan.messages } : { value };
 }
 
-export function persistPendingMessages(
-  db: Database,
-  messages: BaseMessage[] | undefined,
-) {
+export function persistPendingMessages(db: Database, messages: BaseMessage[] | undefined) {
   for (const message of messages ?? []) persistMessageBlob(db, message);
 }
 
@@ -102,10 +92,7 @@ export function hydratePendingValue(db: Database, value: unknown) {
   return message;
 }
 
-function messageRefs(
-  messages: BaseMessage[],
-  shape: MessageRefs["shape"],
-): MessageRefs {
+function messageRefs(messages: BaseMessage[], shape: MessageRefs["shape"]): MessageRefs {
   return {
     [messageRefsKey]: messages.map(messageRef),
     shape,
@@ -130,9 +117,7 @@ function ensureMessageIds(messages: BaseMessage[]) {
 }
 
 function isMessageArray(value: unknown): value is BaseMessage[] {
-  return (
-    Array.isArray(value) && value.every((item) => BaseMessage.isInstance(item))
-  );
+  return Array.isArray(value) && value.every((item) => BaseMessage.isInstance(item));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -169,17 +154,11 @@ function hydrateHookPlan(db: Database, value: unknown) {
 }
 
 function isStoredMessage(value: unknown): value is StoredMessage {
-  return (
-    isRecord(value) &&
-    typeof value["type"] === "string" &&
-    isRecord(value["data"])
-  );
+  return isRecord(value) && typeof value["type"] === "string" && isRecord(value["data"]);
 }
 
 function isMessageRef(value: unknown): value is StoredMessageRef {
   return (
-    isRecord(value) &&
-    typeof value["sourceId"] === "string" &&
-    typeof value["digest"] === "string"
+    isRecord(value) && typeof value["sourceId"] === "string" && typeof value["digest"] === "string"
   );
 }

@@ -109,9 +109,7 @@ export class AppEvents {
         rejectStream = reject;
       });
       const write: WriteEvent = (event, data) => {
-        pending = pending.then(() =>
-          stream.writeSSE({ event, data: JSON.stringify(data) }),
-        );
+        pending = pending.then(() => stream.writeSSE({ event, data: JSON.stringify(data) }));
         void pending.catch(rejectStream);
       };
       const unsubscribe = subscribe(write);

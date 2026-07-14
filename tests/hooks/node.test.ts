@@ -1,11 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  AIMessage,
-  ToolMessage,
-  type BaseMessage,
-} from "@langchain/core/messages";
+import { AIMessage, ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import { fakeModel } from "@langchain/core/testing";
 import { tool } from "@langchain/core/tools";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
@@ -25,8 +21,7 @@ const databases: AgentDatabase[] = [];
 
 afterEach(() => {
   for (const db of databases.splice(0)) db.close();
-  for (const dir of dirs.splice(0))
-    rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 test("takeover hooks bracket an agent tool without recursive hooks", async () => {
@@ -86,9 +81,7 @@ test("takeover hooks bracket an agent tool without recursive hooks", async () =>
 
 test("each hook execution commits one hooks node boundary", async () => {
   const calls: string[] = [];
-  const hookTool = makeTool("hook", () =>
-    calls.push(`call-${(calls.length + 1).toString()}`),
-  );
+  const hookTool = makeTool("hook", () => calls.push(`call-${(calls.length + 1).toString()}`));
   const hooks = makeRuntime(
     [silent("first", "agent", "before"), silent("second", "agent", "before")],
     [hookTool],
@@ -142,14 +135,7 @@ function makeRuntime(rules: HookRule[], tools: ReturnType<typeof makeTool>[]) {
   const db = new AgentDatabase(join(dir, "app.sqlite"));
   db.createSession("session", dir);
   databases.push(db);
-  return new HookRuntime(
-    rules,
-    tools,
-    db.db,
-    new Logger("error", true),
-    "session",
-    dir,
-  );
+  return new HookRuntime(rules, tools, db.db, new Logger("error", true), "session", dir);
 }
 
 function makeTool(name: string, record: () => void) {
@@ -162,11 +148,7 @@ function makeTool(name: string, record: () => void) {
   );
 }
 
-function takeover(
-  id: string,
-  target: string,
-  when: HookRule["when"],
-): HookRule {
+function takeover(id: string, target: string, when: HookRule["when"]): HookRule {
   return { ...silent(id, target, when), mode: "takeover" };
 }
 

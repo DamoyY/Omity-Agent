@@ -39,22 +39,14 @@ function expandEnvironmentVariables(value: string, env: Env) {
 }
 
 function expandPercentVariables(value: string, env: Env) {
-  return value.replaceAll(/%([^%]+)%/g, (_, name: string) =>
-    envValue(name, env),
-  );
+  return value.replaceAll(/%([^%]+)%/g, (_, name: string) => envValue(name, env));
 }
 
 function expandDollarVariables(value: string, env: Env) {
   return value
-    .replaceAll(/\$env:([A-Za-z_][A-Za-z0-9_]*)/gi, (_, name: string) =>
-      envValue(name, env),
-    )
-    .replaceAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name: string) =>
-      envValue(name, env),
-    )
-    .replaceAll(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, name: string) =>
-      envValue(name, env),
-    );
+    .replaceAll(/\$env:([A-Za-z_][A-Za-z0-9_]*)/gi, (_, name: string) => envValue(name, env))
+    .replaceAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name: string) => envValue(name, env))
+    .replaceAll(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, name: string) => envValue(name, env));
 }
 
 function envValue(name: string, env: Env) {

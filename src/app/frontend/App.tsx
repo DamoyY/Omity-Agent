@@ -1,11 +1,19 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { cx } from "styled-system/css";
 import { ChatPage } from "./components/Chat/ChatPage";
 import { Sidebar } from "./components/Sidebar";
 import { layout, main, sidebar } from "./design";
-import { readPage, writePage, type Page } from "./route";
 import {
+  readPage,
+  resolvePage,
+  sessionPage,
+  usePageNavigation,
+  writePage,
+  type Page,
+} from "./route";
+import {
+  cancelTool,
   createSession,
   deleteSession,
   forkSession,
@@ -13,12 +21,7 @@ import {
   sendMessage,
   setControl,
 } from "./services/client";
-import {
-  addSession,
-  removeSession,
-  useBootstrap,
-  useSessionTranscript,
-} from "./services/queries";
+import { addSession, removeSession, useBootstrap, useSessionTranscript } from "./services/queries";
 import {
   addOptimisticUser,
   confirmOptimisticUser,
@@ -49,20 +52,7 @@ export function App() {
     setPage(nextPage);
   }, []);
 
-  useEffect(() => {
-    const syncPage = () => {
-      setPage(readPage());
-    };
-    window.addEventListener("popstate", syncPage);
-    return () => {
-      window.removeEventListener("popstate", syncPage);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (samePage(page, currentPage)) return;
-    writePage(currentPage, true);
-  }, [currentPage, page]);
+  usePageNavigation(page, currentPage, setPage);
 
   const pausing =
     pausingSessionId === activeSession?.id &&
@@ -99,19 +89,17 @@ export function App() {
           view={transcript.view}
           workspace={newWorkspace ?? cwd}
           onCreate={async (initialState, attachments) => {
-            const { session } = await createSession(
-              newWorkspace ?? cwd,
-              initialState,
-              attachments,
-            );
+            const { session } = await createSession(newWorkspace ?? cwd, initialState, attachments);
             addSession(queryClient, session);
             navigate(sessionPage(session.id));
           }}
+          onCancelTool={async (toolCallId) => {
+            if (!activeSession) return;
+            await cancelTool(activeSession.id, toolCallId);
+          }}
           onControl={async (control) => {
             if (!activeSession) return;
-            const running = transcript.queue.some(
-              (item) => item.status === "running",
-            );
+            const running = transcript.queue.some((item) => item.status === "running");
             if (control === "pause" && running) {
               setPausingSessionId(activeSession.id);
             }
@@ -142,11 +130,7 @@ export function App() {
           }}
           onSend={async (content, draftRevision, attachments) => {
             if (!activeSession) return;
-            const optimisticKey = addOptimisticUser(
-              queryClient,
-              activeSession.id,
-              content,
-            );
+            const optimisticKey = addOptimisticUser(queryClient, activeSession.id, content);
             try {
               const { content: sentContent, queueId } = await sendMessage(
                 activeSession.id,
@@ -162,11 +146,7 @@ export function App() {
                 sentContent,
               );
             } catch (error) {
-              removeOptimisticUser(
-                queryClient,
-                activeSession.id,
-                optimisticKey,
-              );
+              removeOptimisticUser(queryClient, activeSession.id, optimisticKey);
               throw error;
             }
           }}
@@ -175,23 +155,4 @@ export function App() {
       </main>
     </div>
   );
-}
-
-function sessionPage(id: string): Page {
-  return { kind: "session", id };
-}
-
-function resolvePage(page: Page, sessions: { id: string }[], ready: boolean) {
-  if (!ready) return page;
-  if (page.kind === "new") return page;
-  return sessions.some((session) => session.id === page.id)
-    ? page
-    : ({ kind: "new" } as const);
-}
-
-function samePage(left: Page, right: Page) {
-  if (left.kind !== right.kind) return false;
-  return left.kind !== "session" || right.kind !== "session"
-    ? true
-    : left.id === right.id;
 }

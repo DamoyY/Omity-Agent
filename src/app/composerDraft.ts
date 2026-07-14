@@ -48,11 +48,7 @@ export function writeSessionDraft(
   });
 }
 
-export function clearSessionDraft(
-  settings: Settings,
-  sessionId: string,
-  revision: number,
-) {
+export function clearSessionDraft(settings: Settings, sessionId: string, revision: number) {
   withSessionDatabase(settings, sessionId, (db) => {
     db.run(
       `INSERT INTO composer_drafts (session_id, content, revision, updated_at)

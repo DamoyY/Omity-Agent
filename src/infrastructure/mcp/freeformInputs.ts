@@ -24,9 +24,7 @@ export function normalizeFreeformToolInputs(
   const names = new Set<string>();
   for (const [index, name] of value.entries()) {
     if (typeof name !== "string" || name.length === 0) {
-      throw new Error(
-        `MCP free-form 工具配置 ${path}[${index.toString()}] 必须是非空字符串`,
-      );
+      throw new Error(`MCP free-form 工具配置 ${path}[${index.toString()}] 必须是非空字符串`);
     }
     if (names.has(name)) {
       throw new Error(`MCP free-form 工具配置包含重复工具：${name}`);
@@ -55,15 +53,11 @@ export function configureFreeformMcpTools(
     parameters,
     modelTools: tools.map((tool) => {
       if (!parameters.has(tool.name)) return tool;
-      return customTool(
-        () =>
-          Promise.reject(new Error(`工具定义 ${tool.name} 不能直接用于执行`)),
-        {
-          name: tool.name,
-          description: tool.description,
-          format: { type: "text" },
-        },
-      );
+      return customTool(() => Promise.reject(new Error(`工具定义 ${tool.name} 不能直接用于执行`)), {
+        name: tool.name,
+        description: tool.description,
+        format: { type: "text" },
+      });
     }),
   };
 }
@@ -85,9 +79,7 @@ function singleStringParameter(tool: StructuredToolInterface) {
     throw new Error(`MCP free-form 工具 ${tool.name} 的输入参数名不能为空`);
   }
   if (!stringParameterSchema.safeParse(definition).success) {
-    throw new Error(
-      `MCP free-form 工具 ${tool.name} 的唯一输入参数 ${parameter} 必须是字符串`,
-    );
+    throw new Error(`MCP free-form 工具 ${tool.name} 的唯一输入参数 ${parameter} 必须是字符串`);
   }
   return parameter;
 }

@@ -16,10 +16,7 @@ const styles = {
   red: "\x1b[31m",
 };
 
-const levelMeta: Record<
-  LogLevel,
-  { label: string; mark: string; color: string }
-> = {
+const levelMeta: Record<LogLevel, { label: string; mark: string; color: string }> = {
   debug: { label: "DEBUG", mark: "·", color: styles.blue },
   info: { label: "INFO ", mark: "●", color: styles.green },
   warn: { label: "WARN ", mark: "▲", color: styles.yellow },
@@ -73,9 +70,7 @@ export class Logger {
     const prefix = this.prefix(meta);
     console.log(`${prefix}${"  ".repeat(this.indent)}${message}`);
     for (const line of formatData(data)) {
-      console.log(
-        `${this.continuationPrefix()}${"  ".repeat(this.indent)}${line}`,
-      );
+      console.log(`${this.continuationPrefix()}${"  ".repeat(this.indent)}${line}`);
     }
   }
 
@@ -126,9 +121,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isScalar(value: unknown) {
-  return (
-    value === null || ["string", "number", "boolean"].includes(typeof value)
-  );
+  return value === null || ["string", "number", "boolean"].includes(typeof value);
 }
 
 function formatScalar(value: unknown) {

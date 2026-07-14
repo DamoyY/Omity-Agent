@@ -3,13 +3,8 @@ import { queueMessageId } from "../infrastructure/database/records/messages/hist
 import type { HostContext } from "./context";
 import type { QueueRun } from "./run";
 
-export function consumeBoundaryAppends(
-  ctx: HostContext,
-  run: QueueRun,
-  state: BoundaryState,
-) {
-  if (hasPendingTools(state) || blocksAppend(state.values?.hookPlan))
-    return null;
+export function consumeBoundaryAppends(ctx: HostContext, run: QueueRun, state: BoundaryState) {
+  if (hasPendingTools(state) || blocksAppend(state.values?.hookPlan)) return null;
   const appends = ctx.db.pendingAppends(ctx.sessionId);
   if (appends.length === 0) return null;
   for (const item of appends) {
@@ -34,14 +29,8 @@ export function consumeBoundaryAppends(
   };
 }
 
-export function recoverConsumedAppends(
-  ctx: HostContext,
-  run: QueueRun,
-  state: BoundaryState,
-) {
-  const consumedIds = new Set(
-    run.items.map((item) => queueMessageId(ctx.sessionId, item.id)),
-  );
+export function recoverConsumedAppends(ctx: HostContext, run: QueueRun, state: BoundaryState) {
+  const consumedIds = new Set(run.items.map((item) => queueMessageId(ctx.sessionId, item.id)));
   for (const message of state.values?.messages ?? []) {
     if (HumanMessage.isInstance(message) && message.id) {
       consumedIds.delete(message.id);
@@ -53,9 +42,7 @@ export function recoverConsumedAppends(
     .history(ctx.sessionId)
     .filter(
       (message) =>
-        HumanMessage.isInstance(message) &&
-        message.id !== undefined &&
-        consumedIds.has(message.id),
+        HumanMessage.isInstance(message) && message.id !== undefined && consumedIds.has(message.id),
     );
   const recoveredIds = new Set(messages.map((message) => message.id));
   const absentIds = [...consumedIds].filter((id) => !recoveredIds.has(id));
@@ -69,9 +56,7 @@ export function recoverConsumedAppends(
   });
   return {
     messages,
-    hookPendingUserIds: [
-      ...new Set([...pendingUserIds(state), ...consumedIds]),
-    ],
+    hookPendingUserIds: [...new Set([...pendingUserIds(state), ...consumedIds])],
   };
 }
 
@@ -93,34 +78,24 @@ function blocksAppend(plan: unknown) {
 
 function pendingUserIds(state: BoundaryState) {
   const value = state.values?.hookPendingUserIds;
-  return Array.isArray(value) && value.every((id) => typeof id === "string")
-    ? value
-    : [];
+  return Array.isArray(value) && value.every((id) => typeof id === "string") ? value : [];
 }
 
 function hasPendingTools(state: BoundaryState) {
   const messages = state.values?.messages;
   if (!Array.isArray(messages)) return false;
-  const toolIds = new Set(
-    messages.filter(isToolMessage).map((message) => message.tool_call_id),
-  );
+  const toolIds = new Set(messages.filter(isToolMessage).map((message) => message.tool_call_id));
   const lastAi = messages.findLast(isAiMessage);
   return Boolean(lastAi?.tool_calls?.some((call) => !toolIds.has(call.id)));
 }
 
-function isToolMessage(
-  message: unknown,
-): message is { type: "tool"; tool_call_id: string } {
+function isToolMessage(message: unknown): message is { type: "tool"; tool_call_id: string } {
   return (
-    isRecord(message) &&
-    message["type"] === "tool" &&
-    typeof message["tool_call_id"] === "string"
+    isRecord(message) && message["type"] === "tool" && typeof message["tool_call_id"] === "string"
   );
 }
 
-function isAiMessage(
-  message: unknown,
-): message is { type: "ai"; tool_calls?: { id: string }[] } {
+function isAiMessage(message: unknown): message is { type: "ai"; tool_calls?: { id: string }[] } {
   return isRecord(message) && message["type"] === "ai";
 }
 

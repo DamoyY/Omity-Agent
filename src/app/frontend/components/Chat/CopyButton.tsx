@@ -12,13 +12,7 @@ const button = css({
 
 const copiedDurationMs = 1600;
 
-export function CopyButton({
-  className,
-  value,
-}: {
-  className?: string;
-  value: string;
-}) {
+export function CopyButton({ className, value }: { className?: string; value: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);

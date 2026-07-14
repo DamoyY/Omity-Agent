@@ -5,10 +5,7 @@ import { afterEach, expect, test } from "bun:test";
 import { appDataRoot } from "../../src/infrastructure/configuration/configuredPath";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import { parseModelSettings } from "../../src/infrastructure/configuration/settingsSchema";
-import {
-  safeId,
-  sessionPaths,
-} from "../../src/infrastructure/configuration/sessionPaths";
+import { safeId, sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { loadHookRules } from "../../src/infrastructure/configuration/hookRules";
 import { resolveHookArgs } from "../../src/hooks/variables";
 import { writeTestConfiguration } from "../support/configuration";
@@ -39,12 +36,7 @@ test("settings yaml resolves AppData data directory", () => {
     const paths = sessionPaths(settings, "abc-def");
     expect(paths).toEqual({
       dir: resolve(settings.paths.dataDir, "sessions", safeId("abc-def")),
-      dbPath: resolve(
-        settings.paths.dataDir,
-        "sessions",
-        safeId("abc-def"),
-        "agent.sqlite",
-      ),
+      dbPath: resolve(settings.paths.dataDir, "sessions", safeId("abc-def"), "agent.sqlite"),
     });
     expect(() => sessionPaths(settings, "abc/def")).toThrow("路径 ID 无效");
     expect(() => sessionPaths(settings, "abc:def")).toThrow("路径 ID 无效");
@@ -79,12 +71,10 @@ profiles:
     model: gateway-model
     apiKeyEnv: TEST_KEY
     baseURL: null
-    maxRetries: 0
     timeoutMs: 1000
   codex:
     adapter: codex
     model: codex-model
-    maxRetries: 1
     timeoutMs: 2000
 `,
   });
@@ -92,15 +82,14 @@ profiles:
   expect(loadSettings(root).model).toEqual({
     adapter: "codex",
     model: "codex-model",
-    maxRetries: 1,
     timeoutMs: 2000,
   });
 });
 
 test("model yaml rejects an unknown profile", () => {
-  expect(() =>
-    parseModelSettings({ profile: "missing", profiles: {} }),
-  ).toThrow("Profile 不存在：missing");
+  expect(() => parseModelSettings({ profile: "missing", profiles: {} })).toThrow(
+    "Profile 不存在：missing",
+  );
 });
 
 test("hook config parses targets, timing, and modes", () => {
@@ -141,9 +130,7 @@ test("hook config parses targets, timing, and modes", () => {
 `,
   );
 
-  expect(
-    loadHookRules(path).map(({ target, when, mode }) => [target, when, mode]),
-  ).toEqual([
+  expect(loadHookRules(path).map(({ target, when, mode }) => [target, when, mode])).toEqual([
     ["agent", "before", "takeover"],
     ["agent", "after", "takeover"],
     ["write", "before", "silent"],
@@ -165,9 +152,9 @@ test("hook variables preserve exact values and reject ambiguous output", () => {
       { cwd: "F:\\work", previousTool: { output: previous } },
     ),
   ).toThrow("不能将数组或对象嵌入字符串");
-  expect(() =>
-    resolveHookArgs({ missing: "${previousTool.output}" }, { cwd: "F:\\work" }),
-  ).toThrow("没有可用的前序工具输出");
+  expect(() => resolveHookArgs({ missing: "${previousTool.output}" }, { cwd: "F:\\work" })).toThrow(
+    "没有可用的前序工具输出",
+  );
 });
 
 function withAppDataRoot(path: string, callback: () => void) {

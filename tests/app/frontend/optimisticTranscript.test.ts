@@ -5,10 +5,7 @@ import {
   confirmOptimisticUser,
   removeOptimisticUser,
 } from "../../../src/app/frontend/services/transcript/optimistic";
-import {
-  transcriptKey,
-  type TranscriptData,
-} from "../../../src/app/frontend/services/queries";
+import { transcriptKey, type TranscriptData } from "../../../src/app/frontend/services/queries";
 import {
   appendTranscriptEvents,
   emptyTranscriptData,
@@ -33,9 +30,7 @@ test("send confirmation converts optimistic user into a pending queue item", () 
   confirmOptimisticUser(client, "session", key, 7, "hello");
 
   const data = transcript(client);
-  expect(data.queue).toMatchObject([
-    { id: 7, content: "hello", status: "pending" },
-  ]);
+  expect(data.queue).toMatchObject([{ id: 7, content: "hello", status: "pending" }]);
   expect(data.view).toMatchObject([{ key: "queue-7", content: "hello" }]);
 });
 
@@ -72,9 +67,7 @@ test("confirmation removes optimistic duplicate after SSE persisted the user", (
 
   confirmOptimisticUser(client, "session", key, 7, "hello");
 
-  expect(transcript(client).view.map(({ key: itemKey }) => itemKey)).toEqual([
-    "message-11",
-  ]);
+  expect(transcript(client).view.map(({ key: itemKey }) => itemKey)).toEqual(["message-11"]);
 });
 
 test("failed send removes its optimistic user", () => {

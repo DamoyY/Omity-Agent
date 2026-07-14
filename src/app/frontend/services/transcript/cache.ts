@@ -34,30 +34,21 @@ export function reconcileTranscript(
   snapshot: TranscriptSnapshot,
   current?: TranscriptData,
 ): TranscriptData {
-  const replay = current?.events.filter(
-    (event) => event.id > snapshot.eventCursor,
-  );
+  const replay = current?.events.filter((event) => event.id > snapshot.eventCursor);
   return buildTranscript(
     {
       ...snapshot,
-      events: replay?.length
-        ? [...snapshot.events, ...replay]
-        : snapshot.events,
+      events: replay?.length ? [...snapshot.events, ...replay] : snapshot.events,
       eventCursor: replay?.at(-1)?.id ?? snapshot.eventCursor,
     },
     optimisticMessages(current),
   );
 }
 
-export function appendTranscriptEvents(
-  current: TranscriptData,
-  incoming: DisplayEvent[],
-) {
+export function appendTranscriptEvents(current: TranscriptData, incoming: DisplayEvent[]) {
   const events = [
     ...new Map(
-      incoming
-        .filter((event) => event.id > current.eventCursor)
-        .map((event) => [event.id, event]),
+      incoming.filter((event) => event.id > current.eventCursor).map((event) => [event.id, event]),
     ).values(),
   ].sort((left, right) => left.id - right.id);
   if (events.length === 0) return current;
@@ -75,16 +66,10 @@ export function rebuildTranscript(
   current: TranscriptData,
   changes: Partial<Pick<TranscriptData, "queue" | "messages" | "events">>,
 ) {
-  return buildTranscript(
-    { ...current, ...changes },
-    optimisticMessages(current),
-  );
+  return buildTranscript({ ...current, ...changes }, optimisticMessages(current));
 }
 
-export function withoutOptimistic(
-  current: TranscriptData,
-  key: string,
-): TranscriptData {
+export function withoutOptimistic(current: TranscriptData, key: string): TranscriptData {
   return { ...current, view: current.view.filter((item) => item.key !== key) };
 }
 
@@ -94,15 +79,10 @@ function buildTranscript(
 ): TranscriptData {
   return {
     ...snapshot,
-    view: [
-      ...buildTimeline(snapshot.messages, snapshot.queue, snapshot.events),
-      ...optimistic,
-    ],
+    view: [...buildTimeline(snapshot.messages, snapshot.queue, snapshot.events), ...optimistic],
   };
 }
 
 function optimisticMessages(current?: TranscriptData) {
-  return (
-    current?.view.filter((item) => item.key.startsWith("optimistic-")) ?? []
-  );
+  return current?.view.filter((item) => item.key.startsWith("optimistic-")) ?? [];
 }

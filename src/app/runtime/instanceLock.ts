@@ -49,10 +49,9 @@ export class AppInstanceLock {
         if (!isExistsError(error)) throw error;
         const owner = readOwner(path);
         if (isProcessRunning(owner.pid)) {
-          throw new Error(
-            `数据目录已有 App 在运行（PID ${owner.pid.toString()}）：${dataDir}`,
-            { cause: error },
-          );
+          throw new Error(`数据目录已有 App 在运行（PID ${owner.pid.toString()}）：${dataDir}`, {
+            cause: error,
+          });
         }
         abandonedOwner = owner;
         unlinkSync(path);
@@ -86,8 +85,6 @@ function isExistsError(error: unknown) {
 
 function isErrorCode(error: unknown, code: string) {
   return (
-    error instanceof Error &&
-    "code" in error &&
-    (error as Error & { code?: unknown }).code === code
+    error instanceof Error && "code" in error && (error as Error & { code?: unknown }).code === code
   );
 }

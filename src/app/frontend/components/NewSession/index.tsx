@@ -3,10 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { InitialSessionState } from "../../../initialState";
-import type {
-  AttachmentSettings,
-  PendingAttachment,
-} from "../../../attachments/contract";
+import type { AttachmentSettings, PendingAttachment } from "../../../attachments/contract";
 import { reportPromiseErrors } from "../../services/errors";
 import {
   composerActions,
@@ -51,10 +48,7 @@ export function NewSessionPage({
   pageClassName: string;
   recentWorkspaces: string[];
   workspace: string;
-  onCreate: (
-    state: InitialSessionState,
-    attachments: PendingAttachment[],
-  ) => Promise<void>;
+  onCreate: (state: InitialSessionState, attachments: PendingAttachment[]) => Promise<void>;
   onPickWorkspace: () => Promise<string | null>;
   onWorkspaceChange: (workspace: string) => void;
 }) {
@@ -85,10 +79,7 @@ export function NewSessionPage({
   const complete =
     workspace.trim().length > 0 &&
     message.trim().length > 0 &&
-    pairs.every(
-      ({ user, assistant }) =>
-        user.trim().length > 0 && assistant.trim().length > 0,
-    );
+    pairs.every(({ user, assistant }) => user.trim().length > 0 && assistant.trim().length > 0);
   const submit = async () => {
     if (!complete || submitting) return;
     setSubmitting(true);
@@ -127,9 +118,7 @@ export function NewSessionPage({
               pairs={pairs}
               onPairChange={(id, next) => {
                 setPairs((current) =>
-                  current.map((item) =>
-                    item.id === id ? { id, ...next } : item,
-                  ),
+                  current.map((item) => (item.id === id ? { id, ...next } : item)),
                 );
               }}
               onRemove={(id) => {
@@ -156,11 +145,7 @@ export function NewSessionPage({
               />
               <div className={composerActions}>
                 <div className={composerControls}>
-                  <Button
-                    disabled={!complete || submitting}
-                    type="submit"
-                    variant="outline"
-                  >
+                  <Button disabled={!complete || submitting} type="submit" variant="outline">
                     <Send size={14} />
                     {submitting ? t("creating") : t("createAndSend")}
                   </Button>
@@ -182,11 +167,7 @@ export function NewSessionPage({
                     <Plus size={14} /> {t("addMessagePair")}
                   </Button>
                 </div>
-                <span
-                  aria-label={t("user")}
-                  className={composerRole}
-                  title={t("user")}
-                >
+                <span aria-label={t("user")} className={composerRole} title={t("user")}>
                   <UserRound aria-hidden size={20} />
                 </span>
               </div>

@@ -35,10 +35,13 @@ import {
   touchSessionRecord,
   writeControlRecord,
 } from "./records/sessions";
+import {
+  clearToolCancellations,
+  requestToolCancellation,
+  takeToolCancellation,
+} from "./records/toolCancellations";
 
-type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown
-  ? Args
-  : never;
+type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown ? Args : never;
 
 export class AgentDatabase extends RecoverableDatabase {
   private notify?: (event: StreamEvent) => void;
@@ -114,9 +117,7 @@ export class AgentDatabase extends RecoverableDatabase {
   }
 
   startQueue(sessionId: string, item: QueueItem) {
-    return this.db.transaction(() =>
-      startQueueRecord(this.db, sessionId, item),
-    )();
+    return this.db.transaction(() => startQueueRecord(this.db, sessionId, item))();
   }
 
   setQueueStatus(queueId: number, status: QueueStatus, error?: ErrorDetails) {
@@ -138,6 +139,7 @@ export class AgentDatabase extends RecoverableDatabase {
     const tx = this.db.transaction(() => {
       syncMessages(this.db, sessionId, messages);
       clearStreamEvents(this.db, sessionId);
+      clearToolCancellations(this.db, sessionId);
     });
     tx();
   }
@@ -153,6 +155,15 @@ export class AgentDatabase extends RecoverableDatabase {
 
   setControl(sessionId: string, control: Control) {
     writeControlRecord(this.db, sessionId, control);
+  }
+
+  requestToolCancellation(sessionId: string, callId: string) {
+    this.requireSession(sessionId);
+    requestToolCancellation(this.db, sessionId, callId);
+  }
+
+  takeToolCancellation(sessionId: string, callId: string) {
+    return takeToolCancellation(this.db, sessionId, callId);
   }
 
   streamToken(...args: DatabaseArgs<typeof insertStreamToken>) {

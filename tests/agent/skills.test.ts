@@ -51,12 +51,7 @@ function makeSkillsDir() {
   return dir;
 }
 
-function writeSkill(
-  skillsDir: string,
-  dirname: string,
-  name: string,
-  description: string,
-) {
+function writeSkill(skillsDir: string, dirname: string, name: string, description: string) {
   const dir = join(skillsDir, dirname);
   mkdirSync(dir);
   writeFileSync(
@@ -65,10 +60,7 @@ function writeSkill(
   );
 }
 
-function makeSettings(
-  skillsDir: string,
-  skillEnabled: Record<string, boolean>,
-): Settings {
+function makeSettings(skillsDir: string, skillEnabled: Record<string, boolean>): Settings {
   return {
     paths: { dataDir: "data" },
     attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
@@ -82,7 +74,6 @@ function makeSettings(
       apiKeyEnv: "TEST_OPENAI_KEY",
       baseURL: null,
       temperature: 0,
-      maxRetries: 0,
       timeoutMs: 1000,
     },
     host: {

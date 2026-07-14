@@ -1,11 +1,6 @@
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { initializeConversation } from "../../src/infrastructure/database/initialConversation";
 
 afterEach(cleanupDatabaseDirs);
@@ -32,9 +27,9 @@ test("initial conversation keeps history outside the pending queue", () => {
     "历史问题二",
     "历史回答二",
   ]);
-  expect(
-    db.pendingAppends("123").map(({ id, content }) => ({ id, content })),
-  ).toEqual([{ id: queueId, content: "当前问题" }]);
+  expect(db.pendingAppends("123").map(({ id, content }) => ({ id, content }))).toEqual([
+    { id: queueId, content: "当前问题" },
+  ]);
   db.startQueue("123", required(db.nextQueue("123")));
   expect(db.history("123").map((message) => message.text)).toEqual([
     "历史问题一",
@@ -148,10 +143,7 @@ test("retains the unchanged prefix and queue message identity", () => {
 
   db.syncHistory("123", [...db.history("123"), new AIMessage("初稿")]);
   const firstSync = messageRows(db);
-  db.syncHistory("123", [
-    required(db.history("123")[0]),
-    new AIMessage("修订稿"),
-  ]);
+  db.syncHistory("123", [required(db.history("123")[0]), new AIMessage("修订稿")]);
   const secondSync = messageRows(db);
   const queueMessageId = queueMessageRowId(db, queueId);
   db.close();

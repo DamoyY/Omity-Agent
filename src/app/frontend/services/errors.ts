@@ -16,7 +16,5 @@ export function reportPromiseErrors(promise: Promise<unknown>) {
 }
 
 function isObject(value: unknown): value is object {
-  return (
-    (typeof value === "object" && value !== null) || typeof value === "function"
-  );
+  return (typeof value === "object" && value !== null) || typeof value === "function";
 }

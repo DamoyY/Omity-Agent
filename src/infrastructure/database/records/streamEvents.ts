@@ -1,7 +1,10 @@
 import type { Database } from "bun:sqlite";
 
 export type StreamToolCallDelta = Partial<
-  Record<"args" | "id" | "name", string> & { index: number }
+  Record<"args" | "id" | "name", string> & {
+    freeform: boolean;
+    index: number;
+  }
 >;
 
 export type StreamEventKind =
@@ -41,9 +44,7 @@ function insertStreamEvent(
     .run(sessionId, queueId, messageId ?? null, kind, JSON.stringify(payload));
   const id = Number(result.lastInsertRowid);
   if (!Number.isSafeInteger(id)) {
-    throw new Error(
-      `流式事件 ID 超出安全整数范围：${String(result.lastInsertRowid)}`,
-    );
+    throw new Error(`流式事件 ID 超出安全整数范围：${String(result.lastInsertRowid)}`);
   }
   return {
     id,
@@ -111,13 +112,10 @@ export function insertToolStarted(
   queueId: number,
   callId: string,
 ) {
-  return insertStreamEvent(
-    db,
-    sessionId,
-    queueId,
-    "tool_started",
-    callId,
-  ) as StreamEvent & { kind: "tool_started"; value: string };
+  return insertStreamEvent(db, sessionId, queueId, "tool_started", callId) as StreamEvent & {
+    kind: "tool_started";
+    value: string;
+  };
 }
 
 export function clearStreamEvents(db: Database, sessionId: string) {

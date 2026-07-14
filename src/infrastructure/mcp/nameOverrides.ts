@@ -25,10 +25,7 @@ export function normalizeMcpToolNameOverrides(
   );
 }
 
-export function renameMcpTools(
-  tools: StructuredToolInterface[],
-  overrides: McpToolNameOverrides,
-) {
+export function renameMcpTools(tools: StructuredToolInterface[], overrides: McpToolNameOverrides) {
   const originalNames = new Set<string>();
   for (const tool of tools) {
     if (originalNames.has(tool.name)) {

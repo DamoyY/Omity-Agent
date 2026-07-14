@@ -64,12 +64,7 @@ const compactCode = css({
 type ButtonProps = ComponentProps<"button"> & ButtonVariantProps;
 type LinkButtonProps = ComponentProps<"a"> & ButtonVariantProps;
 
-export function Button({
-  className,
-  size = "sm",
-  variant = "outline",
-  ...props
-}: ButtonProps) {
+export function Button({ className, size = "sm", variant = "outline", ...props }: ButtonProps) {
   return (
     <button
       className={cx(
@@ -111,12 +106,7 @@ type InputProps = Omit<ComponentProps<"input">, "size"> & InputVariantProps;
 export function Input({ className, size = "sm", ...props }: InputProps) {
   return (
     <input
-      className={cx(
-        inputRecipe({ size }),
-        compactControl,
-        surfacedControl,
-        className,
-      )}
+      className={cx(inputRecipe({ size }), compactControl, surfacedControl, className)}
       {...props}
     />
   );
@@ -127,12 +117,7 @@ type TextareaProps = ComponentProps<"textarea"> & TextareaVariantProps;
 export function Textarea({ className, size = "md", ...props }: TextareaProps) {
   return (
     <textarea
-      className={cx(
-        textareaRecipe({ size }),
-        compactControl,
-        surfacedControl,
-        className,
-      )}
+      className={cx(textareaRecipe({ size }), compactControl, surfacedControl, className)}
       {...props}
     />
   );
@@ -153,17 +138,9 @@ export const Field = {
 
 type BadgeProps = ComponentProps<"span"> & BadgeVariantProps;
 
-export function Badge({
-  className,
-  size = "sm",
-  variant = "outline",
-  ...props
-}: BadgeProps) {
+export function Badge({ className, size = "sm", variant = "outline", ...props }: BadgeProps) {
   return (
-    <span
-      className={cx(badgeRecipe({ size, variant }), compactBadge, className)}
-      {...props}
-    />
+    <span className={cx(badgeRecipe({ size, variant }), compactBadge, className)} {...props} />
   );
 }
 
@@ -172,16 +149,6 @@ type CodeProps = ComponentProps<"code"> &
     children: ReactNode;
   };
 
-export function Code({
-  className,
-  size = "sm",
-  variant = "ghost",
-  ...props
-}: CodeProps) {
-  return (
-    <code
-      className={cx(codeRecipe({ size, variant }), compactCode, className)}
-      {...props}
-    />
-  );
+export function Code({ className, size = "sm", variant = "ghost", ...props }: CodeProps) {
+  return <code className={cx(codeRecipe({ size, variant }), compactCode, className)} {...props} />;
 }

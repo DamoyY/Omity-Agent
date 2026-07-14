@@ -45,9 +45,7 @@ test("Completions 请求在追加历史和 SQLite 恢复后保持缓存前缀", 
 
   await model.invoke(modelMessages(settings, "stable skills", initial));
   await model.invoke(modelMessages(settings, "stable skills", history));
-  await model.invoke(
-    modelMessages(settings, "stable skills", persist(history)),
-  );
+  await model.invoke(modelMessages(settings, "stable skills", persist(history)));
 
   const first = requiredArray(requests[0]?.["messages"]);
   const second = requiredArray(requests[1]?.["messages"]);
@@ -73,25 +71,19 @@ test("Responses HTTP 请求保留完整历史和稳定缓存键", async () => {
     configuration: { baseURL: `${server.url}v1` },
   }).bindTools(configured.modelTools);
   const initial = [new HumanMessage({ id: "user-1", content: "inspect" })];
-  const firstResponse = await model.invoke(
-    modelMessages(settings, null, initial),
-  );
+  const firstResponse = await model.invoke(modelMessages(settings, null, initial));
   const secondHistory = [
     ...initial,
     firstResponse,
     new HumanMessage({ id: "user-2", content: "continue" }),
   ];
-  const secondResponse = await model.invoke(
-    modelMessages(settings, null, secondHistory),
-  );
+  const secondResponse = await model.invoke(modelMessages(settings, null, secondHistory));
   const thirdHistory = persist([
     ...secondHistory,
     secondResponse,
     new HumanMessage({ id: "user-3", content: "persisted" }),
   ]);
-  const thirdResponse = await model.invoke(
-    modelMessages(settings, null, thirdHistory),
-  );
+  const thirdResponse = await model.invoke(modelMessages(settings, null, thirdHistory));
   expect(thirdResponse.text).toBe("ok");
 
   const [first, second, third] = requests;

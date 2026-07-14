@@ -20,9 +20,7 @@ export function finishRun(
   hookPlan: unknown,
 ) {
   const finalMessageId = requireFinalMessageId(hookPlan);
-  const last = messages.find(
-    (message) => message.type === "ai" && message.id === finalMessageId,
-  );
+  const last = messages.find((message) => message.type === "ai" && message.id === finalMessageId);
   const content = contentToText(last?.content);
   if (!content) throw new Error("模型没有生成可记录的最终文本");
   const lastItem = run.items.at(-1);
@@ -54,11 +52,7 @@ export function cancelRun(ctx: HostContext, run: QueueRun) {
   ctx.logger.warn("队列已取消，Host 已关闭", { queueId: run.items[0].id });
 }
 
-function finalizeRun(
-  ctx: HostContext,
-  run: QueueRun,
-  status: "done" | "canceled",
-) {
+function finalizeRun(ctx: HostContext, run: QueueRun, status: "done" | "canceled") {
   ctx.db.db.transaction(() => {
     for (const item of run.items) ctx.db.setQueueStatus(item.id, status);
     if (status === "canceled") ctx.db.setControl(ctx.sessionId, "running");
@@ -76,8 +70,7 @@ export function setRunStatus(
     ctx.db.pauseRun(ctx.sessionId, run.rootId, error);
   } else {
     ctx.db.db.transaction(() => {
-      for (const item of run.items)
-        ctx.db.setQueueStatus(item.id, status, error);
+      for (const item of run.items) ctx.db.setQueueStatus(item.id, status, error);
     })();
   }
   ctx.observer?.changed?.(ctx.sessionId);

@@ -31,11 +31,7 @@ export function recoverInterruptedSessionRecord(
   claim: InterruptedSessionClaim,
 ): InterruptedSessionRecovery {
   const lease = readHostLeaseRecord(db, claim.sessionId);
-  if (
-    lease &&
-    lease.expiresAt > claim.now &&
-    lease.ownerId !== claim.confirmedDeadOwnerId
-  ) {
+  if (lease && lease.expiresAt > claim.now && lease.ownerId !== claim.confirmedDeadOwnerId) {
     return { status: "blocked", lease };
   }
 
@@ -77,12 +73,8 @@ function cancelActiveRuns(
      WHERE session_id = ? AND status IN ('pending', 'running', 'paused')`,
     [sessionId],
   );
-  const threadIds = new Set(
-    active.map((item) => `${sessionId}:${String(item.runId ?? item.id)}`),
-  );
-  const removeCheckpoint = db.prepare(
-    "DELETE FROM checkpoints WHERE thread_id = ?",
-  );
+  const threadIds = new Set(active.map((item) => `${sessionId}:${String(item.runId ?? item.id)}`));
+  const removeCheckpoint = db.prepare("DELETE FROM checkpoints WHERE thread_id = ?");
   const removeWrites = db.prepare("DELETE FROM writes WHERE thread_id = ?");
   try {
     for (const threadId of threadIds) {
@@ -121,9 +113,7 @@ export class RecoverableDatabase {
   }
 
   recoverInterruptedSession(claim: InterruptedSessionClaim) {
-    return this.db.transaction(() =>
-      recoverInterruptedSessionRecord(this.db, claim),
-    )();
+    return this.db.transaction(() => recoverInterruptedSessionRecord(this.db, claim))();
   }
 
   acquireHostLease(claim: HostLeaseClaim) {

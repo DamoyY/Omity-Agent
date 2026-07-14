@@ -13,6 +13,7 @@ export interface DisplayToolCall {
   input: unknown;
   messageId?: string;
   inputText?: string;
+  rawInput?: string;
   streaming?: boolean;
 }
 

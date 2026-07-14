@@ -3,18 +3,8 @@ import { readGraphState, type HostContext } from "./context";
 import { HostLeaseLostError } from "./execution/lease";
 import { isModelNetworkError } from "./network";
 import { waitBeforeModelNetworkRetry } from "./retry";
-import {
-  CanceledRun,
-  cancelRun,
-  finishRun,
-  setRunStatus,
-  type QueueRun,
-} from "./run";
-import {
-  createStreamLogState,
-  handleStreamEvent,
-  recordToolExecutionStarted,
-} from "./stream";
+import { CanceledRun, cancelRun, finishRun, setRunStatus, type QueueRun } from "./run";
+import { createStreamLogState, handleStreamEvent, recordToolExecutionStarted } from "./stream";
 import { queueMessageId } from "../infrastructure/database/records/messages/history";
 import { consumeBoundaryAppends, recoverConsumedAppends } from "./appends";
 import { captureError } from "../failures/details";
@@ -94,33 +84,26 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         signal: ctx.controller.signal,
         streamMode: ["messages", "updates", "debug"],
       });
-      for await (const event of stream)
-        handleStreamEvent(ctx, event, streamLogState, item.id);
+      for await (const event of stream) handleStreamEvent(ctx, event, streamLogState, item.id);
       modelNetworkRetry = 0;
     } catch (error) {
       if (!isModelNetworkError(error)) {
         throw error;
       }
       modelNetworkRetry += 1;
-      const shouldRetry = await waitBeforeModelNetworkRetry(
-        ctx,
-        run,
-        error,
-        modelNetworkRetry,
-        {
-          stop: () => {
-            setRunStatus(ctx, run, "paused");
-          },
-          pause: async () => {
-            setRunStatus(ctx, run, "paused");
-            return waitIfPaused(ctx, run);
-          },
-          cancel: () => {
-            cancelRun(ctx, run);
-            return Promise.reject(new CanceledRun("运行已取消"));
-          },
+      const shouldRetry = await waitBeforeModelNetworkRetry(ctx, run, error, modelNetworkRetry, {
+        stop: () => {
+          setRunStatus(ctx, run, "paused");
         },
-      );
+        pause: async () => {
+          setRunStatus(ctx, run, "paused");
+          return waitIfPaused(ctx, run);
+        },
+        cancel: () => {
+          cancelRun(ctx, run);
+          return Promise.reject(new CanceledRun("运行已取消"));
+        },
+      });
       if (!shouldRetry) return;
       continue;
     }
@@ -169,8 +152,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
         ? "model"
         : undefined;
     if (nextActivity) ctx.observer?.activity?.(ctx.sessionId, nextActivity);
-    if (nextActivity === "tool")
-      recordToolExecutionStarted(ctx, messages, item.id);
+    if (nextActivity === "tool") recordToolExecutionStarted(ctx, messages, item.id);
     input = null;
   }
 }

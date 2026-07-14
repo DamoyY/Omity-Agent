@@ -11,10 +11,7 @@ export function makeDb() {
   return required(makeDatabases(1)[0], "测试数据库创建失败");
 }
 
-export function required<T>(
-  value: T | null | undefined,
-  message = "测试所需值不存在",
-): T {
+export function required<T>(value: T | null | undefined, message = "测试所需值不存在"): T {
   if (value === null || value === undefined) throw new Error(message);
   return value;
 }

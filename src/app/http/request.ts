@@ -36,17 +36,11 @@ export const composerDraftBody = z
     revision: z.number().int().positive(),
   })
   .strict();
-export const controlBody = z
-  .object({ control: z.enum(["running", "pause", "cancel"]) })
-  .strict();
-export const forkBody = z
-  .object({ beforeMessageId: z.number().int().positive() })
-  .strict();
+export const controlBody = z.object({ control: z.enum(["running", "pause", "cancel"]) }).strict();
+export const cancelToolBody = z.object({ toolCallId: z.string().min(1).max(1024) }).strict();
+export const forkBody = z.object({ beforeMessageId: z.number().int().positive() }).strict();
 
-export async function readJson<T>(
-  request: HonoRequest,
-  schema: z.ZodType<T>,
-): Promise<T> {
+export async function readJson<T>(request: HonoRequest, schema: z.ZodType<T>): Promise<T> {
   let parsed: unknown;
   try {
     parsed = await request.json<unknown>();
@@ -63,9 +57,7 @@ export async function readJson<T>(
   return result.data;
 }
 
-export async function readMessageForm(
-  request: HonoRequest,
-): Promise<MessageSubmission> {
+export async function readMessageForm(request: HonoRequest): Promise<MessageSubmission> {
   const form = await readFormData(request);
   const fields = {
     content: singleText(form, "content"),
@@ -79,9 +71,7 @@ export async function readMessageForm(
   return { ...result.data, attachments };
 }
 
-export async function readSessionForm(
-  request: HonoRequest,
-): Promise<SessionSubmission> {
+export async function readSessionForm(request: HonoRequest): Promise<SessionSubmission> {
   const form = await readFormData(request);
   const fields = {
     workspace: singleText(form, "workspace"),
@@ -97,10 +87,7 @@ export async function readSessionForm(
   if (!result.success) {
     throw new HttpError(400, `新建会话参数无效：${result.error.message}`);
   }
-  const attachments = readAttachments(
-    form,
-    new Set(["workspace", "message", "history"]),
-  );
+  const attachments = readAttachments(form, new Set(["workspace", "message", "history"]));
   return { ...result.data, attachments };
 }
 
@@ -116,9 +103,7 @@ function readAttachments(form: FormData, fields: Set<string>) {
   return [...form.entries()].flatMap(([key, value]): PendingAttachment[] => {
     if (fields.has(key)) return [];
     const match =
-      /^file:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u.exec(
-        key,
-      );
+      /^file:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u.exec(key);
     if (!match || typeof value === "string") {
       throw new HttpError(400, `附件字段无效：${key}`);
     }
@@ -144,9 +129,6 @@ export function decodeSessionId(value: string) {
   try {
     return safeId(decoded);
   } catch (error) {
-    throw new HttpError(
-      400,
-      error instanceof Error ? error.message : String(error),
-    );
+    throw new HttpError(400, error instanceof Error ? error.message : String(error));
   }
 }

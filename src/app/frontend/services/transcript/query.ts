@@ -14,8 +14,7 @@ import {
 
 export type { TranscriptData } from "./cache";
 
-export const transcriptKey = (sessionId: string) =>
-  ["transcript", sessionId] as const;
+export const transcriptKey = (sessionId: string) => ["transcript", sessionId] as const;
 
 const emptyTranscript = emptyTranscriptData();
 
@@ -50,10 +49,8 @@ export function useSessionTranscript(
       refreshIntervalMs,
       () => {
         const batch = pendingEvents.splice(0);
-        queryClient.setQueryData<TranscriptData>(
-          transcriptKey(sessionId),
-          (current) =>
-            appendTranscriptEvents(current ?? emptyTranscriptData(), batch),
+        queryClient.setQueryData<TranscriptData>(transcriptKey(sessionId), (current) =>
+          appendTranscriptEvents(current ?? emptyTranscriptData(), batch),
         );
         return Promise.resolve();
       },
@@ -86,8 +83,7 @@ async function refreshTranscript(
   sessionId: string,
 ) {
   const queryKey = transcriptKey(sessionId);
-  const wasFetching =
-    queryClient.getQueryState(queryKey)?.fetchStatus === "fetching";
+  const wasFetching = queryClient.getQueryState(queryKey)?.fetchStatus === "fetching";
   await queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });
   if (wasFetching) {
     await queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });

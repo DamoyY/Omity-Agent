@@ -74,14 +74,7 @@ export function MarkdownEditor({
   value: string;
 }) {
   return (
-    <div
-      className={cx(
-        root,
-        !fluid && fixedRoot,
-        bare && bareRoot,
-        disabled && disabledRoot,
-      )}
-    >
+    <div className={cx(root, !fluid && fixedRoot, bare && bareRoot, disabled && disabledRoot)}>
       <CodeMirror
         aria-label={label ?? placeholder}
         basicSetup={{
@@ -137,12 +130,7 @@ export function MarkdownEditor({
           }),
           Prec.highest(
             keymap.of([
-              historyBinding(
-                "ArrowUp",
-                "previous",
-                disabled,
-                onHistoryNavigate,
-              ),
+              historyBinding("ArrowUp", "previous", disabled, onHistoryNavigate),
               historyBinding("ArrowDown", "next", disabled, onHistoryNavigate),
               {
                 key: "Ctrl-Enter",

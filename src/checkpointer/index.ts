@@ -43,15 +43,9 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
 
   async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
     this.setup();
-    const thread_id = requiredConfigString(
-      config.configurable?.["thread_id"],
-      "thread_id",
-    );
+    const thread_id = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
     const checkpoint_ns =
-      optionalConfigString(
-        config.configurable?.["checkpoint_ns"],
-        "checkpoint_ns",
-      ) ?? "";
+      optionalConfigString(config.configurable?.["checkpoint_ns"], "checkpoint_ns") ?? "";
     const checkpoint_id = optionalConfigString(
       config.configurable?.["checkpoint_id"],
       "checkpoint_id",
@@ -80,9 +74,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
   ): AsyncGenerator<CheckpointTuple> {
     this.setup();
     const { sql, args } = buildListQuery(config, options);
-    for (const row of this.db
-      .query<CheckpointRow, SqlBinding[]>(sql)
-      .all(...args)) {
+    for (const row of this.db.query<CheckpointRow, SqlBinding[]>(sql).all(...args)) {
       yield await this.decodeRow(row, {
         configurable: {
           thread_id: row.thread_id,
@@ -109,11 +101,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     );
   }
 
-  async putWrites(
-    config: RunnableConfig,
-    writes: PendingWrite[],
-    taskId: string,
-  ): Promise<void> {
+  async putWrites(config: RunnableConfig, writes: PendingWrite[], taskId: string): Promise<void> {
     this.setup();
     await putPendingWrites(this.db, this.serde, config, writes, taskId);
   }
@@ -124,10 +112,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     return Promise.resolve();
   }
 
-  private decodeRow(
-    row: CheckpointRow,
-    config: RunnableConfig,
-  ): Promise<CheckpointTuple> {
+  private decodeRow(row: CheckpointRow, config: RunnableConfig): Promise<CheckpointTuple> {
     return rowToTuple(row, config, {
       db: this.db,
       serde: this.serde,
@@ -136,10 +121,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
 
   private resolveSessionId(config: RunnableConfig) {
     if (this.sessionId) return this.sessionId;
-    const threadId = requiredConfigString(
-      config.configurable?.["thread_id"],
-      "thread_id",
-    );
+    const threadId = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
     return threadId.split(":", 1)[0] ?? threadId;
   }
 }

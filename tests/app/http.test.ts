@@ -33,10 +33,10 @@ test("message multipart validation forwards placeholders and files", async () =>
   const body = messageForm(`查看 {{file:${id}:notes.txt}}`, 3);
   body.append(`file:${id}`, new File(["hello"], "notes.txt"));
 
-  const response = await createApi(controller).request(
-    "/api/sessions/test/messages",
-    { method: "POST", body },
-  );
+  const response = await createApi(controller).request("/api/sessions/test/messages", {
+    method: "POST",
+    body,
+  });
 
   expect(response.status).toBe(200);
   expect(calls).toHaveLength(1);
@@ -65,11 +65,7 @@ test("session creation validates and forwards the complete initial state", async
     });
   };
   const api = createApi(controller);
-  const body = sessionForm(
-    "F:/workspace",
-    [{ user: "旧问题", assistant: "旧回答" }],
-    "新问题",
-  );
+  const body = sessionForm("F:/workspace", [{ user: "旧问题", assistant: "旧回答" }], "新问题");
   const response = await api.request("/api/sessions", {
     method: "POST",
     body,
@@ -86,11 +82,7 @@ test("session creation validates and forwards the complete initial state", async
     ],
   ]);
 
-  const incompleteBody = sessionForm(
-    "F:/workspace",
-    [{ user: "", assistant: "回答" }],
-    "新问题",
-  );
+  const incompleteBody = sessionForm("F:/workspace", [{ user: "", assistant: "回答" }], "新问题");
   const incomplete = await api.request("/api/sessions", {
     method: "POST",
     body: incompleteBody,
@@ -100,10 +92,10 @@ test("session creation validates and forwards the complete initial state", async
 
 test("API JSON reader enforces the body size limit", async () => {
   const body = `"${"x".repeat(requestBodyLimit)}"`;
-  const response = await createApi(apiController()).request(
-    "/api/sessions/test/control",
-    { method: "POST", body },
-  );
+  const response = await createApi(apiController()).request("/api/sessions/test/control", {
+    method: "POST",
+    body,
+  });
   expect(response.status).toBe(413);
   expect(await response.json()).toEqual({
     error: {
@@ -133,24 +125,18 @@ test("API maps missing sessions and conflicts to explicit status codes", () => {
     code: "SESSION_NOT_FOUND",
   });
   expect(
-    normalizeError(
-      new DomainError("HOST_LEASE_CONFLICT", "会话已有 Host 正在运行：123"),
-    ),
+    normalizeError(new DomainError("HOST_LEASE_CONFLICT", "会话已有 Host 正在运行：123")),
   ).toMatchObject({
     status: 409,
     code: "HOST_LEASE_CONFLICT",
   });
-  expect(
-    normalizeError(new Error("会话不存在：文案不再参与映射")),
-  ).toMatchObject({
+  expect(normalizeError(new Error("会话不存在：文案不再参与映射"))).toMatchObject({
     status: 500,
     code: "INTERNAL_ERROR",
     message: "会话不存在：文案不再参与映射",
   });
   expect(
-    normalizeError(
-      new DomainError("ATTACHMENT_TOO_LARGE", "附件总大小超过上限"),
-    ),
+    normalizeError(new DomainError("ATTACHMENT_TOO_LARGE", "附件总大小超过上限")),
   ).toMatchObject({ status: 413, code: "ATTACHMENT_TOO_LARGE" });
 });
 
@@ -191,6 +177,7 @@ function apiController() {
     saveComposerDraft: () => ({}),
     sendMessage: () => ({}),
     control: () => ({}),
+    cancelTool: () => ({}),
     forkSession: () => ({}),
     assertSession: () => undefined,
     events: new AppEvents(),

@@ -108,9 +108,7 @@ test("resume stays paused when Host initialization fails", async () => {
   writeFileSync(join(fixture.root, "settings", "mcp.yaml"), "[]\n");
   const controller = new AppController(fixture.root);
 
-  const failure = await captureFailure(
-    controller.control("resume-failure", "running"),
-  );
+  const failure = await captureFailure(controller.control("resume-failure", "running"));
   expect(failure.message).toContain("MCP");
 
   const reopened = openSession(fixture.root, "resume-failure");

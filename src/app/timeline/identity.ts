@@ -9,7 +9,5 @@ function toolCallIdentity(call: DisplayToolCall) {
   if (!call.id.startsWith("i:") && !call.id.startsWith("tool-")) {
     return `call:${call.id}`;
   }
-  return call.messageId
-    ? `message:${call.messageId}:index:${call.index.toString()}`
-    : undefined;
+  return call.messageId ? `message:${call.messageId}:index:${call.index.toString()}` : undefined;
 }

@@ -3,10 +3,7 @@ import { resolve } from "node:path";
 import { Database } from "bun:sqlite";
 import { sessionNotFound } from "../errors";
 import { resolveSessionPaths } from "../infrastructure/configuration/sessionPaths";
-import {
-  closeDatabase,
-  configureReadonlyDatabase,
-} from "../infrastructure/database/connection";
+import { closeDatabase, configureReadonlyDatabase } from "../infrastructure/database/connection";
 import { assertCoreSchema } from "../infrastructure/database/validateSchema";
 import type { Control, Settings } from "../types";
 import { parseError, type ErrorDetails } from "../failures/details";
@@ -67,11 +64,7 @@ export class AppRegistry {
   }
 
   refresh(id: string) {
-    const session = readSession(
-      resolveSessionPaths(this.settings, id).dbPath,
-      id,
-      false,
-    );
+    const session = readSession(resolveSessionPaths(this.settings, id).dbPath, id, false);
     this.sessions.set(id, session);
     return session;
   }
@@ -85,13 +78,7 @@ function scanSessions(settings: Settings, sessionsDir: string) {
   if (!existsSync(sessionsDir)) return [];
   return readdirSync(sessionsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) =>
-      readSession(
-        resolveSessionPaths(settings, entry.name).dbPath,
-        undefined,
-        true,
-      ),
-    );
+    .map((entry) => readSession(resolveSessionPaths(settings, entry.name).dbPath, undefined, true));
 }
 
 function compareSessions(left: RegisteredSession, right: RegisteredSession) {
@@ -112,17 +99,13 @@ function readSession(dbPath: string, id?: string, validate = false) {
         assertCoreSchema(db);
       } catch (error) {
         console.error(
-          `无法读取会话数据库 ${dbPath}：${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `无法读取会话数据库 ${dbPath}：${error instanceof Error ? error.message : String(error)}`,
         );
         throw error;
       }
     }
     const row = id
-      ? db
-          .query<SessionRow, [string]>(`${sessionSelect} WHERE s.id = ?`)
-          .get(id)
+      ? db.query<SessionRow, [string]>(`${sessionSelect} WHERE s.id = ?`).get(id)
       : db.query<SessionRow, []>(`${sessionSelect} LIMIT 1`).get();
     if (!row) throw sessionNotFound(id ?? dbPath);
     return toSession(row);

@@ -13,13 +13,7 @@ import {
   type ToolHookPlan,
 } from "../plan";
 import type { HookRuntime } from "../runtime";
-import {
-  command,
-  finishAgent,
-  hookCommand,
-  modelNode,
-  originalToolCommand,
-} from "./commands";
+import { command, finishAgent, hookCommand, modelNode, originalToolCommand } from "./commands";
 
 type ConsumeHook = (hookId: string, limit: number) => Promise<boolean>;
 type InvokeGraphTool = (call: ToolCall) => Promise<ToolMessage>;
@@ -33,11 +27,7 @@ export function createHookNode(
     const threadId = requireThreadId(config.configurable);
     let plan = initialPlan(state);
     let clearPending = !state.hookPlan && state.hookPendingUserIds.length > 0;
-    if (
-      plan?.kind === "agent" &&
-      plan.when === "after" &&
-      state.hookPendingUserIds.length > 0
-    ) {
+    if (plan?.kind === "agent" && plan.when === "after" && state.hookPendingUserIds.length > 0) {
       plan = agentPlan("before", state.hookPendingUserIds, plan.previousOutput);
       clearPending = true;
     }
@@ -99,9 +89,7 @@ export function createHookNode(
 
 function initialPlan(state: HookState): HookPlan | null {
   if (state.hookPlan) return state.hookPlan;
-  return state.hookPendingUserIds.length > 0
-    ? agentPlan("before", state.hookPendingUserIds)
-    : null;
+  return state.hookPendingUserIds.length > 0 ? agentPlan("before", state.hookPendingUserIds) : null;
 }
 
 function executeHook(
@@ -120,9 +108,7 @@ function executeHook(
   });
 }
 
-export function requireThreadId(
-  configurable: Record<string, unknown> | undefined,
-) {
+export function requireThreadId(configurable: Record<string, unknown> | undefined) {
   const threadId = configurable?.["thread_id"];
   if (typeof threadId !== "string" || !threadId) {
     throw new Error("Hook 执行缺少 thread_id");

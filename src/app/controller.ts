@@ -1,31 +1,23 @@
 import { runClient } from "../client";
-import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
-import { deleteHostSession } from "../host";
+import { deleteHostSession } from "../sessionStorage";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
 import { appOwner } from "../infrastructure/process/ownership";
 import type { ProcessOwner } from "../infrastructure/process/ownership";
 import type { Control, Settings } from "../types";
-import type { MessageSubmission } from "./attachments/contract";
-import type { SessionSubmission } from "./attachments/contract";
+import type { MessageSubmission, SessionSubmission } from "./attachments/contract";
 import { enqueueMessageWithAttachments } from "./attachments/message";
-import { clearSessionDraft } from "./composerDraft";
-import { readSessionDraft } from "./composerDraft";
-import { writeSessionDraft } from "./composerDraft";
+import { clearSessionDraft, readSessionDraft, writeSessionDraft } from "./composerDraft";
+import { controllerHostEvents } from "./controllerHostEvents";
 import { AppEvents } from "./events";
 import { AppHosts } from "./hosts";
 import { AppRegistry, type RegisteredSession } from "./registry";
 import { projectSession, type SessionInfo } from "./sessionState";
 import { loadSessionTranscript } from "./transcript";
 import { pickWorkspaceDirectory } from "./workspacePicker";
-import { displayStreamEvent } from "./timeline";
 import type { AppInstanceOwner } from "./runtime/instanceLock";
 import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
 import { createAppFork, createAppSession } from "./runtime/sessionActions";
-
-interface AppControllerOptions {
-  abandonedOwner?: AppInstanceOwner;
-  owner?: ProcessOwner;
-}
+import { cancelSessionTool } from "./sessionCommands";
 
 export class AppController {
   readonly events: AppEvents;
@@ -35,32 +27,26 @@ export class AppController {
 
   constructor(
     private readonly appRoot: string,
-    options: AppControllerOptions = {},
+    options: {
+      abandonedOwner?: AppInstanceOwner;
+      owner?: ProcessOwner;
+    } = {},
   ) {
     this.settings = loadSettings(appRoot);
     const discovered = new AppRegistry(this.settings);
-    recoverAppSessions(
-      this.settings,
-      discovered.list(),
-      options.abandonedOwner,
-    );
+    recoverAppSessions(this.settings, discovered.list(), options.abandonedOwner);
     this.registry = new AppRegistry(this.settings);
     this.events = new AppEvents();
     const owner = options.owner ?? appOwner();
     this.hosts = new AppHosts(
       appRoot,
-      {
-        activity: (sessionId) => {
-          this.publishActivity(sessionId);
+      controllerHostEvents(
+        this.events,
+        (id) => this.sessionInfo(this.registry.require(id)),
+        (id) => {
+          this.publishChange(id);
         },
-        changed: (sessionId) => {
-          this.publishChange(sessionId);
-        },
-        transcript: (sessionId, event) => {
-          this.publishTranscript(sessionId, event);
-        },
-        wait: (sessionId, delayMs) => this.events.wait(sessionId, delayMs),
-      },
+      ),
       owner,
       this.settings.host.shutdownTimeoutMs,
     );
@@ -132,6 +118,13 @@ export class AppController {
     return result;
   }
 
+  cancelTool(sessionId: string, toolCallId: string) {
+    this.registry.require(sessionId);
+    const result = cancelSessionTool(this.hosts, this.appRoot, sessionId, toolCallId);
+    this.publishChange(sessionId);
+    return result;
+  }
+
   async forkSession(sessionId: string, beforeMessageId: number) {
     const session = this.registry.require(sessionId);
     const id = await createAppFork({
@@ -163,16 +156,8 @@ export class AppController {
     return loadSessionTranscript(this.settings, sessionId);
   }
 
-  private publishActivity(sessionId: string) {
-    const info = this.sessionInfo(this.registry.require(sessionId));
-    this.events.notifySession(info);
-  }
-
   private ensureHost(session: RegisteredSession) {
-    if (
-      !this.hosts.has(session.id) &&
-      hasLiveHostLease(this.settings, session.id)
-    ) {
+    if (!this.hosts.has(session.id) && hasLiveHostLease(this.settings, session.id)) {
       return Promise.resolve();
     }
     return this.hosts.ensure(session.id, session.workspace);
@@ -185,15 +170,7 @@ export class AppController {
     this.events.invalidateTranscript(sessionId);
   }
 
-  private publishTranscript(sessionId: string, event: StreamEvent) {
-    this.events.notifyTranscript(sessionId, displayStreamEvent(event));
-  }
-
   private sessionInfo(session: RegisteredSession): SessionInfo {
-    return projectSession(
-      session,
-      this.hosts.activity(session.id),
-      this.hosts.error(session.id),
-    );
+    return projectSession(session, this.hosts.activity(session.id), this.hosts.error(session.id));
   }
 }

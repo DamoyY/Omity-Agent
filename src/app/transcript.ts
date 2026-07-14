@@ -13,11 +13,8 @@ import { contentToText, messageReasoning } from "../runtime/content";
 import { extractToolImages } from "../runtime/modelImages";
 import { parseError } from "../failures/details";
 import { type DisplayMessage, type DisplayToolCall } from "./timeline";
-import {
-  modelTokenUsage,
-  toolInputTokens,
-  toolOutputTokens,
-} from "./timeline/tokenCounts";
+import { modelTokenUsage, toolInputTokens, toolOutputTokens } from "./timeline/tokenCounts";
+import { freeformCallIds, rawFreeformInput } from "./timeline/freeform";
 import { z } from "zod";
 
 interface MessageRow {
@@ -35,10 +32,7 @@ interface QueueRow {
   user_message_id: number | null;
   root_id: number | null;
 }
-import {
-  persistedDisplayEvent,
-  type PersistedEventRow,
-} from "./timeline/persistedEvent";
+import { persistedDisplayEvent, type PersistedEventRow } from "./timeline/persistedEvent";
 interface SequenceRow {
   seq: number;
 }
@@ -94,11 +88,8 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
     .all(sessionId)
     .map(persistedDisplayEvent);
   const eventCursor =
-    db.db
-      .query<SequenceRow, []>(
-        "SELECT seq FROM sqlite_sequence WHERE name = 'events'",
-      )
-      .get()?.seq ?? 0;
+    db.db.query<SequenceRow, []>("SELECT seq FROM sqlite_sequence WHERE name = 'events'").get()
+      ?.seq ?? 0;
   if (!Number.isSafeInteger(eventCursor)) {
     throw new Error(`流式事件游标超出安全整数范围：${String(eventCursor)}`);
   }
@@ -148,15 +139,19 @@ function messageRole(message: BaseMessage): DisplayMessage["role"] {
 }
 function extractToolCalls(message: BaseMessage): DisplayToolCall[] {
   const calls = readRecordArray(message, "tool_calls");
+  const freeformIds = freeformCallIds(message);
   return calls.map((call, index) => {
     const input = call["args"] ?? call["input"] ?? call;
+    const id = stringField(call, "id") ?? `tool-${index.toString()}`;
+    const freeform = call["isCustomTool"] === true || freeformIds.has(id);
     return {
-      id: stringField(call, "id") ?? `tool-${index.toString()}`,
+      id,
       index,
       inputTokens: toolInputTokens(call, input),
       ...(message.id ? { messageId: message.id } : {}),
       name: stringField(call, "name") ?? "tool",
       input,
+      ...(freeform ? { rawInput: rawFreeformInput(input) } : {}),
     };
   });
 }

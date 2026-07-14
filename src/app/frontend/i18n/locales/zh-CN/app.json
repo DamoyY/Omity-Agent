@@ -23,6 +23,7 @@
   "assistant": "助手",
   "tool": "工具",
   "toolCall": "工具调用",
+  "stopTool": "终止工具",
   "reasoning": "思维链",
   "streaming": "生成中",
   "input": "输入",

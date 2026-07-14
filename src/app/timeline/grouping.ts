@@ -40,7 +40,6 @@ function mergeAssistant(target: TimelineMessage, source: TimelineMessage) {
 
 function toolParts(message: TimelineMessage) {
   return message.parts.filter(
-    (part): part is Extract<TimelinePart, { type: "tool" }> =>
-      part.type === "tool",
+    (part): part is Extract<TimelinePart, { type: "tool" }> => part.type === "tool",
   );
 }

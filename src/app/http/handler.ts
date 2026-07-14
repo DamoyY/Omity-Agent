@@ -4,6 +4,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AppController } from "../controller";
 import { errorResponse, HttpError } from "./errors";
 import {
+  cancelToolBody,
   controlBody,
   composerDraftBody,
   decodeSessionId,
@@ -26,6 +27,7 @@ export type ApiController = Pick<
   | "saveComposerDraft"
   | "sendMessage"
   | "control"
+  | "cancelTool"
   | "forkSession"
   | "assertSession"
   | "events"
@@ -33,33 +35,24 @@ export type ApiController = Pick<
 
 export function createApi(controller: ApiController) {
   const app = new Hono();
-  const attachmentBodyLimit =
-    requestBodyLimit + controller.bootstrap().attachments.maxSizeBytes;
+  const attachmentBodyLimit = requestBodyLimit + controller.bootstrap().attachments.maxSizeBytes;
   const attachmentRequestLimit = bodyLimit({
     maxSize: attachmentBodyLimit,
     onError() {
-      throw new HttpError(
-        413,
-        `附件请求体不能超过 ${attachmentBodyLimit.toString()} 字节`,
-      );
+      throw new HttpError(413, `附件请求体不能超过 ${attachmentBodyLimit.toString()} 字节`);
     },
   });
   const regularBodyLimit = bodyLimit({
     maxSize: requestBodyLimit,
     onError() {
-      throw new HttpError(
-        413,
-        `请求体不能超过 ${requestBodyLimit.toString()} 字节`,
-      );
+      throw new HttpError(413, `请求体不能超过 ${requestBodyLimit.toString()} 字节`);
     },
   });
 
   app.use("/api/sessions/:sessionId/messages", attachmentRequestLimit);
   app.get("/api/bootstrap", (c) => c.json(controller.bootstrap()));
   app.get("/api/sessions", (c) => c.json({ sessions: controller.sessions() }));
-  app.get("/api/events", (c) =>
-    controller.events.streamSessions(c, () => controller.sessions()),
-  );
+  app.get("/api/events", (c) => controller.events.streamSessions(c, () => controller.sessions()));
   app.post("/api/workspace-picker", async (c) =>
     c.json({ workspace: await controller.pickWorkspace() }),
   );
@@ -83,16 +76,10 @@ export function createApi(controller: ApiController) {
   app.get("/api/sessions/:sessionId/composer-draft", (c) =>
     c.json(controller.composerDraft(sessionId(c))),
   );
-  app.put(
-    "/api/sessions/:sessionId/composer-draft",
-    regularBodyLimit,
-    async (c) => {
-      const body = await readJson(c.req, composerDraftBody);
-      return c.json(
-        controller.saveComposerDraft(sessionId(c), body.content, body.revision),
-      );
-    },
-  );
+  app.put("/api/sessions/:sessionId/composer-draft", regularBodyLimit, async (c) => {
+    const body = await readJson(c.req, composerDraftBody);
+    return c.json(controller.saveComposerDraft(sessionId(c), body.content, body.revision));
+  });
   app.post("/api/sessions/:sessionId/messages", async (c) => {
     const submission = await readMessageForm(c.req);
     return c.json(await controller.sendMessage(sessionId(c), submission));
@@ -100,6 +87,10 @@ export function createApi(controller: ApiController) {
   app.post("/api/sessions/:sessionId/control", regularBodyLimit, async (c) => {
     const body = await readJson(c.req, controlBody);
     return c.json(await controller.control(sessionId(c), body.control));
+  });
+  app.post("/api/sessions/:sessionId/tools/cancel", regularBodyLimit, async (c) => {
+    const body = await readJson(c.req, cancelToolBody);
+    return c.json(controller.cancelTool(sessionId(c), body.toolCallId));
   });
   app.post("/api/sessions/:sessionId/fork", regularBodyLimit, async (c) => {
     const body = await readJson(c.req, forkBody);

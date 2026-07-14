@@ -18,13 +18,7 @@ test("mcp request timeout is disabled", () => {
     maxTotalTimeout: number | undefined,
     onTimeout: () => void,
   ) => void;
-  invokeSetupTimeout.call(
-    { _timeoutInfo: timeoutInfo },
-    1,
-    1,
-    undefined,
-    () => undefined,
-  );
+  invokeSetupTimeout.call({ _timeoutInfo: timeoutInfo }, 1, 1, undefined, () => undefined);
 
   expect(timeoutInfo.size).toBe(0);
 });

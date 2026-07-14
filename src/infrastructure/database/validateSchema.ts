@@ -1,28 +1,11 @@
 import type { Database } from "bun:sqlite";
 
 export function assertCoreSchema(db: Database) {
-  assertColumns(db, "sessions", [
-    "id",
-    "workspace",
-    "control",
-    "created_at",
-    "updated_at",
-  ]);
-  assertColumns(db, "queue", [
-    "id",
-    "session_id",
-    "root_id",
-    "content",
-    "status",
-    "error",
-  ]);
-  assertColumns(db, "composer_drafts", [
-    "session_id",
-    "content",
-    "revision",
-    "updated_at",
-  ]);
+  assertColumns(db, "sessions", ["id", "workspace", "control", "created_at", "updated_at"]);
+  assertColumns(db, "queue", ["id", "session_id", "root_id", "content", "status", "error"]);
+  assertColumns(db, "composer_drafts", ["session_id", "content", "revision", "updated_at"]);
   assertColumns(db, "host_leases", ["session_id", "owner_id", "expires_at"]);
+  assertColumns(db, "tool_cancellations", ["session_id", "call_id", "requested_at"]);
   assertColumns(db, "messages", [
     "id",
     "session_id",

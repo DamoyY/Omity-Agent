@@ -23,6 +23,7 @@ const payloadSchema = z.discriminatedUnion("kind", [
     kind: z.literal("tool_call_delta"),
     value: z.object({
       args: z.string().optional(),
+      freeform: z.boolean().optional(),
       id: z.string().optional(),
       index: z.number().optional(),
       name: z.string().optional(),

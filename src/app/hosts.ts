@@ -12,6 +12,7 @@ interface RunningHost {
   force: AbortController;
   ready: Promise<void>;
   stopping: AbortController;
+  cancelTool(callId: string): boolean;
 }
 
 export interface AppHostEvents {
@@ -50,14 +51,11 @@ export class AppHosts {
   }
 
   ensure(sessionId: string, root: string) {
-    return (
-      this.running.get(sessionId)?.ready ?? this.start(sessionId, root, "load")
-    );
+    return this.running.get(sessionId)?.ready ?? this.start(sessionId, root, "load");
   }
 
   start(sessionId: string, root: string, kind: HostMode["kind"]) {
-    if (this.closing)
-      return Promise.reject(new Error("App 正在关闭，不能启动 Host"));
+    if (this.closing) return Promise.reject(new Error("App 正在关闭，不能启动 Host"));
     const existing = this.running.get(sessionId);
     if (existing) return existing.ready;
     this.errors.delete(sessionId);
@@ -65,19 +63,22 @@ export class AppHosts {
     const stopping = new AbortController();
     const ready = Promise.withResolvers<undefined>();
     let initialized = false;
-    const done = runHostSession({ kind, sessionId }, this.appRoot, {
+    let cancelTool: RunningHost["cancelTool"] = () => false;
+    const hostPromise = runHostSession({ kind, sessionId }, this.appRoot, {
       controller: force,
       stoppingController: stopping,
       cwd: root,
       owner: this.owner,
       quiet: true,
       wake: (delayMs) => this.events.wait(sessionId, delayMs),
-      onReady: () => {
+      onReady: (controls) => {
+        cancelTool = (callId) => controls.cancelTool(callId);
         initialized = true;
         ready.resolve(undefined);
       },
       observer: this.observer(force),
-    })
+    });
+    const done = hostPromise
       .catch((error: unknown) => {
         this.errors.set(sessionId, captureError(error));
         if (!initialized) ready.reject(error);
@@ -90,12 +91,18 @@ export class AppHosts {
       });
     this.running.set(sessionId, {
       activity: "idle",
+      cancelTool: (callId) => cancelTool(callId),
       done,
       force,
       ready: ready.promise,
       stopping,
     });
     return ready.promise;
+  }
+
+  cancelTool(sessionId: string, callId: string) {
+    const host = this.running.get(sessionId);
+    return host?.cancelTool(callId) ?? false;
   }
 
   async stop(sessionId: string) {
@@ -139,8 +146,7 @@ export class AppHosts {
       host.done.then(() => true),
       Bun.sleep(this.shutdownTimeoutMs).then(() => false),
     ]);
-    if (!stopped)
-      host.force.abort(new Error("Host 未在关闭期限内到达恢复边界"));
+    if (!stopped) host.force.abort(new Error("Host 未在关闭期限内到达恢复边界"));
     await host.done;
   }
 }

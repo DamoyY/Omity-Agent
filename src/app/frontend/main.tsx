@@ -11,7 +11,10 @@ const root = document.getElementById("root");
 if (!root) throw new Error("缺少 root 容器");
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
+  defaultOptions: {
+    mutations: { retry: false },
+    queries: { retry: false },
+  },
 });
 
 createRoot(root, {

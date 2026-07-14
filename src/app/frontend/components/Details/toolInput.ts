@@ -4,6 +4,7 @@ import type { DisplayToolCall } from "../../../timeline";
 const recoverableEndErrors = new Set(["BAD_INDENT", "MISSING_CHAR"]);
 
 export function formatToolInput(call: DisplayToolCall) {
+  if (call.rawInput !== undefined) return call.rawInput;
   return stringify(parseInputText(call.inputText) ?? call.input, {
     lineWidth: 0,
   });
@@ -22,8 +23,7 @@ function parseInputText(text?: string) {
     const recoverable =
       document.errors.length > 0 &&
       document.errors.every(
-        (error) =>
-          recoverableEndErrors.has(error.code) && error.pos[0] >= text.length,
+        (error) => recoverableEndErrors.has(error.code) && error.pos[0] >= text.length,
       );
     return recoverable ? (document.toJS() as unknown) : text;
   }

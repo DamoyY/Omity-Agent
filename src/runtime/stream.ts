@@ -1,8 +1,4 @@
-import {
-  AIMessage,
-  AIMessageChunk,
-  type BaseMessage,
-} from "@langchain/core/messages";
+import { AIMessage, AIMessageChunk, type BaseMessage, ToolMessage } from "@langchain/core/messages";
 import stableStringify from "fast-json-stable-stringify";
 import type { HostContext } from "./context";
 import {
@@ -59,8 +55,7 @@ export function handleStreamEvent(
       ctx.observer?.token(ctx.sessionId, queueId, text);
     }
     for (const call of toolCallDeltas(chunk)) {
-      if (queueId !== undefined)
-        ctx.db.streamToolCall(ctx.sessionId, queueId, call, messageId);
+      if (queueId !== undefined) ctx.db.streamToolCall(ctx.sessionId, queueId, call, messageId);
     }
     return;
   }
@@ -78,53 +73,45 @@ export function recordToolExecutionStarted(
   messages: BaseMessage[],
   queueId: number,
 ) {
+  const completed = new Set(
+    messages
+      .filter((message) => ToolMessage.isInstance(message))
+      .map((message) => message.tool_call_id),
+  );
   const request = messages.findLast((message) => AIMessage.isInstance(message));
   if (!request || !AIMessage.isInstance(request)) return;
-  for (const call of request.tool_calls ?? []) {
-    if (call.id) ctx.db.toolStarted(ctx.sessionId, queueId, call.id);
-  }
+  const call = request.tool_calls?.find(
+    (candidate) => !candidate.id || !completed.has(candidate.id),
+  );
+  if (!call?.id) return;
+  ctx.toolExecutions?.announce(call.id);
+  ctx.db.toolStarted(ctx.sessionId, queueId, call.id);
 }
 
-export function incrementalSummary(
-  value: unknown,
-  state: StreamLogState,
-): unknown {
+export function incrementalSummary(value: unknown, state: StreamLogState): unknown {
   const delta = diffSeen(value, state, "$");
   return delta === omitted ? undefined : summarize(delta.value);
 }
 
-function diffSeen(
-  value: unknown,
-  state: StreamLogState,
-  key: string,
-): DiffResult {
+function diffSeen(value: unknown, state: StreamLogState, key: string): DiffResult {
   if (isRecord(value)) {
     const hash = stableStringify(value);
     if (state.seenStructures.has(hash)) return omitted;
     state.seenStructures.add(hash);
     const entries = Object.entries(value)
       .map(([name, child]) => [name, diffSeen(child, state, name)] as const)
-      .filter(
-        (entry): entry is readonly [string, { value: unknown }] =>
-          entry[1] !== omitted,
-      );
+      .filter((entry): entry is readonly [string, { value: unknown }] => entry[1] !== omitted);
     if (entries.length === 0) return omitted;
     return {
-      value: Object.fromEntries(
-        entries.map(([name, child]) => [name, child.value]),
-      ),
+      value: Object.fromEntries(entries.map(([name, child]) => [name, child.value])),
     };
   }
   if (Array.isArray(value)) {
     const hash = stableStringify(value);
     if (state.seenStructures.has(hash)) return omitted;
     state.seenStructures.add(hash);
-    const items = value
-      .map((child) => diffSeen(child, state, key))
-      .filter(isIncluded);
-    return items.length === 0
-      ? omitted
-      : { value: items.map((item) => item.value) };
+    const items = value.map((child) => diffSeen(child, state, key)).filter(isIncluded);
+    return items.length === 0 ? omitted : { value: items.map((item) => item.value) };
   }
   const fact = `${key}:${stableStringify(value)}`;
   if (state.seenFacts.has(fact)) return omitted;
@@ -139,9 +126,7 @@ function isIncluded(value: DiffResult): value is { value: unknown } {
 function summarize(value: unknown) {
   if (value === undefined) return undefined;
   const json = JSON.stringify(value, (_key, current: unknown) =>
-    typeof current === "string" && current.length > 240
-      ? `${current.slice(0, 240)}…`
-      : current,
+    typeof current === "string" && current.length > 240 ? `${current.slice(0, 240)}…` : current,
   );
   return JSON.parse(json) as unknown;
 }
@@ -155,9 +140,7 @@ function isAiChunk(value: unknown): value is AIMessageChunk {
 }
 
 function readMessageId(value: unknown) {
-  return isRecord(value) && typeof value["id"] === "string"
-    ? value["id"]
-    : undefined;
+  return isRecord(value) && typeof value["id"] === "string" ? value["id"] : undefined;
 }
 
 function toolCallDeltas(chunk: unknown) {
@@ -166,6 +149,7 @@ function toolCallDeltas(chunk: unknown) {
   }
   return chunk["tool_call_chunks"].filter(isRecord).map((call) => ({
     ...(typeof call["args"] === "string" ? { args: call["args"] } : {}),
+    ...(call["isCustomTool"] === true ? { freeform: true } : {}),
     ...(typeof call["id"] === "string" ? { id: call["id"] } : {}),
     ...(typeof call["index"] === "number" ? { index: call["index"] } : {}),
     ...(typeof call["name"] === "string" ? { name: call["name"] } : {}),

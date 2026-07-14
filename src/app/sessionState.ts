@@ -42,11 +42,7 @@ export function resolveSessionStatus(
   hostError: ErrorDetails | null,
 ): SessionStatus {
   if (hostError || session.error) return "error";
-  if (
-    session.paused ||
-    session.control === "pause" ||
-    session.control === "pause_cancel"
-  ) {
+  if (session.paused || session.control === "pause" || session.control === "pause_cancel") {
     return "paused";
   }
   return activity;

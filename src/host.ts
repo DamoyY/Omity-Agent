@@ -2,10 +2,7 @@ import { existsSync } from "node:fs";
 import { buildGraph } from "./agent";
 import { sessionConflict, sessionNotFound } from "./errors";
 import { loadSettings } from "./infrastructure/configuration/loadSettings";
-import {
-  resolveSessionPaths,
-  sessionPaths,
-} from "./infrastructure/configuration/sessionPaths";
+import { resolveSessionPaths, sessionPaths } from "./infrastructure/configuration/sessionPaths";
 import { normalizeWorkspacePath } from "./infrastructure/configuration/workspacePath";
 import { AgentDatabase } from "./infrastructure/database/agentDatabase";
 import { removeDatabaseDirectory } from "./infrastructure/database/connection";
@@ -18,12 +15,9 @@ import { recoverHostSession } from "./runtime/execution/recovery";
 import { wireHostSignals } from "./runtime/execution/signals";
 import { HookRuntime } from "./hooks/runtime";
 import type { HostMode } from "./types";
+import { ToolExecutions } from "./agent/toolExecutions";
 
-export async function runHost(
-  mode: HostMode,
-  root = process.cwd(),
-  options: HostRunOptions = {},
-) {
+export async function runHost(mode: HostMode, root = process.cwd(), options: HostRunOptions = {}) {
   await runHostSession(mode, root, {
     ...options,
     recoverInterrupted: options.recoverInterrupted ?? mode.kind === "load",
@@ -49,15 +43,13 @@ export async function runHostSession(
     mode.kind === "load"
       ? resolveSessionPaths(settings, mode.sessionId)
       : prepareWritableSession(settings, mode);
-  const db = openHostDatabase(
-    paths.dbPath,
-    mode,
-    workspace,
-    options.recoverInterrupted ?? false,
-  );
+  const db = openHostDatabase(paths.dbPath, mode, workspace, options.recoverInterrupted ?? false);
   const controller = options.controller ?? new AbortController();
-  const stoppingController =
-    options.stoppingController ?? new AbortController();
+  const stoppingController = options.stoppingController ?? new AbortController();
+  const toolExecutions = new ToolExecutions({
+    cancellationRequested: (callId) => db.takeToolCancellation(mode.sessionId, callId),
+    pollMs: settings.host.pollMs,
+  });
   let lease: HostLease;
   try {
     lease = new HostLease(
@@ -101,23 +93,21 @@ export async function runHostSession(
       mode.sessionId,
       db.workspace(mode.sessionId),
     );
-    const { graph, checkpointer } = buildGraph(
-      settings,
-      mcp.tools,
-      db.db,
-      hooks,
-      {
-        modelTools: mcp.modelTools,
-        freeformToolParameters: mcp.freeformToolParameters,
-      },
-    );
-    options.onReady?.();
+    const { graph, checkpointer } = buildGraph(settings, mcp.tools, db.db, hooks, {
+      modelTools: mcp.modelTools,
+      freeformToolParameters: mcp.freeformToolParameters,
+      toolExecutions,
+    });
+    options.onReady?.({
+      cancelTool: (callId) => toolExecutions.cancel(callId),
+    });
     await hostLoop({
       settings,
       logger,
       db,
       graph,
       checkpointer,
+      toolExecutions,
       sessionId: mode.sessionId,
       controller,
       stopping: stoppingController.signal,
@@ -142,19 +132,7 @@ export async function runHostSession(
   }
 }
 
-export function deleteHostSession(sessionId: string, root = process.cwd()) {
-  const settings = loadSettings(root);
-  const paths = resolveSessionPaths(settings, sessionId);
-  if (!existsSync(paths.dir)) {
-    throw sessionNotFound(sessionId);
-  }
-  removeDatabaseDirectory(paths.dir);
-}
-
-function prepareWritableSession(
-  settings: ReturnType<typeof loadSettings>,
-  mode: HostMode,
-) {
+function prepareWritableSession(settings: ReturnType<typeof loadSettings>, mode: HostMode) {
   const planned = resolveSessionPaths(settings, mode.sessionId);
   const exists = existsSync(planned.dir);
   if (mode.kind === "new" && exists) {

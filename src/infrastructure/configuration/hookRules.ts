@@ -13,9 +13,7 @@ const callFields = {
   args: argsSchema,
 };
 
-const hookSchema = z
-  .object({ ...callFields, mode: z.enum(["silent", "takeover"]) })
-  .strict();
+const hookSchema = z.object({ ...callFields, mode: z.enum(["silent", "takeover"]) }).strict();
 
 const hooksFileSchema = z
   .object({ hooks: z.array(hookSchema) })

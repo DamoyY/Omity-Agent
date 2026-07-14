@@ -49,9 +49,7 @@ test("sending clears only the composer revision it submitted", () => {
   writeSessionDraft(fixture.settings, "session", "submitted", 1);
   writeSessionDraft(fixture.settings, "session", "next message", 2);
   clearSessionDraft(fixture.settings, "session", 1);
-  expect(readSessionDraft(fixture.settings, "session").content).toBe(
-    "next message",
-  );
+  expect(readSessionDraft(fixture.settings, "session").content).toBe("next message");
 
   clearSessionDraft(fixture.settings, "session", 2);
   expect(readSessionDraft(fixture.settings, "session")).toEqual({

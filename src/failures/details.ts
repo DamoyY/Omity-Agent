@@ -66,10 +66,7 @@ export function parseError(value: string): ErrorDetails {
   return result.data;
 }
 
-function adaptSerializedError(
-  serialized: Record<string, unknown>,
-  source?: unknown,
-): ErrorDetails {
+function adaptSerializedError(serialized: Record<string, unknown>, source?: unknown): ErrorDetails {
   const details: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(serialized)) {
     if (["name", "message", "stack", "cause"].includes(key)) continue;
@@ -78,17 +75,9 @@ function adaptSerializedError(
 
   const cause = serialized["cause"];
   return {
-    name:
-      typeof serialized["name"] === "string"
-        ? serialized["name"]
-        : valueName(source),
-    message:
-      typeof serialized["message"] === "string"
-        ? serialized["message"]
-        : String(source),
-    ...(typeof serialized["stack"] === "string"
-      ? { stack: serialized["stack"] }
-      : {}),
+    name: typeof serialized["name"] === "string" ? serialized["name"] : valueName(source),
+    message: typeof serialized["message"] === "string" ? serialized["message"] : String(source),
+    ...(typeof serialized["stack"] === "string" ? { stack: serialized["stack"] } : {}),
     ...(cause === undefined
       ? {}
       : {
@@ -97,9 +86,7 @@ function adaptSerializedError(
             source instanceof Error ? source.cause : undefined,
           ),
         }),
-    ...(Object.keys(details).length > 0
-      ? { details: details as Record<string, ErrorValue> }
-      : {}),
+    ...(Object.keys(details).length > 0 ? { details: details as Record<string, ErrorValue> } : {}),
   };
 }
 
@@ -107,9 +94,7 @@ function sourceProperty(source: unknown, key: string, serialized: unknown) {
   if (!isRecord(source)) return serialized;
   try {
     const value = source[key];
-    return value instanceof Headers
-      ? Object.fromEntries(value.entries())
-      : serialized;
+    return value instanceof Headers ? Object.fromEntries(value.entries()) : serialized;
   } catch {
     return serialized;
   }
@@ -136,9 +121,7 @@ function valueName(value: unknown) {
   if (value === null) return "null";
   if (typeof value !== "object") return typeof value;
   const constructor = value.constructor;
-  return typeof constructor === "function" && constructor.name
-    ? constructor.name
-    : "Object";
+  return typeof constructor === "function" && constructor.name ? constructor.name : "Object";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

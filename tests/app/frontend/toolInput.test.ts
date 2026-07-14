@@ -19,12 +19,15 @@ test.each(['{"value":tru', '{"value":"\\u12', '{"value" 1}'])(
 );
 
 test("uses the structured input when no streamed text is available", () => {
-  expect(formatToolInput(call(undefined, { command: "pwd" }))).toBe(
-    "command: pwd\n",
-  );
+  expect(formatToolInput(call(undefined, { command: "pwd" }))).toBe("command: pwd\n");
 });
 
-function call(inputText?: string, input: unknown = {}): DisplayToolCall {
+test("keeps Freeform tool input unchanged", () => {
+  const input = '*** Begin Patch\n+const value = "quoted";\\path\n';
+  expect(formatToolInput(call(undefined, { input }, input))).toBe(input);
+});
+
+function call(inputText?: string, input: unknown = {}, rawInput?: string): DisplayToolCall {
   return {
     id: "call-1",
     index: 0,
@@ -32,5 +35,6 @@ function call(inputText?: string, input: unknown = {}): DisplayToolCall {
     inputText,
     inputTokens: 0,
     name: "shell",
+    ...(rawInput === undefined ? {} : { rawInput }),
   };
 }

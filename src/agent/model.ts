@@ -8,16 +8,12 @@ import { CompatibleChatOpenAIResponses } from "../infrastructure/openai/compatib
 import { prepareModelImageMessages } from "../runtime/modelImages";
 import type { ModelApi, ModelSettings, Settings } from "../types";
 
-export function buildModel(
-  settings: Settings,
-  sessionId: string,
-  instructions?: string,
-) {
+export function buildModel(settings: Settings, sessionId: string, instructions?: string) {
   const api = resolveModelApi(settings.model);
   const fields = {
     model: settings.model.model,
     ...modelClientFields(settings.model),
-    maxRetries: settings.model.maxRetries,
+    maxRetries: 0,
     timeout: settings.model.timeoutMs,
     promptCacheKey: sessionId,
     streaming: true,
@@ -50,10 +46,7 @@ export function buildModel(
       });
 }
 
-export function bindModelTools(
-  model: BaseChatModel,
-  tools: StructuredToolInterface[],
-) {
+export function bindModelTools(model: BaseChatModel, tools: StructuredToolInterface[]) {
   if (tools.length === 0) return model;
   if (!model.bindTools) throw new Error("模型不支持工具绑定");
   return model.bindTools(tools);
@@ -84,9 +77,7 @@ export function restoreResponsesCustomToolCalls(messages: BaseMessage[]) {
     if (!Array.isArray(output) || !Array.isArray(toolOutputs)) return message;
 
     const customCalls = new Map(
-      toolOutputs
-        .filter(isCustomToolCallItem)
-        .map((item) => [item.call_id, item]),
+      toolOutputs.filter(isCustomToolCallItem).map((item) => [item.call_id, item]),
     );
     const restored = output.map((item: unknown) => {
       if (!isRecord(item) || item["type"] !== "function_call") return item;
@@ -126,7 +117,10 @@ function modelClientFields(model: ModelSettings) {
   if (!apiKey) throw new Error(`缺少环境变量 ${model.apiKeyEnv}`);
   return {
     apiKey,
-    configuration: model.baseURL ? { baseURL: model.baseURL } : undefined,
+    configuration: {
+      maxRetries: 0,
+      ...(model.baseURL ? { baseURL: model.baseURL } : {}),
+    },
   };
 }
 
@@ -134,9 +128,7 @@ function isCustomToolCallItem(
   value: unknown,
 ): value is Record<string, unknown> & { call_id: string } {
   return (
-    isRecord(value) &&
-    value["type"] === "custom_tool_call" &&
-    typeof value["call_id"] === "string"
+    isRecord(value) && value["type"] === "custom_tool_call" && typeof value["call_id"] === "string"
   );
 }
 

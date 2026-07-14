@@ -1,16 +1,7 @@
-import {
-  AIMessage,
-  ToolMessage,
-  mapChatMessagesToStoredMessages,
-} from "@langchain/core/messages";
+import { AIMessage, ToolMessage, mapChatMessagesToStoredMessages } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { BunSqliteSaver } from "../../src/checkpointer";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -93,9 +84,7 @@ test("one database stores each message body once and clears terminal recovery da
     original: storedAssistant,
   });
   expect(
-    db.db
-      .query<{ content: string | null }, []>("SELECT content FROM queue")
-      .get()?.content,
+    db.db.query<{ content: string | null }, []>("SELECT content FROM queue").get()?.content,
   ).toBeNull();
 
   await saver.deleteThread("session:1");
@@ -122,9 +111,7 @@ function checkpoint(messages: unknown[]) {
 
 function tableNames(db: ReturnType<typeof makeDb>["db"]) {
   return db
-    .query<{ name: string }, []>(
-      "SELECT name FROM sqlite_schema WHERE type = 'table'",
-    )
+    .query<{ name: string }, []>("SELECT name FROM sqlite_schema WHERE type = 'table'")
     .all()
     .map((row) => row.name);
 }
@@ -139,10 +126,7 @@ function storedOccurrences(db: ReturnType<typeof makeDb>["db"], text: string) {
   ).count;
 }
 
-function rawRecoveryContains(
-  db: ReturnType<typeof makeDb>["db"],
-  value: string,
-) {
+function rawRecoveryContains(db: ReturnType<typeof makeDb>["db"], value: string) {
   const checkpointCount = required(
     db
       .query<{ count: number }, [string]>(
@@ -162,9 +146,6 @@ function rawRecoveryContains(
 
 function rowCount(db: ReturnType<typeof makeDb>["db"], table: string) {
   if (!/^[a-z_]+$/.test(table)) throw new Error(`测试表名无效：${table}`);
-  return required(
-    db
-      .query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM ${table}`)
-      .get(),
-  ).count;
+  return required(db.query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM ${table}`).get())
+    .count;
 }

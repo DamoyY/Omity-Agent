@@ -22,9 +22,7 @@ export function hookCommand(
     previousOutput: result.value,
   };
   const nextPlan =
-    rule.mode === "takeover" &&
-    advancedPlan.kind === "tools" &&
-    advancedPlan.replaceMessageId
+    rule.mode === "takeover" && advancedPlan.kind === "tools" && advancedPlan.replaceMessageId
       ? { ...advancedPlan, replaceMessageId: undefined }
       : advancedPlan;
   const messages =
@@ -49,11 +47,7 @@ export function hookCommand(
   });
 }
 
-export function originalToolCommand(
-  plan: ToolHookPlan,
-  original: AIMessage,
-  call: ToolCall,
-) {
+export function originalToolCommand(plan: ToolHookPlan, original: AIMessage, call: ToolCall) {
   if (!call.id) throw new Error(`工具调用缺少 ID：${call.name}`);
   const includeResponse = !plan.responseEmitted;
   return new Command({
@@ -84,12 +78,7 @@ export function finishAgent(plan: AgentHookPlan, clearPending: boolean) {
   }
   const finalMessageId = plan.sources.at(-1);
   if (!finalMessageId) throw new Error("Agent after Hook 缺少最终消息 ID");
-  return command(
-    { kind: "done", finalMessageId },
-    END,
-    clearPending,
-    plan.previousOutput,
-  );
+  return command({ kind: "done", finalMessageId }, END, clearPending, plan.previousOutput);
 }
 
 export function command(

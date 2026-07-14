@@ -6,18 +6,14 @@ export function normalizeResponsesStreamEvent(
   if (!isRecord(event) || !("response" in event)) return event;
   const response = event.response as OpenAI.Responses.Response;
   const normalized = normalizeResponsesPayload(response);
-  return normalized === response
-    ? event
-    : ({ ...event, response: normalized } as typeof event);
+  return normalized === response ? event : ({ ...event, response: normalized } as typeof event);
 }
 
 export function normalizeResponsesPayload<T>(payload: T): T {
   if (!isRecord(payload) || !Array.isArray(payload["output"])) return payload;
   const original = payload["output"];
   const output = original.map(normalizeOutputItem);
-  return output.every((item, index) => item === original[index])
-    ? payload
-    : { ...payload, output };
+  return output.every((item, index) => item === original[index]) ? payload : { ...payload, output };
 }
 
 export async function* normalizeResponsesStream(
@@ -30,9 +26,7 @@ function normalizeOutputItem(item: unknown) {
   if (!isRecord(item) || !Array.isArray(item["content"])) return item;
   const original = item["content"];
   const content = original.map(normalizeOutputPart);
-  return content.every((part, index) => part === original[index])
-    ? item
-    : { ...item, content };
+  return content.every((part, index) => part === original[index]) ? item : { ...item, content };
 }
 
 function normalizeOutputPart(part: unknown) {

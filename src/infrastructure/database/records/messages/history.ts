@@ -1,15 +1,10 @@
-import {
-  AIMessage,
-  HumanMessage,
-  type BaseMessage,
-} from "@langchain/core/messages";
+import { AIMessage, HumanMessage, type BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import { messageRowsToChatMessages, type MessageRow } from "./serialization";
 import { persistMessageBlob, pruneMessageBlobs } from "./blobStore";
 
-const messageColumns =
-  "b.message_json AS message_json, m.source_id AS source_id";
+const messageColumns = "b.message_json AS message_json, m.source_id AS source_id";
 
 export function insertUserMessage(
   db: Database,
@@ -44,11 +39,7 @@ export function messageQueueId(sessionId: string, message: BaseMessage) {
   return queueId;
 }
 
-export function appendAssistantMessage(
-  db: Database,
-  sessionId: string,
-  content: string,
-) {
+export function appendAssistantMessage(db: Database, sessionId: string, content: string) {
   storeMessage(
     db,
     sessionId,
@@ -57,24 +48,14 @@ export function appendAssistantMessage(
   );
 }
 
-export function syncMessages(
-  db: Database,
-  sessionId: string,
-  messages: BaseMessage[],
-) {
+export function syncMessages(db: Database, sessionId: string, messages: BaseMessage[]) {
   for (const message of messages) message.id ??= randomUUID();
   const tx = db.transaction(() => {
-    db.query(
-      "UPDATE messages SET position = NULL, queue_id = NULL WHERE session_id = ?",
-    ).run(sessionId);
+    db.query("UPDATE messages SET position = NULL, queue_id = NULL WHERE session_id = ?").run(
+      sessionId,
+    );
     const ids = messages.map((message, position) =>
-      storeMessage(
-        db,
-        sessionId,
-        message,
-        position,
-        messageQueueId(sessionId, message),
-      ),
+      storeMessage(db, sessionId, message, position, messageQueueId(sessionId, message)),
     );
     pruneUnreferencedMessages(db, sessionId);
     return ids;
@@ -114,14 +95,7 @@ export function storeMessage(
        ON CONFLICT(session_id, source_id, blob_digest) DO UPDATE SET
          queue_id = COALESCE(excluded.queue_id, messages.queue_id),
          position = COALESCE(excluded.position, messages.position)`,
-  ).run(
-    sessionId,
-    ref.sourceId,
-    ref.digest,
-    queueId ?? null,
-    position ?? null,
-    createdAt ?? null,
-  );
+  ).run(sessionId, ref.sourceId, ref.digest, queueId ?? null, position ?? null, createdAt ?? null);
   const row = db
     .query<{ id: number }, [string, string, string]>(
       `SELECT id FROM messages

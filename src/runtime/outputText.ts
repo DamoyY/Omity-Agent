@@ -7,9 +7,7 @@ export interface ToolTextContent {
   replaceText: (replacement: string) => MessageContent;
 }
 
-export function inspectToolTextContent(
-  content: MessageContent,
-): ToolTextContent | null {
+export function inspectToolTextContent(content: MessageContent): ToolTextContent | null {
   const parsed = parseMcpContent(content);
   if (parsed === null) return null;
   const value = parsed.value;

@@ -38,9 +38,7 @@ export function buildTimeline(
 ): TimelineMessage[] {
   const outputs = new Map(
     messages.flatMap((item) =>
-      item.role === "tool" && item.toolCallId
-        ? [[item.toolCallId, item] as const]
-        : [],
+      item.role === "tool" && item.toolCallId ? [[item.toolCallId, item] as const] : [],
     ),
   );
   const startedCallIds = new Set(
@@ -51,9 +49,7 @@ export function buildTimeline(
   );
   const visible = messages
     .filter((item) => item.role !== "tool")
-    .map((item) =>
-      withParts(item, `message-${item.id.toString()}`, outputs, startedCallIds),
-    );
+    .map((item) => withParts(item, `message-${item.id.toString()}`, outputs, startedCallIds));
   const visibleToolCalls = visible.flatMap((item) => toolParts(item));
   const persistedSourceIds = new Set(
     messages.map((item) => item.sourceId).filter((id) => id !== undefined),
@@ -61,21 +57,12 @@ export function buildTimeline(
   const knownQueue = new Set(messages.map((item) => item.queueId));
   const pending = queue
     .filter((item) => item.status === "pending" && !knownQueue.has(item.id))
-    .map((item) =>
-      synthetic("user", item.content, `queue-${item.id.toString()}`),
-    );
+    .map((item) => synthetic("user", item.content, `queue-${item.id.toString()}`));
   const live = queue
     .filter((item) => item.status === "running" || item.status === "paused")
     .filter((item) => item.userMessageId !== null)
     .map((item) =>
-      streamMessage(
-        item,
-        events,
-        outputs,
-        visibleToolCalls,
-        persistedSourceIds,
-        startedCallIds,
-      ),
+      streamMessage(item, events, outputs, visibleToolCalls, persistedSourceIds, startedCallIds),
     )
     .filter((item) => item.parts.length > 0);
   return groupAssistantMessages([...visible, ...live, ...pending]);
@@ -140,9 +127,7 @@ function withParts(
       ...(message.reasoning.trim()
         ? [{ type: "reasoning", content: message.reasoning } as const]
         : []),
-      ...(message.content.trim()
-        ? [{ type: "content", content: message.content } as const]
-        : []),
+      ...(message.content.trim() ? [{ type: "content", content: message.content } as const] : []),
       ...message.toolCalls.map((call) => ({
         type: "tool" as const,
         call,
@@ -153,11 +138,7 @@ function withParts(
   };
 }
 
-function synthetic(
-  role: DisplayRole,
-  content: string,
-  key: string,
-): TimelineMessage {
+function synthetic(role: DisplayRole, content: string, key: string): TimelineMessage {
   return {
     id: -1,
     role,
@@ -170,7 +151,6 @@ function synthetic(
 
 function toolParts(message: TimelineMessage) {
   return message.parts.filter(
-    (part): part is Extract<TimelinePart, { type: "tool" }> =>
-      part.type === "tool",
+    (part): part is Extract<TimelinePart, { type: "tool" }> => part.type === "tool",
   );
 }

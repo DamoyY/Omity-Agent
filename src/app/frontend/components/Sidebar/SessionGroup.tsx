@@ -25,17 +25,12 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const runningSessions = group.sessions.filter(isRunning);
-  const historySessions = group.sessions.filter(
-    (session) => !isRunning(session),
-  );
+  const historySessions = group.sessions.filter((session) => !isRunning(session));
   const selectedHistory = historySessions.find(({ id }) => id === activeId);
   const compactHistory = selectedHistory ? [selectedHistory] : [];
   const visibleSessions =
     runningSessions.length > 0
-      ? [
-          ...runningSessions,
-          ...(historyExpanded ? historySessions : compactHistory),
-        ]
+      ? [...runningSessions, ...(historyExpanded ? historySessions : compactHistory)]
       : group.sessions;
   const hiddenHistoryCount = historySessions.length - compactHistory.length;
   return (
@@ -52,9 +47,7 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
           className={cx(styles.chevron, !expanded && styles.collapsedChevron)}
           size={13}
         />
-        <span className={styles.workspaceName}>
-          {workspaceLabel(group.workspace)}
-        </span>
+        <span className={styles.workspaceName}>{workspaceLabel(group.workspace)}</span>
         <span className={styles.counts}>
           {group.runningCount > 0 && (
             <span className={styles.runningCount}>● {group.runningCount}</span>
@@ -66,11 +59,7 @@ export function SessionGroup({ group, activeId, onSelect }: Props) {
         <div className={styles.sessions}>
           {visibleSessions.map((session) => (
             <div
-              className={cx(
-                "group",
-                styles.item,
-                session.id === activeId && styles.selected,
-              )}
+              className={cx("group", styles.item, session.id === activeId && styles.selected)}
               key={session.id}
             >
               <LinkButton

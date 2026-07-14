@@ -93,10 +93,7 @@ export function requiredArray(value: unknown): unknown[] {
   return value;
 }
 
-function mockOpenAI(
-  requests: Record<string, unknown>[],
-  response: () => unknown,
-) {
+function mockOpenAI(requests: Record<string, unknown>[], response: () => unknown) {
   const server = Bun.serve({
     port: 0,
     async fetch(request) {

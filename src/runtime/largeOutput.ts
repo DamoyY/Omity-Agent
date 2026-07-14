@@ -106,9 +106,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isLargeOutputRuntimeContext(
-  value: unknown,
-): value is LargeOutputRuntimeContext {
+function isLargeOutputRuntimeContext(value: unknown): value is LargeOutputRuntimeContext {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -134,10 +132,7 @@ async function writeLargeToolOutput(
 
 function createOutputFileId(outputId: string | undefined) {
   const bytes = outputId
-    ? createHash("sha256")
-        .update(outputId)
-        .digest()
-        .subarray(0, outputFileIdBytes)
+    ? createHash("sha256").update(outputId).digest().subarray(0, outputFileIdBytes)
     : randomBytes(outputFileIdBytes);
   return bytes.toString("base64url");
 }

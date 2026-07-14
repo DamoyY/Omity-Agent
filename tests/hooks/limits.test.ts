@@ -70,9 +70,8 @@ test("thread cleanup retains session hook usage", async () => {
 
     expect(consumeHookUsage(db.db, "session", "limited", 1)).toBeFalse();
     expect(
-      db.db
-        .query<{ used_count: number }, []>("SELECT used_count FROM hook_usage")
-        .get()?.used_count,
+      db.db.query<{ used_count: number }, []>("SELECT used_count FROM hook_usage").get()
+        ?.used_count,
     ).toBe(1);
   } finally {
     db.close();

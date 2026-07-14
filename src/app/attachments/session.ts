@@ -1,9 +1,6 @@
 import type { Settings } from "../../types";
 import type { InitialMessagePair } from "../initialState";
-import {
-  createSessionStorage,
-  removeSessionStorage,
-} from "../runtime/sessionStorage";
+import { createSessionStorage, removeSessionStorage } from "../runtime/sessionStorage";
 import type { PendingAttachment } from "./contract";
 import { saveMessageAttachments } from "./storage";
 

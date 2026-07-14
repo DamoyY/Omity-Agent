@@ -75,10 +75,7 @@ test("mixed hook modes resolve variables in config order", async () => {
       { label: "after-takeover", previous: "after-silent-result" },
       { label: "agent-end", previous: "after-takeover-result" },
     ]);
-    expect(result.messages.slice(-2).map((message) => message.type)).toEqual([
-      "ai",
-      "tool",
-    ]);
+    expect(result.messages.slice(-2).map((message) => message.type)).toEqual(["ai", "tool"]);
   } finally {
     db.close();
     rmSync(dir, { recursive: true, force: true });

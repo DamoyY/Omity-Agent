@@ -65,11 +65,7 @@ test("host restart resumes after one committed hook boundary", async () => {
     expect(checkpoint.values).toMatchObject({
       hookPlan: { kind: "agent", hookIndex: 1 },
     });
-    expect(db.history("session").map((message) => message.type)).toEqual([
-      "human",
-      "ai",
-      "tool",
-    ]);
+    expect(db.history("session").map((message) => message.type)).toEqual(["human", "ai", "tool"]);
     db.close();
     db = new AgentDatabase(path);
     const recoveredHooks = runtime(db, hookTool, dir);
@@ -109,11 +105,7 @@ async function removeDirectory(dir: string) {
       return;
     } catch (error) {
       if (
-        !(
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "EBUSY"
-        ) ||
+        !(error instanceof Error && "code" in error && error.code === "EBUSY") ||
         attempt === 49
       ) {
         throw error;
@@ -123,11 +115,7 @@ async function removeDirectory(dir: string) {
   }
 }
 
-function runtime(
-  db: AgentDatabase,
-  hookTool: StructuredToolInterface,
-  dir: string,
-) {
+function runtime(db: AgentDatabase, hookTool: StructuredToolInterface, dir: string) {
   return new HookRuntime(
     [
       {

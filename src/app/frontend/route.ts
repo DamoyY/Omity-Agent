@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 export type Page = { kind: "new" } | { kind: "session"; id: string };
 
 const sessionPrefix = "/sessions/";
@@ -22,4 +24,35 @@ export function writePage(page: Page, replace = false) {
   if (window.location.pathname === path) return;
   const method = replace ? "replaceState" : "pushState";
   window.history[method](null, "", path);
+}
+
+export function sessionPage(id: string): Page {
+  return { kind: "session", id };
+}
+
+export function resolvePage(page: Page, sessions: { id: string }[], ready: boolean) {
+  if (!ready) return page;
+  if (page.kind === "new") return page;
+  return sessions.some((session) => session.id === page.id) ? page : ({ kind: "new" } as const);
+}
+
+export function usePageNavigation(page: Page, currentPage: Page, setPage: (page: Page) => void) {
+  useEffect(() => {
+    const syncPage = () => {
+      setPage(readPage());
+    };
+    window.addEventListener("popstate", syncPage);
+    return () => {
+      window.removeEventListener("popstate", syncPage);
+    };
+  }, [setPage]);
+  useEffect(() => {
+    if (samePage(page, currentPage)) return;
+    writePage(currentPage, true);
+  }, [currentPage, page]);
+}
+
+function samePage(left: Page, right: Page) {
+  if (left.kind !== right.kind) return false;
+  return left.kind !== "session" || right.kind !== "session" ? true : left.id === right.id;
 }

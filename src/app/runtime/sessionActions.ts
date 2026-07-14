@@ -6,10 +6,7 @@ import type { SessionSubmission } from "../attachments/contract";
 import { createSessionWithAttachments } from "../attachments/session";
 import { forkSessionStorage, removeSessionStorage } from "./sessionStorage";
 
-export async function createAppSession(
-  appRoot: string,
-  submission: SessionSubmission,
-) {
+export async function createAppSession(appRoot: string, submission: SessionSubmission) {
   const workspace = normalizeWorkspacePath(submission.workspace, appRoot);
   const settings = loadSettings(appRoot, { cwd: workspace });
   const sessionId = `web-${randomUUID()}`;

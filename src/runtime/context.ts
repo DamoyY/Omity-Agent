@@ -7,16 +7,14 @@ import type { SessionStatus, Settings } from "../types";
 import type { buildGraph } from "../agent";
 import { BaseMessage } from "@langchain/core/messages";
 import { z } from "zod";
+import type { ToolExecutions } from "../agent/toolExecutions";
 
 type AgentGraph = ReturnType<typeof buildGraph>["graph"];
 type HostGraph = Omit<AgentGraph, "getState"> & {
   getState: (...args: Parameters<AgentGraph["getState"]>) => Promise<unknown>;
 };
 export interface HostObserver {
-  activity?(
-    sessionId: string,
-    status: Extract<SessionStatus, "tool" | "model" | "idle">,
-  ): void;
+  activity?(sessionId: string, status: Extract<SessionStatus, "tool" | "model" | "idle">): void;
   changed?(sessionId: string): void;
   transcript?(sessionId: string, event: StreamEvent): void;
   token(sessionId: string, queueId: number, text: string): void;
@@ -28,6 +26,7 @@ export interface HostContext {
   db: AgentDatabase;
   graph: HostGraph;
   checkpointer: BunSqliteSaver;
+  toolExecutions?: ToolExecutions;
   sessionId: string;
   controller: AbortController;
   stopping?: AbortSignal;
@@ -59,9 +58,7 @@ interface RuntimeGraphState extends Record<string, unknown> {
   tasks: (Record<string, unknown> & { name: string })[];
 }
 
-const graphMessageSchema = z.custom<BaseMessage>((value) =>
-  BaseMessage.isInstance(value),
-);
+const graphMessageSchema = z.custom<BaseMessage>((value) => BaseMessage.isInstance(value));
 const graphValuesSchema = z.looseObject({
   messages: z.preprocess(
     (value) => (Array.isArray(value) ? (value as unknown[]) : []),
@@ -72,10 +69,7 @@ const graphValuesSchema = z.looseObject({
 });
 const graphStateSchema = z.looseObject({
   values: z.preprocess(
-    (value) =>
-      typeof value === "object" && value !== null && !Array.isArray(value)
-        ? value
-        : {},
+    (value) => (typeof value === "object" && value !== null && !Array.isArray(value) ? value : {}),
     graphValuesSchema,
   ),
   next: z.array(z.string()),

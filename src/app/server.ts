@@ -17,9 +17,7 @@ export interface AppServerOptions {
 }
 
 export async function startAppServer(options: AppServerOptions) {
-  const lock = AppInstanceLock.acquire(
-    loadSettings(options.root).paths.dataDir,
-  );
+  const lock = AppInstanceLock.acquire(loadSettings(options.root).paths.dataDir);
   const shutdown = waitForShutdownSignal();
   try {
     const controller = new AppController(options.root, {

@@ -41,7 +41,6 @@ function makeSettings(api: ModelApi): Settings {
       apiKeyEnv: "TEST_OPENAI_KEY",
       baseURL: null,
       temperature: 0,
-      maxRetries: 0,
       timeoutMs: 1000,
     },
     host: {
@@ -80,9 +79,7 @@ test("buildModel passes reasoning_effort to OpenAI Completions API", () => {
   const model = buildModel(settings, "session-1");
 
   expect(model).toBeInstanceOf(ChatOpenAICompletions);
-  expect(
-    (model as ChatOpenAICompletions).invocationParams().reasoning_effort,
-  ).toBe("high");
+  expect((model as ChatOpenAICompletions).invocationParams().reasoning_effort).toBe("high");
 });
 
 test("buildModel passes reasoning_effort to OpenAI Responses API", () => {
@@ -105,13 +102,9 @@ test("buildModel disables remote storage and enables ZDR for all APIs", () => {
   const responses = buildModel(makeSettings("responses"), "session-1");
 
   expect((completions as ChatOpenAICompletions).zdrEnabled).toBeTrue();
-  expect(
-    (completions as ChatOpenAICompletions).invocationParams().store,
-  ).toBeFalse();
+  expect((completions as ChatOpenAICompletions).invocationParams().store).toBeFalse();
   expect((responses as ChatOpenAIResponses).zdrEnabled).toBeTrue();
-  expect(
-    (responses as ChatOpenAIResponses).invocationParams().store,
-  ).toBeFalse();
+  expect((responses as ChatOpenAIResponses).invocationParams().store).toBeFalse();
 });
 
 test("buildModel requests encrypted reasoning from OpenAI Responses API", () => {
@@ -127,24 +120,16 @@ test("buildModel requests encrypted reasoning from OpenAI Responses API", () => 
 
 test("buildModel passes instructions to OpenAI Responses API", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
-  const model = buildModel(
-    makeSettings("responses"),
-    "session-1",
-    "system\n\nskills",
-  );
+  const model = buildModel(makeSettings("responses"), "session-1", "system\n\nskills");
 
-  expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe(
-    "system\n\nskills",
-  );
+  expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe("system\n\nskills");
 });
 
 test("buildModel uses the session ID as the Responses prompt cache key", () => {
   setEnv("TEST_OPENAI_KEY", "test-key");
   const model = buildModel(makeSettings("responses"), "session-1");
 
-  expect(
-    (model as ChatOpenAIResponses).invocationParams().prompt_cache_key,
-  ).toBe("session-1");
+  expect((model as ChatOpenAIResponses).invocationParams().prompt_cache_key).toBe("session-1");
 });
 
 test("normalizes missing Responses API output_text annotations", () => {

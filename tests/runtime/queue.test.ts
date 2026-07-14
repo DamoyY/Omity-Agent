@@ -7,12 +7,7 @@ import { Logger } from "../../src/infrastructure/logging/logger";
 import { processQueue } from "../../src/runtime/queue";
 import type { HostContext } from "../../src/runtime/context";
 import type { Settings } from "../../src/types";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -33,9 +28,7 @@ test("unexpected errors pause the queue", async () => {
 
   expect(db.nextQueue("123")?.status).toBe("paused");
   expect(db.control("123")).toBe("pause");
-  const stored = db.db
-    .query<{ error: string }, []>("SELECT error FROM queue LIMIT 1")
-    .get();
+  const stored = db.db.query<{ error: string }, []>("SELECT error FROM queue LIMIT 1").get();
   expect(parseError(required(stored).error)).toMatchObject({
     name: "Error",
     message: "boom",
@@ -175,7 +168,6 @@ function makeSettings(): Settings {
       apiKeyEnv: "TEST_OPENAI_KEY",
       baseURL: null,
       temperature: 0,
-      maxRetries: 0,
       timeoutMs: 1000,
     },
     host: {

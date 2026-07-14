@@ -1,19 +1,11 @@
 import { expect, test } from "bun:test";
-import type {
-  DisplayEvent,
-  DisplayMessage,
-  DisplayQueue,
-} from "../../../src/app/timeline";
+import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
 import { buildTimeline } from "../../../src/app/timeline";
 
-const queue: DisplayQueue[] = [
-  { id: 1, content: "run", status: "running", error: null },
-];
+const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
 
 test("persisted content hides only its identified stream", () => {
-  const messages: DisplayMessage[] = [
-    assistant({ id: 1, sourceId: "message-1", content: "完成" }),
-  ];
+  const messages: DisplayMessage[] = [assistant({ id: 1, sourceId: "message-1", content: "完成" })];
   const events = [
     event("token", {
       kind: "assistant_text_delta",
@@ -137,10 +129,7 @@ test("repeated assistant content and tool inputs remain visible", () => {
   const view = buildTimeline(messages, [], []);
 
   expect(view[0]?.content).toBe("完成\n\n完成");
-  expect(toolCalls(view[0]).map((item) => item.id)).toEqual([
-    "call-1",
-    "call-2",
-  ]);
+  expect(toolCalls(view[0]).map((item) => item.id)).toEqual(["call-1", "call-2"]);
 });
 
 test("equal reasoning from distinct model responses remains visible", () => {
@@ -180,20 +169,10 @@ function call(id: string) {
   return { id, index: 0, inputTokens: 1, name: "read", input: {} };
 }
 
-function event(
-  message: string,
-  payload: Record<string, unknown>,
-  id = 1,
-): DisplayEvent {
+function event(message: string, payload: Record<string, unknown>, id = 1): DisplayEvent {
   return { id, message, payload: { ...payload, queueId: 1 } };
 }
 
-function toolCalls(
-  message: ReturnType<typeof buildTimeline>[number] | undefined,
-) {
-  return (
-    message?.parts.flatMap((part) =>
-      part.type === "tool" ? [part.call] : [],
-    ) ?? []
-  );
+function toolCalls(message: ReturnType<typeof buildTimeline>[number] | undefined) {
+  return message?.parts.flatMap((part) => (part.type === "tool" ? [part.call] : [])) ?? [];
 }

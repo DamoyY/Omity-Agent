@@ -37,30 +37,21 @@ export async function putCheckpoint(
     "config.configurable.thread_id",
   );
   const checkpoint_ns =
-    optionalConfigString(
-      config.configurable?.["checkpoint_ns"],
-      "checkpoint_ns",
-    ) ?? "";
+    optionalConfigString(config.configurable?.["checkpoint_ns"], "checkpoint_ns") ?? "";
   const checkpoint_id = optionalConfigString(
     config.configurable?.["checkpoint_id"],
     "checkpoint_id",
   );
   const normalized = normalizeCheckpoint(copyCheckpoint(checkpoint));
-  const [[type1, serializedCheckpoint], [type2, serializedMetadata]] =
-    await Promise.all([
-      serialize(serde, normalized.checkpoint),
-      serialize(serde, metadata),
-    ]);
+  const [[type1, serializedCheckpoint], [type2, serializedMetadata]] = await Promise.all([
+    serialize(serde, normalized.checkpoint),
+    serialize(serde, metadata),
+  ]);
   if (type1 !== type2) {
     throw new Error("checkpoint 与 metadata 的序列化类型不一致");
   }
   db.transaction(() => {
-    persistCheckpointMessages(
-      db,
-      sessionId,
-      normalized.messages,
-      normalized.referencedMessages,
-    );
+    persistCheckpointMessages(db, sessionId, normalized.messages, normalized.referencedMessages);
     db.query(
       "INSERT OR REPLACE INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type, checkpoint, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).run(
@@ -95,15 +86,9 @@ export async function putPendingWrites(
   writes: PendingWrite[],
   taskId: string,
 ) {
-  const thread_id = requiredConfigString(
-    config.configurable?.["thread_id"],
-    "thread_id",
-  );
+  const thread_id = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
   const checkpoint_ns =
-    optionalConfigString(
-      config.configurable?.["checkpoint_ns"],
-      "checkpoint_ns",
-    ) ?? "";
+    optionalConfigString(config.configurable?.["checkpoint_ns"], "checkpoint_ns") ?? "";
   const checkpoint_id = requiredConfigString(
     config.configurable?.["checkpoint_id"],
     "checkpoint_id",

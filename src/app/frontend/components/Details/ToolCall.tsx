@@ -1,10 +1,12 @@
-import { Wrench } from "lucide-react";
+import { CircleStop, LoaderCircle, Wrench } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { css } from "styled-system/css";
 import type { DisplayMessage, DisplayToolCall } from "../../../timeline";
 import { formatTokens } from "../../tokenUnits";
 import { HighlightedCode } from "../HighlightedCode";
-import { Badge } from "../ParkUI";
+import { Badge, IconButton } from "../ParkUI";
+import { reportPromiseErrors } from "../../services/errors";
 import { Frame } from "./Frame";
 import { formatToolInput } from "./toolInput";
 const ioGrid = css({
@@ -44,25 +46,70 @@ const codeBlock = css({
 });
 const imageList = css({ display: "grid", gap: "2" });
 const outputImage = css({ display: "block", h: "auto", maxW: "full" });
+const accessory = css({ alignItems: "center", display: "flex", gap: "2" });
+const stopButton = css({
+  borderWidth: "0",
+  color: "statusTool",
+  h: "6",
+  minW: "6",
+  p: 0,
+});
 export function ToolCall({
   call,
   latest,
+  onCancel,
   output,
   started,
 }: {
   call: DisplayToolCall;
   latest: boolean;
+  onCancel: (toolCallId: string) => Promise<void>;
   output?: DisplayMessage;
   started?: boolean;
 }) {
   const { t } = useTranslation();
+  const [cancelling, setCancelling] = useState(false);
+  const running = started && output === undefined;
   const showOutput = output !== undefined || started;
   const showOutputCode = output
     ? output.content.trim().length > 0 || output.images.length === 0
     : started;
   return (
     <Frame
-      accessory={call.streaming ? <Badge>{t("streaming")}</Badge> : undefined}
+      accessory={
+        call.streaming || running ? (
+          <span className={accessory}>
+            {call.streaming ? <Badge>{t("streaming")}</Badge> : null}
+            {running ? (
+              <IconButton
+                aria-label={t("stopTool")}
+                className={stopButton}
+                disabled={cancelling}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setCancelling(true);
+                  reportPromiseErrors(
+                    onCancel(call.id).catch((error: unknown) => {
+                      setCancelling(false);
+                      throw error;
+                    }),
+                  );
+                }}
+                title={t("stopTool")}
+                type="button"
+                variant="ghost"
+              >
+                {cancelling ? (
+                  <LoaderCircle aria-hidden size={14} />
+                ) : (
+                  <CircleStop aria-hidden size={14} />
+                )}
+              </IconButton>
+            ) : null}
+          </span>
+        ) : undefined
+      }
       expandedInitially={latest}
       icon={Wrench}
       label={`${t("toolCall")}: ${call.name}`}
@@ -79,7 +126,7 @@ export function ToolCall({
             autoFollow={latest}
             className={codeBlock}
             code={formatToolInput(call)}
-            language="yaml"
+            language={call.rawInput === undefined ? "yaml" : "plaintext"}
           />
         </section>
         {showOutput ? (
@@ -87,9 +134,7 @@ export function ToolCall({
             <p className={panelTitle}>
               <span>{t("output")}</span>
               <span className={tokenCount}>
-                {output
-                  ? formatTokens(output.outputTokens ?? 0)
-                  : t("unavailableTokens")}
+                {output ? formatTokens(output.outputTokens ?? 0) : t("unavailableTokens")}
               </span>
             </p>
             {showOutputCode ? (

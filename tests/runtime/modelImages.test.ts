@@ -91,32 +91,23 @@ test("adds image notices to Completions tool results", () => {
 
   const prepared = prepareModelImageMessages(messages, "completions");
 
-  expect(prepared.map((message) => message.type)).toEqual([
-    "ai",
-    "tool",
-    "tool",
-    "ai",
-  ]);
+  expect(prepared.map((message) => message.type)).toEqual(["ai", "tool", "tool", "ai"]);
   expect(prepared[1]?.content).toBe(
     "first\n\n工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
   );
   expect(prepared[2]?.content).toBe(
     "工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
   );
-  expect(
-    convertMessagesToCompletionsMessageParams({ messages: prepared }),
-  ).toEqual([
+  expect(convertMessagesToCompletionsMessageParams({ messages: prepared })).toEqual([
     { role: "assistant", content: "tools" },
     {
       role: "tool",
-      content:
-        "first\n\n工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
+      content: "first\n\n工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
       tool_call_id: "call-1",
     },
     {
       role: "tool",
-      content:
-        "工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
+      content: "工具返回了 1 张图片，但 Completions API 不支持工具返回图片给模型。",
       tool_call_id: "call-2",
     },
     { role: "assistant", content: "next" },

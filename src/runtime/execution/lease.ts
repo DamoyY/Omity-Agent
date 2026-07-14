@@ -31,10 +31,7 @@ export class HostLease {
         ttlMs,
       })
     ) {
-      throw new DomainError(
-        "HOST_LEASE_CONFLICT",
-        `会话已有 Host 正在运行：${sessionId}`,
-      );
+      throw new DomainError("HOST_LEASE_CONFLICT", `会话已有 Host 正在运行：${sessionId}`);
     }
     this.timer = setInterval(
       () => {
@@ -48,9 +45,7 @@ export class HostLease {
   assertOwned() {
     if (this.error) throw this.error;
     if (this.db.hostLease(this.sessionId)?.ownerId !== this.ownerId) {
-      const error = new HostLeaseLostError(
-        `Host Lease 已丢失：${this.sessionId}`,
-      );
+      const error = new HostLeaseLostError(`Host Lease 已丢失：${this.sessionId}`);
       this.fail(error);
       throw error;
     }

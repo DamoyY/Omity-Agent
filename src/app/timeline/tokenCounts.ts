@@ -1,8 +1,4 @@
-import {
-  AIMessage,
-  type BaseMessage,
-  type ToolMessage,
-} from "@langchain/core/messages";
+import { AIMessage, type BaseMessage, type ToolMessage } from "@langchain/core/messages";
 import { countTokens } from "../../runtime/tokenizer";
 import type { TokenUsage } from "./types";
 

@@ -1,19 +1,11 @@
 import { z } from "zod";
 
-const reasoningEffortSchema = z.enum([
-  "none",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-]);
+const reasoningEffortSchema = z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]);
 
 const sharedModelSettings = {
   model: z.string().min(1),
   temperature: z.number().optional(),
   reasoning_effort: reasoningEffortSchema.optional(),
-  maxRetries: z.number().int().nonnegative(),
   timeoutMs: z.number().int().positive(),
 };
 

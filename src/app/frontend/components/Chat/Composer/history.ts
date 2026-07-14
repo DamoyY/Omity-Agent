@@ -4,11 +4,7 @@ export class UserMessageHistory {
   private draft = "";
   private index: number | undefined;
 
-  navigate(
-    direction: HistoryDirection,
-    current: string,
-    messages: readonly string[],
-  ) {
+  navigate(direction: HistoryDirection, current: string, messages: readonly string[]) {
     if (direction === "previous") {
       return this.previous(current, messages);
     }

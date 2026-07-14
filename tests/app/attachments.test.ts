@@ -2,10 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
-import {
-  attachmentPlaceholder,
-  validateAttachmentBatch,
-} from "../../src/app/attachments/contract";
+import { attachmentPlaceholder, validateAttachmentBatch } from "../../src/app/attachments/contract";
 import { saveMessageAttachments } from "../../src/app/attachments/storage";
 import { testSettings } from "../support/settings";
 import { required } from "../support/database";
@@ -51,12 +48,7 @@ test("unreferenced files are ignored and missing references are rejected", async
   expect(ignored.content).toBe("hello");
 
   expect(() =>
-    saveMessageAttachments(
-      settings,
-      "session",
-      attachmentPlaceholder(id, "notes.txt"),
-      [],
-    ),
+    saveMessageAttachments(settings, "session", attachmentPlaceholder(id, "notes.txt"), []),
   ).toThrow("消息引用的附件不存在");
 });
 
@@ -69,10 +61,7 @@ test("attachment whitelist and combined size limit are enforced", () => {
     validateAttachmentBatch([new File(["x"], "notes.exe")], settings);
   }).toThrow("不允许粘贴后缀");
   expect(() => {
-    validateAttachmentBatch(
-      [new File(["123"], "a.txt"), new File(["456"], "b.txt")],
-      settings,
-    );
+    validateAttachmentBatch([new File(["123"], "a.txt"), new File(["456"], "b.txt")], settings);
   }).toThrow("附件总大小超过上限");
 });
 

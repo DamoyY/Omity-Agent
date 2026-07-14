@@ -13,9 +13,7 @@ describe("MarkdownView", () => {
   });
 
   test("默认仍遵循 CommonMark 软换行语义", () => {
-    const html = renderToStaticMarkup(
-      <MarkdownView content={"第一行\n第二行"} />,
-    );
+    const html = renderToStaticMarkup(<MarkdownView content={"第一行\n第二行"} />);
 
     expect(html).not.toContain("<br");
   });

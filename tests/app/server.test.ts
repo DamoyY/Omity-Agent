@@ -4,10 +4,7 @@ import { join } from "node:path";
 import { afterEach, expect, test } from "bun:test";
 import { AppRegistry } from "../../src/app/registry";
 import { AppController } from "../../src/app/controller";
-import {
-  resolveSessionState,
-  resolveSessionStatus,
-} from "../../src/app/sessionState";
+import { resolveSessionState, resolveSessionStatus } from "../../src/app/sessionState";
 import { loadSettings } from "../../src/infrastructure/configuration/loadSettings";
 import { sessionPaths } from "../../src/infrastructure/configuration/sessionPaths";
 import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
@@ -32,11 +29,7 @@ test("app session summaries expose paused queue errors", async () => {
   const db = new AgentDatabase(paths.dbPath);
   db.createSession("failed-session", workspace);
   const queueId = db.appendUser("failed-session", "test");
-  db.setQueueStatus(
-    queueId,
-    "paused",
-    captureError(new Error("model request failed")),
-  );
+  db.setQueueStatus(queueId, "paused", captureError(new Error("model request failed")));
   db.close();
 
   const controller = new AppController(root);
@@ -91,9 +84,7 @@ test("app instance lock rejects a second server for the same data directory", ()
   const dataDir = loadSettings(root).paths.dataDir;
   const lock = AppInstanceLock.acquire(dataDir);
 
-  expect(() => AppInstanceLock.acquire(dataDir)).toThrow(
-    "数据目录已有 App 在运行",
-  );
+  expect(() => AppInstanceLock.acquire(dataDir)).toThrow("数据目录已有 App 在运行");
 
   lock.release();
   expect(existsSync(join(dataDir, "app.lock"))).toBe(false);
@@ -104,12 +95,8 @@ test("session status prioritizes errors and pauses over host activity", () => {
   const failure = captureError(new Error("Run failed"));
   expect(resolveSessionStatus(running, "model", null)).toBe("model");
   expect(resolveSessionStatus(running, "tool", failure)).toBe("error");
-  expect(resolveSessionStatus({ ...running, paused: true }, "tool", null)).toBe(
-    "paused",
-  );
-  expect(
-    resolveSessionStatus({ ...running, error: failure }, "model", null),
-  ).toBe("error");
+  expect(resolveSessionStatus({ ...running, paused: true }, "tool", null)).toBe("paused");
+  expect(resolveSessionStatus({ ...running, error: failure }, "model", null)).toBe("error");
 });
 
 test("session state exposes host errors before queue errors", () => {

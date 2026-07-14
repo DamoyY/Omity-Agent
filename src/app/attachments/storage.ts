@@ -60,10 +60,7 @@ function validateSelected(
   const ids = new Set<string>();
   for (const attachment of selected) {
     if (ids.has(attachment.id)) {
-      throw new DomainError(
-        "ATTACHMENT_INVALID",
-        `附件 ID 重复：${attachment.id}`,
-      );
+      throw new DomainError("ATTACHMENT_INVALID", `附件 ID 重复：${attachment.id}`);
     }
     ids.add(attachment.id);
   }
@@ -73,10 +70,7 @@ function validateSelected(
   );
   for (const id of referenced) {
     if (!ids.has(id)) {
-      throw new DomainError(
-        "ATTACHMENT_INVALID",
-        `消息引用的附件不存在：${id}`,
-      );
+      throw new DomainError("ATTACHMENT_INVALID", `消息引用的附件不存在：${id}`);
     }
   }
 }

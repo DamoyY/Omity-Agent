@@ -1,11 +1,4 @@
-import {
-  Bot,
-  Circle,
-  CircleAlert,
-  Pause,
-  Wrench,
-  type LucideIcon,
-} from "lucide-react";
+import { Bot, Circle, CircleAlert, Pause, Wrench, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { css, cva, cx } from "styled-system/css";
 import type { SessionStatus } from "../../../../types";
@@ -32,10 +25,7 @@ const indicator = cva({
 
 const activeIcon = css({ animation: "pulse 1.8s ease-in-out infinite" });
 
-const statusMeta: Record<
-  SessionStatus,
-  { icon: LucideIcon; label: string; active?: boolean }
-> = {
+const statusMeta: Record<SessionStatus, { icon: LucideIcon; label: string; active?: boolean }> = {
   tool: { icon: Wrench, label: "statusTool", active: true },
   model: { icon: Bot, label: "statusModel", active: true },
   idle: { icon: Circle, label: "statusIdle" },
@@ -56,8 +46,7 @@ export function Status({
   const meta = statusMeta[status];
   const Icon = meta.icon;
   const label = t(meta.label);
-  const description =
-    status === "error" && error ? `${label}: ${error.message}` : label;
+  const description = status === "error" && error ? `${label}: ${error.message}` : label;
   return (
     <span
       aria-label={description}

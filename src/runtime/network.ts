@@ -28,6 +28,7 @@ const retryableCodes = new Set([
   "UND_ERR_CONNECT_TIMEOUT",
   "UND_ERR_HEADERS_TIMEOUT",
   "UND_ERR_SOCKET",
+  "stream_read_error",
 ]);
 
 export function isModelNetworkError(error: unknown): boolean {

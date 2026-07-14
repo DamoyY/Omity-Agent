@@ -23,18 +23,12 @@ export function createMcpLoadError(error: unknown): Error {
     const message = error instanceof Error ? error.message : String(error);
     return new Error(`MCP 工具加载失败：${message}`, { cause: error });
   }
-  return new Error(
-    ["MCP 配置校验失败：", ...details.map((detail) => `- ${detail}`)].join(
-      "\n",
-    ),
-    { cause: error },
-  );
+  return new Error(["MCP 配置校验失败：", ...details.map((detail) => `- ${detail}`)].join("\n"), {
+    cause: error,
+  });
 }
 
-export async function loadMcp(
-  root: string,
-  logger: Logger,
-): Promise<LoadedMcp> {
+export async function loadMcp(root: string, logger: Logger): Promise<LoadedMcp> {
   const path = resolve(root, "settings", "mcp.yaml");
   if (!existsSync(path)) {
     logger.info("MCP 配置不存在，跳过工具加载", { path });
@@ -68,10 +62,7 @@ async function connectMcp(
       await loadServerTools(client, names),
       configuration.toolNameOverrides,
     );
-    const configured = configureFreeformMcpTools(
-      tools,
-      configuration.freeformToolInputs,
-    );
+    const configured = configureFreeformMcpTools(tools, configuration.freeformToolInputs);
     logger.info("已加载 MCP 工具", {
       servers: names,
       tools: tools.map((tool) => tool.name),

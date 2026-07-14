@@ -1,4 +1,5 @@
 import type { loadMcpTools } from "@langchain/mcp-adapters";
+import { markMcpRequestCompleted, markMcpRequestStarted } from "../../agent/toolExecutions";
 
 type McpClient = Parameters<typeof loadMcpTools>[1];
 
@@ -10,8 +11,11 @@ export function createMcpToolFailureClient(client: McpClient): McpClient {
         return value;
       }
       return async (...args: unknown[]) => {
+        const signal = requestSignal(args);
         try {
-          const result: unknown = await Reflect.apply(value, target, args);
+          const request = Reflect.apply(value, target, args) as Promise<unknown>;
+          markMcpRequestStarted(signal);
+          const result: unknown = await request;
           if (isRecord(result) && result["isError"] === true) {
             throw new McpToolFailure(formatMcpContent(result["content"]));
           }
@@ -19,10 +23,19 @@ export function createMcpToolFailureClient(client: McpClient): McpClient {
         } catch (error) {
           if (error instanceof McpToolFailure) throw error;
           throw new McpToolFailure(errorMessage(error), error);
+        } finally {
+          markMcpRequestCompleted(signal);
         }
       };
     },
   });
+}
+
+function requestSignal(args: unknown[]) {
+  const options = args[2];
+  return isRecord(options) && options["signal"] instanceof AbortSignal
+    ? options["signal"]
+    : undefined;
 }
 
 class McpToolFailure extends Error {
@@ -33,9 +46,7 @@ class McpToolFailure extends Error {
   }
 }
 
-function isCallable(
-  value: unknown,
-): value is (this: unknown, ...args: unknown[]) => unknown {
+function isCallable(value: unknown): value is (this: unknown, ...args: unknown[]) => unknown {
   return typeof value === "function";
 }
 

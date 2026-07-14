@@ -68,9 +68,7 @@ export function MarkdownView({
     <div className={markdown}>
       <ReactMarkdown
         components={components}
-        remarkPlugins={
-          preserveLineBreaks ? [remarkGfm, remarkBreaks] : [remarkGfm]
-        }
+        remarkPlugins={preserveLineBreaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
       >
         {content}
       </ReactMarkdown>

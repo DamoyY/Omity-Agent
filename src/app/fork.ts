@@ -29,16 +29,8 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
     options.sourceSessionId,
     options.beforeMessageId,
   );
-  const messages = forkMessages(
-    options.source.db,
-    options.sourceSessionId,
-    forkPoint.position,
-  );
-  if (
-    !messages.some(
-      (message) => storedMessageType(message.message_json) === "human",
-    )
-  ) {
+  const messages = forkMessages(options.source.db, options.sourceSessionId, forkPoint.position);
+  if (!messages.some((message) => storedMessageType(message.message_json) === "human")) {
     throw new Error("每个 session 的第一条用户消息不能 Fork");
   }
   const tx = options.target.db.transaction(() => {
@@ -66,10 +58,7 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
     query.finalize();
   }
   if (!row) {
-    throw new DomainError(
-      "FORK_MESSAGE_NOT_FOUND",
-      `Fork 消息不存在：${messageId.toString()}`,
-    );
+    throw new DomainError("FORK_MESSAGE_NOT_FOUND", `Fork 消息不存在：${messageId.toString()}`);
   }
   if (storedMessageType(row.message_json) !== "human") {
     throw new Error("只能从用户消息创建 Fork");
@@ -90,23 +79,12 @@ function forkMessages(db: Database, sessionId: string, beforePosition: number) {
   }
 }
 
-function insertMessages(
-  db: Database,
-  sessionId: string,
-  messages: MessageRow[],
-) {
+function insertMessages(db: Database, sessionId: string, messages: MessageRow[]) {
   for (const [position, message] of messages.entries()) {
     const [chatMessage] = messageRowsToChatMessages([message]);
     if (!chatMessage) throw new Error("无法还原 Fork 消息");
     chatMessage.id = randomUUID();
-    storeMessage(
-      db,
-      sessionId,
-      chatMessage,
-      position,
-      undefined,
-      message.created_at,
-    );
+    storeMessage(db, sessionId, chatMessage, position, undefined, message.created_at);
   }
 }
 

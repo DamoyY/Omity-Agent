@@ -4,10 +4,7 @@ import { afterEach, expect, test } from "bun:test";
 import { createAgentGraph } from "../../src/agent";
 import { HookRuntime } from "../../src/hooks/runtime";
 import { Logger } from "../../src/infrastructure/logging/logger";
-import {
-  createStreamLogState,
-  handleStreamEvent,
-} from "../../src/runtime/stream";
+import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
 import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
 
@@ -43,10 +40,8 @@ test("streams every model delta once across the recoverable task boundary", asyn
   const reasoning: string[] = [];
   const context = {
     db: {
-      streamReasoning: (_sessionId: string, _queueId: number, text: string) =>
-        reasoning.push(text),
-      streamToken: (_sessionId: string, _queueId: number, text: string) =>
-        tokens.push(text),
+      streamReasoning: (_sessionId: string, _queueId: number, text: string) => reasoning.push(text),
+      streamToken: (_sessionId: string, _queueId: number, text: string) => tokens.push(text),
       streamToolCall: () => undefined,
     },
     logger,

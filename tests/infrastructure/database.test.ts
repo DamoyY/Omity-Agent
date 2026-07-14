@@ -105,8 +105,6 @@ test("queue start atomically rejects a stale claim", () => {
   db.startQueue("123", stale);
 
   expect(() => db.startQueue("123", stale)).toThrow("队列认领冲突");
-  expect(db.history("123").map((message) => message.text)).toEqual([
-    "只应写入一次",
-  ]);
+  expect(db.history("123").map((message) => message.text)).toEqual(["只应写入一次"]);
   db.close();
 });

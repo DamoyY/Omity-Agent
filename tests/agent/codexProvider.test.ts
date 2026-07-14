@@ -27,7 +27,6 @@ test("codex adapter does not require OpenAI-compatible connection settings", () 
     adapter: "codex",
     model: "gpt-5.3-codex",
     reasoning_effort: "high",
-    maxRetries: 1,
     timeoutMs: 120_000,
   });
   expect(Object.hasOwn(settings.model, "api")).toBe(false);
@@ -42,6 +41,13 @@ test("codex adapter builds a Responses API model without an API key env", () => 
   expect(resolveModelApi(settings.model)).toBe("responses");
   expect(model).toBeInstanceOf(ChatOpenAIResponses);
   expect((model as ChatOpenAIResponses).zdrEnabled).toBeTrue();
+  expect(
+    (
+      model as unknown as {
+        clientConfig: { maxRetries: number };
+      }
+    ).clientConfig.maxRetries,
+  ).toBe(0);
   expect((model as ChatOpenAIResponses).invocationParams().store).toBeFalse();
   expect((model as ChatOpenAIResponses).invocationParams().instructions).toBe(
     "system instructions",
@@ -97,9 +103,7 @@ test("codex client reads auth.json and authenticates the Codex endpoint", async 
   const request = requests[0];
   expect(request).toBeDefined();
   expect(request?.url).toBe("https://chatgpt.com/backend-api/codex/responses");
-  expect(request?.headers.get("authorization")).toBe(
-    "Bearer test-access-token",
-  );
+  expect(request?.headers.get("authorization")).toBe("Bearer test-access-token");
   expect(request?.headers.get("chatgpt-account-id")).toBe("test-account-id");
   expect(request?.body).toEqual({
     model: "gpt-5.3-codex",
@@ -146,7 +150,6 @@ function codexSettings(): Settings {
         adapter: "codex",
         model: "gpt-5.3-codex",
         reasoning_effort: "high",
-        maxRetries: 1,
         timeoutMs: 120_000,
       },
     },

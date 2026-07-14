@@ -10,12 +10,7 @@ import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HostContext } from "../../src/runtime/context";
 import { processQueue } from "../../src/runtime/queue";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
 
 afterEach(cleanupDatabaseDirs);
@@ -73,10 +68,7 @@ test("append during model execution continues after the agent boundary", async (
     checkpointer,
   });
   try {
-    await processQueue(
-      context(db, graph, checkpointer),
-      required(db.nextQueue("session")),
-    );
+    await processQueue(context(db, graph, checkpointer), required(db.nextQueue("session")));
     expect(model.callCount).toBe(2);
     expect(afterCalls).toBe(1);
     expect(db.nextQueue("session")).toBeNull();
@@ -135,10 +127,7 @@ test("append before a pending model replaces its scheduled route", async () => {
     checkpointer,
   });
   try {
-    await processQueue(
-      context(db, graph, checkpointer),
-      required(db.nextQueue("session")),
-    );
+    await processQueue(context(db, graph, checkpointer), required(db.nextQueue("session")));
     expect(inputs).toEqual([["test", "first", "second"]]);
     expect(beforeCalls).toBe(2);
     expect(db.nextQueue("session")).toBeNull();
@@ -147,11 +136,7 @@ test("append before a pending model replaces its scheduled route", async () => {
   }
 });
 
-function context(
-  db: AgentDatabase,
-  graph: unknown,
-  checkpointer: MemorySaver,
-): HostContext {
+function context(db: AgentDatabase, graph: unknown, checkpointer: MemorySaver): HostContext {
   return {
     settings: testSettings(workspace),
     logger: new Logger("error", true),

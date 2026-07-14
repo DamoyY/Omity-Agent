@@ -35,9 +35,9 @@ export function ContextUsage({ usage }: { usage: TokenUsage | null }) {
     : t("unavailableTokens");
   const cacheRate =
     usage && usage.inputTokens > 0
-      ? `${Math.round((usage.cacheReadTokens / usage.inputTokens) * 100).toString()}%`
+      ? `${((usage.cacheReadTokens / usage.inputTokens) * 100).toFixed(2)}%`
       : usage
-        ? "0%"
+        ? "0.00%"
         : "—";
   const description = `${t("contextUsage")}: ${totalTokens}; ${t("kvCache")}: ${cacheRate}`;
   return (

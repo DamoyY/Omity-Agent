@@ -61,9 +61,7 @@ test("Bun sqlite checkpointer persists checkpoints and writes", async () => {
   expect(loaded?.metadata?.source).toBe("input");
   expect(loaded?.pendingWrites).toEqual([["task-1", "messages", "pending"]]);
   await reopened.deleteThread("thread-1");
-  expect(
-    await reopened.getTuple({ configurable: { thread_id: "thread-1" } }),
-  ).toBeUndefined();
+  expect(await reopened.getTuple({ configurable: { thread_id: "thread-1" } })).toBeUndefined();
   closeDatabase(reopenedDatabase.db);
 });
 
@@ -97,12 +95,7 @@ test("pending writes keep deterministic order and per-channel conflicts", async 
   ]);
 });
 
-function putCheckpoint(
-  saver: BunSqliteSaver,
-  threadId: string,
-  checkpointNs: string,
-  id: string,
-) {
+function putCheckpoint(saver: BunSqliteSaver, threadId: string, checkpointNs: string, id: string) {
   return saver.put(
     { configurable: { thread_id: threadId, checkpoint_ns: checkpointNs } },
     checkpoint(id),

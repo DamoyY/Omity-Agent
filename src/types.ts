@@ -7,13 +7,11 @@ export interface HostMode {
   sessionId: string;
 }
 
-export type QueueStatus =
-  "draft" | "pending" | "running" | "paused" | "done" | "canceled";
+export type QueueStatus = "draft" | "pending" | "running" | "paused" | "done" | "canceled";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
-export type ReasoningEffort =
-  "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
 export type ModelApi = "responses" | "completions";
 
@@ -21,7 +19,6 @@ interface SharedModelSettings {
   model: string;
   temperature?: number;
   reasoning_effort?: ReasoningEffort;
-  maxRetries: number;
   timeoutMs: number;
 }
 

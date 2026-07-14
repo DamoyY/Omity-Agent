@@ -1,5 +1,5 @@
 # 当前启用的模型 Profile；值必须匹配 profiles 下的名称。
-profile: codex
+profile: 78code
 
 profiles:
   # adapter 可选 responses、completions 或 codex。codex 固定使用 Responses
@@ -8,13 +8,11 @@ profiles:
     adapter: responses
     model: gpt-5.6-sol
     apiKeyEnv: 78CODE
-    baseURL: https://api.78code.cc/v1
+    baseURL: https://www.78code.cc/v1
     reasoning_effort: xhigh
-    maxRetries: 1
     timeoutMs: 120000
   codex:
     adapter: codex
     model: gpt-5.6-sol
     reasoning_effort: xhigh
-    maxRetries: 1
     timeoutMs: 120000

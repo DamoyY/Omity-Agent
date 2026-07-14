@@ -9,12 +9,12 @@ const env = {
 };
 
 test("workspace path expands environment variables and strips quotes", () => {
-  expect(
-    normalizeWorkspacePath('"%MIXED_ROOT%/project"', "F:\\base", env),
-  ).toBe("C:\\Users\\example\\project");
-  expect(
-    normalizeWorkspacePath("'$env:TEMP_ROOT/workspace'", "F:\\base", env),
-  ).toBe("F:\\Temp\\workspace");
+  expect(normalizeWorkspacePath('"%MIXED_ROOT%/project"', "F:\\base", env)).toBe(
+    "C:\\Users\\example\\project",
+  );
+  expect(normalizeWorkspacePath("'$env:TEMP_ROOT/workspace'", "F:\\base", env)).toBe(
+    "F:\\Temp\\workspace",
+  );
   expect(normalizeWorkspacePath('"${USERPROFILE}/repo"', "F:\\base", env)).toBe(
     "C:\\Users\\tester\\repo",
   );
@@ -22,22 +22,18 @@ test("workspace path expands environment variables and strips quotes", () => {
 
 test("workspace path normalizes drive roots and repeated separators", () => {
   expect(normalizeWorkspacePath("C:", "F:\\base", env)).toBe("C:\\");
-  expect(
-    normalizeWorkspacePath("C://Users//example//repo", "F:\\base", env),
-  ).toBe("C:\\Users\\example\\repo");
+  expect(normalizeWorkspacePath("C://Users//example//repo", "F:\\base", env)).toBe(
+    "C:\\Users\\example\\repo",
+  );
 });
 
 test("workspace path resolves relative paths from the supplied base", () => {
-  expect(normalizeWorkspacePath("./repo", "F:\\base", env)).toBe(
-    resolve("F:\\base", "repo"),
-  );
+  expect(normalizeWorkspacePath("./repo", "F:\\base", env)).toBe(resolve("F:\\base", "repo"));
 });
 
 test("workspace path reports empty input and undefined environment variables", () => {
-  expect(() => normalizeWorkspacePath("   ", "F:\\base", env)).toThrow(
-    "工作目录不能为空",
+  expect(() => normalizeWorkspacePath("   ", "F:\\base", env)).toThrow("工作目录不能为空");
+  expect(() => normalizeWorkspacePath("%NO_SUCH_ENV%/repo", "F:\\base", env)).toThrow(
+    "环境变量未定义：NO_SUCH_ENV",
   );
-  expect(() =>
-    normalizeWorkspacePath("%NO_SUCH_ENV%/repo", "F:\\base", env),
-  ).toThrow("环境变量未定义：NO_SUCH_ENV");
 });

@@ -39,9 +39,7 @@ export default class Client extends Command {
     const intent = parseClientIntent(tokens);
     const result = runClient({ sessionId, ...intent });
     if (result.queueId !== undefined) {
-      this.log(
-        `已发送到会话 ${sessionId}（queue=${result.queueId.toString()}）`,
-      );
+      this.log(`已发送到会话 ${sessionId}（queue=${result.queueId.toString()}）`);
     }
     if (result.control !== undefined) {
       const label = result.control === "running" ? "resume" : result.control;

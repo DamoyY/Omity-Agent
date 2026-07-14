@@ -32,18 +32,13 @@ export function deriveChatActionState({
   const queueRunning = queue.some(({ status }) => status === "running");
   const queuePaused = queue.some(({ status }) => status === "paused");
   const resumable =
-    control === "pause" ||
-    control === "pause_cancel" ||
-    (queuePaused && !queueRunning);
+    control === "pause" || control === "pause_cancel" || (queuePaused && !queueRunning);
   const waitingForPause = pausing && !resumable;
 
   return {
-    controlDisabled:
-      waitingForPause ||
-      (!resumable && sessionStatus === "idle" && !queueRunning),
+    controlDisabled: waitingForPause || (!resumable && sessionStatus === "idle" && !queueRunning),
     controlState: waitingForPause ? "pausing" : resumable ? "resume" : "pause",
-    deleteDisabled:
-      queueRunning || sessionStatus === "model" || sessionStatus === "tool",
+    deleteDisabled: queueRunning || sessionStatus === "model" || sessionStatus === "tool",
     nextControl: resumable ? "running" : "pause",
     queueRunning,
   };

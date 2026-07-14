@@ -2,12 +2,7 @@ import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { forkDatabaseBeforeMessage } from "../../src/app/fork";
 import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 
 afterEach(cleanupDatabaseDirs);
 
@@ -33,10 +28,7 @@ test("fork copies messages before selected user message", () => {
     beforeMessageId: forkMessageId,
   });
 
-  expect(target.history("target").map((message) => message.text)).toEqual([
-    "第一条",
-    "第一条回复",
-  ]);
+  expect(target.history("target").map((message) => message.text)).toEqual(["第一条", "第一条回复"]);
   expect(target.control("target")).toBe("running");
   expect(readOnlyQueue(target)).toMatchObject({
     content: "不要复制",

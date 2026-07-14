@@ -94,12 +94,14 @@ export function Message({
   forkDisabled,
   item,
   latestDetailIndex,
+  onCancelTool,
   onFork,
 }: {
   canFork: boolean;
   forkDisabled: boolean;
   item: TimelineMessage;
   latestDetailIndex?: number;
+  onCancelTool: (toolCallId: string) => Promise<void>;
   onFork: (messageId: number) => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -151,6 +153,7 @@ export function Message({
               call={part.call}
               key={`${part.call.id}-${index === latestDetailIndex ? "latest" : "settled"}`}
               latest={index === latestDetailIndex}
+              onCancel={onCancelTool}
               output={part.output}
               started={part.started}
             />

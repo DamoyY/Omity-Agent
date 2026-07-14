@@ -18,9 +18,9 @@ test("normalizes free-form tool names", () => {
   expect(() => normalizeFreeformToolInputs("apply_patch")).toThrow(
     "MCP free-form 工具配置 settings/mcp.yaml.freeformToolInputs 必须是数组",
   );
-  expect(() =>
-    normalizeFreeformToolInputs(["apply_patch", "apply_patch"]),
-  ).toThrow("MCP free-form 工具配置包含重复工具：apply_patch");
+  expect(() => normalizeFreeformToolInputs(["apply_patch", "apply_patch"])).toThrow(
+    "MCP free-form 工具配置包含重复工具：apply_patch",
+  );
 });
 
 test("creates a custom model tool from the only string parameter", () => {
@@ -29,10 +29,7 @@ test("creates a custom model tool from the only string parameter", () => {
   });
   const untouched = makeTool("search", { query: { type: "string" } });
 
-  const configured = configureFreeformMcpTools(
-    [original, untouched],
-    ["apply_patch"],
-  );
+  const configured = configureFreeformMcpTools([original, untouched], ["apply_patch"]);
   const modelTool = configured.modelTools[0];
   if (!modelTool) throw new Error("缺少 apply_patch 工具");
 
@@ -74,10 +71,7 @@ test("rejects invalid free-form MCP tool schemas", () => {
     ),
   ).toThrow("MCP free-form 工具 multi 必须恰好声明一个输入参数，实际为 2 个");
   expect(() =>
-    configureFreeformMcpTools(
-      [makeTool("numeric", { count: { type: "number" } })],
-      ["numeric"],
-    ),
+    configureFreeformMcpTools([makeTool("numeric", { count: { type: "number" } })], ["numeric"]),
   ).toThrow("MCP free-form 工具 numeric 的唯一输入参数 count 必须是字符串");
 });
 
@@ -91,10 +85,7 @@ test("maps custom tool text without changing its contents", () => {
     isCustomTool: true,
   } as ToolCall;
 
-  const executable = materializeFreeformToolCall(
-    call,
-    new Map([["apply_patch", "patch"]]),
-  );
+  const executable = materializeFreeformToolCall(call, new Map([["apply_patch", "patch"]]));
 
   expect(executable.args).toEqual({ patch: input });
   expect(call.args).toEqual({ input });
@@ -117,10 +108,7 @@ test("maps free-form input after streaming tool-call aggregation", () => {
   const call = chunk.tool_calls?.[0];
   if (!call) throw new Error("缺少流式聚合后的 apply_patch 调用");
 
-  const executable = materializeFreeformToolCall(
-    call,
-    new Map([["apply_patch", "patch"]]),
-  );
+  const executable = materializeFreeformToolCall(call, new Map([["apply_patch", "patch"]]));
 
   expect(call.args).toEqual({ input });
   expect(executable.args).toEqual({ patch: input });
@@ -134,15 +122,10 @@ test("does not remap structured hook calls", () => {
     args: { patch: "content" },
   };
 
-  expect(
-    materializeFreeformToolCall(call, new Map([["apply_patch", "patch"]])),
-  ).toBe(call);
+  expect(materializeFreeformToolCall(call, new Map([["apply_patch", "patch"]]))).toBe(call);
 });
 
-function makeTool(
-  name: string,
-  properties: Record<string, { type: "number" | "string" }>,
-) {
+function makeTool(name: string, properties: Record<string, { type: "number" | "string" }>) {
   return new DynamicStructuredTool({
     name,
     description: `${name} description`,

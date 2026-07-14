@@ -48,8 +48,6 @@ export function isProcessRunning(pid: number) {
 
 function isErrorCode(error: unknown, code: string) {
   return (
-    error instanceof Error &&
-    "code" in error &&
-    (error as Error & { code?: unknown }).code === code
+    error instanceof Error && "code" in error && (error as Error & { code?: unknown }).code === code
   );
 }

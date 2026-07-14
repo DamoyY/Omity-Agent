@@ -65,18 +65,11 @@ test("restart does not inject consumed messages already in the checkpoint", asyn
     const secondId = db.appendUser("session", "second");
     db.startQueue("session", required(db.pendingAppends("session")[0]));
     const initial = graph(db, fixture.dir, fakeModel());
-    await commitModelBoundary(initial.graph, db.history("session"), [
-      firstId,
-      secondId,
-    ]);
+    await commitModelBoundary(initial.graph, db.history("session"), [firstId, secondId]);
     db.close();
 
     db = new AgentDatabase(fixture.path);
-    const recovered = graph(
-      db,
-      fixture.dir,
-      fakeModel().respond(new AIMessage("done")),
-    );
+    const recovered = graph(db, fixture.dir, fakeModel().respond(new AIMessage("done")));
     const inputs: unknown[] = [];
     const observedGraph = {
       getState: recovered.graph.getState.bind(recovered.graph),
@@ -104,14 +97,7 @@ function graph(
   model: Parameters<typeof createAgentGraph>[0]["model"],
 ) {
   const checkpointer = new BunSqliteSaver(db.db, "session");
-  const hooks = new HookRuntime(
-    [],
-    [],
-    db.db,
-    new Logger("error", true),
-    "session",
-    dir,
-  );
+  const hooks = new HookRuntime([], [], db.db, new Logger("error", true), "session", dir);
   return {
     checkpointer,
     graph: createAgentGraph({
@@ -140,9 +126,9 @@ async function commitModelBoundary(
     },
   );
   for await (const event of stream) void event;
-  expect(
-    (await graph.getState({ configurable: { thread_id: "session:1" } })).next,
-  ).toEqual(["model_request"]);
+  expect((await graph.getState({ configurable: { thread_id: "session:1" } })).next).toEqual([
+    "model_request",
+  ]);
 }
 
 function context(

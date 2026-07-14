@@ -84,11 +84,7 @@ export function WorkspacePicker({
                 title={item}
                 type="button"
               >
-                {item === workspace ? (
-                  <Check size={14} />
-                ) : (
-                  <History size={14} />
-                )}
+                {item === workspace ? <Check size={14} /> : <History size={14} />}
                 <span className={recentPath}>{item}</span>
               </Button>
             ))}

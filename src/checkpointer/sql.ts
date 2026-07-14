@@ -108,17 +108,11 @@ export function requiredConfigString(value: unknown, name: string) {
   return parsed;
 }
 
-export function buildListQuery(
-  config: RunnableConfig,
-  options?: CheckpointListOptions,
-) {
+export function buildListQuery(config: RunnableConfig, options?: CheckpointListOptions) {
   const { limit, before, filter } = options ?? {};
   const clauses: string[] = [];
   const args: SqlBinding[] = [];
-  const thread_id = optionalConfigString(
-    config.configurable?.["thread_id"],
-    "thread_id",
-  );
+  const thread_id = optionalConfigString(config.configurable?.["thread_id"], "thread_id");
   const checkpoint_ns = optionalConfigString(
     config.configurable?.["checkpoint_ns"],
     "checkpoint_ns",
@@ -131,10 +125,7 @@ export function buildListQuery(
     clauses.push("checkpoint_ns = ?");
     args.push(checkpoint_ns);
   }
-  const beforeId = optionalConfigString(
-    before?.configurable?.["checkpoint_id"],
-    "checkpoint_id",
-  );
+  const beforeId = optionalConfigString(before?.configurable?.["checkpoint_id"], "checkpoint_id");
   if (beforeId !== undefined) {
     clauses.push("checkpoint_id < ?");
     args.push(beforeId);

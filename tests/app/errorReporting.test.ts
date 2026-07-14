@@ -44,16 +44,13 @@ test("structured errors retain SDK fields, response headers, body and cause", ()
   const cause = Object.assign(new Error("socket closed"), {
     code: "ECONNRESET",
   });
-  const error = Object.assign(
-    new Error("502 Upstream request failed", { cause }),
-    {
-      status: 502,
-      code: "upstream_error",
-      requestID: "req-123",
-      headers: new Headers({ "x-request-id": "req-123" }),
-      error: { type: "gateway_error", provider: "upstream" },
-    },
-  );
+  const error = Object.assign(new Error("502 Upstream request failed", { cause }), {
+    status: 502,
+    code: "upstream_error",
+    requestID: "req-123",
+    headers: new Headers({ "x-request-id": "req-123" }),
+    error: { type: "gateway_error", provider: "upstream" },
+  });
 
   const persisted = parseError(stringifyError(captureError(error)));
   expect(persisted).toMatchObject({

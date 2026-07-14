@@ -20,10 +20,7 @@ interface HostLeaseRow {
   expires_at: number;
 }
 
-export function readHostLeaseRecord(
-  db: Database,
-  sessionId: string,
-): HostLeaseRecord | null {
+export function readHostLeaseRecord(db: Database, sessionId: string): HostLeaseRecord | null {
   requireSessionRecord(db, sessionId);
   const row = db
     .query<HostLeaseRow, [string]>(
@@ -63,14 +60,10 @@ export function renewHostLeaseRecord(db: Database, claim: HostLeaseClaim) {
   return result.changes === 1;
 }
 
-export function releaseHostLeaseRecord(
-  db: Database,
-  sessionId: string,
-  ownerId: string,
-) {
-  const result = db.run(
-    "DELETE FROM host_leases WHERE session_id = ? AND owner_id = ?",
-    [sessionId, ownerId],
-  );
+export function releaseHostLeaseRecord(db: Database, sessionId: string, ownerId: string) {
+  const result = db.run("DELETE FROM host_leases WHERE session_id = ? AND owner_id = ?", [
+    sessionId,
+    ownerId,
+  ]);
   return result.changes === 1;
 }

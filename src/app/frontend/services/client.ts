@@ -1,28 +1,13 @@
 import type { Control } from "../../../types";
-import { z } from "zod";
 import { reportError } from "./errors";
+import { request } from "./request";
 import type { InitialSessionState } from "../../initialState";
 import type { SessionInfo } from "../../sessionState";
 import type { TranscriptSnapshot } from "./transcript/cache";
-import type {
-  AttachmentSettings,
-  PendingAttachment,
-} from "../../attachments/contract";
+import type { AttachmentSettings, PendingAttachment } from "../../attachments/contract";
 import { appendAttachments } from "../../attachments/contract";
 
-const errorResponse = z.object({
-  error: z.object({ code: z.string(), message: z.string() }),
-});
-
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { ApiError } from "./request";
 
 export type { SessionInfo } from "../../sessionState";
 
@@ -57,12 +42,9 @@ export async function createSession(
 }
 
 export async function deleteSession(sessionId: string) {
-  return request<{ deleted: string }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}`,
-    {
-      method: "DELETE",
-    },
-  );
+  return request<{ deleted: string }>(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+  });
 }
 
 export async function pickWorkspace() {
@@ -72,10 +54,9 @@ export async function pickWorkspace() {
 }
 
 export async function loadTranscript(sessionId: string, signal?: AbortSignal) {
-  return request<TranscriptSnapshot>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/transcript`,
-    { signal },
-  );
+  return request<TranscriptSnapshot>(`/api/sessions/${encodeURIComponent(sessionId)}/transcript`, {
+    signal,
+  });
 }
 
 export function sessionEvents(sessionId: string) {
@@ -92,11 +73,7 @@ export async function loadComposerDraft(sessionId: string) {
   );
 }
 
-export async function saveComposerDraft(
-  sessionId: string,
-  content: string,
-  revision: number,
-) {
+export async function saveComposerDraft(sessionId: string, content: string, revision: number) {
   return request<{ revision: number }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
     {
@@ -106,11 +83,7 @@ export async function saveComposerDraft(
   );
 }
 
-export function beaconComposerDraft(
-  sessionId: string,
-  content: string,
-  revision: number,
-) {
+export function beaconComposerDraft(sessionId: string, content: string, revision: number) {
   const body = new Blob([JSON.stringify({ content, revision })], {
     type: "application/json",
   });
@@ -149,49 +122,27 @@ export async function setControl(
   });
 }
 
-export async function forkSession(sessionId: string, beforeMessageId: number) {
-  return request<{ session: SessionInfo }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/fork`,
+export async function cancelTool(sessionId: string, toolCallId: string) {
+  return request<{ toolCallId: string }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/tools/cancel`,
     {
       method: "POST",
-      body: JSON.stringify({ beforeMessageId }),
+      body: JSON.stringify({ toolCallId }),
     },
   );
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  try {
-    const response = await fetch(path, {
-      headers:
-        init?.body instanceof FormData
-          ? undefined
-          : { "content-type": "application/json" },
-      ...init,
-    });
-    const json = (await response.json()) as unknown;
-    if (!response.ok) {
-      const parsed = errorResponse.safeParse(json);
-      if (!parsed.success) {
-        throw new Error(
-          `API 错误响应结构无效：HTTP ${response.status.toString()}`,
-        );
-      }
-      throw new ApiError(
-        response.status,
-        parsed.data.error.code,
-        parsed.data.error.message,
-      );
-    }
-    return json as T;
-  } catch (error) {
-    if (!init?.signal?.aborted) reportError(error, { path });
-    throw error;
-  }
+export async function forkSession(sessionId: string, beforeMessageId: number) {
+  return request<{ session: SessionInfo }>(`/api/sessions/${encodeURIComponent(sessionId)}/fork`, {
+    method: "POST",
+    body: JSON.stringify({ beforeMessageId }),
+  });
 }
 
 function eventSource(path: string) {
   const events = new EventSource(path);
   events.addEventListener("error", (error) => {
+    events.close();
     reportError(error, { path });
   });
   return events;

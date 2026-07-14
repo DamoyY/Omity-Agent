@@ -1,9 +1,5 @@
 import { expect, test } from "bun:test";
-import type {
-  DisplayEvent,
-  DisplayMessage,
-  DisplayQueue,
-} from "../../../src/app/timeline";
+import type { DisplayEvent, DisplayMessage, DisplayQueue } from "../../../src/app/timeline";
 import { buildTimeline } from "../../../src/app/timeline";
 
 test("streaming tool call is hidden after the final tool call is visible", () => {
@@ -28,9 +24,7 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
       createdAt: 1,
     },
   ];
-  const queue: DisplayQueue[] = [
-    { id: 1, content: "run", status: "running", error: null },
-  ];
+  const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
   const events: DisplayEvent[] = [
     {
       id: 1,
@@ -72,9 +66,7 @@ test("streaming tool call is grouped with previous assistant message", () => {
       createdAt: 1,
     },
   ];
-  const queue: DisplayQueue[] = [
-    { id: 1, content: "run", status: "running", error: null },
-  ];
+  const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
   const events: DisplayEvent[] = [
     {
       id: 1,
@@ -90,10 +82,7 @@ test("streaming tool call is grouped with previous assistant message", () => {
   const view = buildTimeline(messages, queue, events);
 
   expect(view).toHaveLength(1);
-  expect(toolCalls(view[0]).map((call) => call.id)).toEqual([
-    "call-1",
-    "call-2",
-  ]);
+  expect(toolCalls(view[0]).map((call) => call.id)).toEqual(["call-1", "call-2"]);
 });
 
 test("tool output retains images", () => {
@@ -109,9 +98,7 @@ test("tool output retains images", () => {
       reasoning: "",
       images: [],
       queueId: null,
-      toolCalls: [
-        { id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} },
-      ],
+      toolCalls: [{ id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} }],
       createdAt: 1,
     },
     {
@@ -142,9 +129,7 @@ test("started tool call exposes an empty output state", () => {
       reasoning: "",
       images: [],
       queueId: null,
-      toolCalls: [
-        { id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} },
-      ],
+      toolCalls: [{ id: "call-1", index: 0, inputTokens: 1, name: "capture", input: {} }],
       createdAt: 1,
     },
   ];
@@ -156,9 +141,7 @@ test("started tool call exposes an empty output state", () => {
     },
   ];
 
-  const part = buildTimeline(messages, [], events)[0]?.parts.find(
-    (item) => item.type === "tool",
-  );
+  const part = buildTimeline(messages, [], events)[0]?.parts.find((item) => item.type === "tool");
 
   expect(part?.started).toBe(true);
   expect(part?.output).toBeUndefined();
@@ -185,10 +168,7 @@ test("grouped assistant messages retain the latest token usage", () => {
   expect(view[0]?.usage).toEqual(usage);
 });
 
-function assistant(
-  id: number,
-  usage: NonNullable<DisplayMessage["usage"]>,
-): DisplayMessage {
+function assistant(id: number, usage: NonNullable<DisplayMessage["usage"]>): DisplayMessage {
   return {
     id,
     role: "assistant",
@@ -202,12 +182,6 @@ function assistant(
   };
 }
 
-function toolCalls(
-  message: ReturnType<typeof buildTimeline>[number] | undefined,
-) {
-  return (
-    message?.parts.flatMap((part) =>
-      part.type === "tool" ? [part.call] : [],
-    ) ?? []
-  );
+function toolCalls(message: ReturnType<typeof buildTimeline>[number] | undefined) {
+  return message?.parts.flatMap((part) => (part.type === "tool" ? [part.call] : [])) ?? [];
 }

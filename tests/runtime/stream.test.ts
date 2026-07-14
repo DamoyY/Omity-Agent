@@ -1,9 +1,10 @@
-import { AIMessageChunk, ToolMessageChunk } from "@langchain/core/messages";
-import { expect, test } from "bun:test";
 import {
-  createStreamLogState,
-  handleStreamEvent,
-} from "../../src/runtime/stream";
+  AIMessageChunk,
+  type RawInputToolCallChunk,
+  ToolMessageChunk,
+} from "@langchain/core/messages";
+import { expect, test } from "bun:test";
+import { createStreamLogState, handleStreamEvent } from "../../src/runtime/stream";
 
 test("stream messages persist only assistant text chunks", () => {
   const stream = makeStreamRecorder();
@@ -15,13 +16,7 @@ test("stream messages persist only assistant text chunks", () => {
   );
   handleStreamEvent(
     stream.ctx,
-    [
-      "messages",
-      [
-        new ToolMessageChunk({ content: "tool output", tool_call_id: "call" }),
-        {},
-      ],
-    ],
+    ["messages", [new ToolMessageChunk({ content: "tool output", tool_call_id: "call" }), {}]],
     createStreamLogState(),
     1,
   );
@@ -47,9 +42,7 @@ test("stream messages persist assistant reasoning chunks", () => {
     2,
   );
 
-  expect(stream.reasoning).toEqual([
-    { messageId: "message-1", queueId: 2, text: "分析中" },
-  ]);
+  expect(stream.reasoning).toEqual([{ messageId: "message-1", queueId: 2, text: "分析中" }]);
 });
 
 test("stream messages persist assistant tool call chunks", () => {
@@ -92,6 +85,32 @@ test("stream messages persist assistant tool call chunks", () => {
   ]);
 });
 
+test("stream messages preserve Freeform tool call markers", () => {
+  const stream = makeStreamRecorder();
+  const call: RawInputToolCallChunk = {
+    args: "*** Begin Patch\n",
+    id: "call-1",
+    index: 0,
+    isCustomTool: true,
+    name: "apply_patch",
+    type: "tool_call_chunk",
+  };
+  handleStreamEvent(
+    stream.ctx,
+    ["messages", [new AIMessageChunk({ content: "", tool_call_chunks: [call] }), {}]],
+    createStreamLogState(),
+    2,
+  );
+
+  expect(stream.toolCalls[0]?.call).toEqual({
+    args: "*** Begin Patch\n",
+    freeform: true,
+    id: "call-1",
+    index: 0,
+    name: "apply_patch",
+  });
+});
+
 function makeStreamRecorder() {
   const tokens: {
     messageId?: string;
@@ -106,6 +125,7 @@ function makeStreamRecorder() {
   const toolCalls: {
     call: {
       args?: string;
+      freeform?: boolean;
       id?: string;
       index?: number;
       name?: string;
@@ -116,19 +136,9 @@ function makeStreamRecorder() {
   return {
     ctx: {
       db: {
-        streamToken: (
-          _sessionId: string,
-          queueId: number,
-          text: string,
-          messageId?: string,
-        ) =>
+        streamToken: (_sessionId: string, queueId: number, text: string, messageId?: string) =>
           tokens.push({ queueId, text, ...(messageId ? { messageId } : {}) }),
-        streamReasoning: (
-          _sessionId: string,
-          queueId: number,
-          text: string,
-          messageId?: string,
-        ) =>
+        streamReasoning: (_sessionId: string, queueId: number, text: string, messageId?: string) =>
           reasoning.push({
             queueId,
             text,
@@ -139,6 +149,7 @@ function makeStreamRecorder() {
           queueId: number,
           call: {
             args?: string;
+            freeform?: boolean;
             id?: string;
             index?: number;
             name?: string;

@@ -17,14 +17,10 @@ profiles:
     baseURL: null
     temperature: 0
     reasoning_effort: medium
-    maxRetries: 0
     timeoutMs: 1000
 `;
 
-export function writeTestConfiguration(
-  root: string,
-  options: TestConfigurationOptions = {},
-) {
+export function writeTestConfiguration(root: string, options: TestConfigurationOptions = {}) {
   const settingsDir = join(root, "settings");
   const promptsDir = join(settingsDir, "prompts");
   mkdirSync(promptsDir, { recursive: true });
@@ -59,15 +55,9 @@ skills:
   skillEnabled: {}
 `,
   );
-  writeFileSync(
-    join(settingsDir, "model.yaml"),
-    options.modelYaml ?? defaultModelYaml,
-  );
+  writeFileSync(join(settingsDir, "model.yaml"), options.modelYaml ?? defaultModelYaml);
   writeFileSync(join(settingsDir, "hooks.yaml"), "hooks: []\n");
   writeFileSync(join(promptsDir, "system.md"), options.systemPrompt ?? "test");
-  writeFileSync(
-    join(promptsDir, "skills.md"),
-    options.skillsPrompt ?? "use skills",
-  );
+  writeFileSync(join(promptsDir, "skills.md"), options.skillsPrompt ?? "use skills");
   return settingsDir;
 }

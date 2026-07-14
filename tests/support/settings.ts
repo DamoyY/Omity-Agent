@@ -17,7 +17,6 @@ export function testSettings(dataDir: string): Settings {
       apiKeyEnv: "TEST_KEY",
       baseURL: null,
       temperature: 0,
-      maxRetries: 0,
       timeoutMs: 1_000,
     },
     host: {

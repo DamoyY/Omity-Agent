@@ -40,8 +40,7 @@ export function Composer({
   const revisionRef = useRef(0);
   const saverRef = useRef<DraftSaver | undefined>(undefined);
   const submittingRef = useRef(false);
-  const sessionId =
-    draftTarget.kind === "session" ? draftTarget.sessionId : undefined;
+  const sessionId = draftTarget.kind === "session" ? draftTarget.sessionId : undefined;
 
   useEffect(() => {
     attachmentsRef.current.configure(attachmentSettings);
@@ -102,11 +101,7 @@ export function Composer({
   };
 
   const navigateHistory = (direction: HistoryDirection) => {
-    const nextContent = historyRef.current.navigate(
-      direction,
-      contentRef.current,
-      userMessages,
-    );
+    const nextContent = historyRef.current.navigate(direction, contentRef.current, userMessages);
     if (nextContent === undefined) return undefined;
     updateContent(nextContent);
     return nextContent;

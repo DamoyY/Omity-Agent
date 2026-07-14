@@ -61,10 +61,7 @@ export function createReasoningStreamState(): ReasoningStreamState {
   };
 }
 
-export function streamedMessageReasoning(
-  message: BaseMessage,
-  state: ReasoningStreamState,
-) {
+export function streamedMessageReasoning(message: BaseMessage, state: ReasoningStreamState) {
   const summary = readReasoningSummary(message.additional_kwargs["reasoning"]);
   if (summary?.id && summary.id !== state.itemId) {
     state.breakBeforeNext = state.hasText;
@@ -72,24 +69,18 @@ export function streamedMessageReasoning(
     state.partIndex = undefined;
   }
   if (summary && summary.parts.length > 0) {
-    return summary.parts
-      .map((part) => appendReasoningPart(part, state))
-      .join("");
+    return summary.parts.map((part) => appendReasoningPart(part, state)).join("");
   }
 
   const reasoning = contentBlocksToReasoning(message.contentBlocks);
-  return reasoning
-    ? appendReasoningPart({ text: reasoning }, state)
-    : flushAsterisks(state);
+  return reasoning ? appendReasoningPart({ text: reasoning }, state) : flushAsterisks(state);
 }
 
 export function contentBlocksToReasoning(content: unknown): string {
   if (!Array.isArray(content)) return "";
   return joinReasoningParts(
     content.flatMap((part) =>
-      isRecord(part) &&
-      part["type"] === "reasoning" &&
-      typeof part["reasoning"] === "string"
+      isRecord(part) && part["type"] === "reasoning" && typeof part["reasoning"] === "string"
         ? [{ text: part["reasoning"] }]
         : [],
     ),
@@ -98,9 +89,7 @@ export function contentBlocksToReasoning(content: unknown): string {
 
 function appendReasoningPart(part: ReasoningPart, state: ReasoningStreamState) {
   const changedPart =
-    part.index !== undefined &&
-    state.partIndex !== undefined &&
-    part.index !== state.partIndex;
+    part.index !== undefined && state.partIndex !== undefined && part.index !== state.partIndex;
   const needsBreak = state.hasText && (state.breakBeforeNext || changedPart);
   let output = needsBreak ? flushAsterisks(state) : "";
   const prefix = needsBreak
@@ -155,9 +144,7 @@ function readReasoningSummary(value: unknown): ReasoningSummary | null {
           return [
             {
               text: part["text"],
-              ...(typeof part["index"] === "number"
-                ? { index: part["index"] }
-                : {}),
+              ...(typeof part["index"] === "number" ? { index: part["index"] } : {}),
             },
           ];
         })
@@ -182,10 +169,7 @@ function updateStreamTail(state: ReasoningStreamState, appended: string) {
   if (!appended) return;
   state.hasText = true;
   state.lastCharacter = appended.at(-1) ?? state.lastCharacter;
-  state.trailingNewlines = updatedTrailingNewlines(
-    state.trailingNewlines,
-    appended,
-  );
+  state.trailingNewlines = updatedTrailingNewlines(state.trailingNewlines, appended);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

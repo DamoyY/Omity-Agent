@@ -24,10 +24,7 @@ export interface AttachmentSettings {
   maxSizeBytes: number;
 }
 
-export function appendAttachments(
-  body: FormData,
-  attachments: PendingAttachment[],
-) {
+export function appendAttachments(body: FormData, attachments: PendingAttachment[]) {
   for (const { id, file } of attachments) body.append(`file:${id}`, file);
 }
 
@@ -39,9 +36,7 @@ export function attachmentPlaceholder(id: string, name: string) {
 
 export function attachmentIds(content: string) {
   return new Set(
-    [...content.matchAll(placeholderPattern)].map((match) =>
-      (match[1] ?? "").toLowerCase(),
-    ),
+    [...content.matchAll(placeholderPattern)].map((match) => (match[1] ?? "").toLowerCase()),
   );
 }
 

@@ -60,6 +60,28 @@ test("transcript counts raw tool input and output text", () => {
   db.close();
 });
 
+test("transcript exposes original Freeform tool input", () => {
+  const db = makeDb();
+  const input = "*** Begin Patch\n*** End Patch";
+  db.resetSession("freeform-session", workspace);
+  db.syncHistory("freeform-session", [
+    new AIMessage({
+      content: "",
+      tool_calls: [{ id: "call-1", name: "apply_patch", args: { input } }],
+      additional_kwargs: {
+        __openai_custom_tool_call_ids__: { "call-1": "ct-1" },
+      },
+    }),
+  ]);
+
+  const part = view(loadTranscript(db, "freeform-session"))
+    .flatMap((message) => message.parts)
+    .find((item) => item.type === "tool");
+
+  expect(part?.type === "tool" ? part.call.rawInput : undefined).toBe(input);
+  db.close();
+});
+
 test("transcript keeps the original token count for redirected output", () => {
   const db = makeDb();
   db.resetSession("large-output-session", workspace);
@@ -97,10 +119,7 @@ test("live stream events match persisted snapshots and keep their cursor", () =>
   expect(streaming.events).toEqual([displayStreamEvent(event)]);
   expect(streaming.eventCursor).toBe(event.id);
 
-  db.syncHistory("stream-session", [
-    new HumanMessage("question"),
-    new AIMessage("hello"),
-  ]);
+  db.syncHistory("stream-session", [new HumanMessage("question"), new AIMessage("hello")]);
   const completed = loadTranscript(db, "stream-session");
   expect(completed.events).toEqual([]);
   expect(completed.eventCursor).toBe(event.id);
@@ -108,9 +127,5 @@ test("live stream events match persisted snapshots and keep their cursor", () =>
 });
 
 function view(transcript: ReturnType<typeof loadTranscript>) {
-  return buildTimeline(
-    transcript.messages,
-    transcript.queue,
-    transcript.events,
-  );
+  return buildTimeline(transcript.messages, transcript.queue, transcript.events);
 }

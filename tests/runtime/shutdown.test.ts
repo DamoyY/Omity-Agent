@@ -4,12 +4,7 @@ import { Logger } from "../../src/infrastructure/logging/logger";
 import type { HostContext } from "../../src/runtime/context";
 import { HostLeaseLostError } from "../../src/runtime/execution/lease";
 import { processQueue } from "../../src/runtime/queue";
-import {
-  cleanupDatabaseDirs,
-  makeDb,
-  required,
-  workspace,
-} from "../support/database";
+import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { testSettings } from "../support/settings";
 
 afterEach(cleanupDatabaseDirs);
@@ -102,11 +97,7 @@ function runningDatabase() {
   return db;
 }
 
-function makeContext(
-  db: AgentDatabase,
-  graph: unknown,
-  stopping: AbortSignal,
-): HostContext {
+function makeContext(db: AgentDatabase, graph: unknown, stopping: AbortSignal): HostContext {
   return {
     settings: testSettings(workspace),
     logger: new Logger("error", true),

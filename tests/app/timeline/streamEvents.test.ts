@@ -3,9 +3,7 @@ import type { DisplayEvent, DisplayQueue } from "../../../src/app/timeline";
 import { buildTimeline } from "../../../src/app/timeline";
 import { countTokens } from "../../../src/runtime/tokenizer";
 
-const queue: DisplayQueue[] = [
-  { id: 1, content: "run", status: "running", error: null },
-];
+const queue: DisplayQueue[] = [{ id: 1, content: "run", status: "running", error: null }];
 
 test("merges tool identity and argument chunks by index", () => {
   const calls = streamedCalls([
@@ -92,6 +90,21 @@ test("updates token count from raw argument text while streaming", () => {
   expect(complete?.inputTokens).toBe(countTokens('{"command":"echo 你好"}'));
 });
 
+test("exposes raw Freeform input while streaming", () => {
+  const input = "*** Begin Patch\n*** End Patch";
+  const call = streamedCalls([
+    toolEvent(1, {
+      args: input,
+      freeform: true,
+      id: "call-1",
+      index: 0,
+      name: "apply_patch",
+    }),
+  ])[0];
+
+  expect(call?.rawInput).toBe(input);
+});
+
 test("keeps parallel tool call indexes separate", () => {
   const calls = streamedCalls([
     toolEvent(1, { id: "call-1", index: 0, name: "first_tool" }),
@@ -100,9 +113,7 @@ test("keeps parallel tool call indexes separate", () => {
     toolEvent(4, { args: '{"value":2}', index: 1 }),
   ]);
 
-  expect(
-    calls.map(({ id, inputText, name }) => ({ id, inputText, name })),
-  ).toEqual([
+  expect(calls.map(({ id, inputText, name }) => ({ id, inputText, name }))).toEqual([
     { id: "call-1", inputText: '{"value":1}', name: "first_tool" },
     { id: "call-2", inputText: '{"value":2}', name: "second_tool" },
   ]);
@@ -110,16 +121,18 @@ test("keeps parallel tool call indexes separate", () => {
 
 function streamedCalls(events: DisplayEvent[]) {
   const view = buildTimeline([], queue, events);
-  return (
-    view[0]?.parts.flatMap((part) =>
-      part.type === "tool" ? [part.call] : [],
-    ) ?? []
-  );
+  return view[0]?.parts.flatMap((part) => (part.type === "tool" ? [part.call] : [])) ?? [];
 }
 
 function toolEvent(
   id: number,
-  call: { args?: string; id?: string; index?: number; name?: string },
+  call: {
+    args?: string;
+    freeform?: boolean;
+    id?: string;
+    index?: number;
+    name?: string;
+  },
 ): DisplayEvent {
   return {
     id,

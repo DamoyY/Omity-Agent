@@ -16,11 +16,8 @@ export function loadMessagesByRefs(db: Database, refs: StoredMessageRef[]) {
     return refs.map((ref) => {
       const row = select.get(ref.digest);
       if (!row) throw new Error(`checkpoint 消息正文不存在：${ref.digest}`);
-      const [message] = messageRowsToChatMessages([
-        { ...row, source_id: ref.sourceId },
-      ]);
-      if (!message)
-        throw new Error(`无法还原 checkpoint 消息：${ref.sourceId}`);
+      const [message] = messageRowsToChatMessages([{ ...row, source_id: ref.sourceId }]);
+      if (!message) throw new Error(`无法还原 checkpoint 消息：${ref.sourceId}`);
       return message;
     });
   } finally {
@@ -69,12 +66,7 @@ export function replaceCheckpointBlobRefs(
   );
   try {
     for (const message of messages) {
-      insert.run(
-        key.threadId,
-        key.checkpointNs,
-        key.checkpointId,
-        messageRef(message).digest,
-      );
+      insert.run(key.threadId, key.checkpointNs, key.checkpointId, messageRef(message).digest);
     }
   } finally {
     insert.finalize();
@@ -119,14 +111,11 @@ export function replaceWriteBlobRefs(
   }
 }
 
-function internMessage(
-  db: Database,
-  ref: StoredMessageRef,
-  messageJson: string,
-) {
-  db.query(
-    "INSERT OR IGNORE INTO message_blobs (digest, message_json) VALUES (?, ?)",
-  ).run(ref.digest, messageJson);
+function internMessage(db: Database, ref: StoredMessageRef, messageJson: string) {
+  db.query("INSERT OR IGNORE INTO message_blobs (digest, message_json) VALUES (?, ?)").run(
+    ref.digest,
+    messageJson,
+  );
   const row = db
     .query<{ message_json: string }, [string]>(
       "SELECT message_json FROM message_blobs WHERE digest = ?",
