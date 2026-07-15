@@ -1,3 +1,4 @@
+import { type AccessEnvironment, mountAccess } from "./access";
 import { type Context, Hono } from "hono";
 import { HttpError, errorResponse } from "./errors";
 import {
@@ -11,6 +12,7 @@ import {
   readSessionForm,
   requestBodyLimit,
 } from "./request";
+import type { AccessService } from "../access/service";
 import type { AppController } from "../controller";
 import { bodyLimit } from "hono/body-limit";
 
@@ -31,8 +33,8 @@ export type ApiController = Pick<
   | "assertSession"
   | "events"
 >;
-export function createApi(controller: ApiController) {
-  const app = new Hono();
+export function createApi(controller: ApiController, access?: AccessService) {
+  const app = new Hono<AccessEnvironment>();
   const attachmentBodyLimit = requestBodyLimit + controller.bootstrap().attachments.maxSizeBytes;
   const attachmentRequestLimit = bodyLimit({
     maxSize: attachmentBodyLimit,
@@ -46,6 +48,7 @@ export function createApi(controller: ApiController) {
       throw new HttpError(413, `请求体不能超过 ${requestBodyLimit.toString()} 字节`);
     },
   });
+  mountAccess(app, access, regularBodyLimit);
   app.use("/api/sessions/:sessionId/messages", attachmentRequestLimit);
   app.get("/api/bootstrap", (c) => c.json(controller.bootstrap()));
   app.get("/api/sessions", (c) => c.json({ sessions: controller.sessions() }));

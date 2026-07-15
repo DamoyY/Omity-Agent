@@ -43,6 +43,16 @@ export interface Settings {
   paths: {
     dataDir: string;
   };
+  access: {
+    publicOrigin: string | null;
+    trustedProxies: string[];
+    challengeTtlMs: number;
+    sessionTtlMs: number;
+    loginRateLimit: {
+      attempts: number;
+      windowMs: number;
+    };
+  };
   attachments: {
     allowedSuffixes: string[];
     maxSizeBytes: number;

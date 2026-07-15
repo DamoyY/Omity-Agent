@@ -24,6 +24,7 @@ import {
 } from "./services/transcript/optimistic";
 import { addSession, removeSession, useBootstrap, useSessionTranscript } from "./services/queries";
 import { layout, main, sidebar } from "./design";
+import { AccessGate } from "./components/Access/AccessGate";
 import { ChatPage } from "./components/Chat/ChatPage";
 import { Sidebar } from "./components/Sidebar";
 import { cx } from "styled-system/css";
@@ -37,6 +38,13 @@ async function selectWorkspace() {
   return result.workspace;
 }
 export function App() {
+  return (
+    <AccessGate>
+      <AuthenticatedApp />
+    </AccessGate>
+  );
+}
+function AuthenticatedApp() {
   const queryClient = useQueryClient();
   const bootstrap = useBootstrap();
   const [page, setPage] = useState(readPage);

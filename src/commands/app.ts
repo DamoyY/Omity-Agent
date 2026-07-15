@@ -3,7 +3,7 @@ import { openBrowser } from "../app/launch";
 import { startAppServer } from "../app/server";
 
 export default class App extends Command {
-  static override summary = "启动本地 WebUI";
+  static override summary = "启动 WebUI";
   static override examples = [
     { command: "<%= config.bin %> app", description: "启动 WebUI" },
     {
@@ -13,7 +13,7 @@ export default class App extends Command {
   ];
   static override flags = {
     host: Flags.string({
-      default: "127.0.0.1",
+      default: "0.0.0.0",
       description: "监听地址",
     }),
     port: Flags.integer({

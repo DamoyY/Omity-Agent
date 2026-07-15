@@ -122,6 +122,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 function codexSettings(): Settings {
   const main = parseMainSettings({
+    access: {
+      challengeTtlMs: 300_000,
+      loginRateLimit: { attempts: 10, windowMs: 60_000 },
+      publicOrigin: "https://omity.example.test",
+      sessionTtlMs: 43_200_000,
+      trustedProxies: ["127.0.0.1/32"],
+    },
     attachments: { allowedSuffixes: [".txt"], maxSizeBytes: 1024 },
     frontend: {
       draftSaveDelayMs: 1,

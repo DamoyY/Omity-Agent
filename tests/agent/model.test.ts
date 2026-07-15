@@ -26,6 +26,13 @@ function setEnv(key: string, value: string) {
 }
 function makeSettings(api: ModelApi): Settings {
   return {
+    access: {
+      challengeTtlMs: 300_000,
+      loginRateLimit: { attempts: 10, windowMs: 60_000 },
+      publicOrigin: "https://omity.example.test",
+      sessionTtlMs: 43_200_000,
+      trustedProxies: ["127.0.0.1/32"],
+    },
     agent: {
       systemPrompt: "test",
     },

@@ -3,9 +3,14 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 export type ApiErrorCode =
   | DomainErrorCode
+  | "AUTH_INVALID"
+  | "AUTH_NOT_CONFIGURED"
+  | "AUTH_REQUIRED"
   | "BAD_REQUEST"
+  | "LOCAL_ONLY"
   | "NOT_FOUND"
   | "PAYLOAD_TOO_LARGE"
+  | "RATE_LIMITED"
   | "INTERNAL_ERROR";
 const domainStatuses: Record<DomainErrorCode, ContentfulStatusCode> = {
   ATTACHMENT_INVALID: 400,

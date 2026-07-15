@@ -30,7 +30,15 @@ export async function request<T>(
       if (!parsed.success) {
         throw new Error(`API 错误响应结构无效：HTTP ${response.status.toString()}`);
       }
-      throw new ApiError(response.status, parsed.data.error.code, parsed.data.error.message);
+      const error = new ApiError(
+        response.status,
+        parsed.data.error.code,
+        parsed.data.error.message,
+      );
+      if (error.code === "AUTH_REQUIRED") {
+        globalThis.dispatchEvent(new Event("omity:auth-required"));
+      }
+      throw error;
     }
     const parsed = schema.safeParse(json);
     if (!parsed.success) {

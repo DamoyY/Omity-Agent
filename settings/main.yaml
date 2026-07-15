@@ -2,6 +2,18 @@
 paths:
   dataDir: ${appData}/omity-agent
 
+# 公网访问控制。publicOrigin 填写反向代理暴露的 HTTPS Origin，例如 https://omity.example.com。
+# 启用 publicOrigin 时必须填写 trustedProxies；代理需保留 Host 并覆盖或正确追加 X-Forwarded-For。
+# 客户端地址链从右向左解析，取最近的非可信地址。
+access:
+  publicOrigin: null
+  trustedProxies: []
+  challengeTtlMs: 300000
+  sessionTtlMs: 43200000
+  loginRateLimit:
+    attempts: 10
+    windowMs: 60000
+
 # 粘贴到消息输入框的文件限制；后缀匹配不区分大小写，大小限制同时约束单个文件和单次发送总量。
 attachments:
   allowedSuffixes:

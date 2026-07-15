@@ -26,6 +26,8 @@
     "@oclif/core": "latest",
     "@park-ui/panda-preset": "latest",
     "@replit/codemirror-indentation-markers": "latest",
+    "@simplewebauthn/browser": "latest",
+    "@simplewebauthn/server": "latest",
     "@tanstack/react-query": "latest",
     "@uiw/react-codemirror": "latest",
     "ai": "latest",
@@ -37,12 +39,14 @@
     "hono": "latest",
     "i18next": "latest",
     "i18next-browser-languagedetector": "latest",
+    "ipaddr.js": "latest",
     "is-network-error": "latest",
     "js-tiktoken": "latest",
     "langchain": "latest",
     "lucide-react": "latest",
     "mitt": "latest",
     "openai-codex-oauth": "latest",
+    "rate-limiter-flexible": "latest",
     "react": "latest",
     "react-dom": "latest",
     "react-i18next": "latest",
@@ -73,7 +77,7 @@
     "dirname": "omity-agent",
     "topicSeparator": " ",
     "topics": {
-      "app": { "description": "启动本地 WebUI" },
+      "app": { "description": "启动 WebUI" },
       "client": { "description": "向 Host 发送消息或控制指令" },
       "host": { "description": "管理 Host 会话" }
     }

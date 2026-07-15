@@ -49,5 +49,19 @@
   "statusError": "错误",
   "contextUsage": "上下文",
   "kvCache": "KV Cache",
-  "unavailableTokens": "— Tokens"
+  "unavailableTokens": "— Tokens",
+  "accessSetupTitle": "配置公网通行密钥",
+  "accessSetupDescription": "局域网访问无需登录。请生成一次性注册链接，并通过配置的公网 HTTPS Origin 创建通行密钥。",
+  "accessLoginTitle": "验证身份",
+  "accessLoginDescription": "此请求来自局域网之外。验证通行密钥后才能访问 Omity。",
+  "accessNotConfigured": "请先在 settings/main.yaml 配置 access.publicOrigin，并通过 HTTPS 反向代理暴露该 Origin。",
+  "accessSetupLink": "一次性注册链接：",
+  "accessCreateSetupLink": "生成注册链接",
+  "accessOpenSetupLink": "打开注册链接",
+  "accessOpenPublicOrigin": "打开公网 Origin",
+  "accessRegister": "注册通行密钥",
+  "accessContinueLocal": "暂时只使用局域网",
+  "accessVerify": "使用通行密钥验证",
+  "accessLogout": "退出公网会话",
+  "accessManageCredentials": "管理通行密钥"
 }

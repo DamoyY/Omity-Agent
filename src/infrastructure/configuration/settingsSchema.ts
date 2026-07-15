@@ -1,3 +1,4 @@
+import ipaddr from "ipaddr.js";
 import { z } from "zod";
 
 const reasoningEffortSchema = z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]);
@@ -36,8 +37,37 @@ const suffixSchema = z
   .min(2)
   .max(32)
   .regex(/^\.[a-z0-9][a-z0-9_+-]*$/u);
+const publicOriginSchema = z
+  .url()
+  .refine((value) => {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.origin === value;
+  }, "公网 Origin 必须是无路径、查询参数和片段的 HTTPS Origin")
+  .nullable();
+const cidrSchema = z
+  .string()
+  .refine((value) => ipaddr.isValidCIDR(value), "可信代理必须使用有效的 CIDR");
+const accessSchema = z
+  .object({
+    challengeTtlMs: z.number().int().min(1000).max(86_400_000),
+    loginRateLimit: z
+      .object({
+        attempts: z.number().int().positive().max(1000),
+        windowMs: z.number().int().min(1000).max(86_400_000),
+      })
+      .strict(),
+    publicOrigin: publicOriginSchema,
+    sessionTtlMs: z.number().int().min(60_000).max(2_592_000_000),
+    trustedProxies: z.array(cidrSchema),
+  })
+  .strict()
+  .refine(
+    ({ publicOrigin, trustedProxies }) => publicOrigin === null || trustedProxies.length > 0,
+    "配置公网 Origin 时必须配置 trustedProxies",
+  );
 const mainSettingsSchema = z
   .object({
+    access: accessSchema,
     attachments: z
       .object({
         allowedSuffixes: z

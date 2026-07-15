@@ -26,6 +26,15 @@ export function writeTestConfiguration(root: string, options: TestConfigurationO
     join(settingsDir, "main.yaml"),
     `paths:
   dataDir: ${options.dataDir ?? "./data"}
+access:
+  publicOrigin: https://omity.example.test
+  trustedProxies:
+    - 127.0.0.1/32
+  challengeTtlMs: 300000
+  sessionTtlMs: 43200000
+  loginRateLimit:
+    attempts: 10
+    windowMs: 60000
 attachments:
   allowedSuffixes:
     - .txt
