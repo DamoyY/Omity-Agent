@@ -19,6 +19,7 @@ export default defineConfig({
     },
   },
   include: ["./src/app/frontend/**/*.{js,jsx,ts,tsx}"],
+  logLevel: "warn",
   outdir: "styled-system",
   preflight: true,
   presets: [

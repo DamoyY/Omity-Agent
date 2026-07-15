@@ -52,12 +52,12 @@ export function encodeMessage(message: BaseMessage, mode: MessageStorageMode) {
 function encodeAiMessage(message: AIMessage): StoredAi {
   const reasoning = storedReasoning(message);
   const usage = storedUsage(message);
-  const customCallIds = customToolCallIds(message);
+  const customTools = customToolMetadata(message);
   return {
     content: message.content,
     type: "ai",
     ...(message.tool_calls?.length
-      ? { toolCalls: message.tool_calls.map((call) => storedToolCall(call, customCallIds)) }
+      ? { toolCalls: message.tool_calls.map((call) => storedToolCall(call, customTools)) }
       : {}),
     ...(reasoning === undefined ? {} : { reasoning }),
     ...(usage === undefined ? {} : { usage }),
@@ -78,41 +78,58 @@ function encodeToolMessage(message: ToolMessage, mode: MessageStorageMode): Stor
   };
 }
 
-function storedToolCall(value: ToolCall, customCallIds: Set<string>): ToolCall {
+function storedToolCall(
+  value: ToolCall,
+  customTools: { callIds: Set<string>; itemIds: Map<string, string> },
+): ToolCall {
+  const directItemId = Reflect.get(value, "call_id");
+  const itemId =
+    typeof directItemId === "string" && directItemId.length > 0
+      ? directItemId
+      : value.id
+        ? customTools.itemIds.get(value.id)
+        : undefined;
   return {
     args: value.args,
     name: value.name,
     type: "tool_call" as const,
     ...(value.id ? { id: value.id } : {}),
-    ...(Reflect.get(value, "isCustomTool") === true || (value.id && customCallIds.has(value.id))
+    ...(Reflect.get(value, "isCustomTool") === true ||
+    (value.id && customTools.callIds.has(value.id))
       ? { isCustomTool: true }
       : {}),
-    ...(typeof Reflect.get(value, "call_id") === "string"
-      ? { call_id: Reflect.get(value, "call_id") }
-      : {}),
+    ...(itemId ? { call_id: itemId } : {}),
   };
 }
 
-function customToolCallIds(message: AIMessage) {
-  const ids = new Set<string>();
+function customToolMetadata(message: AIMessage) {
+  const callIds = new Set<string>();
+  const itemIds = new Map<string, string>();
   const mapped = message.additional_kwargs["__openai_custom_tool_call_ids__"];
   if (isRecord(mapped)) {
-    for (const id of Object.keys(mapped)) {
-      ids.add(id);
+    for (const [callId, itemId] of Object.entries(mapped)) {
+      callIds.add(callId);
+      if (typeof itemId === "string" && itemId.length > 0) {
+        itemIds.set(callId, itemId);
+      }
     }
   }
   const outputs = message.additional_kwargs["tool_outputs"];
   if (Array.isArray(outputs)) {
     for (const output of outputs) {
       if (isRecord(output) && output["type"] === "custom_tool_call") {
-        const id = output["call_id"];
-        if (typeof id === "string") {
-          ids.add(id);
+        const callId = output["call_id"];
+        if (typeof callId === "string") {
+          callIds.add(callId);
+          const itemId = output["id"];
+          if (typeof itemId === "string" && itemId.length > 0) {
+            itemIds.set(callId, itemId);
+          }
         }
       }
     }
   }
-  return ids;
+  return { callIds, itemIds };
 }
 
 function storedReasoning(message: AIMessage) {

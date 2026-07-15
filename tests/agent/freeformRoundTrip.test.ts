@@ -15,7 +15,11 @@ const servers: ReturnType<typeof Bun.serve>[] = [];
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.stop(true)));
 });
-test("custom MCP tool output completes a Responses API round trip", async () => {
+test("custom MCP tool provider item ID survives a Responses API round trip", () =>
+  runCustomToolRoundTrip("ct_1"));
+test("custom MCP tool without a provider item ID omits the optional request field", () =>
+  runCustomToolRoundTrip());
+async function runCustomToolRoundTrip(providerItemId?: string) {
   const requests: Record<string, unknown>[] = [];
   const server = Bun.serve({
     async fetch(request) {
@@ -26,7 +30,7 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
       const body = parsedBody;
       requests.push(body);
       if (requests.length === 1) {
-        return Response.json(customToolResponse());
+        return Response.json(customToolResponse(providerItemId));
       }
       const { input } = body;
       const output = Array.isArray(input) ? (input as unknown[]).at(-1) : undefined;
@@ -36,6 +40,7 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
       if (
         !isRecord(customCall) ||
         !isRecord(output) ||
+        customCall["id"] !== providerItemId ||
         output["type"] !== "custom_tool_call_output" ||
         output["call_id"] !== customCall["call_id"]
       ) {
@@ -79,6 +84,11 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
   assistant.response_metadata["output"] = [
     { call_id: "call_1", name: "apply_patch", type: "function_call" },
   ];
+  const liveCall = assistant.tool_calls?.[0];
+  if (!liveCall) {
+    throw new Error("mock upstream did not return a live tool call");
+  }
+  Reflect.deleteProperty(liveCall, "call_id");
   const stored = messageInsert(assistant);
   const [hydrated] = messageRowsToChatMessages([
     { message_json: stored.messageJson, source_id: stored.sourceId },
@@ -105,16 +115,16 @@ test("custom MCP tool output completes a Responses API round trip", async () => 
   expect(requests).toHaveLength(2);
   expect(requests[1]?.["previous_response_id"]).toBeUndefined();
   expect(requests[1]?.["prompt_cache_key"]).toBe("test-session");
-});
-function customToolResponse() {
+}
+function customToolResponse(providerItemId?: string) {
   return response([
     {
       call_id: "call_1",
-      id: "ct_1",
       input: "*** Begin Patch\n*** End Patch",
       name: "apply_patch",
       status: "completed",
       type: "custom_tool_call",
+      ...(providerItemId ? { id: providerItemId } : {}),
     },
   ]);
 }
