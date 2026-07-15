@@ -8,7 +8,7 @@ export default defineConfig({
       coarse: "@media (pointer: coarse)",
       largeCanvas: "@media (min-width: 160rem) and (min-height: 90rem)",
       short: "@media (max-height: 40rem)",
-      topNav: "@media (max-width: 63.99rem), (orientation: portrait)",
+      topNav: "@media (max-aspect-ratio: 1 / 1)",
     },
   },
   exclude: [],
