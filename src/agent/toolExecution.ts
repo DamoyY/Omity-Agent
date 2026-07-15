@@ -51,7 +51,6 @@ export function createToolInvoker(
     const normalizedOutput = await redirectLargeToolOutput(output, {
       dataDir: options.settings.paths.dataDir,
       maxTokens: options.settings.toolOutput.maxTokens,
-      outputId: callId,
       sessionId: options.sessionId,
     });
     return customToolCall ? markCustomToolOutput(normalizedOutput) : normalizedOutput;

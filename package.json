@@ -45,6 +45,7 @@
     "langchain": "latest",
     "lucide-react": "latest",
     "mitt": "latest",
+    "nanoid": "latest",
     "openai-codex-oauth": "latest",
     "rate-limiter-flexible": "latest",
     "react": "latest",

@@ -4,11 +4,11 @@ import {
   fileSuffix,
   validateAttachmentBatch,
 } from "./contract";
-import { basename, join } from "node:path";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { DomainError } from "../../errors";
 import type { Settings } from "../../types";
-import { randomUUID } from "node:crypto";
+import { claimShortIdAsync } from "../../infrastructure/randomId";
+import { join } from "node:path";
 import { resolveSessionPaths } from "../../infrastructure/configuration/sessionPaths";
 
 export async function saveMessageAttachments(
@@ -30,10 +30,19 @@ export async function saveMessageAttachments(
   let resolved = content;
   try {
     for (const { id, file } of selected) {
-      const name = safeFilename(file.name);
-      const path = join(directory, `${randomUUID()}-${name}`);
-      await writeFile(path, new Uint8Array(await file.arrayBuffer()), {
-        flag: "wx",
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let path = "";
+      await claimShortIdAsync(async (fileId) => {
+        path = join(directory, `${fileId}${fileSuffix(file.name)}`);
+        try {
+          await writeFile(path, bytes, { flag: "wx" });
+          return true;
+        } catch (error) {
+          if (isExistsError(error)) {
+            return false;
+          }
+          throw error;
+        }
       });
       written.push(path);
       const displayPath = path.replaceAll("\\", "/");
@@ -73,17 +82,14 @@ function validateSelected(
     }
   }
 }
-function safeFilename(name: string) {
-  const source = basename(name).normalize("NFC");
-  const suffix = fileSuffix(source);
-  const stem = source
-    .slice(0, suffix ? -suffix.length : undefined)
-    .replaceAll(/[^\p{L}\p{N}._-]+/gu, "_")
-    .replaceAll(/^[.\s]+|[.\s]+$/gu, "")
-    .slice(0, 96);
-  return `${stem || "file"}${suffix}`;
-}
 function replacePlaceholder(content: string, id: string, path: string) {
   const pattern = new RegExp(String.raw`\{\{file:${id}:[^{}\r\n]+\}\}`, "giu");
   return content.replaceAll(pattern, () => path);
+}
+function isExistsError(error: unknown) {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error as Error & { code?: unknown }).code === "EEXIST"
+  );
 }

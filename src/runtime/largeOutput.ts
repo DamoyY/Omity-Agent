@@ -1,7 +1,7 @@
 import { type MessageContent, ToolMessage } from "@langchain/core/messages";
-import { createHash, randomBytes } from "node:crypto";
 import { join, resolve } from "node:path";
 import type { Settings } from "../types";
+import { claimShortIdAsync } from "../infrastructure/randomId";
 import { countTokens } from "./tokenizer";
 import { createMiddleware } from "langchain";
 import { inspectToolTextContent } from "./outputText";
@@ -9,7 +9,6 @@ import { mkdirSync } from "node:fs";
 import { safeId } from "../infrastructure/configuration/sessionPaths";
 import { writeFile } from "node:fs/promises";
 
-const outputFileIdBytes = 16;
 interface LargeOutputRuntimeContext {
   sessionId: string;
 }
@@ -17,7 +16,6 @@ interface LargeToolOutputOptions {
   dataDir: string;
   maxTokens: number;
   sessionId: string;
-  outputId?: string;
 }
 export function createLargeToolOutputMiddleware(settings: Settings) {
   return createMiddleware({
@@ -30,7 +28,6 @@ export function createLargeToolOutputMiddleware(settings: Settings) {
       return redirectLargeToolOutput(result, {
         dataDir: settings.paths.dataDir,
         maxTokens: settings.toolOutput.maxTokens,
-        outputId: request.toolCall.id,
         sessionId: getSessionId(request.runtime.context),
       });
     },
@@ -56,12 +53,7 @@ export async function redirectLargeToolOutput(
   if (tokens <= options.maxTokens) {
     return normalizedMessage;
   }
-  const outputPath = await writeLargeToolOutput(
-    original,
-    options.dataDir,
-    options.sessionId,
-    options.outputId,
-  );
+  const outputPath = await writeLargeToolOutput(original, options.dataDir, options.sessionId);
   const content = `工具输出过长（${tokens.toString()} tokens），无法直接查看。\n原始输出内容已保存于：${outputPath}，请按需检索其中片段。`;
   return copyToolMessage(message, normalized.replaceText(content), {
     path: outputPath,
@@ -113,22 +105,28 @@ function isLargeOutputRuntimeContext(value: unknown): value is LargeOutputRuntim
     value.sessionId.length > 0
   );
 }
-async function writeLargeToolOutput(
-  content: string,
-  dataDir: string,
-  sessionId: string,
-  outputId: string | undefined,
-) {
+async function writeLargeToolOutput(content: string, dataDir: string, sessionId: string) {
   const dir = resolve(dataDir, "sessions", safeId(sessionId), "large_output");
   mkdirSync(dir, { recursive: true });
-  const id = createOutputFileId(outputId);
-  const path = join(dir, `${id}.txt`);
-  await writeFile(path, content, "utf8");
+  let path = "";
+  await claimShortIdAsync(async (id) => {
+    path = join(dir, `${id}.txt`);
+    try {
+      await writeFile(path, content, { encoding: "utf8", flag: "wx" });
+      return true;
+    } catch (error) {
+      if (isExistsError(error)) {
+        return false;
+      }
+      throw error;
+    }
+  });
   return path;
 }
-function createOutputFileId(outputId: string | undefined) {
-  const bytes = outputId
-    ? createHash("sha256").update(outputId).digest().subarray(0, outputFileIdBytes)
-    : randomBytes(outputFileIdBytes);
-  return bytes.toString("base64url");
+function isExistsError(error: unknown) {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error as Error & { code?: unknown }).code === "EEXIST"
+  );
 }

@@ -25,7 +25,7 @@ export function appendAttachments(body: FormData, attachments: PendingAttachment
     body.append(`file:${id}`, file);
   }
 }
-const placeholderPattern = /\{\{file:(?<id>[0-9a-f-]{36}):(?<name>[^{}\r\n]+)\}\}/giu;
+const placeholderPattern = /\{\{file:(?<id>[0-9a-z]{8}):(?<name>[^{}\r\n]+)\}\}/giu;
 export function attachmentPlaceholder(id: string, name: string) {
   return `{{file:${id}:${name.replaceAll(/[{}\r\n]/gu, "_")}}}`;
 }

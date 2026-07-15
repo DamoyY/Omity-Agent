@@ -5,6 +5,7 @@ import {
   attachmentPlaceholder,
   validateAttachmentBatch,
 } from "../../../../attachments/contract";
+import { claimShortId } from "../../../../../infrastructure/randomId";
 import { reportError } from "../../../services/errors";
 
 export class PendingAttachments {
@@ -29,8 +30,13 @@ export class PendingAttachments {
     validateAttachmentBatch([...retained, ...files], this.settings);
     return files
       .map((file) => {
-        const id = crypto.randomUUID();
-        this.entries.set(id, { file, id });
+        const id = claimShortId((candidate) => {
+          if (this.entries.has(candidate)) {
+            return false;
+          }
+          this.entries.set(candidate, { file, id: candidate });
+          return true;
+        });
         return attachmentPlaceholder(id, file.name);
       })
       .join("\n");

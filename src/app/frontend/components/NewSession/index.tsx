@@ -13,6 +13,7 @@ import type { InitialSessionState } from "../../../initialState";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { PendingAttachments } from "../Chat/Composer/attachments";
 import { WorkspacePicker } from "./WorkspacePicker";
+import { claimShortId } from "../../../../infrastructure/randomId";
 import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
 import { useTranslation } from "react-i18next";
@@ -134,14 +135,10 @@ export function NewSessionPage({
     [message],
   );
   const addPair = useCallback(() => {
-    setPairs((current) => [
-      ...current,
-      {
-        assistant: "",
-        id: crypto.randomUUID(),
-        user: "",
-      },
-    ]);
+    setPairs((current) => {
+      const id = claimShortId((candidate) => !current.some((item) => item.id === candidate));
+      return [...current, { assistant: "", id, user: "" }];
+    });
   }, []);
   return (
     <form className={pageClassName} onSubmit={handleFormSubmit}>

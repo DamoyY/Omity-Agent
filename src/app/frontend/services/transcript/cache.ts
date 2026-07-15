@@ -78,5 +78,5 @@ function buildTranscript(
   };
 }
 function optimisticMessages(current?: TranscriptData) {
-  return current?.view.filter((item) => item.key.startsWith("optimistic-")) ?? [];
+  return current?.view.filter((item) => item.optimistic === true) ?? [];
 }

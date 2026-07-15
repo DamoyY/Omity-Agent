@@ -18,7 +18,7 @@ test("referenced pasted files are saved and placeholders become absolute paths",
   const settings = testSettings(root);
   const sessionId = "session";
   mkdirSync(join(root, "sessions", sessionId), { recursive: true });
-  const id = "123e4567-e89b-42d3-a456-426614174000";
+  const id = "a1b2c3d4";
   const placeholder = attachmentPlaceholder(id, "../notes.txt");
   const saved = await saveMessageAttachments(
     settings,
@@ -29,14 +29,14 @@ test("referenced pasted files are saved and placeholders become absolute paths",
   const [path, repeated] = saved.content.slice("读取 ".length).split(" 和 ");
   const savedPath = required(path);
   expect(savedPath).toContain("/sessions/session/attachments/");
-  expect(savedPath.endsWith("-notes.txt")).toBe(true);
+  expect(savedPath).toMatch(/\/attachments\/[0-9a-z]{8}\.txt$/);
   expect(repeated).toBe(savedPath);
   expect(readFileSync(savedPath, "utf8")).toBe("hello");
 });
 test("unreferenced files are ignored and missing references are rejected", async () => {
   const root = temporaryDirectory();
   const settings = testSettings(root);
-  const id = "123e4567-e89b-42d3-a456-426614174000";
+  const id = "a1b2c3d4";
   const ignored = await saveMessageAttachments(settings, "session", "hello", [
     { file: new File(["hello"], "notes.txt"), id },
   ]);

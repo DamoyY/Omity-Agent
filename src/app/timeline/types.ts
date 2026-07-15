@@ -51,6 +51,7 @@ export interface DisplayEvent {
 export interface TimelineMessage {
   id: number;
   key: string;
+  optimistic?: true;
   role: DisplayRole;
   content: string;
   createdAt: number;

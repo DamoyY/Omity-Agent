@@ -2,7 +2,6 @@ import { afterEach, expect, test } from "bun:test";
 import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { ToolMessage } from "@langchain/core/messages";
 import { countTokens } from "../../src/runtime/tokenizer";
-import { createHash } from "node:crypto";
 import { createTestDirectory } from "../support/artifacts";
 import { join } from "node:path";
 import { redirectLargeToolOutput } from "../../src/runtime/largeOutput";
@@ -32,22 +31,14 @@ test("normalizes MCP text content before size handling", async () => {
   const normalized = await redirectLargeToolOutput(shortMessage, {
     dataDir: root,
     maxTokens: countTokens(short),
-    outputId: "call-0",
     sessionId: "demo-session",
   });
   const redirected = await redirectLargeToolOutput(message, {
     dataDir: root,
     maxTokens: 1,
-    outputId: "call-1",
     sessionId: "demo-session",
   });
-  const outputPath = join(
-    root,
-    "sessions",
-    "demo-session",
-    "large_output",
-    `${outputFileId("call-1")}.txt`,
-  );
+  const outputPath = onlyOutputPath(root);
   expect(normalized.content).toBe(short);
   expect(readFileSync(outputPath, "utf8")).toBe(original);
   expect(redirected.content).toBe(
@@ -64,17 +55,10 @@ test("accepts hook call IDs when writing large output", async () => {
     {
       dataDir: root,
       maxTokens: 1,
-      outputId,
       sessionId: "demo-session",
     },
   );
-  const outputPath = join(
-    root,
-    "sessions",
-    "demo-session",
-    "large_output",
-    `${outputFileId(outputId)}.txt`,
-  );
+  const outputPath = onlyOutputPath(root);
   expect(readFileSync(outputPath, "utf8")).toBe(original);
   expect(redirected.content).toContain(outputPath);
 });
@@ -87,7 +71,7 @@ test("uses compact URL-safe large output file names", async () => {
   });
   const names = readdirSync(join(root, "sessions", "demo-session", "large_output"));
   expect(names).toHaveLength(1);
-  expect(names[0]).toMatch(/^[A-Za-z0-9_-]{22}\.txt$/);
+  expect(names[0]).toMatch(/^[0-9a-z]{8}\.txt$/);
 });
 test("keeps MCP images outside the text size limit", async () => {
   const root = makeDir();
@@ -108,13 +92,11 @@ test("keeps MCP images outside the text size limit", async () => {
   const imageRedirected = await redirectLargeToolOutput(imageMessage, {
     dataDir: root,
     maxTokens: 1,
-    outputId: "call-2",
     sessionId: "demo",
   });
   const errorRedirected = await redirectLargeToolOutput(errorMessage, {
     dataDir: root,
     maxTokens: 1,
-    outputId: "call-3",
     sessionId: "demo",
   });
   expect(imageRedirected.content).toEqual([
@@ -139,7 +121,6 @@ test("redirects mixed output text without removing its image", async () => {
     {
       dataDir: root,
       maxTokens: 1,
-      outputId: "call-4",
       sessionId: "demo",
     },
   );
@@ -153,6 +134,8 @@ function makeDir() {
   dirs.push(dir);
   return dir;
 }
-function outputFileId(outputId: string) {
-  return createHash("sha256").update(outputId).digest().subarray(0, 16).toString("base64url");
+function onlyOutputPath(root: string) {
+  const directory = join(root, "sessions", "demo-session", "large_output");
+  const [name] = readdirSync(directory);
+  return join(directory, name ?? "");
 }

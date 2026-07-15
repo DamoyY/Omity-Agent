@@ -1,9 +1,19 @@
 import { type TranscriptData, transcriptKey } from "../queries";
 import { emptyTranscriptData, rebuildTranscript, withoutOptimistic } from "./cache";
 import type { QueryClient } from "@tanstack/react-query";
+import { claimShortId } from "../../../../infrastructure/randomId";
 
 export function addOptimisticUser(queryClient: QueryClient, sessionId: string, content: string) {
-  const key = `optimistic-${crypto.randomUUID()}`;
+  const keys = new Set(
+    queryClient.getQueryData<TranscriptData>(transcriptKey(sessionId))?.view.map(({ key }) => key),
+  );
+  const key = claimShortId((candidate) => {
+    if (keys.has(candidate)) {
+      return false;
+    }
+    keys.add(candidate);
+    return true;
+  });
   queryClient.setQueryData<TranscriptData>(transcriptKey(sessionId), (current) => {
     const transcript = current ?? emptyTranscriptData();
     return {
@@ -15,6 +25,7 @@ export function addOptimisticUser(queryClient: QueryClient, sessionId: string, c
           createdAt: Date.now(),
           id: -1,
           key,
+          optimistic: true,
           parts: [{ content, type: "content" }],
           role: "user",
         },

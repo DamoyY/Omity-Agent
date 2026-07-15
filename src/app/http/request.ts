@@ -127,10 +127,7 @@ function readAttachments(form: FormData, fields: Set<string>) {
     if (fields.has(key)) {
       return [];
     }
-    const match =
-      /^file:(?<id>[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/u.exec(
-        key,
-      );
+    const match = /^file:(?<id>[0-9a-z]{8})$/u.exec(key);
     if (!match || typeof value === "string") {
       throw new HttpError(400, `附件字段无效：${key}`);
     }

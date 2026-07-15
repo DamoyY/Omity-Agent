@@ -29,7 +29,7 @@ test("message multipart validation forwards placeholders and files", async () =>
       return Promise.resolve({ content: "attachments/file.txt", queueId: 1 });
     },
   });
-  const id = "123e4567-e89b-42d3-a456-426614174000";
+  const id = "a1b2c3d4";
   const body = messageForm(`查看 {{file:${id}:notes.txt}}`, 3);
   body.append(`file:${id}`, new File(["hello"], "notes.txt"));
   const response = await createApi(controller).request("/api/sessions/test/messages", {
