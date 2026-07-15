@@ -17,6 +17,7 @@ const frame = sva({
       display: "flex",
       h: "detailHeader",
       maxW: "full",
+      minH: { _coarse: "11" },
       px: "2",
     },
     icon: { flexShrink: 0 },

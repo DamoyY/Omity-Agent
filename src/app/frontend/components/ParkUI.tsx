@@ -26,7 +26,9 @@ const compactControl = css({
   color: "text",
   fontFamily: "body",
   fontWeight: "normal",
+  minH: { _coarse: "11" },
   minW: 0,
+  touchAction: "manipulation",
 });
 const surfacedControl = css({
   _disabled: {
@@ -86,7 +88,13 @@ export function LinkButton({
   });
 }
 export function IconButton(props: ButtonProps) {
-  return createElement(Button, { size: "sm", variant: "outline", ...props });
+  const className = css({ minW: { _coarse: "11" } });
+  return createElement(Button, {
+    size: "sm",
+    variant: "outline",
+    ...props,
+    className: cx(className, props.className),
+  });
 }
 type InputProps = Omit<ComponentProps<"input">, "size"> & InputVariantProps;
 export function Input({ className, size = "sm", ...props }: InputProps) {

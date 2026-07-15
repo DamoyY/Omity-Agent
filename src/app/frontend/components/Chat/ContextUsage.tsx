@@ -13,9 +13,11 @@ const panel = css({
   fontFamily: "mono",
   fontSize: "xs",
   gap: "2",
+  gridTemplateColumns: { smDown: "repeat(2, auto)" },
+  justifyContent: { smDown: "space-between" },
   justifyItems: "end",
-  mt: "auto",
-  pt: "3",
+  mt: { base: "auto", smDown: 0 },
+  pt: { base: "3", smDown: "2" },
   w: "full",
   whiteSpace: "nowrap",
 });

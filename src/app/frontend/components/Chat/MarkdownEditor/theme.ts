@@ -16,7 +16,10 @@ export const root = css({
   minW: 0,
   overflow: "hidden",
 });
-export const fixedRoot = css({ h: "composerEditor" });
+export const fixedRoot = css({
+  h: { _short: "6rem", base: "composerEditor", smDown: "8rem" },
+  minH: { _coarse: "7rem" },
+});
 export const disabledRoot = css({
   borderColor: "line",
   opacity: 0.65,
@@ -37,7 +40,7 @@ export const editorTheme = EditorView.theme(
       backgroundColor: "var(--colors-surface)",
       color: "var(--colors-text)",
       fontFamily: "var(--fonts-mono)",
-      fontSize: "14px",
+      fontSize: "0.875rem",
     },
     ".cm-activeLine": {
       backgroundColor: "var(--colors-active-line)",
@@ -98,7 +101,7 @@ const markdownHighlight = HighlightStyle.define([
 export const markdownSyntax = syntaxHighlighting(markdownHighlight);
 export const fluidTheme = EditorView.theme({
   "&": { height: "auto" },
-  ".cm-content": { minHeight: "2.5rem" },
+  ".cm-content": { minHeight: "2.75rem" },
   ".cm-gutters": { color: "var(--colors-muted-strong)" },
   ".cm-placeholder": { color: "var(--colors-muted-strong)" },
   ".cm-scroller": { overflow: "visible" },

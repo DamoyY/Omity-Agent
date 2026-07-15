@@ -17,7 +17,12 @@ const row = css({
 const pathInput = css({ minW: 0, textOverflow: "ellipsis" });
 const recent = css({ display: "grid", gap: "2" });
 const recentLabel = css({ color: "muted", fontSize: "xs" });
-const recentList = css({ display: "flex", flexWrap: "wrap", gap: "2" });
+const recentList = css({
+  "& > button": { flexGrow: { base: 1, sm: 0 } },
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "2",
+});
 const recentButton = css({ maxW: "full", minW: 0 });
 const recentPath = css({
   overflow: "hidden",

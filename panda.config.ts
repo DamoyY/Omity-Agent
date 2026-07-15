@@ -3,6 +3,14 @@ import { defineConfig } from "@pandacss/dev";
 import neutral from "@park-ui/panda-preset/colors/neutral";
 
 export default defineConfig({
+  conditions: {
+    extend: {
+      coarse: "@media (pointer: coarse)",
+      largeCanvas: "@media (min-width: 160rem) and (min-height: 90rem)",
+      short: "@media (max-height: 40rem)",
+      topNav: "@media (max-width: 63.99rem), (orientation: portrait)",
+    },
+  },
   exclude: [],
   globalCss: {
     "*": {
@@ -12,6 +20,12 @@ export default defineConfig({
       color: "text",
       colorScheme: "dark",
       overflow: "hidden",
+    },
+    html: {
+      fontSize: {
+        _largeCanvas: "125%",
+        base: "100%",
+      },
     },
     "html, body, #root": {
       margin: "0",
@@ -101,6 +115,7 @@ export default defineConfig({
         },
         sizes: {
           appSidebar: { value: "clamp(15rem, 22vw, 20rem)" },
+          chatCanvas: { value: "120rem" },
           composerEditor: { value: "12rem" },
           content: { value: "52rem" },
           controlColumn: { value: "9rem" },

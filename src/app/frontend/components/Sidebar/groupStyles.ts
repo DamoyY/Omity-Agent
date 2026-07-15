@@ -1,6 +1,9 @@
 import { css } from "styled-system/css";
 
-export const root = css({ display: "grid", minW: 0 });
+export const root = css({
+  display: "grid",
+  minW: 0,
+});
 export const header = css({
   _hover: { bg: "control" },
   alignItems: "center",
@@ -12,6 +15,7 @@ export const header = css({
   gap: "1.5",
   gridTemplateColumns: "auto minmax(0, 1fr) auto",
   h: "7",
+  minH: { _coarse: "11" },
   position: "sticky",
   px: "2",
   textAlign: "left",
@@ -42,6 +46,7 @@ export const historyToggle = css({
   fontSize: "2xs",
   h: "7",
   justifyContent: "flex-start",
+  minH: { _coarse: "11" },
   ml: "2px",
   px: "3",
 });
@@ -79,6 +84,7 @@ export const row = css({
   gridTemplateColumns: "auto minmax(0, 1fr) auto auto",
   h: "8",
   justifyContent: "stretch",
+  minH: { _coarse: "11" },
   px: "2.5",
   textAlign: "left",
   w: "full",

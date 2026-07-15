@@ -6,26 +6,30 @@ export const layout = css({
   display: "grid",
   fontFamily: "body",
   gridTemplateColumns: {
+    _topNav: "minmax(0, 1fr)",
     base: "minmax(0, 1fr)",
     lg: "auto minmax(0, 1fr)",
   },
   gridTemplateRows: {
-    base: "minmax(8rem, 35vh) minmax(0, 1fr)",
+    _topNav: "clamp(12rem, 28dvh, 24rem) minmax(0, 1fr)",
+    base: "clamp(7.5rem, 26dvh, 9rem) minmax(0, 1fr)",
     lg: "minmax(0, 1fr)",
   },
-  h: "100vh",
+  h: "100dvh",
   overflow: "hidden",
 });
 export const sidebar = css({
   bg: "sidebar",
+  borderBottomColor: "line",
+  borderBottomWidth: "1px",
   borderRightColor: "line",
-  borderRightWidth: "1px",
+  borderRightWidth: { _topNav: "0", base: "0", lg: "1px" },
   display: "grid",
   gridTemplateRows: "auto minmax(0, 1fr)",
   minH: 0,
   minW: 0,
   overflow: "hidden",
-  w: { lg: "appSidebar" },
+  w: { _topNav: "full", lg: "appSidebar" },
 });
 export const main = css({
   bg: "surfaceInset",
@@ -37,5 +41,7 @@ export const main = css({
 export const scroll = css({
   minH: 0,
   overflowY: "auto",
-  p: "6",
+  overscrollBehavior: "contain",
+  p: { _short: "3", base: "4", md: "6" },
+  scrollbarGutter: "stable",
 });

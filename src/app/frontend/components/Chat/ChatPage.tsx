@@ -15,9 +15,12 @@ const page = css({
   display: "grid",
   gridTemplateRows: "minmax(0, 1fr) auto",
   h: "full",
+  maxW: { _largeCanvas: "chatCanvas" },
   minH: 0,
   minW: 0,
+  mx: "auto",
   overflow: "hidden",
+  w: "full",
 });
 const empty = css({
   color: "muted",

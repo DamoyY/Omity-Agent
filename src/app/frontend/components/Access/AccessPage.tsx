@@ -10,8 +10,9 @@ const page = css({
   color: "text",
   display: "grid",
   fontFamily: "body",
-  minH: "100vh",
-  p: "6",
+  minH: "100dvh",
+  overflowY: "auto",
+  p: { _short: "3", base: "4", sm: "6" },
 });
 const card = css({
   bg: "surface",
@@ -21,14 +22,19 @@ const card = css({
   gap: "5",
   maxW: "32rem",
   mx: "auto",
-  p: "8",
+  p: { _short: "5", base: "5", sm: "8" },
   w: "full",
 });
 const icon = css({ color: "mutedStrong" });
 const heading = css({ fontSize: "xl", fontWeight: "medium", m: 0 });
 const description = css({ color: "mutedStrong", lineHeight: "1.7", m: 0 });
 const errorText = css({ color: "statusError", fontSize: "sm", m: 0 });
-const actions = css({ display: "flex", flexWrap: "wrap", gap: "3" });
+const actions = css({
+  "& > *": { flexGrow: { base: 1, sm: 0 } },
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "3",
+});
 interface AccessPageProps {
   busy: boolean;
   error?: string;

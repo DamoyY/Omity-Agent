@@ -14,7 +14,7 @@ const panel = css({
   display: "grid",
   gap: "2",
   gridTemplateColumns: "minmax(0, 1fr) auto",
-  minH: "12",
+  minH: { _coarse: "14", base: "12" },
   px: "3",
 });
 const brand = css({
@@ -30,7 +30,11 @@ const total = css({
   fontWeight: "normal",
   letterSpacing: 0,
 });
-const newButton = css({ borderColor: "line", h: "7", px: "2.5" });
+const newButton = css({
+  borderColor: "line",
+  h: { _coarse: "11", base: "7" },
+  px: "2.5",
+});
 const list = css({
   alignContent: "start",
   bg: "sidebar",
@@ -38,8 +42,10 @@ const list = css({
   minH: 0,
   overflowX: "hidden",
   overflowY: "auto",
+  overscrollBehavior: "contain",
   px: "2",
   scrollbarGutter: "stable",
+  touchAction: "pan-y",
 });
 interface SidebarProps {
   sessions: SessionInfo[];

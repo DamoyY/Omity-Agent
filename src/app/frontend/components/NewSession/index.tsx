@@ -17,7 +17,12 @@ import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
 import { useTranslation } from "react-i18next";
 
-const scroll = css({ minH: 0, overflowY: "auto" });
+const scroll = css({
+  minH: 0,
+  overflowY: "auto",
+  overscrollBehavior: "contain",
+  scrollbarGutter: "stable",
+});
 const scrollContent = css({
   display: "grid",
   gridTemplateRows: "auto minmax(min-content, 1fr)",
@@ -30,7 +35,7 @@ const setup = css({
   maxW: "content",
   minH: "full",
   mx: "auto",
-  p: { base: "4", md: "8" },
+  p: { _short: "4", base: "4", md: "8" },
   w: "full",
 });
 const messageFlow = css({ alignSelf: "end" });
