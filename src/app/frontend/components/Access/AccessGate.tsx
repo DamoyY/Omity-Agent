@@ -33,6 +33,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
   const [ticketUrl, setTicketUrl] = useState<string>();
   const setupValue = new URLSearchParams(globalThis.location.search).get("setup") ?? undefined;
   const setupTicket = setupValue === "manage" ? undefined : setupValue;
+  const publicOrigin = status?.publicOrigin;
   const load = useCallback(async () => {
     const next = await accessStatus();
     setStatus(next);
@@ -64,7 +65,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
     () =>
       run(setBusy, setError, async () => {
         await register(setupTicket);
-        globalThis.history.replaceState(null, "", "/");
+        globalThis.history.replaceState(null, "", "./#/new");
         await load();
       }),
     [load, setupTicket],
@@ -73,9 +74,14 @@ export function AccessGate({ children }: { children: ReactNode }) {
     () =>
       run(setBusy, setError, async () => {
         const result = await registrationTicket();
-        setTicketUrl(result.url);
+        if (!publicOrigin) {
+          throw new Error("公网 Origin 尚未配置");
+        }
+        const url = new URL(globalThis.location.pathname, publicOrigin);
+        url.searchParams.set("setup", result.ticket);
+        setTicketUrl(url.href);
       }),
-    [],
+    [publicOrigin],
   );
   const continueWithoutSetup = useCallback(() => {
     setContinueLocal(true);
@@ -111,7 +117,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
           <LinkButton
             aria-label={t("accessManageCredentials")}
             className={accessButton}
-            href="/?setup=manage"
+            href="?setup=manage#/new"
             title={t("accessManageCredentials")}
           >
             <KeyRound size={14} />

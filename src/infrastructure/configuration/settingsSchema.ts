@@ -109,6 +109,12 @@ const mainSettingsSchema = z
     paths: z.object({
       dataDir: z.string().min(1),
     }),
+    server: z
+      .object({
+        host: z.string().min(1),
+        port: z.number().int().min(0).max(65_535),
+      })
+      .strict(),
     skills: z.object({
       directory: z.string().min(1),
       enabled: z.boolean(),

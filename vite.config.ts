@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
+  base: "./",
   plugins: [
     react(),
     babel({

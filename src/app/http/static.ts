@@ -16,8 +16,6 @@ export function createStaticApp(root: string) {
   app.use("/assets/*", serveStatic({ root: staticRoot }));
   const index = serveStatic({ path: resolve(staticRoot, "index.html") });
   app.get("/", index);
-  app.get("/new", index);
-  app.get("/sessions/:sessionId", index);
   return app;
 }
 const contentSecurityPolicy = [

@@ -3,12 +3,15 @@ import { useEffect } from "react";
 export type Page = { kind: "new" } | { kind: "session"; id: string };
 const sessionPrefix = "/sessions/";
 export function readPage(): Page {
-  const { pathname } = globalThis.location;
-  if (pathname === "/new") {
+  return pageFromHash(globalThis.location.hash);
+}
+export function pageFromHash(hash: string): Page {
+  const path = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (path === "/new") {
     return { kind: "new" };
   }
-  if (pathname.startsWith(sessionPrefix)) {
-    const id = decodeURIComponent(pathname.slice(sessionPrefix.length));
+  if (path.startsWith(sessionPrefix)) {
+    const id = decodeURIComponent(path.slice(sessionPrefix.length));
     if (id) {
       return { id, kind: "session" };
     }
@@ -17,13 +20,13 @@ export function readPage(): Page {
 }
 export function pagePath(page: Page) {
   if (page.kind === "new") {
-    return "/new";
+    return "#/new";
   }
-  return `/sessions/${encodeURIComponent(page.id)}`;
+  return `#/sessions/${encodeURIComponent(page.id)}`;
 }
 export function writePage(page: Page, replace = false) {
   const path = pagePath(page);
-  if (globalThis.location.pathname === path) {
+  if (globalThis.location.hash === path) {
     return;
   }
   const method = replace ? "replaceState" : "pushState";

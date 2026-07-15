@@ -37,6 +37,7 @@ export function testSettings(dataDir: string): Settings {
       timeoutMs: 1000,
     },
     paths: { dataDir },
+    server: { host: "127.0.0.1", port: 3030 },
     skills: {
       directory: "~/.agents/skills",
       enabled: false,

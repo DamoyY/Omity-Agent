@@ -26,6 +26,9 @@ export function writeTestConfiguration(root: string, options: TestConfigurationO
     join(settingsDir, "main.yaml"),
     `paths:
   dataDir: ${options.dataDir ?? "./data"}
+server:
+  host: 127.0.0.1
+  port: 3030
 access:
   publicOrigin: https://omity.example.test
   trustedProxies:

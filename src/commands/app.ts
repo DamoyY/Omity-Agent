@@ -13,12 +13,10 @@ export default class App extends Command {
   ];
   static override flags = {
     host: Flags.string({
-      default: "0.0.0.0",
-      description: "监听地址",
+      description: "覆盖配置文件中的监听地址",
     }),
     port: Flags.integer({
-      default: 0,
-      description: "监听端口，0 表示自动选择",
+      description: "覆盖配置文件中的监听端口，0 表示自动选择",
     }),
   };
   async run() {

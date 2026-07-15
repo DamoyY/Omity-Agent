@@ -90,6 +90,7 @@ function makeSettings(skillsDir: string, skillEnabled: Record<string, boolean>):
       timeoutMs: 1000,
     },
     paths: { dataDir: "data" },
+    server: { host: "127.0.0.1", port: 3030 },
     skills: {
       directory: skillsDir,
       enabled: true,

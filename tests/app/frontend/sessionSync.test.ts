@@ -19,7 +19,7 @@ test("SSE closes after the first network error instead of reconnecting", () => {
   const created: TestEventSource[] = [];
   class TestEventSource extends EventTarget {
     close = mock(() => undefined);
-    constructor() {
+    constructor(readonly url: string) {
       super();
       created.push(this);
     }
@@ -34,6 +34,7 @@ test("SSE closes after the first network error instead of reconnecting", () => {
     if (!events) {
       throw new Error("EventSource 替身未创建");
     }
+    expect(events.url).toBe("api/events");
     events.dispatchEvent(new Event("error"));
     expect(events.close).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledTimes(1);

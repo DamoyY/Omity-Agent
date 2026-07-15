@@ -23,7 +23,7 @@ export interface FrontendSettings {
   transcriptRefreshIntervalMs: number;
 }
 export async function bootstrap(signal?: AbortSignal) {
-  return request("/api/bootstrap", bootstrapResponseSchema, { signal });
+  return request("api/bootstrap", bootstrapResponseSchema, { signal });
 }
 export async function createSession(
   workspace: string,
@@ -35,43 +35,43 @@ export async function createSession(
   body.set("history", JSON.stringify(initialState.history));
   body.set("message", initialState.message);
   appendAttachments(body, attachments);
-  return request("/api/sessions", sessionResponseSchema, {
+  return request("api/sessions", sessionResponseSchema, {
     body,
     method: "POST",
   });
 }
 export async function deleteSession(sessionId: string) {
-  return request(`/api/sessions/${encodeURIComponent(sessionId)}`, deletedResponseSchema, {
+  return request(`api/sessions/${encodeURIComponent(sessionId)}`, deletedResponseSchema, {
     method: "DELETE",
   });
 }
 export async function pickWorkspace() {
-  return request("/api/workspace-picker", workspaceResponseSchema, {
+  return request("api/workspace-picker", workspaceResponseSchema, {
     method: "POST",
   });
 }
 export async function loadTranscript(sessionId: string, signal?: AbortSignal) {
   return request(
-    `/api/sessions/${encodeURIComponent(sessionId)}/transcript`,
+    `api/sessions/${encodeURIComponent(sessionId)}/transcript`,
     transcriptResponseSchema,
     { signal },
   );
 }
 export function sessionEvents(sessionId: string) {
-  return eventSource(`/api/sessions/${encodeURIComponent(sessionId)}/events`);
+  return eventSource(`api/sessions/${encodeURIComponent(sessionId)}/events`);
 }
 export function appEvents() {
-  return eventSource("/api/events");
+  return eventSource("api/events");
 }
 export async function loadComposerDraft(sessionId: string) {
   return request(
-    `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
+    `api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
     draftResponseSchema,
   );
 }
 export async function saveComposerDraft(sessionId: string, content: string, revision: number) {
   return request(
-    `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
+    `api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
     revisionResponseSchema,
     {
       body: JSON.stringify({ content, revision }),
@@ -83,10 +83,7 @@ export function beaconComposerDraft(sessionId: string, content: string, revision
   const body = new Blob([JSON.stringify({ content, revision })], {
     type: "application/json",
   });
-  return navigator.sendBeacon(
-    `/api/sessions/${encodeURIComponent(sessionId)}/composer-draft`,
-    body,
-  );
+  return navigator.sendBeacon(`api/sessions/${encodeURIComponent(sessionId)}/composer-draft`, body);
 }
 export async function sendMessage(
   sessionId: string,
@@ -98,7 +95,7 @@ export async function sendMessage(
   body.set("content", content);
   body.set("draftRevision", draftRevision.toString());
   appendAttachments(body, attachments);
-  return request(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, messageResponseSchema, {
+  return request(`api/sessions/${encodeURIComponent(sessionId)}/messages`, messageResponseSchema, {
     body,
     method: "POST",
   });
@@ -107,14 +104,14 @@ export async function setControl(
   sessionId: string,
   control: Extract<Control, "running" | "pause" | "cancel">,
 ) {
-  return request(`/api/sessions/${encodeURIComponent(sessionId)}/control`, controlResponseSchema, {
+  return request(`api/sessions/${encodeURIComponent(sessionId)}/control`, controlResponseSchema, {
     body: JSON.stringify({ control }),
     method: "POST",
   });
 }
 export async function cancelTool(sessionId: string, toolCallId: string) {
   return request(
-    `/api/sessions/${encodeURIComponent(sessionId)}/tools/cancel`,
+    `api/sessions/${encodeURIComponent(sessionId)}/tools/cancel`,
     cancellationResponseSchema,
     {
       body: JSON.stringify({ toolCallId }),
@@ -123,7 +120,7 @@ export async function cancelTool(sessionId: string, toolCallId: string) {
   );
 }
 export async function forkSession(sessionId: string, beforeMessageId: number) {
-  return request(`/api/sessions/${encodeURIComponent(sessionId)}/fork`, sessionResponseSchema, {
+  return request(`api/sessions/${encodeURIComponent(sessionId)}/fork`, sessionResponseSchema, {
     body: JSON.stringify({ beforeMessageId }),
     method: "POST",
   });

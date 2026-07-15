@@ -16,12 +16,14 @@ import { rmSync } from "node:fs";
 
 export interface AppServerOptions {
   root: string;
-  host: string;
-  port: number;
+  host?: string;
+  port?: number;
   onReady?: (url: string) => void;
 }
 export async function startAppServer(options: AppServerOptions) {
   const settings = loadSettings(options.root);
+  const host = options.host ?? settings.server.host;
+  const port = options.port ?? settings.server.port;
   const lock = AppInstanceLock.acquire(settings.paths.dataDir);
   const shutdown = waitForShutdownSignal();
   let access: AccessService | undefined;
@@ -49,12 +51,9 @@ export async function startAppServer(options: AppServerOptions) {
         void (req.url?.startsWith("/api") ? handleApi(req, res) : handleStatic(req, res)),
     );
     const listening = once(server, "listening");
-    server.listen(options.port, options.host);
+    server.listen(port, host);
     await listening;
-    const url =
-      settings.access.publicOrigin === null
-        ? appUrl(options.host, listeningPort(server.address()))
-        : `${settings.access.publicOrigin}/`;
+    const url = appUrl(host, listeningPort(server.address()));
     options.onReady?.(url);
     await shutdown;
   } finally {

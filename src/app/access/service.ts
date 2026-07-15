@@ -92,9 +92,9 @@ export class AccessService {
   }
   registrationTicket(identity: ClientIdentity) {
     this.requireLocal(identity);
-    const { origin } = this.ceremony.relyingParty();
+    this.ceremony.relyingParty();
     const ticket = this.store.createRegistrationTicket(this.settings.access.challengeTtlMs);
-    return { url: `${origin}/?setup=${encodeURIComponent(ticket)}` };
+    return { ticket };
   }
   async registrationOptions(identity: ClientIdentity, ticket?: string) {
     if (!identity.local) {

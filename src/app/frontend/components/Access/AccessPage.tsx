@@ -55,7 +55,11 @@ export function AccessPage(props: AccessPageProps) {
     status?.local === true &&
     globalThis.location.origin !== status.publicOrigin &&
     [null, "manage"].includes(new URLSearchParams(globalThis.location.search).get("setup"));
-  const setupLink = ticketUrl ?? status?.publicOrigin;
+  const setupLink =
+    ticketUrl ??
+    (status?.publicOrigin
+      ? new URL(globalThis.location.pathname, status.publicOrigin).href
+      : undefined);
   return (
     <main className={page}>
       <section className={card}>

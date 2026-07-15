@@ -27,19 +27,19 @@ const registeredSchema = z.object({
   credentialCount: z.number().int().positive(),
   verified: z.boolean(),
 });
-const ticketSchema = z.object({ url: z.url() });
+const ticketSchema = z.object({ ticket: z.string().min(1) });
 export type AccessStatus = z.infer<typeof accessStatusSchema>;
 export async function accessStatus() {
-  return request("/api/access", accessStatusSchema);
+  return request("api/access", accessStatusSchema);
 }
 export async function login() {
   requireWebAuthn();
-  const { options } = await request("/api/access/login/options", loginOptionsSchema, {
+  const { options } = await request("api/access/login/options", loginOptionsSchema, {
     body: "{}",
     method: "POST",
   });
   const response = await startAuthentication({ optionsJSON: options });
-  return request("/api/access/login", authenticatedSchema, {
+  return request("api/access/login", authenticatedSchema, {
     body: JSON.stringify(response),
     method: "POST",
   });
@@ -47,7 +47,7 @@ export async function login() {
 export async function register(ticket?: string) {
   requireWebAuthn();
   const { options, origin } = await request(
-    "/api/access/register/options",
+    "api/access/register/options",
     registrationOptionsSchema,
     {
       body: JSON.stringify(ticket ? { ticket } : {}),
@@ -58,20 +58,20 @@ export async function register(ticket?: string) {
     throw new Error(`请通过 ${origin} 打开 WebUI 后注册通行密钥`);
   }
   const response = await startRegistration({ optionsJSON: options });
-  return request("/api/access/register", registeredSchema, {
+  return request("api/access/register", registeredSchema, {
     body: JSON.stringify(response),
     method: "POST",
   });
 }
 export async function registrationTicket() {
-  return request("/api/access/register/ticket", ticketSchema, {
+  return request("api/access/register/ticket", ticketSchema, {
     body: "{}",
     method: "POST",
   });
 }
 
 export async function logout() {
-  return request("/api/access/logout", authenticatedSchema, {
+  return request("api/access/logout", authenticatedSchema, {
     body: "{}",
     method: "POST",
   });

@@ -29,6 +29,7 @@ test("settings yaml resolves AppData data directory", () => {
     mkdirSync(settings.paths.dataDir, { recursive: true });
     expect(settings.paths.dataDir).toBe(resolve(appDataRoot(), "omity-agent"));
     expect(settings.model.reasoning_effort).toBe("medium");
+    expect(settings.server).toEqual({ host: "127.0.0.1", port: 3030 });
     expect(settings.toolOutput.maxTokens).toBe(8192);
     expect(settings.agent.systemPrompt).toBe("test");
     expect(settings.skills.usagePrompt).toBe("use skills");

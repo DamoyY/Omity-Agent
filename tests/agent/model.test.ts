@@ -63,6 +63,7 @@ function makeSettings(api: ModelApi): Settings {
       timeoutMs: 1000,
     },
     paths: { dataDir: "data" },
+    server: { host: "127.0.0.1", port: 3030 },
     skills: {
       directory: "~/.agents/skills",
       enabled: false,

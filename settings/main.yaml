@@ -2,6 +2,11 @@
 paths:
   dataDir: ${appData}/omity-agent
 
+# WebUI 监听地址与端口；反向代理部署时应仅监听本机地址。
+server:
+  host: 127.0.0.1
+  port: 3030
+
 # 公网访问控制。publicOrigin 填写反向代理暴露的 HTTPS Origin，例如 https://omity.example.com。
 # 启用 publicOrigin 时必须填写 trustedProxies；代理需保留 Host 并覆盖或正确追加 X-Forwarded-For。
 # 客户端地址链从右向左解析，取最近的非可信地址。

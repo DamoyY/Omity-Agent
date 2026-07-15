@@ -43,6 +43,10 @@ export interface Settings {
   paths: {
     dataDir: string;
   };
+  server: {
+    host: string;
+    port: number;
+  };
   access: {
     publicOrigin: string | null;
     trustedProxies: string[];
