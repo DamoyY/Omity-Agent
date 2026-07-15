@@ -9,7 +9,6 @@ export function resetSessionStorage(db: Database, sessionId: string, workspace: 
   db.query("DELETE FROM host_leases").run();
   clearStreamEvents(db, sessionId);
   db.query("DELETE FROM messages WHERE session_id = ?").run(sessionId);
-  db.query("DELETE FROM message_blobs").run();
   db.query("DELETE FROM queue WHERE session_id = ?").run(sessionId);
   db.query("DELETE FROM sessions WHERE id = ?").run(sessionId);
   createSessionRecord(db, sessionId, workspace);

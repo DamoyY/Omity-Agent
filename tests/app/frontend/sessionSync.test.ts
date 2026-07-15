@@ -19,7 +19,6 @@ test("SSE closes after the first network error instead of reconnecting", () => {
   const created: TestEventSource[] = [];
   class TestEventSource extends EventTarget {
     close = mock(() => undefined);
-
     constructor() {
       super();
       created.push(this);

@@ -6,19 +6,23 @@ import type {
   SerializerProtocol,
 } from "@langchain/langgraph-checkpoint";
 import type { CheckpointRow, WriteJson } from "./sql";
-import { hydrateCheckpoint, hydratePendingValue } from "./messageRefs";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
-import { deserialize } from "./serde";
+import { hydrateCheckpoint } from "./messageRefs";
+import { hydratePendingValue } from "./pendingMessages";
+import { loadMessageRows } from "../infrastructure/database/records/messages/history";
+import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { z } from "zod";
 
 interface TupleContext {
   db: Database;
   serde: SerializerProtocol;
+  sessionId: string;
 }
 const writeRowSchema = z.looseObject({
   channel: z.string(),
   idx: z.number(),
+  message_ids: z.array(z.number()),
   task_id: z.string(),
   type: z.string(),
   value: z.string(),
@@ -46,21 +50,13 @@ export async function rowToTuple(
 ): Promise<CheckpointTuple> {
   const checkpoint = hydrateCheckpoint(
     ctx.db,
-    parseCheckpoint(await deserialize(ctx.serde, row.type, row.checkpoint)),
+    ctx.sessionId,
+    parseCheckpoint(await ctx.serde.loadsTyped(row.type, row.checkpoint)),
   );
   return {
     checkpoint,
     config,
-    metadata: parseCheckpointMetadata(await deserialize(ctx.serde, row.type, row.metadata)),
-    parentConfig: row.parent_checkpoint_id
-      ? {
-          configurable: {
-            checkpoint_id: row.parent_checkpoint_id,
-            checkpoint_ns: row.checkpoint_ns,
-            thread_id: row.thread_id,
-          },
-        }
-      : undefined,
+    metadata: parseCheckpointMetadata(await ctx.serde.loadsTyped(row.type, row.metadata)),
     pendingWrites: await pendingWrites(row, ctx),
   };
 }
@@ -88,7 +84,10 @@ async function pendingWrites(
       async (write): Promise<CheckpointPendingWrite> => [
         write.task_id,
         write.channel,
-        hydratePendingValue(ctx.db, await deserialize(ctx.serde, write.type, write.value)),
+        hydratePendingValue(
+          await ctx.serde.loadsTyped(write.type, write.value),
+          messageRowsToChatMessages(loadMessageRows(ctx.db, write.message_ids)),
+        ),
       ],
     ),
   );

@@ -25,7 +25,6 @@ export function createApiController(overrides: Partial<ApiController> = {}): Api
   };
   return { ...controller, ...overrides };
 }
-
 function notConfigured(): never {
   throw new Error("测试未配置此控制器方法");
 }

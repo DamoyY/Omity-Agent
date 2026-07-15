@@ -87,6 +87,29 @@ test("pending writes keep deterministic order and per-channel conflicts", async 
     ["task-b", "messages", "old message"],
   ]);
 });
+test("keeps one recovery head and causally drains pending writes", async () => {
+  const { db, saver } = openSaver();
+  db.createSession("session", dirs.at(-1) ?? "");
+  const first = await putCheckpoint(saver, "thread", "", checkpointId(1));
+  const pending = saver.putWrites(first, [["messages", "pending"]], "task");
+  const advanced = saver.put(first, checkpoint(checkpointId(2)), {
+    parents: {},
+    source: "loop",
+    step: 1,
+  });
+  await Promise.all([pending, advanced]);
+  expect(rowCount(db.db, "checkpoints")).toBe(1);
+  expect(rowCount(db.db, "writes")).toBe(0);
+  const latest = await saver.getTuple({ configurable: { thread_id: "thread" } });
+  expect(latest?.checkpoint.id).toBe(checkpointId(2));
+  expect(saver.getTuple(first)).rejects.toThrow("历史 checkpoint 不可用");
+  expect(
+    Array.fromAsync(saver.list({ configurable: { thread_id: "thread" } }, { before: first })),
+  ).rejects.toThrow("不支持 checkpoint 历史游标");
+  expect(saver.getDeltaChannelHistory({ channels: ["messages"], config: first })).rejects.toThrow(
+    "不支持 DeltaChannel 历史",
+  );
+});
 function putCheckpoint(saver: BunSqliteSaver, threadId: string, checkpointNs: string, id: string) {
   return saver.put(
     { configurable: { checkpoint_ns: checkpointNs, thread_id: threadId } },
@@ -106,4 +129,7 @@ function checkpoint(id: string) {
 }
 function checkpointId(index: number) {
   return `00000000-0000-6000-8000-${index.toString().padStart(12, "0")}`;
+}
+function rowCount(db: AgentDatabase["db"], table: "checkpoints" | "writes") {
+  return db.query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM ${table}`).get()?.count;
 }

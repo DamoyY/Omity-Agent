@@ -65,6 +65,7 @@ function finalizeRun(ctx: HostContext, run: QueueRun, status: "done" | "canceled
     }
     deleteThreadData(ctx.db.db, run.threadId);
   })();
+  ctx.db.requestStorageReclaim();
 }
 export function setRunStatus(
   ctx: HostContext,

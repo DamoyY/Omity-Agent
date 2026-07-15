@@ -5,27 +5,23 @@ import {
   mapStoredMessagesToChatMessages,
 } from "@langchain/core/messages";
 import {
-  type StoredMessageRef,
-  loadMessagesByRefs,
-  messageRef,
-  persistMessageBlob,
-} from "../infrastructure/database/records/messages/blobStore";
+  loadMessageBySourceId,
+  loadMessages,
+} from "../infrastructure/database/records/messages/history";
 import type { Checkpoint } from "@langchain/langgraph-checkpoint";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
-import { syncMessages } from "../infrastructure/database/records/messages/history";
+import { syncMessages } from "../infrastructure/database/records/messages/sync";
 
-const messageRefsKey = "__omity_message_refs__";
-const storedMessageRefKey = "__omity_stored_message_ref__";
-interface MessageRefs {
-  [messageRefsKey]: StoredMessageRef[];
-  shape: "array" | "single";
-}
+const historyMarkerKey = "__omity_message_history__";
+const storedMessageMarkerKey = "__omity_stored_message__";
+
 export function normalizeCheckpoint(checkpoint: Checkpoint) {
-  const { messages } = checkpoint.channel_values;
-  const normalizedMessages = isMessageArray(messages) ? messages : undefined;
-  if (normalizedMessages) {
-    ensureMessageIds(normalizedMessages);
+  const current = checkpoint.channel_values["messages"];
+  const start = normalizeStart(checkpoint.channel_values["__start__"]);
+  const messages = isMessageArray(current) ? current : start.messages;
+  if (messages) {
+    ensureMessageIds(messages);
   }
   const plan = normalizeHookPlan(checkpoint.channel_values["hookPlan"]);
   return {
@@ -33,103 +29,75 @@ export function normalizeCheckpoint(checkpoint: Checkpoint) {
       ...checkpoint,
       channel_values: {
         ...checkpoint.channel_values,
-        ...(normalizedMessages ? { messages: messageRefs(normalizedMessages, "array") } : {}),
-        ...(plan.value === undefined ? {} : { hookPlan: plan.value }),
+        ...(isMessageArray(current) ? { messages: historyMarker() } : {}),
+        ...(start.value === undefined ? {} : { __start__: start.value }),
+        ...(plan === undefined ? {} : { hookPlan: plan }),
       },
     },
-    messages: normalizedMessages,
-    referencedMessages: plan.messages,
+    messages,
   };
 }
+
 export function persistCheckpointMessages(
   db: Database,
   sessionId: string,
   messages: BaseMessage[] | undefined,
-  referencedMessages: BaseMessage[],
 ) {
   if (messages) {
     syncMessages(db, sessionId, messages);
   }
-  for (const message of referencedMessages) {
-    persistMessageBlob(db, message);
-  }
 }
-export function hydrateCheckpoint(db: Database, checkpoint: Checkpoint) {
-  const marker = parseMessageRefs(checkpoint.channel_values["messages"]);
-  const hydrated: Checkpoint = {
+
+export function hydrateCheckpoint(db: Database, sessionId: string, checkpoint: Checkpoint) {
+  const history = () => loadMessages(db, sessionId);
+  const start = hydrateStart(checkpoint.channel_values["__start__"], history);
+  const marker = isHistoryMarker(checkpoint.channel_values["messages"]);
+  return {
     ...checkpoint,
     channel_values: {
       ...checkpoint.channel_values,
-      ...(marker ? { messages: loadMessagesByRefs(db, marker.refs) } : {}),
+      ...(marker ? { messages: history() } : {}),
+      ...(start === undefined ? {} : { __start__: start }),
+      hookPlan: hydrateHookPlan(db, sessionId, checkpoint.channel_values["hookPlan"]),
     },
   };
-  hydrated.channel_values["hookPlan"] = hydrateHookPlan(db, hydrated.channel_values["hookPlan"]);
-  return hydrated;
 }
-export function normalizePendingValue(value: unknown) {
-  if (BaseMessage.isInstance(value)) {
-    ensureMessageIds([value]);
-    return { messages: [value], value: messageRefs([value], "single") };
-  }
-  if (isMessageArray(value)) {
-    ensureMessageIds(value);
-    return { messages: value, value: messageRefs(value, "array") };
-  }
-  const plan = normalizeHookPlan(value);
-  return plan.messages.length > 0 ? { messages: plan.messages, value: plan.value } : { value };
-}
-export function persistPendingMessages(db: Database, messages: BaseMessage[] | undefined) {
-  for (const message of messages ?? []) {
-    persistMessageBlob(db, message);
-  }
-}
-export function hydratePendingValue(db: Database, value: unknown) {
-  const marker = parseMessageRefs(value);
-  if (!marker) {
-    return hydrateHookPlan(db, value);
-  }
-  const messages = loadMessagesByRefs(db, marker.refs);
-  if (marker.shape === "array") {
-    return messages;
-  }
-  const [message] = messages;
-  if (!message) {
-    throw new Error("checkpoint 单消息引用为空");
-  }
-  return message;
-}
-function messageRefs(messages: BaseMessage[], shape: MessageRefs["shape"]): MessageRefs {
-  return {
-    [messageRefsKey]: messages.map(messageRef),
-    shape,
-  };
-}
-function parseMessageRefs(value: unknown) {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const refs = value[messageRefsKey];
-  const { shape } = value;
-  return Array.isArray(refs) &&
-    refs.every(isMessageRef) &&
-    (shape === "array" || shape === "single")
-    ? { refs, shape }
-    : undefined;
-}
-function ensureMessageIds(messages: BaseMessage[]) {
+
+export function ensureMessageIds(messages: BaseMessage[]) {
   for (const message of messages) {
     message.id ??= randomUUID();
   }
 }
-function isMessageArray(value: unknown): value is BaseMessage[] {
-  return Array.isArray(value) && value.every((item) => BaseMessage.isInstance(item));
+
+function normalizeStart(value: unknown) {
+  if (!isRecord(value) || !isMessageArray(value["messages"])) {
+    return { messages: undefined, value };
+  }
+  ensureMessageIds(value["messages"]);
+  return {
+    messages: value["messages"],
+    value: { ...value, messages: historyMarker() },
+  };
 }
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+
+function hydrateStart(value: unknown, history: () => BaseMessage[]) {
+  if (!isRecord(value) || !isHistoryMarker(value["messages"])) {
+    return value;
+  }
+  return { ...value, messages: history() };
 }
+
+function historyMarker() {
+  return { [historyMarkerKey]: true };
+}
+
+function isHistoryMarker(value: unknown) {
+  return isRecord(value) && value[historyMarkerKey] === true;
+}
+
 function normalizeHookPlan(value: unknown) {
   if (!isRecord(value) || !isStoredMessage(value["original"])) {
-    return { messages: [] as BaseMessage[], value };
+    return value;
   }
   const [message] = mapStoredMessagesToChatMessages([value["original"]]);
   if (!message) {
@@ -137,36 +105,35 @@ function normalizeHookPlan(value: unknown) {
   }
   ensureMessageIds([message]);
   return {
-    messages: [message],
-    value: {
-      ...value,
-      original: { [storedMessageRefKey]: messageRef(message) },
-    },
+    ...value,
+    original: { [storedMessageMarkerKey]: message.id },
   };
 }
-function hydrateHookPlan(db: Database, value: unknown) {
-  if (!isRecord(value)) {
+
+function hydrateHookPlan(db: Database, sessionId: string, value: unknown) {
+  if (!isRecord(value) || !isRecord(value["original"])) {
     return value;
   }
-  const { original } = value;
-  if (!isRecord(original) || !isMessageRef(original[storedMessageRefKey])) {
+  const sourceId = value["original"][storedMessageMarkerKey];
+  if (typeof sourceId !== "string") {
     return value;
   }
-  const [message] = loadMessagesByRefs(db, [original[storedMessageRefKey]]);
-  if (!message) {
-    throw new Error("Hook plan 原消息正文不存在");
-  }
+  const message = loadMessageBySourceId(db, sessionId, sourceId);
   const [stored] = mapChatMessagesToStoredMessages([message]);
   if (!stored) {
     throw new Error("无法还原 Hook plan 原消息");
   }
   return { ...value, original: stored };
 }
+
+function isMessageArray(value: unknown): value is BaseMessage[] {
+  return Array.isArray(value) && value.every((item) => BaseMessage.isInstance(item));
+}
+
 function isStoredMessage(value: unknown): value is StoredMessage {
   return isRecord(value) && typeof value["type"] === "string" && isRecord(value["data"]);
 }
-function isMessageRef(value: unknown): value is StoredMessageRef {
-  return (
-    isRecord(value) && typeof value["sourceId"] === "string" && typeof value["digest"] === "string"
-  );
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

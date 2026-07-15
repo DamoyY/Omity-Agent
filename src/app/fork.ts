@@ -44,8 +44,8 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
     throw new Error(`Fork 消息 ID 无效：${messageId.toString()}`);
   }
   const query = db.prepare<MessageRow, [string, number]>(
-    `SELECT m.id, m.source_id, b.message_json, m.position, m.created_at
-     FROM messages m JOIN message_blobs b ON b.digest = m.blob_digest
+    `SELECT m.id, m.source_id, m.message_json, m.position, m.created_at
+     FROM messages m
      WHERE m.session_id = ? AND m.id = ? AND m.position IS NOT NULL`,
   );
   let row: MessageRow | null;
@@ -64,8 +64,8 @@ function assertForkPoint(db: Database, sessionId: string, messageId: number) {
 }
 function forkMessages(db: Database, sessionId: string, beforePosition: number) {
   const query = db.prepare<MessageRow, [string, number]>(
-    `SELECT m.id, m.source_id, b.message_json, m.position, m.created_at
-     FROM messages m JOIN message_blobs b ON b.digest = m.blob_digest
+    `SELECT m.id, m.source_id, m.message_json, m.position, m.created_at
+     FROM messages m
      WHERE m.session_id = ? AND m.position < ? ORDER BY m.position`,
   );
   try {

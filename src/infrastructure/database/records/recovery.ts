@@ -10,7 +10,7 @@ import { activeQueueRows, pauseRunRecord } from "./queue/runs";
 import { readControlRecord, writeControlRecord } from "./sessions";
 import type { Database } from "bun:sqlite";
 import type { ErrorDetails } from "../../../failures/details";
-import { pruneMessageBlobs } from "./messages/blobStore";
+import { pruneUnreferencedMessages } from "./messages/history";
 
 export interface InterruptedSessionClaim {
   sessionId: string;
@@ -91,7 +91,7 @@ function cancelActiveRuns(
   } finally {
     removeEvent.finalize();
   }
-  pruneMessageBlobs(db);
+  pruneUnreferencedMessages(db, sessionId);
 }
 export class RecoverableDatabase {
   constructor(readonly db: Database) {}

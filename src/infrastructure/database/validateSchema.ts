@@ -10,7 +10,7 @@ export function assertCoreSchema(db: Database) {
     "id",
     "session_id",
     "source_id",
-    "blob_digest",
+    "message_json",
     "queue_id",
     "position",
     "created_at",
@@ -22,6 +22,33 @@ export function assertCoreSchema(db: Database) {
     "message_id",
     "kind",
     "payload_json",
+  ]);
+  assertColumns(db, "checkpoints", [
+    "thread_id",
+    "checkpoint_ns",
+    "checkpoint_id",
+    "type",
+    "checkpoint",
+    "metadata",
+  ]);
+  assertColumns(db, "writes", [
+    "thread_id",
+    "checkpoint_ns",
+    "checkpoint_id",
+    "task_id",
+    "idx",
+    "channel",
+    "type",
+    "value",
+  ]);
+  assertColumns(db, "write_messages", [
+    "thread_id",
+    "checkpoint_ns",
+    "checkpoint_id",
+    "task_id",
+    "idx",
+    "ordinal",
+    "message_id",
   ]);
 }
 function assertColumns(db: Database, table: string, columns: string[]) {

@@ -33,24 +33,17 @@ export const migrationSql = [
     )
   `,
   `
-    CREATE TABLE IF NOT EXISTS message_blobs (
-      digest TEXT PRIMARY KEY,
-      message_json TEXT NOT NULL
-    )
-  `,
-  `
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
-      blob_digest TEXT NOT NULL,
+      message_json TEXT NOT NULL,
       queue_id INTEGER,
       position INTEGER,
       created_at INTEGER NOT NULL,
-      FOREIGN KEY (session_id) REFERENCES sessions(id),
-      FOREIGN KEY (blob_digest) REFERENCES message_blobs(digest),
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
       FOREIGN KEY (queue_id) REFERENCES queue(id),
-      UNIQUE (session_id, source_id, blob_digest),
+      UNIQUE (session_id, source_id),
       UNIQUE (session_id, position),
       UNIQUE (queue_id)
     )
@@ -98,11 +91,10 @@ export const migrationSql = [
       thread_id TEXT NOT NULL,
       checkpoint_ns TEXT NOT NULL DEFAULT '',
       checkpoint_id TEXT NOT NULL,
-      parent_checkpoint_id TEXT,
-      type TEXT,
-      checkpoint BLOB,
-      metadata BLOB,
-      PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+      type TEXT NOT NULL,
+      checkpoint BLOB NOT NULL,
+      metadata BLOB NOT NULL,
+      PRIMARY KEY (thread_id, checkpoint_ns)
     )
   `,
   `
@@ -113,45 +105,54 @@ export const migrationSql = [
       task_id TEXT NOT NULL,
       idx INTEGER NOT NULL,
       channel TEXT NOT NULL,
-      type TEXT,
-      value BLOB,
+      type TEXT NOT NULL,
+      value BLOB NOT NULL,
       PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
     )
   `,
   `
-    CREATE TABLE IF NOT EXISTS checkpoint_blob_refs (
+    CREATE TABLE IF NOT EXISTS write_messages (
       thread_id TEXT NOT NULL,
-      checkpoint_ns TEXT NOT NULL,
-      checkpoint_id TEXT NOT NULL,
-      digest TEXT NOT NULL,
-      PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, digest),
-      FOREIGN KEY (thread_id, checkpoint_ns, checkpoint_id)
-        REFERENCES checkpoints(thread_id, checkpoint_ns, checkpoint_id)
-        ON DELETE CASCADE,
-      FOREIGN KEY (digest) REFERENCES message_blobs(digest)
-    )
-  `,
-  `
-    CREATE TABLE IF NOT EXISTS write_blob_refs (
-      thread_id TEXT NOT NULL,
-      checkpoint_ns TEXT NOT NULL,
+      checkpoint_ns TEXT NOT NULL DEFAULT '',
       checkpoint_id TEXT NOT NULL,
       task_id TEXT NOT NULL,
       idx INTEGER NOT NULL,
-      digest TEXT NOT NULL,
-      PRIMARY KEY (
-        thread_id, checkpoint_ns, checkpoint_id, task_id, idx, digest
-      ),
+      ordinal INTEGER NOT NULL,
+      message_id INTEGER NOT NULL,
+      PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, ordinal),
       FOREIGN KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
         REFERENCES writes(thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
         ON DELETE CASCADE,
-      FOREIGN KEY (digest) REFERENCES message_blobs(digest)
+      FOREIGN KEY (message_id) REFERENCES messages(id)
     )
   `,
 ] as const;
+const schemaVersion = 1;
+
 export function applySchema(db: Database) {
-  for (const sql of migrationSql) {
-    db.run(sql);
+  const version = db.query<{ user_version: number }, []>("PRAGMA user_version").get()?.user_version;
+  if (version === schemaVersion) {
+    assertCoreSchema(db);
+    return;
   }
+  if (version !== 0 || hasUserTables(db)) {
+    throw new Error("数据库结构版本不兼容，请新建会话数据库");
+  }
+  db.transaction(() => {
+    for (const sql of migrationSql) {
+      db.run(sql);
+    }
+    db.run(`PRAGMA user_version = ${schemaVersion.toString()}`);
+  })();
   assertCoreSchema(db);
+}
+
+function hasUserTables(db: Database) {
+  return (
+    db
+      .query<{ found: number }, []>(
+        "SELECT 1 AS found FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1",
+      )
+      .get() !== null
+  );
 }

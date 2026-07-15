@@ -23,7 +23,7 @@ import {
   requestToolCancellation,
   takeToolCancellation,
 } from "./records/toolCancellations";
-import { closeDatabase, configureDatabase } from "./connection";
+import { closeDatabase, configureDatabase, reclaimDatabasePages } from "./connection";
 import {
   createSessionRecord,
   hasSessionRecord,
@@ -33,17 +33,19 @@ import {
   touchSessionRecord,
   writeControlRecord,
 } from "./records/sessions";
-import { loadMessages, syncMessages } from "./records/messages/history";
 import type { BaseMessage } from "@langchain/core/messages";
 import { Database } from "bun:sqlite";
 import type { ErrorDetails } from "../../failures/details";
 import { RecoverableDatabase } from "./records/recovery";
 import { applySchema } from "./schema";
+import { loadMessages } from "./records/messages/history";
 import { resetSessionStorage } from "./maintenance";
+import { syncMessages } from "./records/messages/sync";
 
 type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown ? Args : never;
 export class AgentDatabase extends RecoverableDatabase {
   private notify?: (event: StreamEvent) => void;
+  private storageReclaimPending = false;
   constructor(path: string) {
     const db = new Database(path, { create: true, strict: true });
     try {
@@ -65,6 +67,17 @@ export class AgentDatabase extends RecoverableDatabase {
     this.db.transaction(() => {
       resetSessionStorage(this.db, sessionId, workspace);
     })();
+  }
+  requestStorageReclaim() {
+    this.storageReclaimPending = true;
+  }
+  reclaimStorageIfPending() {
+    if (!this.storageReclaimPending) {
+      return true;
+    }
+    const reclaimed = reclaimDatabasePages(this.db);
+    this.storageReclaimPending = !reclaimed;
+    return reclaimed;
   }
   createSession(sessionId: string, workspace: string) {
     createSessionRecord(this.db, sessionId, workspace);

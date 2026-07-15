@@ -14,6 +14,9 @@ export async function hostLoop(ctx: HostContext) {
     }
     if (!item) {
       ctx.observer?.activity?.(ctx.sessionId, "idle");
+      if (!ctx.db.reclaimStorageIfPending()) {
+        ctx.logger.debug("数据库页面回收因并发写入延后");
+      }
       if (ctx.db.control(ctx.sessionId) === "pause_cancel") {
         ctx.db.setControl(ctx.sessionId, "pause");
         ctx.logger.warn("暂停状态收到 cancel，Host 已关闭", {

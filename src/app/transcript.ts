@@ -28,7 +28,6 @@ interface QueueRow {
   user_message_id: number | null;
   root_id: number | null;
 }
-
 interface SequenceRow {
   seq: number;
 }
@@ -48,8 +47,8 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
   const control = db.control(sessionId);
   const messages = db.db
     .query<MessageRow, [string]>(
-      `SELECT m.id, m.source_id, b.message_json, m.queue_id, m.created_at
-       FROM messages m JOIN message_blobs b ON b.digest = m.blob_digest
+      `SELECT m.id, m.source_id, m.message_json, m.queue_id, m.created_at
+       FROM messages m
        WHERE m.session_id = ? AND m.position IS NOT NULL
        ORDER BY m.position`,
     )

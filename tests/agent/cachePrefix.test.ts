@@ -65,6 +65,7 @@ test("Responses HTTP 请求保留完整历史和稳定缓存键", async () => {
     modelKwargs: { instructions: "stable system\n\nstable skills" },
     promptCacheKey: "session-1",
     streaming: false,
+    zdrEnabled: true,
   }).bindTools(configured.modelTools);
   const initial = [new HumanMessage({ content: "inspect", id: "user-1" })];
   const firstResponse = await model.invoke(modelMessages(settings, null, initial));

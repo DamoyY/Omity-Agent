@@ -7,7 +7,6 @@ export interface CheckpointRow {
   thread_id: string;
   checkpoint_ns: string;
   checkpoint_id: string;
-  parent_checkpoint_id: string | null;
   type: string;
   checkpoint: Uint8Array | string;
   metadata: Uint8Array | string;
@@ -19,61 +18,45 @@ export interface WriteJson {
   channel: string;
   type: string;
   value: string;
+  message_ids: number[];
 }
-export const setupSql = [
-  `
-    CREATE TABLE IF NOT EXISTS checkpoints (
-      thread_id TEXT NOT NULL,
-      checkpoint_ns TEXT NOT NULL DEFAULT '',
-      checkpoint_id TEXT NOT NULL,
-      parent_checkpoint_id TEXT,
-      type TEXT NOT NULL,
-      checkpoint BLOB NOT NULL,
-      metadata BLOB NOT NULL,
-      PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
-    )
-  `,
-  `
-    CREATE TABLE IF NOT EXISTS writes (
-      thread_id TEXT NOT NULL,
-      checkpoint_ns TEXT NOT NULL DEFAULT '',
-      checkpoint_id TEXT NOT NULL,
-      task_id TEXT NOT NULL,
-      idx INTEGER NOT NULL,
-      channel TEXT NOT NULL,
-      type TEXT NOT NULL,
-      value BLOB NOT NULL,
-      PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
-    )
-  `,
-] as const;
 export function checkpointSelectColumns() {
   return `
-    SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id,
-      type, checkpoint, metadata,
+    SELECT thread_id, checkpoint_ns, checkpoint_id, type, checkpoint, metadata,
       (
         SELECT json_group_array(json_object(
           'task_id', pw.task_id,
           'idx', pw.idx,
           'channel', pw.channel,
           'type', pw.type,
-          'value', CAST(pw.value AS TEXT)
+          'value', CAST(pw.value AS TEXT),
+          'message_ids', json(pw.message_ids)
         ))
         FROM (
-          SELECT task_id, idx, channel, type, value
-          FROM writes
-          WHERE thread_id = checkpoints.thread_id
-            AND checkpoint_ns = checkpoints.checkpoint_ns
-            AND checkpoint_id = checkpoints.checkpoint_id
-          ORDER BY task_id, idx
-        ) as pw
-      ) as pending_writes`;
+          SELECT w.task_id, w.idx, w.channel, w.type, w.value,
+            COALESCE((
+              SELECT json_group_array(message_id)
+              FROM (
+                SELECT message_id FROM write_messages wm
+                WHERE wm.thread_id = w.thread_id
+                  AND wm.checkpoint_ns = w.checkpoint_ns
+                  AND wm.checkpoint_id = w.checkpoint_id
+                  AND wm.task_id = w.task_id
+                  AND wm.idx = w.idx
+                ORDER BY ordinal
+              )
+            ), '[]') AS message_ids
+          FROM writes w
+          WHERE w.thread_id = checkpoints.thread_id
+            AND w.checkpoint_ns = checkpoints.checkpoint_ns
+            AND w.checkpoint_id = checkpoints.checkpoint_id
+          ORDER BY w.task_id, w.idx
+        ) AS pw
+      ) AS pending_writes`;
 }
-export function selectCheckpoint(withCheckpoint: boolean) {
+export function selectCheckpoint() {
   return `${checkpointSelectColumns()}
-    FROM checkpoints
-    WHERE thread_id = ? AND checkpoint_ns = ?
-    ${withCheckpoint ? "AND checkpoint_id = ?" : "ORDER BY checkpoint_id DESC LIMIT 1"}`;
+    FROM checkpoints WHERE thread_id = ? AND checkpoint_ns = ?`;
 }
 export function filterBinding(value: unknown): SqlBinding {
   if (
@@ -104,26 +87,21 @@ export function requiredConfigString(value: unknown, name: string) {
   return parsed;
 }
 export function buildListQuery(config: RunnableConfig, options?: CheckpointListOptions) {
-  const { limit, before, filter } = options ?? {};
+  const { limit, filter } = options ?? {};
   const clauses: string[] = [];
   const args: SqlBinding[] = [];
-  const thread_id = optionalConfigString(config.configurable?.["thread_id"], "thread_id");
-  const checkpoint_ns = optionalConfigString(
+  const threadId = optionalConfigString(config.configurable?.["thread_id"], "thread_id");
+  const checkpointNs = optionalConfigString(
     config.configurable?.["checkpoint_ns"],
     "checkpoint_ns",
   );
-  if (thread_id) {
+  if (threadId) {
     clauses.push("thread_id = ?");
-    args.push(thread_id);
+    args.push(threadId);
   }
-  if (checkpoint_ns !== undefined) {
+  if (checkpointNs !== undefined) {
     clauses.push("checkpoint_ns = ?");
-    args.push(checkpoint_ns);
-  }
-  const beforeId = optionalConfigString(before?.configurable?.["checkpoint_id"], "checkpoint_id");
-  if (beforeId !== undefined) {
-    clauses.push("checkpoint_id < ?");
-    args.push(beforeId);
+    args.push(checkpointNs);
   }
   const filterRecord = requireRecord(filter ?? {}, "checkpoint filter");
   for (const [key, value] of Object.entries(filterRecord)) {

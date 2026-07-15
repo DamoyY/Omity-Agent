@@ -1,180 +1,123 @@
 import {
+  type ChannelVersions,
   type Checkpoint,
   type CheckpointMetadata,
-  type PendingWrite,
   type SerializerProtocol,
-  WRITES_IDX_MAP,
   copyCheckpoint,
 } from "@langchain/langgraph-checkpoint";
-import { type SqlBinding, optionalConfigString, requiredConfigString } from "./sql";
-import {
-  normalizeCheckpoint,
-  normalizePendingValue,
-  persistCheckpointMessages,
-  persistPendingMessages,
-} from "./messageRefs";
-import {
-  pruneMessageBlobs,
-  replaceCheckpointBlobRefs,
-  replaceWriteBlobRefs,
-} from "../infrastructure/database/records/messages/blobStore";
+import { normalizeCheckpoint, persistCheckpointMessages } from "./messageRefs";
+import { optionalConfigString, requiredConfigString } from "./sql";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
-import { serialize } from "./serde";
+import { pruneUnreferencedMessages } from "../infrastructure/database/records/messages/history";
 
-export async function putCheckpoint(
-  db: Database,
+export interface PreparedCheckpoint {
+  checkpointId: string;
+  checkpointNs: string;
+  checkpointType: string;
+  checkpointValue: Uint8Array;
+  messages?: BaseMessage[];
+  messagesChanged: boolean;
+  metadataValue: Uint8Array;
+  parentCheckpointId?: string;
+  sessionId: string;
+  threadId: string;
+}
+
+export async function prepareCheckpoint(
   serde: SerializerProtocol,
   config: RunnableConfig,
   checkpoint: Checkpoint,
   metadata: CheckpointMetadata,
   sessionId: string,
-): Promise<RunnableConfig> {
-  const thread_id = requiredConfigString(
+  newVersions?: ChannelVersions,
+): Promise<PreparedCheckpoint> {
+  const threadId = requiredConfigString(
     config.configurable?.["thread_id"],
     "config.configurable.thread_id",
   );
-  const checkpoint_ns =
+  const checkpointNs =
     optionalConfigString(config.configurable?.["checkpoint_ns"], "checkpoint_ns") ?? "";
-  const checkpoint_id = optionalConfigString(
+  const parentCheckpointId = optionalConfigString(
     config.configurable?.["checkpoint_id"],
     "checkpoint_id",
   );
   const normalized = normalizeCheckpoint(copyCheckpoint(checkpoint));
-  const [[type1, serializedCheckpoint], [type2, serializedMetadata]] = await Promise.all([
-    serialize(serde, normalized.checkpoint),
-    serialize(serde, metadata),
+  const [[checkpointType, checkpointValue], [metadataType, metadataValue]] = await Promise.all([
+    serde.dumpsTyped(normalized.checkpoint),
+    serde.dumpsTyped(metadata),
   ]);
-  if (type1 !== type2) {
+  if (checkpointType !== metadataType) {
     throw new Error("checkpoint 与 metadata 的序列化类型不一致");
   }
+  return {
+    checkpointId: checkpoint.id,
+    checkpointNs,
+    checkpointType,
+    checkpointValue,
+    messagesChanged: newVersions === undefined || Object.hasOwn(newVersions, "messages"),
+    metadataValue,
+    sessionId,
+    threadId,
+    ...(normalized.messages ? { messages: normalized.messages } : {}),
+    ...(parentCheckpointId ? { parentCheckpointId } : {}),
+  };
+}
+
+export function commitCheckpoint(db: Database, item: PreparedCheckpoint): RunnableConfig {
   db.transaction(() => {
-    persistCheckpointMessages(db, sessionId, normalized.messages, normalized.referencedMessages);
+    const current = db
+      .query<{ checkpoint_id: string }, [string, string]>(
+        "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ? AND checkpoint_ns = ?",
+      )
+      .get(item.threadId, item.checkpointNs);
+    assertCheckpointParent(current?.checkpoint_id, item);
+    if (item.messages && (!current || item.messagesChanged)) {
+      persistCheckpointMessages(db, item.sessionId, item.messages);
+    }
+    db.run(
+      `DELETE FROM writes
+       WHERE thread_id = ? AND checkpoint_ns = ? AND checkpoint_id <> ?`,
+      [item.threadId, item.checkpointNs, item.checkpointId],
+    );
     db.query(
-      "INSERT OR REPLACE INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type, checkpoint, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      `INSERT INTO checkpoints
+         (thread_id, checkpoint_ns, checkpoint_id, type, checkpoint, metadata)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(thread_id, checkpoint_ns) DO UPDATE SET
+         checkpoint_id = excluded.checkpoint_id,
+         type = excluded.type,
+         checkpoint = excluded.checkpoint,
+         metadata = excluded.metadata`,
     ).run(
-      thread_id,
-      checkpoint_ns,
-      checkpoint.id,
-      checkpoint_id ?? null,
-      type1,
-      serializedCheckpoint,
-      serializedMetadata,
+      item.threadId,
+      item.checkpointNs,
+      item.checkpointId,
+      item.checkpointType,
+      item.checkpointValue,
+      item.metadataValue,
     );
-    replaceCheckpointBlobRefs(
-      db,
-      {
-        checkpointId: checkpoint.id,
-        checkpointNs: checkpoint_ns,
-        threadId: thread_id,
-      },
-      [...(normalized.messages ?? []), ...normalized.referencedMessages],
-    );
-    pruneMessageBlobs(db);
+    pruneUnreferencedMessages(db, item.sessionId);
   })();
   return {
-    configurable: { checkpoint_id: checkpoint.id, checkpoint_ns, thread_id },
+    configurable: {
+      checkpoint_id: item.checkpointId,
+      checkpoint_ns: item.checkpointNs,
+      thread_id: item.threadId,
+    },
   };
 }
-export async function putPendingWrites(
-  db: Database,
-  serde: SerializerProtocol,
-  config: RunnableConfig,
-  writes: PendingWrite[],
-  taskId: string,
-) {
-  const thread_id = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
-  const checkpoint_ns =
-    optionalConfigString(config.configurable?.["checkpoint_ns"], "checkpoint_ns") ?? "";
-  const checkpoint_id = requiredConfigString(
-    config.configurable?.["checkpoint_id"],
-    "checkpoint_id",
-  );
-  const replace = db.prepare(
-    `INSERT OR REPLACE INTO writes
-     (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, value)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-  const ignore = db.prepare(
-    `INSERT OR IGNORE INTO writes
-     (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, value)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-  const rows = await pendingWriteRows(
-    serde,
-    writes,
-    thread_id,
-    checkpoint_ns,
-    checkpoint_id,
-    taskId,
-  );
-  try {
-    db.transaction((items: PendingWriteRow[]) => {
-      let changed = false;
-      for (const item of items) {
-        const result = (item.replace ? replace : ignore).run(...item.bindings);
-        if (result.changes === 1) {
-          persistPendingMessages(db, item.messages);
-          replaceWriteBlobRefs(db, item.key, item.messages ?? []);
-          changed = true;
-        }
-      }
-      if (changed) {
-        pruneMessageBlobs(db);
-      }
-    })(rows);
-  } finally {
-    replace.finalize();
-    ignore.finalize();
+
+function assertCheckpointParent(currentId: string | undefined, item: PreparedCheckpoint) {
+  if (
+    currentId === item.checkpointId ||
+    (item.parentCheckpointId === undefined && currentId === undefined) ||
+    item.parentCheckpointId === currentId
+  ) {
+    return;
   }
-}
-interface PendingWriteRow {
-  replace: boolean;
-  bindings: SqlBinding[];
-  key: {
-    threadId: string;
-    checkpointNs: string;
-    checkpointId: string;
-    taskId: string;
-    idx: number;
-  };
-  messages?: BaseMessage[];
-}
-async function pendingWriteRows(
-  serde: SerializerProtocol,
-  writes: PendingWrite[],
-  threadId: string,
-  checkpointNs: string,
-  checkpointId: string,
-  taskId: string,
-) {
-  return Promise.all(
-    writes.map(async ([channel, value], idx) => {
-      const normalized = normalizePendingValue(value);
-      const [type, serialized] = await serialize(serde, normalized.value);
-      const writeIndex = WRITES_IDX_MAP[channel] ?? idx;
-      return {
-        key: {
-          checkpointId,
-          checkpointNs,
-          idx: writeIndex,
-          taskId,
-          threadId,
-        },
-        replace: channel in WRITES_IDX_MAP,
-        ...(normalized.messages ? { messages: normalized.messages } : {}),
-        bindings: [
-          threadId,
-          checkpointNs,
-          checkpointId,
-          taskId,
-          writeIndex,
-          channel,
-          type,
-          serialized,
-        ],
-      };
-    }),
+  throw new Error(
+    `checkpoint head 冲突：期望 ${item.parentCheckpointId ?? "empty"}，实际 ${currentId ?? "empty"}`,
   );
 }

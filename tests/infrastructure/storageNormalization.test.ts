@@ -13,6 +13,10 @@ test("one database stores each message body once and clears terminal recovery da
   db.appendUser("session", userText);
   db.startQueue("session", required(db.nextQueue("session")));
   const toolOutput = new ToolMessage({
+    artifact: [
+      { data: { value: toolText }, type: "mcp_structured_content" },
+      { data: "discarded-artifact", type: "resource" },
+    ],
     content: toolText,
     id: "hook-output",
     tool_call_id: "hook-call",
@@ -61,13 +65,16 @@ test("one database stores each message body once and clears terminal recovery da
   for (const table of [
     "sessions",
     "queue",
-    "message_blobs",
     "messages",
     "checkpoints",
     "writes",
+    "write_messages",
     "hook_usage",
   ]) {
     expect(tables.has(table)).toBe(true);
+  }
+  for (const table of ["message_blobs", "checkpoint_blob_refs", "write_blob_refs"]) {
+    expect(tables.has(table)).toBe(false);
   }
   expect(storedOccurrences(db.db, userText)).toBe(1);
   expect(storedOccurrences(db.db, assistantText)).toBe(1);
@@ -77,7 +84,14 @@ test("one database stores each message body once and clears terminal recovery da
   expect(rawRecoveryContains(db.db, assistantText)).toBe(false);
   expect(rawRecoveryContains(db.db, toolText)).toBe(false);
   const loaded = required(await saver.getTuple(saved));
-  expect(required(loaded.pendingWrites)[0]?.[2]).toEqual([toolOutput]);
+  const recoveredValue = required(loaded.pendingWrites)[0]?.[2];
+  if (!Array.isArray(recoveredValue) || !ToolMessage.isInstance(recoveredValue[0])) {
+    throw new Error("pending tool message 未恢复");
+  }
+  expect(recoveredValue[0].artifact).toEqual([
+    { data: { value: toolText }, type: "mcp_structured_content" },
+  ]);
+  expect(storedOccurrences(db.db, "discarded-artifact")).toBe(0);
   expect(required(loaded.pendingWrites)[1]?.[2]).toEqual({
     kind: "tools",
     original: storedAssistant,
@@ -114,7 +128,7 @@ function storedOccurrences(db: ReturnType<typeof makeDb>["db"], text: string) {
   return required(
     db
       .query<{ count: number }, [string]>(
-        "SELECT COUNT(*) AS count FROM message_blobs WHERE instr(message_json, ?) > 0",
+        "SELECT COUNT(*) AS count FROM messages WHERE instr(message_json, ?) > 0",
       )
       .get(text),
   ).count;

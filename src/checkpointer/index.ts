@@ -1,9 +1,11 @@
 import {
   BaseCheckpointSaver,
+  type ChannelVersions,
   type Checkpoint,
   type CheckpointListOptions,
   type CheckpointMetadata,
   type CheckpointTuple,
+  type DeltaChannelHistory,
   type PendingWrite,
   type SerializerProtocol,
 } from "@langchain/langgraph-checkpoint";
@@ -14,16 +16,17 @@ import {
   optionalConfigString,
   requiredConfigString,
   selectCheckpoint,
-  setupSql,
 } from "./sql";
-import { putCheckpoint, putPendingWrites } from "./write";
+import { commitCheckpoint, prepareCheckpoint } from "./write";
+import { commitPendingWrites, preparePendingWrites } from "./pendingWrite";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { deleteThreadData } from "./lifecycle";
 import { rowToTuple } from "./tuple";
 
 export class BunSqliteSaver extends BaseCheckpointSaver {
-  private isSetup = false;
+  private readonly commitTails = new Map<string, Promise<void>>();
+
   constructor(
     readonly db: Database,
     private readonly sessionId?: string,
@@ -31,48 +34,44 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
   ) {
     super(serde);
   }
-  protected setup() {
-    if (this.isSetup) {
-      return;
-    }
-    for (const sql of setupSql) {
-      this.db.run(sql);
-    }
-    this.isSetup = true;
-  }
+
   async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
-    this.setup();
-    const thread_id = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
-    const checkpoint_ns =
+    const key = operationKey(config);
+    await this.commitTails.get(key);
+    const threadId = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
+    const checkpointNs =
       optionalConfigString(config.configurable?.["checkpoint_ns"], "checkpoint_ns") ?? "";
-    const checkpoint_id = optionalConfigString(
+    const requestedId = optionalConfigString(
       config.configurable?.["checkpoint_id"],
       "checkpoint_id",
     );
-    const sql = selectCheckpoint(Boolean(checkpoint_id));
-    const query = this.db.query<CheckpointRow, SqlBinding[]>(sql);
-    const row = checkpoint_id
-      ? query.get(thread_id, checkpoint_ns, checkpoint_id)
-      : query.get(thread_id, checkpoint_ns);
+    const row = this.db
+      .query<CheckpointRow, SqlBinding[]>(selectCheckpoint())
+      .get(threadId, checkpointNs);
     if (!row) {
       return undefined;
     }
-    const finalConfig = checkpoint_id
-      ? config
-      : {
-          configurable: {
-            checkpoint_id: row.checkpoint_id,
-            checkpoint_ns,
-            thread_id: row.thread_id,
-          },
-        };
+    if (requestedId !== undefined && requestedId !== row.checkpoint_id) {
+      throw new Error(`历史 checkpoint 不可用：${requestedId}`);
+    }
+    const finalConfig = {
+      configurable: {
+        checkpoint_id: row.checkpoint_id,
+        checkpoint_ns: row.checkpoint_ns,
+        thread_id: row.thread_id,
+      },
+    };
     return this.decodeRow(row, finalConfig);
   }
+
   async *list(
     config: RunnableConfig,
     options?: CheckpointListOptions,
   ): AsyncGenerator<CheckpointTuple> {
-    this.setup();
+    if (options?.before) {
+      throw new Error("当前恢复存储不支持 checkpoint 历史游标");
+    }
+    await Promise.all(this.commitTails.values());
     const { sql, args } = buildListQuery(config, options);
     for (const row of this.db.query<CheckpointRow, SqlBinding[]>(sql).all(...args)) {
       yield await this.decodeRow(row, {
@@ -84,36 +83,88 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       });
     }
   }
-  async put(
+
+  put(
     config: RunnableConfig,
     checkpoint: Checkpoint,
     metadata: CheckpointMetadata,
+    newVersions?: ChannelVersions,
   ): Promise<RunnableConfig> {
-    this.setup();
-    return putCheckpoint(
-      this.db,
+    const key = operationKey(config);
+    const prepared = prepareCheckpoint(
       this.serde,
       config,
       checkpoint,
       metadata,
       this.resolveSessionId(config),
+      newVersions,
     );
+    return this.enqueue(key, prepared, (item) => commitCheckpoint(this.db, item));
   }
-  async putWrites(config: RunnableConfig, writes: PendingWrite[], taskId: string): Promise<void> {
-    this.setup();
-    await putPendingWrites(this.db, this.serde, config, writes, taskId);
+
+  putWrites(config: RunnableConfig, writes: PendingWrite[], taskId: string): Promise<void> {
+    const key = operationKey(config);
+    const prepared = preparePendingWrites(
+      this.serde,
+      config,
+      writes,
+      taskId,
+      this.resolveSessionId(config),
+    );
+    return this.enqueue(key, prepared, (item) => commitPendingWrites(this.db, item));
   }
-  deleteThread(threadId: string): Promise<void> {
-    this.setup();
+
+  async deleteThread(threadId: string): Promise<void> {
+    const pending = [...this.commitTails.entries()]
+      .filter(([key]) => key.startsWith(`${threadId}\0`))
+      .map(([, tail]) => tail);
+    await Promise.all(pending);
     deleteThreadData(this.db, threadId);
-    return Promise.resolve();
   }
+
+  override async getDeltaChannelHistory(options: {
+    config: RunnableConfig;
+    channels: string[];
+  }): Promise<Record<string, DeltaChannelHistory>> {
+    if (options.channels.length > 0) {
+      throw new Error("当前恢复存储不支持 DeltaChannel 历史");
+    }
+    return {};
+  }
+
   private decodeRow(row: CheckpointRow, config: RunnableConfig): Promise<CheckpointTuple> {
     return rowToTuple(row, config, {
       db: this.db,
       serde: this.serde,
+      sessionId: this.resolveSessionId(config),
     });
   }
+
+  private enqueue<Prepared, Result>(
+    key: string,
+    prepared: Promise<Prepared>,
+    commit: (value: Prepared) => Result,
+  ): Promise<Result> {
+    const previous = this.commitTails.get(key) ?? Promise.resolve();
+    const result = commitAfter(previous, prepared, commit);
+    const tail = waitForResult(result);
+    this.commitTails.set(key, tail);
+    void this.removeSettledTail(key, tail);
+    return result;
+  }
+
+  private async removeSettledTail(key: string, tail: Promise<void>) {
+    try {
+      await tail;
+    } catch {
+      return;
+    } finally {
+      if (this.commitTails.get(key) === tail) {
+        this.commitTails.delete(key);
+      }
+    }
+  }
+
   private resolveSessionId(config: RunnableConfig) {
     if (this.sessionId) {
       return this.sessionId;
@@ -121,4 +172,25 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     const threadId = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
     return threadId.split(":", 1)[0] ?? threadId;
   }
+}
+
+async function commitAfter<Prepared, Result>(
+  previous: Promise<void>,
+  prepared: Promise<Prepared>,
+  commit: (value: Prepared) => Result,
+) {
+  const value = await prepared;
+  await previous;
+  return commit(value);
+}
+
+async function waitForResult(value: Promise<unknown>) {
+  await value;
+}
+
+function operationKey(config: RunnableConfig) {
+  const threadId = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
+  const checkpointNs =
+    optionalConfigString(config.configurable?.["checkpoint_ns"], "checkpoint_ns") ?? "";
+  return `${threadId}\0${checkpointNs}`;
 }

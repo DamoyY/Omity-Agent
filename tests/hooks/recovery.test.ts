@@ -1,7 +1,7 @@
 import { type StructuredToolInterface, tool } from "@langchain/core/tools";
 import { expect, test } from "bun:test";
-import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { AIMessage } from "@langchain/core/messages";
+import { AgentDatabase } from "../../src/infrastructure/database/agentDatabase";
 import { BunSqliteSaver } from "../../src/checkpointer";
 import { HookRuntime } from "../../src/hooks/runtime";
 import type { HostContext } from "../../src/runtime/context";

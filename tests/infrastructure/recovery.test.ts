@@ -153,14 +153,15 @@ test("pauseRun is atomic, preserves pending work and omitted errors", () => {
 });
 function insertThreadData(db: ReturnType<typeof makeDb>, threadId: string) {
   db.db.run(
-    `INSERT INTO checkpoints (thread_id, checkpoint_id)
-     VALUES (?, 'checkpoint')`,
+    `INSERT INTO checkpoints
+     (thread_id, checkpoint_id, type, checkpoint, metadata)
+     VALUES (?, 'checkpoint', 'json', '{}', '{}')`,
     [threadId],
   );
   db.db.run(
     `INSERT INTO writes
-     (thread_id, checkpoint_id, task_id, idx, channel)
-     VALUES (?, 'checkpoint', 'task', 0, 'messages')`,
+     (thread_id, checkpoint_id, task_id, idx, channel, type, value)
+     VALUES (?, 'checkpoint', 'task', 0, 'messages', 'json', 'null')`,
     [threadId],
   );
 }

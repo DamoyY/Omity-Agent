@@ -37,17 +37,16 @@ test("initial conversation keeps history outside the pending queue", () => {
   ]);
   db.close();
 });
-test("preserves full LangChain message structure", () => {
+test("persists only replay and display message fields", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   const reasoning = {
-    encrypted_content: "sealed",
     id: "rs_1",
     summary: [{ text: "visible summary", type: "summary_text" }],
     type: "reasoning",
   };
   const output = [
-    reasoning,
+    { ...reasoning, encrypted_content: "sealed" },
     {
       content: [{ annotations: [], text: "答案", type: "output_text" }],
       role: "assistant",
@@ -59,18 +58,29 @@ test("preserves full LangChain message structure", () => {
     new AIMessage({
       additional_kwargs: { reasoning },
       content: [{ annotations: [], text: "答案", type: "text" }],
-      response_metadata: { model_provider: "openai", output },
+      response_metadata: {
+        instructions: "do not persist",
+        model_provider: "openai",
+        output,
+        tools: [{ name: "do not persist" }],
+      },
     }),
   ]);
   const restored = db.history("123");
   expect(restored.map((message) => message.text)).toEqual(["问题", "答案"]);
   const assistant = required(restored[1]);
   expect(assistant).toBeInstanceOf(AIMessage);
-  expect(assistant.additional_kwargs["reasoning"]).toEqual(reasoning);
-  expect(assistant.response_metadata).toEqual({
-    model_provider: "openai",
-    output,
+  expect(assistant.additional_kwargs["reasoning"]).toEqual({
+    ...reasoning,
+    encrypted_content: "sealed",
   });
+  expect(assistant.response_metadata).toEqual({});
+  const stored = required(
+    db.db
+      .query<{ message_json: string }, []>("SELECT message_json FROM messages WHERE position = 1")
+      .get(),
+  ).message_json;
+  expect(stored).not.toContain("do not persist");
   db.close();
 });
 test("persists only transient stream deltas", () => {

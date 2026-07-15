@@ -1,10 +1,13 @@
 import { AIMessage, type BaseMessage, HumanMessage } from "@langchain/core/messages";
-import { type MessageRow, messageRowsToChatMessages } from "./serialization";
-import { persistMessageBlob, pruneMessageBlobs } from "./blobStore";
+import { type MessageStorageMode, messageInsert, messageRowsToChatMessages } from "./serialization";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 
-const messageColumns = "b.message_json AS message_json, m.source_id AS source_id";
+interface StoredRow {
+  message_json: string;
+  source_id: string;
+}
+
 export function insertUserMessage(
   db: Database,
   sessionId: string,
@@ -19,9 +22,11 @@ export function insertUserMessage(
     queueId,
   );
 }
+
 export function queueMessageId(sessionId: string, queueId: number) {
   return `queue:${sessionId}:${queueId.toString()}`;
 }
+
 export function messageQueueId(sessionId: string, message: BaseMessage) {
   if (message.type !== "human" || !message.id) {
     return undefined;
@@ -39,6 +44,7 @@ export function messageQueueId(sessionId: string, message: BaseMessage) {
   }
   return queueId;
 }
+
 export function appendAssistantMessage(db: Database, sessionId: string, content: string) {
   storeMessage(
     db,
@@ -47,36 +53,50 @@ export function appendAssistantMessage(db: Database, sessionId: string, content:
     nextPosition(db, sessionId),
   );
 }
-export function syncMessages(db: Database, sessionId: string, messages: BaseMessage[]) {
-  for (const message of messages) {
-    message.id ??= randomUUID();
-  }
-  const tx = db.transaction(() => {
-    db.query("UPDATE messages SET position = NULL, queue_id = NULL WHERE session_id = ?").run(
-      sessionId,
-    );
-    const ids = messages.map((message, position) =>
-      storeMessage(db, sessionId, message, position, messageQueueId(sessionId, message)),
-    );
-    pruneUnreferencedMessages(db, sessionId);
-    return ids;
-  });
-  return tx();
-}
+
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
-  const query = db.prepare<MessageRow, [string]>(
-    `SELECT ${messageColumns} FROM messages m
-     JOIN message_blobs b ON b.digest = m.blob_digest
-     WHERE m.session_id = ? AND m.position IS NOT NULL ORDER BY m.position`,
-  );
-  let rows: MessageRow[];
-  try {
-    rows = query.all(sessionId);
-  } finally {
-    query.finalize();
-  }
+  const rows = db
+    .query<StoredRow, [string]>(
+      `SELECT source_id, message_json FROM messages
+       WHERE session_id = ? AND position IS NOT NULL ORDER BY position`,
+    )
+    .all(sessionId);
   return messageRowsToChatMessages(rows);
 }
+
+export function loadMessageRows(db: Database, ids: number[]) {
+  const select = db.prepare<StoredRow, [number]>(
+    "SELECT source_id, message_json FROM messages WHERE id = ?",
+  );
+  try {
+    return ids.map((id) => {
+      const row = select.get(id);
+      if (!row) {
+        throw new Error(`待恢复消息不存在：${id.toString()}`);
+      }
+      return row;
+    });
+  } finally {
+    select.finalize();
+  }
+}
+
+export function loadMessageBySourceId(db: Database, sessionId: string, sourceId: string) {
+  const row = db
+    .query<StoredRow, [string, string]>(
+      "SELECT source_id, message_json FROM messages WHERE session_id = ? AND source_id = ?",
+    )
+    .get(sessionId, sourceId);
+  if (!row) {
+    throw new Error(`消息不存在：${sourceId}`);
+  }
+  const [message] = messageRowsToChatMessages([row]);
+  if (!message) {
+    throw new Error(`消息无法还原：${sourceId}`);
+  }
+  return message;
+}
+
 export function storeMessage(
   db: Database,
   sessionId: string,
@@ -84,36 +104,64 @@ export function storeMessage(
   position?: number,
   queueId?: number,
   createdAt?: number,
+  mode: MessageStorageMode = "history",
 ) {
   message.id ??= randomUUID();
-  const ref = persistMessageBlob(db, message);
-  db.query(
-    `INSERT INTO messages
-       (session_id, source_id, blob_digest, queue_id, position, created_at)
-       VALUES (?, ?, ?, ?, ?, COALESCE(?, unixepoch()))
-       ON CONFLICT(session_id, source_id, blob_digest) DO UPDATE SET
-         queue_id = COALESCE(excluded.queue_id, messages.queue_id),
-         position = COALESCE(excluded.position, messages.position)`,
-  ).run(sessionId, ref.sourceId, ref.digest, queueId ?? null, position ?? null, createdAt ?? null);
+  return storePreparedMessage(
+    db,
+    sessionId,
+    messageInsert(message, mode),
+    position,
+    queueId,
+    createdAt,
+  );
+}
+
+export function pruneUnreferencedMessages(db: Database, sessionId?: string) {
+  db.run(
+    `DELETE FROM messages
+     WHERE position IS NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM write_messages WHERE write_messages.message_id = messages.id
+       )
+       AND (? IS NULL OR session_id = ?)`,
+    [sessionId ?? null, sessionId ?? null],
+  );
+}
+
+export function storePreparedMessage(
+  db: Database,
+  sessionId: string,
+  item: ReturnType<typeof messageInsert>,
+  position?: number,
+  queueId?: number,
+  createdAt?: number,
+) {
   const row = db
-    .query<{ id: number }, [string, string, string]>(
-      `SELECT id FROM messages
-       WHERE session_id = ? AND source_id = ? AND blob_digest = ?`,
+    .query<{ id: number }, [string, string, string, number | null, number | null, number | null]>(
+      `INSERT INTO messages
+         (session_id, source_id, message_json, queue_id, position, created_at)
+       VALUES (?, ?, ?, ?, ?, COALESCE(?, unixepoch()))
+       ON CONFLICT(session_id, source_id) DO UPDATE SET
+         message_json = excluded.message_json,
+         queue_id = COALESCE(excluded.queue_id, messages.queue_id),
+         position = COALESCE(excluded.position, messages.position)
+       RETURNING id`,
     )
-    .get(sessionId, ref.sourceId, ref.digest);
+    .get(
+      sessionId,
+      item.sourceId,
+      item.messageJson,
+      queueId ?? null,
+      position ?? null,
+      createdAt ?? null,
+    );
   if (!row) {
-    throw new Error(`消息写入失败：${ref.sourceId}`);
+    throw new Error(`消息写入失败：${item.sourceId}`);
   }
   return row.id;
 }
-export function pruneUnreferencedMessages(db: Database, sessionId: string) {
-  db.run(
-    `DELETE FROM messages
-     WHERE session_id = ? AND position IS NULL`,
-    [sessionId],
-  );
-  pruneMessageBlobs(db);
-}
+
 function nextPosition(db: Database, sessionId: string) {
   const row = db
     .query<{ position: number }, [string]>(
