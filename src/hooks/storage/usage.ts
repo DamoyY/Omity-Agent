@@ -1,5 +1,9 @@
 import type { Database } from "bun:sqlite";
 
+interface HookUsageRow {
+  hook_id: string;
+  used_count: number;
+}
 export function consumeHookUsage(
   db: Database,
   sessionId: string,
@@ -21,4 +25,26 @@ export function consumeHookUsage(
       )
       .get(sessionId, hookId, limit, limit) !== null
   );
+}
+export function copyHookUsage(
+  source: Database,
+  sourceSessionId: string,
+  target: Database,
+  targetSessionId: string,
+) {
+  const rows = source
+    .query<HookUsageRow, [string]>(
+      "SELECT hook_id, used_count FROM hook_usage WHERE session_id = ?",
+    )
+    .all(sourceSessionId);
+  const insert = target.prepare(
+    "INSERT INTO hook_usage (session_id, hook_id, used_count) VALUES (?, ?, ?)",
+  );
+  try {
+    for (const row of rows) {
+      insert.run(targetSessionId, row.hook_id, row.used_count);
+    }
+  } finally {
+    insert.finalize();
+  }
 }

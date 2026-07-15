@@ -2,6 +2,7 @@ import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
 import { cleanupDatabaseDirs, makeDb, required, workspace } from "../support/database";
 import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
+import { consumeHookUsage } from "../../src/hooks/storage/usage";
 import { forkDatabaseBeforeMessage } from "../../src/app/fork";
 
 afterEach(cleanupDatabaseDirs);
@@ -32,6 +33,31 @@ test("fork copies messages before selected user message", () => {
     status: "draft",
     user_message_id: null,
   });
+  source.close();
+  target.close();
+});
+test("fork preserves hook usage counters", () => {
+  const source = makeDb();
+  const target = makeDb();
+  source.resetSession("source", workspace);
+  const first = source.appendUser("source", "第一条");
+  source.startQueue("source", required(source.nextQueue("source")));
+  appendAssistantMessage(source.db, "source", "第一条回复");
+  source.setQueueStatus(first, "done");
+  const forkPoint = source.appendUser("source", "第二条");
+  source.startQueue("source", required(source.nextQueue("source")));
+  expect(consumeHookUsage(source.db, "source", "limited", 3)).toBeTrue();
+  expect(consumeHookUsage(source.db, "source", "limited", 3)).toBeTrue();
+  forkDatabaseBeforeMessage({
+    beforeMessageId: userMessageId(source, forkPoint),
+    source,
+    sourceSessionId: "source",
+    target,
+    targetSessionId: "target",
+    workspace,
+  });
+  expect(consumeHookUsage(target.db, "target", "limited", 3)).toBeTrue();
+  expect(consumeHookUsage(target.db, "target", "limited", 3)).toBeFalse();
   source.close();
   target.close();
 });

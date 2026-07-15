@@ -2,6 +2,7 @@ import type { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Database } from "bun:sqlite";
 import { DomainError } from "../errors";
 import { contentToText } from "../runtime/content";
+import { copyHookUsage } from "../hooks/storage/usage";
 import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { randomUUID } from "node:crypto";
 import { storeMessage } from "../infrastructure/database/records/messages/history";
@@ -34,6 +35,12 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
   const tx = options.target.db.transaction(() => {
     options.target.createSession(options.targetSessionId, options.workspace);
     insertMessages(options.target.db, options.targetSessionId, messages);
+    copyHookUsage(
+      options.source.db,
+      options.sourceSessionId,
+      options.target.db,
+      options.targetSessionId,
+    );
     const content = messageContent(forkPoint.message_json);
     options.target.appendDraft(options.targetSessionId, content);
   });
