@@ -2,6 +2,7 @@ import { requireSessionRecord, touchSessionRecord } from "./records/sessions";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import { appendUserQueue } from "./records/queue/operations";
+import { runTransaction } from "./connection";
 import { syncMessages } from "./records/messages/sync";
 
 export function initializeConversation(
@@ -11,10 +12,10 @@ export function initializeConversation(
   pendingUser: string,
 ) {
   requireSessionRecord(db, sessionId);
-  return db.transaction(() => {
+  return runTransaction(db, () => {
     syncMessages(db, sessionId, history);
     const queueId = appendUserQueue(db, sessionId, pendingUser);
     touchSessionRecord(db, sessionId);
     return queueId;
-  })();
+  });
 }

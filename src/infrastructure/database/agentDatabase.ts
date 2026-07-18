@@ -23,7 +23,12 @@ import {
   requestToolCancellation,
   takeToolCancellation,
 } from "./records/toolCancellations";
-import { closeDatabase, configureDatabase, reclaimDatabasePages } from "./connection";
+import {
+  closeDatabase,
+  configureDatabase,
+  reclaimDatabasePages,
+  runTransaction,
+} from "./connection";
 import {
   createSessionRecord,
   hasSessionRecord,
@@ -64,9 +69,9 @@ export class AgentDatabase extends RecoverableDatabase {
     this.notify = notify;
   }
   resetSession(sessionId: string, workspace: string) {
-    this.db.transaction(() => {
+    runTransaction(this.db, () => {
       resetSessionStorage(this.db, sessionId, workspace);
-    })();
+    });
   }
   requestStorageReclaim() {
     this.storageReclaimPending = true;
@@ -90,21 +95,19 @@ export class AgentDatabase extends RecoverableDatabase {
   }
   appendUser(sessionId: string, content: string) {
     this.requireSession(sessionId);
-    const tx = this.db.transaction(() => {
+    return runTransaction(this.db, () => {
       const queueId = appendUserQueue(this.db, sessionId, content);
       touchSessionRecord(this.db, sessionId);
       return queueId;
     });
-    return tx();
   }
   appendDraft(sessionId: string, content: string) {
     this.requireSession(sessionId);
-    const tx = this.db.transaction(() => {
+    return runTransaction(this.db, () => {
       const queueId = appendDraftQueue(this.db, sessionId, content);
       touchSessionRecord(this.db, sessionId);
       return queueId;
     });
-    return tx();
   }
   pendingAppends(sessionId: string): QueueItem[] {
     return pendingAppendRows(this.db, sessionId);
@@ -116,28 +119,26 @@ export class AgentDatabase extends RecoverableDatabase {
     return nextQueueRow(this.db, sessionId);
   }
   startQueue(sessionId: string, item: QueueItem) {
-    return this.db.transaction(() => startQueueRecord(this.db, sessionId, item))();
+    return runTransaction(this.db, () => startQueueRecord(this.db, sessionId, item));
   }
   setQueueStatus(queueId: number, status: QueueStatus, error?: ErrorDetails) {
-    const tx = this.db.transaction(() => {
+    runTransaction(this.db, () => {
       setQueueStatusRecord(this.db, queueId, status, error);
       if (status === "done" || status === "canceled") {
         clearQueueStreamEvents(this.db, queueId);
       }
     });
-    tx();
   }
   queueStatus(queueId: number) {
     return queueStatusRecord(this.db, queueId);
   }
   syncHistory(sessionId: string, messages: BaseMessage[]) {
     this.requireSession(sessionId);
-    const tx = this.db.transaction(() => {
+    runTransaction(this.db, () => {
       syncMessages(this.db, sessionId, messages);
       clearStreamEvents(this.db, sessionId);
       clearToolCancellations(this.db, sessionId);
     });
-    tx();
   }
   history(sessionId: string): BaseMessage[] {
     this.requireSession(sessionId);

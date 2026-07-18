@@ -5,6 +5,7 @@ import { contentToText } from "../runtime/content";
 import { copyHookUsage } from "../hooks/storage/usage";
 import { messageRowsToChatMessages } from "../infrastructure/database/records/messages/serialization";
 import { randomUUID } from "node:crypto";
+import { runTransaction } from "../infrastructure/database/connection";
 import { storeMessage } from "../infrastructure/database/records/messages/history";
 
 interface MessageRow {
@@ -32,7 +33,7 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
   if (!messages.some((message) => storedMessageType(message.message_json) === "human")) {
     throw new Error("每个 session 的第一条用户消息不能 Fork");
   }
-  const tx = options.target.db.transaction(() => {
+  runTransaction(options.target.db, () => {
     options.target.createSession(options.targetSessionId, options.workspace);
     insertMessages(options.target.db, options.targetSessionId, messages);
     copyHookUsage(
@@ -44,7 +45,6 @@ export function forkDatabaseBeforeMessage(options: ForkOptions) {
     const content = messageContent(forkPoint.message_json);
     options.target.appendDraft(options.targetSessionId, content);
   });
-  tx();
 }
 function assertForkPoint(db: Database, sessionId: string, messageId: number) {
   if (!Number.isSafeInteger(messageId) || messageId <= 0) {

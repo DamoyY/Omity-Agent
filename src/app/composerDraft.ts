@@ -1,3 +1,4 @@
+import { queryGet, runTransaction } from "../infrastructure/database/connection";
 import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Database } from "bun:sqlite";
 import type { Settings } from "../types";
@@ -5,11 +6,11 @@ import { resolveSessionPaths } from "../infrastructure/configuration/sessionPath
 
 export function readSessionDraft(settings: Settings, sessionId: string) {
   return withSessionDatabase(settings, sessionId, (db) => {
-    const row = db
-      .query<{ content: string; revision: number }, [string]>(
-        "SELECT content, revision FROM composer_drafts WHERE session_id = ?",
-      )
-      .get(sessionId);
+    const row = queryGet<{ content: string; revision: number }>(
+      db,
+      "SELECT content, revision FROM composer_drafts WHERE session_id = ?",
+      sessionId,
+    );
     if (!row) {
       return { content: null, revision: 0 };
     }
@@ -25,8 +26,8 @@ export function writeSessionDraft(
   content: string,
   revision: number,
 ) {
-  return withSessionDatabase(settings, sessionId, (db) => {
-    const save = db.transaction(() => {
+  return withSessionDatabase(settings, sessionId, (db) =>
+    runTransaction(db, () => {
       db.run(
         `INSERT INTO composer_drafts (session_id, content, revision, updated_at)
          VALUES (?, ?, ?, unixepoch())
@@ -37,18 +38,17 @@ export function writeSessionDraft(
          WHERE excluded.revision > composer_drafts.revision`,
         [sessionId, content, revision],
       );
-      const row = db
-        .query<{ revision: number }, [string]>(
-          "SELECT revision FROM composer_drafts WHERE session_id = ?",
-        )
-        .get(sessionId);
+      const row = queryGet<{ revision: number }>(
+        db,
+        "SELECT revision FROM composer_drafts WHERE session_id = ?",
+        sessionId,
+      );
       if (!row) {
         throw new Error(`Composer 草稿保存失败：${sessionId}`);
       }
       return row;
-    });
-    return save();
-  });
+    }),
+  );
 }
 export function clearSessionDraft(settings: Settings, sessionId: string, revision: number) {
   withSessionDatabase(settings, sessionId, (db) => {

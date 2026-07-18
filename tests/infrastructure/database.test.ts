@@ -6,8 +6,8 @@ import {
   required,
   workspace,
 } from "../support/database";
+import { runTransaction, sqliteBusyTimeoutMs } from "../../src/infrastructure/database/connection";
 import { appendAssistantMessage } from "../../src/infrastructure/database/records/messages/history";
-import { sqliteBusyTimeoutMs } from "../../src/infrastructure/database/connection";
 
 afterEach(cleanupDatabaseDirs);
 test("queue append and transcript lifecycle", () => {
@@ -49,6 +49,23 @@ test("client operations reject missing sessions", () => {
   expect(() => {
     db.setControl("missing", "pause");
   }).toThrow("会话不存在：missing");
+  db.close();
+});
+test("nested database transactions roll back to their own boundary", () => {
+  const db = makeDb();
+  db.createSession("outer", workspace);
+  runTransaction(db.db, () => {
+    db.createSession("committed", workspace);
+    expect(() =>
+      runTransaction(db.db, () => {
+        db.createSession("rolled-back", workspace);
+        throw new Error("rollback nested transaction");
+      }),
+    ).toThrow("rollback nested transaction");
+  });
+  expect(db.hasSession("outer")).toBe(true);
+  expect(db.hasSession("committed")).toBe(true);
+  expect(db.hasSession("rolled-back")).toBe(false);
   db.close();
 });
 test("host lease excludes concurrent owners and permits takeover after expiry", () => {

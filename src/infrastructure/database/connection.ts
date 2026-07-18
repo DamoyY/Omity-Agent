@@ -1,5 +1,5 @@
+import type { Database, SQLQueryBindings } from "bun:sqlite";
 import { parse, resolve } from "node:path";
-import type { Database } from "bun:sqlite";
 import { rmSync } from "node:fs";
 
 export const sqliteBusyTimeoutMs = 5000;
@@ -20,11 +20,44 @@ export function closeDatabase(db: Database) {
     throw new Error("当前 Bun SQLite 不支持清理查询缓存");
   }
   Reflect.apply(clearQueryCache, db, []);
-  // Bun keeps temporary query wrappers alive until GC, which blocks close(true).
   Bun.gc(true);
   db.close(true);
 }
-
+export function queryAll<Row>(db: Database, sql: string, ...params: SQLQueryBindings[]) {
+  const query = db.prepare<Row, SQLQueryBindings[]>(sql);
+  try {
+    return query.all(...params);
+  } finally {
+    query.finalize();
+  }
+}
+export function queryGet<Row>(db: Database, sql: string, ...params: SQLQueryBindings[]) {
+  return queryAll<Row>(db, sql, ...params)[0] ?? null;
+}
+export function runTransaction<T>(db: Database, operation: () => T): T {
+  if (!db.inTransaction) {
+    db.run("BEGIN");
+    try {
+      const result = operation();
+      db.run("COMMIT");
+      return result;
+    } catch (error) {
+      db.run("ROLLBACK");
+      throw error;
+    }
+  }
+  const savepoint = "omity_nested";
+  db.run(`SAVEPOINT ${savepoint}`);
+  try {
+    const result = operation();
+    db.run(`RELEASE ${savepoint}`);
+    return result;
+  } catch (error) {
+    db.run(`ROLLBACK TO ${savepoint}`);
+    db.run(`RELEASE ${savepoint}`);
+    throw error;
+  }
+}
 export function reclaimDatabasePages(db: Database) {
   db.run("PRAGMA busy_timeout = 0");
   try {
@@ -52,7 +85,6 @@ export function removeDatabaseDirectory(path: string) {
     retryDelay: 50,
   });
 }
-
 function isSqliteBusy(value: unknown) {
   return (
     typeof value === "object" && value !== null && "code" in value && value.code === "SQLITE_BUSY"

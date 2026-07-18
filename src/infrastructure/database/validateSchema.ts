@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { queryAll } from "./connection";
 
 export function assertCoreSchema(db: Database) {
   assertColumns(db, "sessions", ["id", "workspace", "control", "created_at", "updated_at"]);
@@ -53,10 +54,7 @@ export function assertCoreSchema(db: Database) {
 }
 function assertColumns(db: Database, table: string, columns: string[]) {
   const existing = new Set(
-    db
-      .query<{ name: string }, []>(`PRAGMA table_info(${table})`)
-      .all()
-      .map((row) => row.name),
+    queryAll<{ name: string }>(db, `PRAGMA table_info(${table})`).map((row) => row.name),
   );
   const missing = columns.filter((column) => !existing.has(column));
   if (missing.length > 0) {

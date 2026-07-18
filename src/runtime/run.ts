@@ -4,6 +4,7 @@ import type { HostContext } from "./context";
 import type { QueueItem } from "../types";
 import { contentToText } from "./content";
 import { deleteThreadData } from "../checkpointer/lifecycle";
+import { runTransaction } from "../infrastructure/database/connection";
 
 export class CanceledRunError extends Error {
   override readonly name = "CanceledRunError";
@@ -56,7 +57,7 @@ export function cancelRun(ctx: HostContext, run: QueueRun) {
   ctx.logger.warn("队列已取消，Host 已关闭", { queueId: run.items[0].id });
 }
 function finalizeRun(ctx: HostContext, run: QueueRun, status: "done" | "canceled") {
-  ctx.db.db.transaction(() => {
+  runTransaction(ctx.db.db, () => {
     for (const item of run.items) {
       ctx.db.setQueueStatus(item.id, status);
     }
@@ -64,7 +65,7 @@ function finalizeRun(ctx: HostContext, run: QueueRun, status: "done" | "canceled
       ctx.db.setControl(ctx.sessionId, "running");
     }
     deleteThreadData(ctx.db.db, run.threadId);
-  })();
+  });
   ctx.db.requestStorageReclaim();
 }
 export function setRunStatus(
@@ -76,11 +77,11 @@ export function setRunStatus(
   if (status === "paused") {
     ctx.db.pauseRun(ctx.sessionId, run.rootId, error);
   } else {
-    ctx.db.db.transaction(() => {
+    runTransaction(ctx.db.db, () => {
       for (const item of run.items) {
         ctx.db.setQueueStatus(item.id, status, error);
       }
-    })();
+    });
   }
   ctx.observer?.changed?.(ctx.sessionId);
 }

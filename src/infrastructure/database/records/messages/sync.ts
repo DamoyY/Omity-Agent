@@ -2,6 +2,7 @@ import { type MessageInsert, messageInsert } from "./serialization";
 import { messageQueueId, pruneUnreferencedMessages, storePreparedMessage } from "./history";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
+import { queryAll } from "../../connection";
 import { randomUUID } from "node:crypto";
 
 interface StoredRow {
@@ -14,12 +15,12 @@ export function syncMessages(db: Database, sessionId: string, messages: BaseMess
     message.id ??= randomUUID();
     return { message, stored: messageInsert(message) };
   });
-  const existing = db
-    .query<StoredRow, [string]>(
-      `SELECT source_id, message_json FROM messages
-       WHERE session_id = ? AND position IS NOT NULL ORDER BY position`,
-    )
-    .all(sessionId);
+  const existing = queryAll<StoredRow>(
+    db,
+    `SELECT source_id, message_json FROM messages
+     WHERE session_id = ? AND position IS NOT NULL ORDER BY position`,
+    sessionId,
+  );
   const changedAt = firstChangedIndex(
     existing,
     items.map((item) => item.stored),

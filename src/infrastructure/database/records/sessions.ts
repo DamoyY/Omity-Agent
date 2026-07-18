@@ -1,16 +1,16 @@
 import { sessionConflict, sessionNotFound } from "../../../errors";
 import type { Control } from "../../../types";
 import type { Database } from "bun:sqlite";
+import { queryGet } from "../connection";
 
 export function createSessionRecord(db: Database, sessionId: string, workspace: string) {
   if (hasSessionRecord(db, sessionId)) {
     throw sessionConflict(sessionId);
   }
-  const result = db
-    .query(
-      "INSERT INTO sessions (id, workspace, control, created_at, updated_at) VALUES (?, ?, 'running', unixepoch(), unixepoch())",
-    )
-    .run(sessionId, workspace);
+  const result = db.run(
+    "INSERT INTO sessions (id, workspace, control, created_at, updated_at) VALUES (?, ?, 'running', unixepoch(), unixepoch())",
+    [sessionId, workspace],
+  );
   if (result.changes !== 1) {
     throw sessionConflict(sessionId);
   }
@@ -34,9 +34,11 @@ export function requireSessionRecord(db: Database, sessionId: string) {
 }
 export function readWorkspaceRecord(db: Database, sessionId: string) {
   requireSessionRecord(db, sessionId);
-  const row = db
-    .query<{ workspace: string }, [string]>("SELECT workspace FROM sessions WHERE id = ?")
-    .get(sessionId);
+  const row = queryGet<{ workspace: string }>(
+    db,
+    "SELECT workspace FROM sessions WHERE id = ?",
+    sessionId,
+  );
   if (!row) {
     throw sessionNotFound(sessionId);
   }
@@ -44,7 +46,7 @@ export function readWorkspaceRecord(db: Database, sessionId: string) {
 }
 export function touchSessionRecord(db: Database, sessionId: string) {
   requireSessionRecord(db, sessionId);
-  db.query("UPDATE sessions SET updated_at = unixepoch() WHERE id = ?").run(sessionId);
+  db.run("UPDATE sessions SET updated_at = unixepoch() WHERE id = ?", [sessionId]);
 }
 export function readControlRecord(db: Database, sessionId: string): Control {
   requireSessionRecord(db, sessionId);
@@ -64,8 +66,8 @@ export function readControlRecord(db: Database, sessionId: string): Control {
 }
 export function writeControlRecord(db: Database, sessionId: string, control: Control) {
   requireSessionRecord(db, sessionId);
-  db.query("UPDATE sessions SET control = ?, updated_at = unixepoch() WHERE id = ?").run(
+  db.run("UPDATE sessions SET control = ?, updated_at = unixepoch() WHERE id = ?", [
     control,
     sessionId,
-  );
+  ]);
 }

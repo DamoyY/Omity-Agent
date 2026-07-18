@@ -8,6 +8,7 @@ import {
   pruneUnreferencedMessages,
   storeMessage,
 } from "../infrastructure/database/records/messages/history";
+import { queryGet, runTransaction } from "../infrastructure/database/connection";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
@@ -27,7 +28,6 @@ export interface PreparedWrites {
   sessionId: string;
   threadId: string;
 }
-
 export async function preparePendingWrites(
   serde: SerializerProtocol,
   config: RunnableConfig,
@@ -67,7 +67,6 @@ export async function preparePendingWrites(
   );
   return { checkpointId, checkpointNs, rows, sessionId, threadId };
 }
-
 export function commitPendingWrites(db: Database, item: PreparedWrites) {
   const replace = writeStatement(db, "REPLACE");
   const ignore = writeStatement(db, "IGNORE");
@@ -77,7 +76,7 @@ export function commitPendingWrites(db: Database, item: PreparedWrites) {
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   try {
-    db.transaction(() => {
+    runTransaction(db, () => {
       assertCurrentCheckpoint(db, item);
       let changed = false;
       for (const row of item.rows) {
@@ -90,14 +89,13 @@ export function commitPendingWrites(db: Database, item: PreparedWrites) {
       if (changed) {
         pruneUnreferencedMessages(db, item.sessionId);
       }
-    })();
+    });
   } finally {
     replace.finalize();
     ignore.finalize();
     link.finalize();
   }
 }
-
 function writeStatement(db: Database, behavior: "IGNORE" | "REPLACE") {
   return db.prepare(
     `INSERT OR ${behavior} INTO writes
@@ -105,18 +103,17 @@ function writeStatement(db: Database, behavior: "IGNORE" | "REPLACE") {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 }
-
 function assertCurrentCheckpoint(db: Database, item: PreparedWrites) {
-  const current = db
-    .query<{ checkpoint_id: string }, [string, string]>(
-      "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ? AND checkpoint_ns = ?",
-    )
-    .get(item.threadId, item.checkpointNs);
+  const current = queryGet<{ checkpoint_id: string }>(
+    db,
+    "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ? AND checkpoint_ns = ?",
+    item.threadId,
+    item.checkpointNs,
+  );
   if (current?.checkpoint_id !== item.checkpointId) {
     throw new Error(`checkpoint pending write 已过期：${item.checkpointId}`);
   }
 }
-
 function linkMessages(
   db: Database,
   link: ReturnType<Database["prepare"]>,

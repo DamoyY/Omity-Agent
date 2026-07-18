@@ -7,6 +7,7 @@ import {
 } from "@langchain/langgraph-checkpoint";
 import { normalizeCheckpoint, persistCheckpointMessages } from "./messageRefs";
 import { optionalConfigString, requiredConfigString } from "./sql";
+import { queryGet, runTransaction } from "../infrastructure/database/connection";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
@@ -24,7 +25,6 @@ export interface PreparedCheckpoint {
   sessionId: string;
   threadId: string;
 }
-
 export async function prepareCheckpoint(
   serde: SerializerProtocol,
   config: RunnableConfig,
@@ -64,14 +64,14 @@ export async function prepareCheckpoint(
     ...(parentCheckpointId ? { parentCheckpointId } : {}),
   };
 }
-
 export function commitCheckpoint(db: Database, item: PreparedCheckpoint): RunnableConfig {
-  db.transaction(() => {
-    const current = db
-      .query<{ checkpoint_id: string }, [string, string]>(
-        "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ? AND checkpoint_ns = ?",
-      )
-      .get(item.threadId, item.checkpointNs);
+  runTransaction(db, () => {
+    const current = queryGet<{ checkpoint_id: string }>(
+      db,
+      "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ? AND checkpoint_ns = ?",
+      item.threadId,
+      item.checkpointNs,
+    );
     assertCheckpointParent(current?.checkpoint_id, item);
     if (item.messages && (!current || item.messagesChanged)) {
       persistCheckpointMessages(db, item.sessionId, item.messages);
@@ -81,7 +81,7 @@ export function commitCheckpoint(db: Database, item: PreparedCheckpoint): Runnab
        WHERE thread_id = ? AND checkpoint_ns = ? AND checkpoint_id <> ?`,
       [item.threadId, item.checkpointNs, item.checkpointId],
     );
-    db.query(
+    db.run(
       `INSERT INTO checkpoints
          (thread_id, checkpoint_ns, checkpoint_id, type, checkpoint, metadata)
        VALUES (?, ?, ?, ?, ?, ?)
@@ -90,16 +90,17 @@ export function commitCheckpoint(db: Database, item: PreparedCheckpoint): Runnab
          type = excluded.type,
          checkpoint = excluded.checkpoint,
          metadata = excluded.metadata`,
-    ).run(
-      item.threadId,
-      item.checkpointNs,
-      item.checkpointId,
-      item.checkpointType,
-      item.checkpointValue,
-      item.metadataValue,
+      [
+        item.threadId,
+        item.checkpointNs,
+        item.checkpointId,
+        item.checkpointType,
+        item.checkpointValue,
+        item.metadataValue,
+      ],
     );
     pruneUnreferencedMessages(db, item.sessionId);
-  })();
+  });
   return {
     configurable: {
       checkpoint_id: item.checkpointId,
@@ -108,7 +109,6 @@ export function commitCheckpoint(db: Database, item: PreparedCheckpoint): Runnab
     },
   };
 }
-
 function assertCheckpointParent(currentId: string | undefined, item: PreparedCheckpoint) {
   if (
     currentId === item.checkpointId ||

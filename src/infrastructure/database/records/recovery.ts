@@ -11,6 +11,7 @@ import { readControlRecord, writeControlRecord } from "./sessions";
 import type { Database } from "bun:sqlite";
 import type { ErrorDetails } from "../../../failures/details";
 import { pruneUnreferencedMessages } from "./messages/history";
+import { runTransaction } from "../connection";
 
 export interface InterruptedSessionClaim {
   sessionId: string;
@@ -102,13 +103,13 @@ export class RecoverableDatabase {
     return activeQueueRows(this.db, sessionId);
   }
   pauseRun(sessionId: string, runId: number, error?: ErrorDetails) {
-    return this.db.transaction(() => {
+    return runTransaction(this.db, () => {
       writeControlRecord(this.db, sessionId, "pause");
       return pauseRunRecord(this.db, sessionId, runId, error);
-    })();
+    });
   }
   recoverInterruptedSession(claim: InterruptedSessionClaim) {
-    return this.db.transaction(() => recoverInterruptedSessionRecord(this.db, claim))();
+    return runTransaction(this.db, () => recoverInterruptedSessionRecord(this.db, claim));
   }
   acquireHostLease(claim: HostLeaseClaim) {
     return acquireHostLeaseRecord(this.db, claim);

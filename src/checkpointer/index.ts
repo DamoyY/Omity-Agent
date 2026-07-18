@@ -11,7 +11,6 @@ import {
 } from "@langchain/langgraph-checkpoint";
 import {
   type CheckpointRow,
-  type SqlBinding,
   buildListQuery,
   optionalConfigString,
   requiredConfigString,
@@ -19,6 +18,7 @@ import {
 } from "./sql";
 import { commitCheckpoint, prepareCheckpoint } from "./write";
 import { commitPendingWrites, preparePendingWrites } from "./pendingWrite";
+import { queryAll, queryGet } from "../infrastructure/database/connection";
 import type { Database } from "bun:sqlite";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { deleteThreadData } from "./lifecycle";
@@ -45,9 +45,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       config.configurable?.["checkpoint_id"],
       "checkpoint_id",
     );
-    const row = this.db
-      .query<CheckpointRow, SqlBinding[]>(selectCheckpoint())
-      .get(threadId, checkpointNs);
+    const row = queryGet<CheckpointRow>(this.db, selectCheckpoint(), threadId, checkpointNs);
     if (!row) {
       return undefined;
     }
@@ -73,7 +71,7 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     }
     await Promise.all(this.commitTails.values());
     const { sql, args } = buildListQuery(config, options);
-    for (const row of this.db.query<CheckpointRow, SqlBinding[]>(sql).all(...args)) {
+    for (const row of queryAll<CheckpointRow>(this.db, sql, ...args)) {
       yield await this.decodeRow(row, {
         configurable: {
           checkpoint_id: row.checkpoint_id,

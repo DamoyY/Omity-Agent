@@ -37,11 +37,10 @@ function insertStreamEvent<Kind extends StreamEventKind>(
   payload: StreamEventValues[Kind],
   messageId?: string,
 ): StreamEventOf<Kind> {
-  const result = db
-    .query(
-      "INSERT INTO events (session_id, queue_id, message_id, kind, payload_json) VALUES (?, ?, ?, ?, ?)",
-    )
-    .run(sessionId, queueId, messageId ?? null, kind, JSON.stringify(payload));
+  const result = db.run(
+    "INSERT INTO events (session_id, queue_id, message_id, kind, payload_json) VALUES (?, ?, ?, ?, ?)",
+    [sessionId, queueId, messageId ?? null, kind, JSON.stringify(payload)],
+  );
   const id = Number(result.lastInsertRowid);
   if (!Number.isSafeInteger(id)) {
     throw new Error(`流式事件 ID 超出安全整数范围：${String(result.lastInsertRowid)}`);
@@ -90,8 +89,8 @@ export function insertToolStarted(
   return insertStreamEvent(db, sessionId, queueId, "tool_started", callId);
 }
 export function clearStreamEvents(db: Database, sessionId: string) {
-  db.query("DELETE FROM events WHERE session_id = ?").run(sessionId);
+  db.run("DELETE FROM events WHERE session_id = ?", [sessionId]);
 }
 export function clearQueueStreamEvents(db: Database, queueId: number) {
-  db.query("DELETE FROM events WHERE queue_id = ?").run(queueId);
+  db.run("DELETE FROM events WHERE queue_id = ?", [queueId]);
 }

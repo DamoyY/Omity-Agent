@@ -1,5 +1,6 @@
 import { AIMessage, type BaseMessage, HumanMessage } from "@langchain/core/messages";
 import { type MessageStorageMode, messageInsert, messageRowsToChatMessages } from "./serialization";
+import { queryAll, queryGet } from "../../connection";
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 
@@ -55,12 +56,12 @@ export function appendAssistantMessage(db: Database, sessionId: string, content:
 }
 
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
-  const rows = db
-    .query<StoredRow, [string]>(
-      `SELECT source_id, message_json FROM messages
-       WHERE session_id = ? AND position IS NOT NULL ORDER BY position`,
-    )
-    .all(sessionId);
+  const rows = queryAll<StoredRow>(
+    db,
+    `SELECT source_id, message_json FROM messages
+     WHERE session_id = ? AND position IS NOT NULL ORDER BY position`,
+    sessionId,
+  );
   return messageRowsToChatMessages(rows);
 }
 
@@ -82,11 +83,12 @@ export function loadMessageRows(db: Database, ids: number[]) {
 }
 
 export function loadMessageBySourceId(db: Database, sessionId: string, sourceId: string) {
-  const row = db
-    .query<StoredRow, [string, string]>(
-      "SELECT source_id, message_json FROM messages WHERE session_id = ? AND source_id = ?",
-    )
-    .get(sessionId, sourceId);
+  const row = queryGet<StoredRow>(
+    db,
+    "SELECT source_id, message_json FROM messages WHERE session_id = ? AND source_id = ?",
+    sessionId,
+    sourceId,
+  );
   if (!row) {
     throw new Error(`消息不存在：${sourceId}`);
   }
@@ -137,25 +139,23 @@ export function storePreparedMessage(
   queueId?: number,
   createdAt?: number,
 ) {
-  const row = db
-    .query<{ id: number }, [string, string, string, number | null, number | null, number | null]>(
-      `INSERT INTO messages
-         (session_id, source_id, message_json, queue_id, position, created_at)
-       VALUES (?, ?, ?, ?, ?, COALESCE(?, unixepoch()))
-       ON CONFLICT(session_id, source_id) DO UPDATE SET
-         message_json = excluded.message_json,
-         queue_id = COALESCE(excluded.queue_id, messages.queue_id),
-         position = COALESCE(excluded.position, messages.position)
-       RETURNING id`,
-    )
-    .get(
-      sessionId,
-      item.sourceId,
-      item.messageJson,
-      queueId ?? null,
-      position ?? null,
-      createdAt ?? null,
-    );
+  const row = queryGet<{ id: number }>(
+    db,
+    `INSERT INTO messages
+       (session_id, source_id, message_json, queue_id, position, created_at)
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, unixepoch()))
+     ON CONFLICT(session_id, source_id) DO UPDATE SET
+       message_json = excluded.message_json,
+       queue_id = COALESCE(excluded.queue_id, messages.queue_id),
+       position = COALESCE(excluded.position, messages.position)
+     RETURNING id`,
+    sessionId,
+    item.sourceId,
+    item.messageJson,
+    queueId ?? null,
+    position ?? null,
+    createdAt ?? null,
+  );
   if (!row) {
     throw new Error(`消息写入失败：${item.sourceId}`);
   }
@@ -163,11 +163,11 @@ export function storePreparedMessage(
 }
 
 function nextPosition(db: Database, sessionId: string) {
-  const row = db
-    .query<{ position: number }, [string]>(
-      "SELECT COALESCE(MAX(position), -1) + 1 AS position FROM messages WHERE session_id = ?",
-    )
-    .get(sessionId);
+  const row = queryGet<{ position: number }>(
+    db,
+    "SELECT COALESCE(MAX(position), -1) + 1 AS position FROM messages WHERE session_id = ?",
+    sessionId,
+  );
   if (!row) {
     throw new Error("无法分配消息位置");
   }

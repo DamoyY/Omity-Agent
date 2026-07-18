@@ -1,3 +1,4 @@
+import { queryGet, runTransaction } from "./connection";
 import type { Database } from "bun:sqlite";
 import { assertCoreSchema } from "./validateSchema";
 
@@ -128,9 +129,8 @@ export const migrationSql = [
   `,
 ] as const;
 const schemaVersion = 1;
-
 export function applySchema(db: Database) {
-  const version = db.query<{ user_version: number }, []>("PRAGMA user_version").get()?.user_version;
+  const version = queryGet<{ user_version: number }>(db, "PRAGMA user_version")?.user_version;
   if (version === schemaVersion) {
     assertCoreSchema(db);
     return;
@@ -138,21 +138,19 @@ export function applySchema(db: Database) {
   if (version !== 0 || hasUserTables(db)) {
     throw new Error("数据库结构版本不兼容，请新建会话数据库");
   }
-  db.transaction(() => {
+  runTransaction(db, () => {
     for (const sql of migrationSql) {
       db.run(sql);
     }
     db.run(`PRAGMA user_version = ${schemaVersion.toString()}`);
-  })();
+  });
   assertCoreSchema(db);
 }
-
 function hasUserTables(db: Database) {
   return (
-    db
-      .query<{ found: number }, []>(
-        "SELECT 1 AS found FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1",
-      )
-      .get() !== null
+    queryGet<{ found: number }>(
+      db,
+      "SELECT 1 AS found FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1",
+    ) !== null
   );
 }

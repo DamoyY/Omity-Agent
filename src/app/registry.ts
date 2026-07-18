@@ -1,6 +1,10 @@
 import type { Control, Settings } from "../types";
 import { type ErrorDetails, parseError } from "../failures/details";
-import { closeDatabase, configureReadonlyDatabase } from "../infrastructure/database/connection";
+import {
+  closeDatabase,
+  configureReadonlyDatabase,
+  queryGet,
+} from "../infrastructure/database/connection";
 import { existsSync, readdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { assertCoreSchema } from "../infrastructure/database/validateSchema";
@@ -102,8 +106,8 @@ function readSession(dbPath: string, id?: string, validate = false) {
       }
     }
     const row = id
-      ? db.query<SessionRow, [string]>(`${sessionSelect} WHERE s.id = ?`).get(id)
-      : db.query<SessionRow, []>(`${sessionSelect} LIMIT 1`).get();
+      ? queryGet<SessionRow>(db, `${sessionSelect} WHERE s.id = ?`, id)
+      : queryGet<SessionRow>(db, `${sessionSelect} LIMIT 1`);
     if (!row) {
       throw sessionNotFound(id ?? dbPath);
     }

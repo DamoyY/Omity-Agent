@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { queryGet } from "../connection";
 import { requireSessionRecord } from "./sessions";
 
 export interface HostLeaseClaim {
@@ -19,12 +20,11 @@ interface HostLeaseRow {
 }
 export function readHostLeaseRecord(db: Database, sessionId: string): HostLeaseRecord | null {
   requireSessionRecord(db, sessionId);
-  const row = db
-    .query<HostLeaseRow, [string]>(
-      `SELECT session_id, owner_id, expires_at
-       FROM host_leases WHERE session_id = ?`,
-    )
-    .get(sessionId);
+  const row = queryGet<HostLeaseRow>(
+    db,
+    "SELECT session_id, owner_id, expires_at FROM host_leases WHERE session_id = ?",
+    sessionId,
+  );
   return row
     ? {
         expiresAt: row.expires_at,
