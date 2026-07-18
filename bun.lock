@@ -7,6 +7,7 @@
       "dependencies": {
         "@ai-sdk/openai": "latest",
         "@ai-sdk/provider": "latest",
+        "@bindrs/rfd": "^2.2.2",
         "@codemirror/lang-markdown": "latest",
         "@codemirror/language": "latest",
         "@codemirror/state": "latest",
@@ -110,6 +111,8 @@
     "@babel/traverse": ["@babel/traverse@8.0.4", "", { "dependencies": { "@babel/code-frame": "^8.0.0", "@babel/generator": "^8.0.0", "@babel/helper-globals": "^8.0.0", "@babel/parser": "^8.0.4", "@babel/template": "^8.0.0", "@babel/types": "^8.0.4", "obug": "^2.1.1" } }, "sha512-bZnmqzGG8UZneG1lLxBoWIH0G6Gr1D846Yu4/3XnY6FhCndMR49u26nTY08u/dAxWmLWF9vGQOuC+84FfIUoeg=="],
 
     "@babel/types": ["@babel/types@8.0.4", "", { "dependencies": { "@babel/helper-string-parser": "^8.0.0", "@babel/helper-validator-identifier": "^8.0.4" } }, "sha512-eY+Yn3dCqTGmyiq2QRU66lA5FL8lqqqvecHt0fF3uHONIa7ToYsaCiWV8lOKqAs0Rb2SjixiKFROngnulPtt2g=="],
+
+    "@bindrs/rfd": ["@bindrs/rfd@2.2.2", "", {}, "sha512-xBHvo2+fd13L6KDUSxXnPcExxnXAMe2FrcCva+huw22B7oS5cz6EMfInWpCqWaFHnTbMWsZWjXVM1u5S4ThaCA=="],
 
     "@cfworker/json-schema": ["@cfworker/json-schema@4.1.1", "", {}, "sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og=="],
 

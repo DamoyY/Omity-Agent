@@ -13,6 +13,7 @@
   "dependencies": {
     "@ai-sdk/openai": "latest",
     "@ai-sdk/provider": "latest",
+    "@bindrs/rfd": "latest",
     "@codemirror/lang-markdown": "latest",
     "@codemirror/language": "latest",
     "@codemirror/state": "latest",

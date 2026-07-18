@@ -9,13 +9,13 @@ import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
 import { AppEvents } from "./events";
 import { AppHosts } from "./hosts";
 import type { AppInstanceOwner } from "./runtime/instanceLock";
+import { AsyncFileDialog } from "@bindrs/rfd";
 import { cancelSessionTool } from "./sessionCommands";
 import { controllerHostEvents } from "./controllerHostEvents";
 import { deleteHostSession } from "../sessionStorage";
 import { enqueueMessageWithAttachments } from "./attachments/message";
 import { loadSessionTranscript } from "./transcript";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
-import { pickWorkspaceDirectory } from "./workspacePicker";
 import { runClient } from "../client";
 
 export class AppController {
@@ -64,7 +64,10 @@ export class AppController {
   assertSession(sessionId: string) {
     this.registry.require(sessionId);
   }
-  pickWorkspace = () => pickWorkspaceDirectory();
+  async pickWorkspace() {
+    const directory = await new AsyncFileDialog().setTitle("选择工作目录").pickFolder();
+    return directory?.path() ?? null;
+  }
   async createSession(submission: SessionSubmission) {
     const created = await createAppSession(this.appRoot, submission);
     const session = this.registry.refresh(created.sessionId);
