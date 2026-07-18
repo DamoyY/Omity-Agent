@@ -6,7 +6,7 @@ import {
   startRegistration,
 } from "@simplewebauthn/browser";
 import { request } from "./request";
-import { z } from "zod";
+import { z } from "./validation";
 
 const accessStatusSchema = z.object({
   authenticated: z.boolean(),

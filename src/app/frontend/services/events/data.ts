@@ -1,7 +1,7 @@
 import type { DisplayEvent } from "../../../timeline";
 import type { ErrorDetails } from "../../../../failures/details";
 import type { SessionInfo } from "../../../sessionState";
-import { z } from "zod";
+import { z } from "../validation";
 
 const sessionInfoSchema: z.ZodType<SessionInfo> = z.object({
   createdAt: z.number().int(),

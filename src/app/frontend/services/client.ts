@@ -10,7 +10,7 @@ import {
   sessionResponseSchema,
   transcriptResponseSchema,
   workspaceResponseSchema,
-} from "./responseSchemas";
+} from "./validation/responses";
 import type { Control } from "../../../types";
 import type { InitialSessionState } from "../../initialState";
 import { reportError } from "./errors";

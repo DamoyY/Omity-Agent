@@ -1,8 +1,8 @@
-import type { AttachmentSettings } from "../../attachments/contract";
-import type { ErrorDetails } from "../../../failures/details";
-import type { SessionInfo } from "../../sessionState";
-import type { TranscriptSnapshot } from "./transcript/cache";
-import { z } from "zod";
+import type { AttachmentSettings } from "../../../attachments/contract";
+import type { ErrorDetails } from "../../../../failures/details";
+import type { SessionInfo } from "../../../sessionState";
+import type { TranscriptSnapshot } from "../transcript/cache";
+import { z } from ".";
 
 const integer = z.number().int();
 const errorDetailsSchema: z.ZodType<ErrorDetails> = z.lazy(() =>

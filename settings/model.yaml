@@ -1,5 +1,5 @@
 # 当前启用的模型 Profile；值必须匹配 profiles 下的名称。
-profile: 78code
+profile: codex
 
 profiles:
   # adapter 可选 responses、completions 或 codex。codex 固定使用 Responses

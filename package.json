@@ -1,7 +1,9 @@
 {
   "name": "omity-agent",
   "private": true,
-  "bin": { "omity": "src/cli.ts" },
+  "bin": {
+    "omity": "src/cli.ts"
+  },
   "type": "module",
   "module": "src/cli.ts",
   "scripts": {
@@ -78,9 +80,15 @@
     "dirname": "omity-agent",
     "topicSeparator": " ",
     "topics": {
-      "app": { "description": "启动 WebUI" },
-      "client": { "description": "向 Host 发送消息或控制指令" },
-      "host": { "description": "管理 Host 会话" }
+      "app": {
+        "description": "启动 WebUI"
+      },
+      "client": {
+        "description": "向 Host 发送消息或控制指令"
+      },
+      "host": {
+        "description": "管理 Host 会话"
+      }
     }
   }
 }
