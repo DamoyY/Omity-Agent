@@ -1,7 +1,19 @@
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { afterEach, expect, test } from "bun:test";
+import {
+  afterQuery,
+  cleanupDatabaseDirs,
+  makeDatabases,
+  makeDb,
+  required,
+  workspace,
+} from "../support/database";
+import {
+  appendTranscriptEvents,
+  emptyTranscriptData,
+  reconcileTranscript,
+} from "../../src/app/frontend/services/transcript/cache";
 import { buildTimeline, displayStreamEvent } from "../../src/app/timeline";
-import { cleanupDatabaseDirs, makeDb, workspace } from "../support/database";
 import type { StreamEvent } from "../../src/infrastructure/database/records/streamEvents";
 import { countTokens } from "../../src/runtime/tokenizer";
 import { loadTranscript } from "../../src/app/transcript";
@@ -110,6 +122,49 @@ test("live stream events match persisted snapshots and keep their cursor", () =>
   expect(completed.events).toEqual([]);
   expect(completed.eventCursor).toBe(event.id);
   db.close();
+});
+test("snapshot refresh does not discard a tool event committed after its events were read", () => {
+  const databases = makeDatabases(2);
+  const reader = required(databases[0]);
+  const writer = required(databases[1]);
+  const sessionId = "stream-race-session";
+  reader.resetSession(sessionId, workspace);
+  const queueId = reader.appendUser(sessionId, "run command");
+  reader.startQueue(sessionId, required(reader.nextQueue(sessionId)));
+  const emitted: StreamEvent[] = [];
+  writer.onChange((event) => emitted.push(event));
+  const racingReader = afterQuery(reader, "FROM events WHERE session_id", () => {
+    writer.streamToolCall(
+      sessionId,
+      queueId,
+      {
+        args: '{"command":"pwd"}',
+        id: "call-race",
+        index: 0,
+        name: "terminal_send_command",
+      },
+      "assistant-race",
+    );
+  });
+  const snapshot = (() => {
+    try {
+      return loadTranscript(racingReader, sessionId);
+    } finally {
+      reader.close();
+      writer.close();
+    }
+  })();
+  const current = appendTranscriptEvents(emptyTranscriptData(), emitted.map(displayStreamEvent));
+  const reconciled = reconcileTranscript(snapshot, current);
+  const toolPart = reconciled.view
+    .flatMap((message) => message.parts)
+    .find((part) => part.type === "tool");
+
+  expect(emitted).toHaveLength(1);
+  expect(toolPart).toMatchObject({
+    call: { id: "call-race", name: "terminal_send_command" },
+    type: "tool",
+  });
 });
 function view(transcript: ReturnType<typeof loadTranscript>) {
   return buildTimeline(transcript.messages, transcript.queue, transcript.events);

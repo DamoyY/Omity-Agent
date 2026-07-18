@@ -4,7 +4,7 @@ import { type PersistedEventRow, persistedDisplayEvent } from "./timeline/persis
 import { contentToText, messageReasoning } from "../runtime/content";
 import { freeformCallIds, rawFreeformInput } from "./timeline/freeform";
 import { modelTokenUsage, toolInputTokens, toolOutputTokens } from "./timeline/tokenCounts";
-import { queryAll, queryGet } from "../infrastructure/database/connection";
+import { queryAll, queryGet, runTransaction } from "../infrastructure/database/connection";
 import { AgentDatabase } from "../infrastructure/database/agentDatabase";
 import type { Settings } from "../types";
 import { existsSync } from "node:fs";
@@ -45,42 +45,45 @@ export function loadSessionTranscript(settings: Settings, sessionId: string) {
   }
 }
 export function loadTranscript(db: AgentDatabase, sessionId: string) {
-  const control = db.control(sessionId);
-  const messages = queryAll<MessageRow>(
-    db.db,
-    `SELECT m.id, m.source_id, m.message_json, m.queue_id, m.created_at
-     FROM messages m
-     WHERE m.session_id = ? AND m.position IS NOT NULL
-     ORDER BY m.position`,
-    sessionId,
-  ).map(toDisplayMessage);
-  const queue = queryAll<QueueRow>(
-    db.db,
-    `SELECT q.id, COALESCE(q.content, '') AS content, q.status, q.error,
-       m.id AS user_message_id, q.root_id
-     FROM queue q
-     LEFT JOIN messages m ON m.queue_id = q.id
-     WHERE q.session_id = ? ORDER BY q.id`,
-    sessionId,
-  ).map((row) => ({
-    content: row.content,
-    error: row.error ? parseError(row.error) : null,
-    id: row.id,
-    root: row.root_id === row.id,
-    status: row.status,
-    userMessageId: row.user_message_id,
-  }));
-  const events = queryAll<PersistedEventRow>(
-    db.db,
-    "SELECT id, queue_id, message_id, kind, payload_json FROM events WHERE session_id = ? ORDER BY id",
-    sessionId,
-  ).map(persistedDisplayEvent);
-  const eventCursor =
-    queryGet<SequenceRow>(db.db, "SELECT seq FROM sqlite_sequence WHERE name = 'events'")?.seq ?? 0;
-  if (!Number.isSafeInteger(eventCursor)) {
-    throw new Error(`流式事件游标超出安全整数范围：${String(eventCursor)}`);
-  }
-  return { control, eventCursor, events, messages, queue };
+  return runTransaction(db.db, () => {
+    const control = db.control(sessionId);
+    const messages = queryAll<MessageRow>(
+      db.db,
+      `SELECT m.id, m.source_id, m.message_json, m.queue_id, m.created_at
+       FROM messages m
+       WHERE m.session_id = ? AND m.position IS NOT NULL
+       ORDER BY m.position`,
+      sessionId,
+    ).map(toDisplayMessage);
+    const queue = queryAll<QueueRow>(
+      db.db,
+      `SELECT q.id, COALESCE(q.content, '') AS content, q.status, q.error,
+         m.id AS user_message_id, q.root_id
+       FROM queue q
+       LEFT JOIN messages m ON m.queue_id = q.id
+       WHERE q.session_id = ? ORDER BY q.id`,
+      sessionId,
+    ).map((row) => ({
+      content: row.content,
+      error: row.error ? parseError(row.error) : null,
+      id: row.id,
+      root: row.root_id === row.id,
+      status: row.status,
+      userMessageId: row.user_message_id,
+    }));
+    const events = queryAll<PersistedEventRow>(
+      db.db,
+      "SELECT id, queue_id, message_id, kind, payload_json FROM events WHERE session_id = ? ORDER BY id",
+      sessionId,
+    ).map(persistedDisplayEvent);
+    const eventCursor =
+      queryGet<SequenceRow>(db.db, "SELECT seq FROM sqlite_sequence WHERE name = 'events'")?.seq ??
+      0;
+    if (!Number.isSafeInteger(eventCursor)) {
+      throw new Error(`流式事件游标超出安全整数范围：${String(eventCursor)}`);
+    }
+    return { control, eventCursor, events, messages, queue };
+  });
 }
 function toDisplayMessage(row: MessageRow): DisplayMessage {
   const [message] = messageRowsToChatMessages([row]);
