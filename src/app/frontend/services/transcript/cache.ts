@@ -33,6 +33,9 @@ export function reconcileTranscript(
   snapshot: TranscriptSnapshot,
   current?: TranscriptData,
 ): TranscriptData {
+  if (current && snapshot.eventCursor < current.snapshotCursor) {
+    return current;
+  }
   const replay = current?.events.filter((event) => event.id > snapshot.eventCursor) ?? [];
   const events = mergeEvents(snapshot.events, replay);
   return buildTranscript(

@@ -1,3 +1,4 @@
+import { type BaseMessage, ToolMessage } from "@langchain/core/messages";
 import type { Database } from "bun:sqlite";
 
 export interface StreamToolCallDelta {
@@ -11,6 +12,7 @@ export type StreamEventKind =
   | "assistant_reasoning_delta"
   | "assistant_text_delta"
   | "tool_call_delta"
+  | "tool_finished"
   | "tool_started"
   | "user_appended";
 interface StreamEventBase {
@@ -23,6 +25,7 @@ interface StreamEventValues {
   assistant_reasoning_delta: string;
   assistant_text_delta: string;
   tool_call_delta: StreamToolCallDelta;
+  tool_finished: string;
   tool_started: string;
   user_appended: null;
 }
@@ -36,6 +39,12 @@ export type StreamEvent = {
 export type StreamEventDraft = {
   [Kind in StreamEventKind]: Omit<StreamEventOf<Kind>, "id">;
 }[StreamEventKind];
+interface StartedToolCall {
+  callId: string;
+  messageId: string;
+  partId: string;
+  queueId: number;
+}
 
 export function insertStreamEvent(
   db: Database,
@@ -60,6 +69,54 @@ export function insertStreamEvent(
     throw new Error(`流式事件 ID 超出安全整数范围：${String(result.lastInsertRowid)}`);
   }
   return { ...event, id };
+}
+function loadStartedToolCalls(db: Database, sessionId: string): StartedToolCall[] {
+  const rows = db
+    .query<
+      {
+        message_id: string;
+        part_id: string;
+        payload_json: string;
+        queue_id: number;
+      },
+      [string]
+    >(
+      `SELECT queue_id, message_id, part_id, payload_json
+       FROM events WHERE session_id = ? AND kind = 'tool_started' ORDER BY id`,
+    )
+    .all(sessionId);
+  return rows.map((row) => {
+    const callId: unknown = JSON.parse(row.payload_json);
+    if (typeof callId !== "string" || callId.length === 0) {
+      throw new Error("工具开始事件缺少调用 ID");
+    }
+    return {
+      callId,
+      messageId: row.message_id,
+      partId: row.part_id,
+      queueId: row.queue_id,
+    };
+  });
+}
+export function finishToolStreams(db: Database, sessionId: string, messages: BaseMessage[]) {
+  const started = loadStartedToolCalls(db, sessionId);
+  deleteSessionStream(db, sessionId);
+  const completedCallIds = new Set(
+    messages.flatMap((message) => (ToolMessage.isInstance(message) ? [message.tool_call_id] : [])),
+  );
+  return started.flatMap((tool) =>
+    completedCallIds.has(tool.callId)
+      ? [
+          insertStreamEvent(db, sessionId, {
+            kind: "tool_finished",
+            messageId: tool.messageId,
+            partId: tool.partId,
+            queueId: tool.queueId,
+            value: tool.callId,
+          }),
+        ]
+      : [],
+  );
 }
 export function deleteSessionStream(db: Database, sessionId: string) {
   db.run("DELETE FROM events WHERE session_id = ? AND kind <> 'user_appended'", [sessionId]);

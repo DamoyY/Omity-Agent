@@ -38,7 +38,11 @@ const displayEventSchema: z.ZodType<DisplayEvent> = z.discriminatedUnion("kind",
       nameDelta: z.string().optional(),
     }),
   }),
-  z.object({ ...eventBase, kind: z.literal("tool_started"), value: z.string() }),
+  z.object({
+    ...eventBase,
+    kind: z.enum(["tool_finished", "tool_started"]),
+    value: z.string(),
+  }),
   z.object({
     ...eventBase,
     kind: z.literal("user_appended"),

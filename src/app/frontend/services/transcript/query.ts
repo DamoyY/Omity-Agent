@@ -56,8 +56,12 @@ export function useSessionTranscript(
     );
     const delta = (event: Event) => {
       try {
-        pendingEvents.push(readTranscriptEvent(event));
+        const incoming = readTranscriptEvent(event);
+        pendingEvents.push(incoming);
         deltaScheduler.request();
+        if (incoming.kind === "tool_finished") {
+          refreshScheduler.request();
+        }
       } catch (error) {
         reportError(error);
       }
@@ -79,11 +83,10 @@ async function refreshTranscript(
   sessionId: string,
 ) {
   const queryKey = transcriptKey(sessionId);
-  const wasFetching = queryClient.getQueryState(queryKey)?.fetchStatus === "fetching";
-  await queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });
-  if (wasFetching) {
-    await queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });
-  }
+  const snapshot = await loadTranscript(sessionId);
+  queryClient.setQueryData<TranscriptData>(queryKey, (current) =>
+    reconcileTranscript(snapshot, current),
+  );
 }
 function requiredId(sessionId: string | undefined) {
   if (!sessionId) {

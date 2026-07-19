@@ -3,7 +3,7 @@ import {
   type StreamEvent,
   type StreamEventDraft,
   deleteQueueStream,
-  deleteSessionStream,
+  finishToolStreams,
   insertStreamEvent,
 } from "./records/streamEvents";
 import {
@@ -140,11 +140,15 @@ export class AgentDatabase extends RecoverableDatabase {
   }
   syncHistory(sessionId: string, messages: BaseMessage[]) {
     this.requireSession(sessionId);
-    runTransaction(this.db, () => {
+    const finished = runTransaction(this.db, () => {
       syncMessages(this.db, sessionId, messages);
-      deleteSessionStream(this.db, sessionId);
+      const events = finishToolStreams(this.db, sessionId, messages);
       clearToolCancellations(this.db, sessionId);
+      return events;
     });
+    for (const event of finished) {
+      this.notify?.(event);
+    }
   }
   history(sessionId: string): BaseMessage[] {
     this.requireSession(sessionId);

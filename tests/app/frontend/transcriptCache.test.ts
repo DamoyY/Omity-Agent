@@ -53,6 +53,15 @@ test("completed snapshots replace cleared stream events", () => {
   expect(data.view).toHaveLength(1);
   expect(data.view[0]?.content).toBe("AB");
 });
+test("an older snapshot cannot replace a completed transcript", () => {
+  const call = toolCallEvent(1);
+  const completed = reconcileTranscript(snapshot(3, [call, startedEvent(2), finishedEvent(3)]));
+  const stale = reconcileTranscript(snapshot(2, [call, startedEvent(2)]), completed);
+  expect(stale).toBe(completed);
+  const tool = stale.view.flatMap((message) => message.parts).find((part) => part.type === "tool");
+  expect(tool?.type === "tool" ? tool.started : undefined).toBeUndefined();
+  expect(tool?.type === "tool" ? tool.call.streaming : undefined).toBeUndefined();
+});
 function snapshot(eventCursor: number, events: DisplayEvent[]): TranscriptSnapshot {
   return {
     control: "running",
@@ -78,5 +87,39 @@ function textEvent(id: number, text: string): DisplayEvent {
     partId: "text-1",
     queueId: 1,
     value: text,
+  };
+}
+function toolCallEvent(id: number): DisplayEvent {
+  return {
+    id,
+    kind: "tool_call_delta",
+    messageId: "message-1",
+    partId: "tool-0",
+    queueId: 1,
+    value: {
+      idDelta: "call-1",
+      index: 0,
+      nameDelta: "shell",
+    },
+  };
+}
+function startedEvent(id: number): DisplayEvent {
+  return {
+    id,
+    kind: "tool_started",
+    messageId: "message-1",
+    partId: "tool-0",
+    queueId: 1,
+    value: "call-1",
+  };
+}
+function finishedEvent(id: number): DisplayEvent {
+  return {
+    id,
+    kind: "tool_finished",
+    messageId: "message-1",
+    partId: "tool-0",
+    queueId: 1,
+    value: "call-1",
   };
 }

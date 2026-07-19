@@ -27,7 +27,10 @@ const payloadSchema = z.discriminatedUnion("kind", [
       nameDelta: z.string().optional(),
     }),
   }),
-  z.object({ kind: z.literal("tool_started"), value: z.string() }),
+  z.object({
+    kind: z.enum(["tool_finished", "tool_started"]),
+    value: z.string(),
+  }),
   z.object({ kind: z.literal("user_appended"), value: z.null() }),
 ]);
 export function persistedDisplayEvent(row: PersistedEventRow): StreamEvent {
@@ -47,7 +50,7 @@ export function persistedDisplayEvent(row: PersistedEventRow): StreamEvent {
   if (parsed.data.kind === "tool_call_delta") {
     return { ...base, kind: parsed.data.kind, value: parsed.data.value };
   }
-  if (parsed.data.kind === "tool_started") {
+  if (parsed.data.kind === "tool_finished" || parsed.data.kind === "tool_started") {
     return { ...base, kind: parsed.data.kind, value: parsed.data.value };
   }
   if (parsed.data.kind === "user_appended") {

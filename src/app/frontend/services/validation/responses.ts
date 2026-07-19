@@ -86,7 +86,7 @@ const eventSchema: z.ZodType<DisplayEvent> = z.discriminatedUnion("kind", [
   }),
   z.object({
     id: integer.positive(),
-    kind: z.literal("tool_started"),
+    kind: z.enum(["tool_finished", "tool_started"]),
     messageId: z.string().min(1),
     partId: z.string().min(1),
     queueId: integer.positive(),

@@ -37,17 +37,32 @@ export function eventQueueId(event: DisplayEvent) {
 export function eventMessageId(event: DisplayEvent) {
   return event.messageId;
 }
-export function eventStartedCallId(event: DisplayEvent) {
-  return event.kind === "tool_started" ? event.value : undefined;
+export function toolCallLifecycle(events: DisplayEvent[], outputs: Map<string, DisplayMessage>) {
+  const finished = new Set(
+    events.flatMap((event) => (event.kind === "tool_finished" ? [event.value] : [])),
+  );
+  const started = new Set(
+    events.flatMap((event) =>
+      event.kind === "tool_started" && !outputs.has(event.value) && !finished.has(event.value)
+        ? [event.value]
+        : [],
+    ),
+  );
+  return { finished, started };
 }
 export function streamTimelineMessages(
   events: DisplayEvent[],
   outputs: Map<string, DisplayMessage>,
   startedCallIds: Set<string>,
+  finishedCallIds: Set<string>,
 ): TimelineMessage[] {
   const messages = new Map<string, StreamMessage>();
   for (const event of events) {
-    if (event.kind !== "tool_started" && event.kind !== "user_appended") {
+    if (
+      event.kind !== "tool_finished" &&
+      event.kind !== "tool_started" &&
+      event.kind !== "user_appended"
+    ) {
       let message = messages.get(event.messageId);
       if (!message) {
         message = {
@@ -68,10 +83,12 @@ export function streamTimelineMessages(
       }
     }
   }
-  return [...messages.values()].map((message) => timelineMessage(message, outputs, startedCallIds));
+  return [...messages.values()].map((message) =>
+    timelineMessage(message, outputs, startedCallIds, finishedCallIds),
+  );
 }
 function createPart(
-  event: Exclude<DisplayEvent, { kind: "tool_started" | "user_appended" }>,
+  event: Exclude<DisplayEvent, { kind: "tool_finished" | "tool_started" | "user_appended" }>,
 ): Part {
   if (event.kind === "tool_call_delta") {
     return {
@@ -87,7 +104,7 @@ function createPart(
 }
 function mergePart(
   part: Part,
-  event: Exclude<DisplayEvent, { kind: "tool_started" | "user_appended" }>,
+  event: Exclude<DisplayEvent, { kind: "tool_finished" | "tool_started" | "user_appended" }>,
 ) {
   if (part.kind !== event.kind) {
     throw new Error(`流片段 ${event.partId} 的类型发生变化`);
@@ -108,6 +125,7 @@ function timelineMessage(
   message: StreamMessage,
   outputs: Map<string, DisplayMessage>,
   startedCallIds: Set<string>,
+  finishedCallIds: Set<string>,
 ): TimelineMessage {
   const parts = message.order.flatMap((partId): TimelinePart[] => {
     const part = message.parts.get(partId);
@@ -122,7 +140,12 @@ function timelineMessage(
     }
     const callId = part.id ?? `stream:${message.messageId}:${partId}`;
     const output = outputs.get(callId);
-    const call = displayCall(part, message.messageId, partId, output === undefined);
+    const call = displayCall(
+      part,
+      message.messageId,
+      partId,
+      output === undefined && !finishedCallIds.has(callId),
+    );
     return [
       {
         call,

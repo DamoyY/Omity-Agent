@@ -8,8 +8,8 @@ import type {
 import {
   eventMessageId,
   eventQueueId,
-  eventStartedCallId,
   streamTimelineMessages,
+  toolCallLifecycle,
 } from "./streamEvents";
 import { groupAssistantMessages } from "./grouping";
 
@@ -36,12 +36,7 @@ export function buildTimeline(
       item.role === "tool" && item.toolCallId ? [[item.toolCallId, item] as const] : [],
     ),
   );
-  const startedCallIds = new Set(
-    events.flatMap((event) => {
-      const callId = eventStartedCallId(event);
-      return callId && !outputs.has(callId) ? [callId] : [];
-    }),
-  );
+  const { finished: finishedCallIds, started: startedCallIds } = toolCallLifecycle(events, outputs);
   const visible = messages
     .filter((item) => item.role !== "tool")
     .map((item) => withParts(item, `message-${item.id.toString()}`, outputs, startedCallIds));
@@ -71,7 +66,14 @@ export function buildTimeline(
       (event.kind === "user_appended" && pending.has(event.queueId)) ||
       (activeQueueIds.has(eventQueueId(event)) && !persistedSourceIds.has(eventMessageId(event))),
   );
-  const live = timelineTail(liveEvents, pending, optimistic, outputs, startedCallIds);
+  const live = timelineTail(
+    liveEvents,
+    pending,
+    optimistic,
+    outputs,
+    startedCallIds,
+    finishedCallIds,
+  );
   return groupAssistantMessages([...visible, ...live]);
 }
 function timelineTail(
@@ -80,6 +82,7 @@ function timelineTail(
   optimistic: TimelineMessage[],
   outputs: Map<string, DisplayMessage>,
   startedCallIds: Set<string>,
+  finishedCallIds: Set<string>,
 ) {
   const result: TimelineMessage[] = [];
   let stream: DisplayEvent[] = [];
@@ -91,7 +94,7 @@ function timelineTail(
     (left, right) => requireAfterEventId(left.message) - requireAfterEventId(right.message),
   );
   const flushStream = () => {
-    result.push(...streamTimelineMessages(stream, outputs, startedCallIds));
+    result.push(...streamTimelineMessages(stream, outputs, startedCallIds, finishedCallIds));
     stream = [];
   };
   for (const event of events) {
