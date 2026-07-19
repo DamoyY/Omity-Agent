@@ -3,6 +3,7 @@ import { DomainError, sessionNotFound } from "../../src/errors";
 import { decodeSessionId, requestBodyLimit } from "../../src/app/http/request";
 import { expect, test } from "bun:test";
 import { createApiController } from "./support/apiController";
+import { createStaticApp } from "../../src/app/http/static";
 import { normalizeError } from "../../src/app/http/errors";
 
 test("API JSON validation rejects invalid controls and empty messages", async () => {
@@ -131,6 +132,12 @@ test("API maps missing sessions and conflicts to explicit status codes", () => {
   expect(
     normalizeError(new DomainError("ATTACHMENT_TOO_LARGE", "附件总大小超过上限")),
   ).toMatchObject({ code: "ATTACHMENT_TOO_LARGE", status: 413 });
+});
+test("static frontend permits remote Markdown images", async () => {
+  const response = await createStaticApp(".").request("/missing");
+  expect(response.headers.get("content-security-policy")).toContain(
+    "img-src 'self' data: blob: https: http:",
+  );
 });
 function jsonRequest(body: unknown): RequestInit {
   return { body: JSON.stringify(body), method: "POST" };
