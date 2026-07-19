@@ -159,7 +159,6 @@ test("snapshot refresh does not discard a tool event committed after its events 
   const toolPart = reconciled.view
     .flatMap((message) => message.parts)
     .find((part) => part.type === "tool");
-
   expect(emitted).toHaveLength(1);
   expect(toolPart).toMatchObject({
     call: { id: "call-race", name: "terminal_send_command" },

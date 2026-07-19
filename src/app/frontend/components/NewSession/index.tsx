@@ -8,40 +8,20 @@ import {
   composerFrame,
   composerRole,
 } from "../Chat/Composer/layout";
+import { messageFlow, scroll, scrollContent, setup } from "./layout";
 import { Button } from "../ParkUI";
 import type { InitialSessionState } from "../../../initialState";
 import { MarkdownEditor } from "../Chat/MarkdownEditor";
 import { PendingAttachments } from "../Chat/Composer/attachments";
 import { WorkspacePicker } from "./WorkspacePicker";
 import { claimShortId } from "../../../../infrastructure/randomId";
-import { css } from "styled-system/css";
 import { reportPromiseErrors } from "../../services/errors";
+import { useNewSessionDraft } from "./draft";
 import { useTranslation } from "react-i18next";
 
-const scroll = css({
-  minH: 0,
-  overflowY: "auto",
-  overscrollBehavior: "contain",
-  scrollbarGutter: "stable",
-});
-const scrollContent = css({
-  display: "grid",
-  gridTemplateRows: "auto minmax(min-content, 1fr)",
-  minH: "full",
-});
-const setup = css({
-  alignContent: "start",
-  display: "grid",
-  gap: "6",
-  maxW: "content",
-  minH: "full",
-  mx: "auto",
-  p: { _short: "4", base: "4", md: "8" },
-  w: "full",
-});
-const messageFlow = css({ alignSelf: "end" });
 export function NewSessionPage({
   attachmentSettings,
+  draftSaveDelayMs,
   pageClassName,
   recentWorkspaces,
   workspace,
@@ -50,6 +30,7 @@ export function NewSessionPage({
   onWorkspaceChange,
 }: {
   attachmentSettings?: AttachmentSettings;
+  draftSaveDelayMs?: number;
   pageClassName: string;
   recentWorkspaces: string[];
   workspace: string;
@@ -58,12 +39,19 @@ export function NewSessionPage({
   onWorkspaceChange: (workspace: string) => void;
 }) {
   const { t } = useTranslation();
-  const [message, setMessage] = useState("");
+  const {
+    clear: clearDraft,
+    content: message,
+    flush: flushDraft,
+    loading: draftLoading,
+    update: setMessage,
+  } = useNewSessionDraft(draftSaveDelayMs);
   const [pairs, setPairs] = useState<EditablePair[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const attachmentsRef = useRef(new PendingAttachments(attachmentSettings));
   const createRef = useRef(onCreate);
+  const draftActionsRef = useRef({ clear: clearDraft, flush: flushDraft });
   const previousPairCountRef = useRef(pairs.length);
   useEffect(() => {
     attachmentsRef.current.configure(attachmentSettings);
@@ -71,6 +59,9 @@ export function NewSessionPage({
   useLayoutEffect(() => {
     createRef.current = onCreate;
   }, [onCreate]);
+  useLayoutEffect(() => {
+    draftActionsRef.current = { clear: clearDraft, flush: flushDraft };
+  }, [clearDraft, flushDraft]);
   useLayoutEffect(() => {
     const pairAdded = pairs.length > previousPairCountRef.current;
     previousPairCountRef.current = pairs.length;
@@ -103,6 +94,7 @@ export function NewSessionPage({
     }
     setSubmitting(true);
     try {
+      await draftActionsRef.current.flush();
       await createRef.current(
         {
           history: pairs.map(({ user, assistant }) => ({ assistant, user })),
@@ -110,6 +102,7 @@ export function NewSessionPage({
         },
         attachmentsRef.current.values(message),
       );
+      draftActionsRef.current.clear();
     } finally {
       setSubmitting(false);
     }
@@ -161,7 +154,7 @@ export function NewSessionPage({
             />
             <div className={composerFrame}>
               <MarkdownEditor
-                disabled={submitting}
+                disabled={draftLoading || submitting}
                 onChange={setMessage}
                 onPasteFiles={attachmentSettings ? pasteFiles : undefined}
                 onSubmit={handleSubmit}
@@ -170,7 +163,11 @@ export function NewSessionPage({
               />
               <div className={composerActions}>
                 <div className={composerControls}>
-                  <Button disabled={!complete || submitting} type="submit" variant="outline">
+                  <Button
+                    disabled={draftLoading || !complete || submitting}
+                    type="submit"
+                    variant="outline"
+                  >
                     <Send size={14} />
                     {submitting ? t("creating") : t("createAndSend")}
                   </Button>

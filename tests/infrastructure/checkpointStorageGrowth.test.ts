@@ -7,7 +7,6 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 const messageCount = 64;
 const instructionsSentinel = `instructions-${"i".repeat(4096)}`;
 const toolsSentinel = `tools-${"t".repeat(4096)}`;
-
 afterEach(cleanupDatabaseDirs);
 test("checkpoint churn keeps one compact head and one copy of each message", async () => {
   const database = makeDb();
@@ -47,7 +46,6 @@ test("checkpoint churn keeps one compact head and one copy of each message", asy
   expect(storedOccurrences(database.db, "pending-artifact-63")).toBe(0);
   database.close();
 });
-
 function message(index: number) {
   return new AIMessage({
     content: `conversation-body-${index.toString()}`,
@@ -58,7 +56,6 @@ function message(index: number) {
     },
   });
 }
-
 function pendingMessage(index: number) {
   return new ToolMessage({
     artifact: [{ data: `pending-artifact-${index.toString()}`, type: "resource" }],
@@ -67,7 +64,6 @@ function pendingMessage(index: number) {
     tool_call_id: `call-${index.toString()}`,
   });
 }
-
 function checkpoint(messages: AIMessage[], index: number) {
   return {
     channel_values: { messages },
@@ -78,16 +74,13 @@ function checkpoint(messages: AIMessage[], index: number) {
     versions_seen: {},
   };
 }
-
 type TestDatabase = ReturnType<typeof makeDb>["db"];
 type CountedTable = "checkpoints" | "messages" | "write_messages" | "writes";
-
 function checkpointBytes(db: TestDatabase) {
   return required(
     db.query<{ bytes: number }, []>("SELECT length(checkpoint) AS bytes FROM checkpoints").get(),
   ).bytes;
 }
-
 function messagePayloadBytes(db: TestDatabase) {
   return required(
     db
@@ -97,12 +90,10 @@ function messagePayloadBytes(db: TestDatabase) {
       .get(),
   ).bytes;
 }
-
 function rowCount(db: TestDatabase, table: CountedTable) {
   return required(db.query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM ${table}`).get())
     .count;
 }
-
 function storedOccurrences(db: TestDatabase, value: string) {
   return required(
     db
@@ -112,7 +103,6 @@ function storedOccurrences(db: TestDatabase, value: string) {
       .get(value),
   ).count;
 }
-
 function rawCheckpointContains(db: TestDatabase, value: string) {
   return (
     required(

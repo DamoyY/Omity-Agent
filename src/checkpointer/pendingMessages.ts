@@ -8,16 +8,13 @@ import { ensureMessageIds } from "./messageRefs";
 
 const messageMarkerKey = "__omity_pending_message__";
 const storedShapeKey = "__omity_stored_shape__";
-
 export function normalizePendingValue(value: unknown) {
   const messages: BaseMessage[] = [];
   return { messages, value: encode(normalizeStoredShape(value), messages) };
 }
-
 export function hydratePendingValue(value: unknown, messages: BaseMessage[]) {
   return restoreStoredShape(decode(value, messages));
 }
-
 function encode(value: unknown, messages: BaseMessage[]): unknown {
   if (BaseMessage.isInstance(value)) {
     ensureMessageIds([value]);
@@ -35,7 +32,6 @@ function encode(value: unknown, messages: BaseMessage[]): unknown {
     Object.entries(value).map(([key, item]) => [key, encode(item, messages)]),
   );
 }
-
 function decode(value: unknown, messages: BaseMessage[]): unknown {
   if (isMarker(value)) {
     const ordinal = value[messageMarkerKey];
@@ -55,7 +51,6 @@ function decode(value: unknown, messages: BaseMessage[]): unknown {
     Object.entries(value).map(([key, item]) => [key, decode(item, messages)]),
   );
 }
-
 function normalizeStoredShape(value: unknown) {
   if (!isPlainRecord(value) || !isStoredMessage(value["original"])) {
     return value;
@@ -66,7 +61,6 @@ function normalizeStoredShape(value: unknown) {
   }
   return { ...value, original: { [storedShapeKey]: message } };
 }
-
 function restoreStoredShape(value: unknown) {
   if (!isPlainRecord(value) || !isPlainRecord(value["original"])) {
     return value;
@@ -81,15 +75,12 @@ function restoreStoredShape(value: unknown) {
   }
   return { ...value, original: stored };
 }
-
 function isMarker(value: unknown): value is Record<typeof messageMarkerKey, number> {
   return isPlainRecord(value) && Number.isSafeInteger(value[messageMarkerKey]);
 }
-
 function isStoredMessage(value: unknown): value is StoredMessage {
   return isPlainRecord(value) && typeof value["type"] === "string" && isPlainRecord(value["data"]);
 }
-
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;

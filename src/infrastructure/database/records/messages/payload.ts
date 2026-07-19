@@ -35,7 +35,6 @@ export interface StoredTool {
   type: "tool";
 }
 export type StoredConversationMessage = StoredHuman | StoredAi | StoredTool;
-
 export function encodeMessage(message: BaseMessage, mode: MessageStorageMode) {
   if (HumanMessage.isInstance(message)) {
     return { content: message.content, type: "human" } satisfies StoredHuman;
@@ -48,7 +47,6 @@ export function encodeMessage(message: BaseMessage, mode: MessageStorageMode) {
   }
   throw new Error(`不支持持久化消息类型：${message.type}`);
 }
-
 function encodeAiMessage(message: AIMessage): StoredAi {
   const reasoning = storedReasoning(message);
   const usage = storedUsage(message);
@@ -63,7 +61,6 @@ function encodeAiMessage(message: AIMessage): StoredAi {
     ...(usage === undefined ? {} : { usage }),
   };
 }
-
 function encodeToolMessage(message: ToolMessage, mode: MessageStorageMode): StoredTool {
   const structuredOutput = mode === "recovery" ? structuredToolOutput(message.artifact) : undefined;
   const largeOutputTokens = readLargeOutputTokens(message);
@@ -77,7 +74,6 @@ function encodeToolMessage(message: ToolMessage, mode: MessageStorageMode): Stor
     ...(structuredOutput === undefined ? {} : { structuredOutput }),
   };
 }
-
 function storedToolCall(
   value: ToolCall,
   customTools: { callIds: Set<string>; itemIds: Map<string, string> },
@@ -101,7 +97,6 @@ function storedToolCall(
     ...(itemId ? { call_id: itemId } : {}),
   };
 }
-
 function customToolMetadata(message: AIMessage) {
   const callIds = new Set<string>();
   const itemIds = new Map<string, string>();
@@ -131,7 +126,6 @@ function customToolMetadata(message: AIMessage) {
   }
   return { callIds, itemIds };
 }
-
 function storedReasoning(message: AIMessage) {
   const direct = isRecord(message.additional_kwargs["reasoning"])
     ? message.additional_kwargs["reasoning"]
@@ -150,7 +144,6 @@ function storedReasoning(message: AIMessage) {
       : {}),
   };
 }
-
 function storedUsage(message: AIMessage): StoredUsage | undefined {
   if (!message.usage_metadata) {
     return undefined;
@@ -161,14 +154,12 @@ function storedUsage(message: AIMessage): StoredUsage | undefined {
     output: message.usage_metadata.output_tokens,
   };
 }
-
 function readLargeOutputTokens(message: ToolMessage) {
   const largeOutput = message.metadata?.["largeOutput"];
   return isRecord(largeOutput) && typeof largeOutput["tokens"] === "number"
     ? largeOutput["tokens"]
     : undefined;
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

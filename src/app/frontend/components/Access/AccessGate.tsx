@@ -22,7 +22,6 @@ const accessButton = css({
   w: "8",
   zIndex: "overlay",
 });
-
 export function AccessGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();

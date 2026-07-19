@@ -26,7 +26,6 @@ import { rowToTuple } from "./tuple";
 
 export class BunSqliteSaver extends BaseCheckpointSaver {
   private readonly commitTails = new Map<string, Promise<void>>();
-
   constructor(
     readonly db: Database,
     private readonly sessionId?: string,
@@ -34,7 +33,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
   ) {
     super(serde);
   }
-
   async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
     const key = operationKey(config);
     await this.commitTails.get(key);
@@ -61,7 +59,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     };
     return this.decodeRow(row, finalConfig);
   }
-
   async *list(
     config: RunnableConfig,
     options?: CheckpointListOptions,
@@ -81,7 +78,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       });
     }
   }
-
   put(
     config: RunnableConfig,
     checkpoint: Checkpoint,
@@ -99,7 +95,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     );
     return this.enqueue(key, prepared, (item) => commitCheckpoint(this.db, item));
   }
-
   putWrites(config: RunnableConfig, writes: PendingWrite[], taskId: string): Promise<void> {
     const key = operationKey(config);
     const prepared = preparePendingWrites(
@@ -111,7 +106,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     );
     return this.enqueue(key, prepared, (item) => commitPendingWrites(this.db, item));
   }
-
   async deleteThread(threadId: string): Promise<void> {
     const pending = [...this.commitTails.entries()]
       .filter(([key]) => key.startsWith(`${threadId}\0`))
@@ -119,7 +113,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     await Promise.all(pending);
     deleteThreadData(this.db, threadId);
   }
-
   override async getDeltaChannelHistory(options: {
     config: RunnableConfig;
     channels: string[];
@@ -129,7 +122,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     }
     return {};
   }
-
   private decodeRow(row: CheckpointRow, config: RunnableConfig): Promise<CheckpointTuple> {
     return rowToTuple(row, config, {
       db: this.db,
@@ -137,7 +129,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       sessionId: this.resolveSessionId(config),
     });
   }
-
   private enqueue<Prepared, Result>(
     key: string,
     prepared: Promise<Prepared>,
@@ -150,7 +141,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     void this.removeSettledTail(key, tail);
     return result;
   }
-
   private async removeSettledTail(key: string, tail: Promise<void>) {
     try {
       await tail;
@@ -162,7 +152,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
       }
     }
   }
-
   private resolveSessionId(config: RunnableConfig) {
     if (this.sessionId) {
       return this.sessionId;
@@ -171,7 +160,6 @@ export class BunSqliteSaver extends BaseCheckpointSaver {
     return threadId.split(":", 1)[0] ?? threadId;
   }
 }
-
 async function commitAfter<Prepared, Result>(
   previous: Promise<void>,
   prepared: Promise<Prepared>,
@@ -181,11 +169,9 @@ async function commitAfter<Prepared, Result>(
   await previous;
   return commit(value);
 }
-
 async function waitForResult(value: Promise<unknown>) {
   await value;
 }
-
 function operationKey(config: RunnableConfig) {
   const threadId = requiredConfigString(config.configurable?.["thread_id"], "thread_id");
   const checkpointNs =

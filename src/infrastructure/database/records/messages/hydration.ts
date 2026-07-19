@@ -38,7 +38,6 @@ export function decodeMessage(value: string, id?: string) {
     tool_call_id: stored.toolCallId,
   });
 }
-
 function parseStoredMessage(value: string): StoredConversationMessage {
   const parsed: unknown = JSON.parse(value);
   if (!isRecord(parsed) || !isMessageContent(parsed["content"])) {
@@ -55,7 +54,6 @@ function parseStoredMessage(value: string): StoredConversationMessage {
   }
   throw new Error("messages.message_json 消息类型无效");
 }
-
 function parseAiMessage(value: Record<string, unknown>): StoredAi {
   const { content } = value;
   if (!isMessageContent(content)) {
@@ -69,7 +67,6 @@ function parseAiMessage(value: Record<string, unknown>): StoredAi {
     ...(isStoredUsage(value["usage"]) ? { usage: value["usage"] } : {}),
   };
 }
-
 function parseToolMessage(value: Record<string, unknown>): StoredTool {
   const { content } = value;
   const { toolCallId } = value;
@@ -88,7 +85,6 @@ function parseToolMessage(value: Record<string, unknown>): StoredTool {
     ...("structuredOutput" in value ? { structuredOutput: value["structuredOutput"] } : {}),
   };
 }
-
 function restoredUsage(usage: StoredUsage) {
   return {
     input_token_details: { cache_read: usage.cacheRead },
@@ -97,7 +93,6 @@ function restoredUsage(usage: StoredUsage) {
     total_tokens: usage.input + usage.output,
   };
 }
-
 function isStoredUsage(value: unknown): value is StoredUsage {
   return (
     isRecord(value) &&
@@ -106,11 +101,9 @@ function isStoredUsage(value: unknown): value is StoredUsage {
     typeof value["output"] === "number"
   );
 }
-
 function isMessageContent(value: unknown): value is MessageContent {
   return typeof value === "string" || Array.isArray(value);
 }
-
 function isToolCallArray(value: unknown): value is ToolCall[] {
   return (
     Array.isArray(value) &&
@@ -123,7 +116,6 @@ function isToolCallArray(value: unknown): value is ToolCall[] {
     )
   );
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

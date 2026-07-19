@@ -1,11 +1,9 @@
 import { customAlphabet } from "nanoid";
 
 const generateShortId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 8);
-
 export function createShortId() {
   return generateShortId();
 }
-
 export function claimShortId(
   claim: (id: string) => boolean,
   generate: () => string = createShortId,
@@ -17,7 +15,6 @@ export function claimShortId(
     }
   }
 }
-
 export async function claimShortIdAsync(
   claim: (id: string) => Promise<boolean>,
   generate: () => string = createShortId,

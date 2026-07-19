@@ -54,7 +54,6 @@ export async function createAppFork(options: {
   }
   return targetSessionId;
 }
-
 function reserveSessionId(settings: Settings) {
   const sessionsDir = resolve(settings.paths.dataDir, "sessions");
   mkdirSync(sessionsDir, { recursive: true });
@@ -70,7 +69,6 @@ function reserveSessionId(settings: Settings) {
     }
   });
 }
-
 function isExistsError(error: unknown) {
   return (
     error instanceof Error &&

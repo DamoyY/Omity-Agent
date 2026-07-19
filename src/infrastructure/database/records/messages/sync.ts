@@ -9,7 +9,6 @@ interface StoredRow {
   message_json: string;
   source_id: string;
 }
-
 export function syncMessages(db: Database, sessionId: string, messages: BaseMessage[]) {
   const items = messages.map((message) => {
     message.id ??= randomUUID();
@@ -48,7 +47,6 @@ export function syncMessages(db: Database, sessionId: string, messages: BaseMess
   }
   pruneUnreferencedMessages(db, sessionId);
 }
-
 function firstChangedIndex(existing: StoredRow[], incoming: MessageInsert[]) {
   const length = Math.min(existing.length, incoming.length);
   for (let index = 0; index < length; index += 1) {

@@ -8,7 +8,6 @@ interface StoredRow {
   message_json: string;
   source_id: string;
 }
-
 export function insertUserMessage(
   db: Database,
   sessionId: string,
@@ -23,11 +22,9 @@ export function insertUserMessage(
     queueId,
   );
 }
-
 export function queueMessageId(sessionId: string, queueId: number) {
   return `queue:${sessionId}:${queueId.toString()}`;
 }
-
 export function messageQueueId(sessionId: string, message: BaseMessage) {
   if (message.type !== "human" || !message.id) {
     return undefined;
@@ -45,7 +42,6 @@ export function messageQueueId(sessionId: string, message: BaseMessage) {
   }
   return queueId;
 }
-
 export function appendAssistantMessage(db: Database, sessionId: string, content: string) {
   storeMessage(
     db,
@@ -54,7 +50,6 @@ export function appendAssistantMessage(db: Database, sessionId: string, content:
     nextPosition(db, sessionId),
   );
 }
-
 export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   const rows = queryAll<StoredRow>(
     db,
@@ -64,7 +59,6 @@ export function loadMessages(db: Database, sessionId: string): BaseMessage[] {
   );
   return messageRowsToChatMessages(rows);
 }
-
 export function loadMessageRows(db: Database, ids: number[]) {
   const select = db.prepare<StoredRow, [number]>(
     "SELECT source_id, message_json FROM messages WHERE id = ?",
@@ -81,7 +75,6 @@ export function loadMessageRows(db: Database, ids: number[]) {
     select.finalize();
   }
 }
-
 export function loadMessageBySourceId(db: Database, sessionId: string, sourceId: string) {
   const row = queryGet<StoredRow>(
     db,
@@ -98,7 +91,6 @@ export function loadMessageBySourceId(db: Database, sessionId: string, sourceId:
   }
   return message;
 }
-
 export function storeMessage(
   db: Database,
   sessionId: string,
@@ -118,7 +110,6 @@ export function storeMessage(
     createdAt,
   );
 }
-
 export function pruneUnreferencedMessages(db: Database, sessionId?: string) {
   db.run(
     `DELETE FROM messages
@@ -130,7 +121,6 @@ export function pruneUnreferencedMessages(db: Database, sessionId?: string) {
     [sessionId ?? null, sessionId ?? null],
   );
 }
-
 export function storePreparedMessage(
   db: Database,
   sessionId: string,
@@ -161,7 +151,6 @@ export function storePreparedMessage(
   }
   return row.id;
 }
-
 function nextPosition(db: Database, sessionId: string) {
   const row = queryGet<{ position: number }>(
     db,

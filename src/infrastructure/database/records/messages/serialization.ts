@@ -11,7 +11,6 @@ export interface MessageInsert {
   sourceId: string;
 }
 export type { MessageStorageMode } from "./payload";
-
 export function messageInsert(
   message: BaseMessage,
   mode: MessageStorageMode = "history",
@@ -24,7 +23,6 @@ export function messageInsert(
     sourceId: message.id,
   };
 }
-
 export function messageRowsToChatMessages(rows: MessageRow[]): BaseMessage[] {
   return rows.map((row) => decodeMessage(row.message_json, row.source_id));
 }

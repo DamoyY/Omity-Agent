@@ -15,7 +15,6 @@ import { syncMessages } from "../infrastructure/database/records/messages/sync";
 
 const historyMarkerKey = "__omity_message_history__";
 const storedMessageMarkerKey = "__omity_stored_message__";
-
 export function normalizeCheckpoint(checkpoint: Checkpoint) {
   const current = checkpoint.channel_values["messages"];
   const start = normalizeStart(checkpoint.channel_values["__start__"]);
@@ -37,7 +36,6 @@ export function normalizeCheckpoint(checkpoint: Checkpoint) {
     messages,
   };
 }
-
 export function persistCheckpointMessages(
   db: Database,
   sessionId: string,
@@ -47,7 +45,6 @@ export function persistCheckpointMessages(
     syncMessages(db, sessionId, messages);
   }
 }
-
 export function hydrateCheckpoint(db: Database, sessionId: string, checkpoint: Checkpoint) {
   const history = () => loadMessages(db, sessionId);
   const start = hydrateStart(checkpoint.channel_values["__start__"], history);
@@ -62,13 +59,11 @@ export function hydrateCheckpoint(db: Database, sessionId: string, checkpoint: C
     },
   };
 }
-
 export function ensureMessageIds(messages: BaseMessage[]) {
   for (const message of messages) {
     message.id ??= randomUUID();
   }
 }
-
 function normalizeStart(value: unknown) {
   if (!isRecord(value) || !isMessageArray(value["messages"])) {
     return { messages: undefined, value };
@@ -79,22 +74,18 @@ function normalizeStart(value: unknown) {
     value: { ...value, messages: historyMarker() },
   };
 }
-
 function hydrateStart(value: unknown, history: () => BaseMessage[]) {
   if (!isRecord(value) || !isHistoryMarker(value["messages"])) {
     return value;
   }
   return { ...value, messages: history() };
 }
-
 function historyMarker() {
   return { [historyMarkerKey]: true };
 }
-
 function isHistoryMarker(value: unknown) {
   return isRecord(value) && value[historyMarkerKey] === true;
 }
-
 function normalizeHookPlan(value: unknown) {
   if (!isRecord(value) || !isStoredMessage(value["original"])) {
     return value;
@@ -109,7 +100,6 @@ function normalizeHookPlan(value: unknown) {
     original: { [storedMessageMarkerKey]: message.id },
   };
 }
-
 function hydrateHookPlan(db: Database, sessionId: string, value: unknown) {
   if (!isRecord(value) || !isRecord(value["original"])) {
     return value;
@@ -125,15 +115,12 @@ function hydrateHookPlan(db: Database, sessionId: string, value: unknown) {
   }
   return { ...value, original: stored };
 }
-
 function isMessageArray(value: unknown): value is BaseMessage[] {
   return Array.isArray(value) && value.every((item) => BaseMessage.isInstance(item));
 }
-
 function isStoredMessage(value: unknown): value is StoredMessage {
   return isRecord(value) && typeof value["type"] === "string" && isRecord(value["data"]);
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

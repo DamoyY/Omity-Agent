@@ -31,7 +31,6 @@ export class CompatibleChatOpenAIResponses extends ChatOpenAIResponses {
     return normalizeResponsesPayload(response);
   }
 }
-
 function normalizeResponsesRequest<
   Request extends
     | OpenAI.Responses.ResponseCreateParamsStreaming
@@ -43,7 +42,6 @@ function normalizeResponsesRequest<
   const input = request.input.map((item, index) => normalizeInputItem(item, index));
   return { ...request, input };
 }
-
 function normalizeInputItem<Item>(item: Item, index: number): Item {
   if (!isRecord(item) || item["type"] !== "custom_tool_call" || item["id"] === undefined) {
     return item;
@@ -59,7 +57,6 @@ function normalizeInputItem<Item>(item: Item, index: number): Item {
   }
   return item;
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

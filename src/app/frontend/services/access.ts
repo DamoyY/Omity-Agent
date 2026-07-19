@@ -69,7 +69,6 @@ export async function registrationTicket() {
     method: "POST",
   });
 }
-
 export async function logout() {
   return request("api/access/logout", authenticatedSchema, {
     body: "{}",

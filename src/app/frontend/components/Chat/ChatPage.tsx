@@ -114,6 +114,7 @@ export function ChatPage({
       return (
         <NewSessionPage
           attachmentSettings={attachmentSettings}
+          draftSaveDelayMs={draftSaveDelayMs}
           pageClassName={page}
           recentWorkspaces={recentWorkspaces}
           workspace={workspace ?? ""}
