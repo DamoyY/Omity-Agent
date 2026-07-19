@@ -61,6 +61,7 @@ mcpServers:
 
 toolNameOverrides:
   diff__apply_patch: apply_patch
+  diff__undo_patch: undo_patch
   codegraph__codegraph_explore: codegraph_explore
   codegraph__codegraph_node: codegraph_node
   codegraph__codegraph_search: codegraph_search
