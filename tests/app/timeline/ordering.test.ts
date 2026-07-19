@@ -30,13 +30,11 @@ test("keeps live output before a user append across persistence", () => {
   const events: DisplayEvent[] = [
     {
       id: 1,
-      message: "assistant_text_delta",
-      payload: {
-        kind: "assistant_text_delta",
-        messageId: "live-output",
-        queueId: 1,
-        text: "第二段",
-      },
+      kind: "assistant_text_delta",
+      messageId: "live-output",
+      partId: "text-1",
+      queueId: 1,
+      value: "第二段",
     },
   ];
   const streaming = buildTimeline([rootUser, firstOutput], queue, events);
@@ -70,13 +68,11 @@ test("keeps a streaming tool call before a pending user append", () => {
   const events: DisplayEvent[] = [
     {
       id: 1,
-      message: "tool_call_delta",
-      payload: {
-        call: { id: "call-1", index: 0, name: "inspect" },
-        kind: "tool_call_delta",
-        messageId: "live-tool",
-        queueId: 1,
-      },
+      kind: "tool_call_delta",
+      messageId: "live-tool",
+      partId: "tool-0",
+      queueId: 1,
+      value: { idDelta: "call-1", index: 0, nameDelta: "inspect" },
     },
   ];
   const view = buildTimeline([message(1, "user", "开始", 1)], queue, events);

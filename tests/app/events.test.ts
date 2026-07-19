@@ -36,9 +36,12 @@ test("session SSE sends ordered deltas only for the target session", async () =>
   expect(await frames.next()).toBe("event: changed\ndata: {}\n\n");
   const event = {
     id: 3,
-    message: "assistant_text_delta",
-    payload: { kind: "assistant_text_delta", queueId: 1, text: "hello" },
-  };
+    kind: "assistant_text_delta" as const,
+    messageId: "message-1",
+    partId: "text-1",
+    queueId: 1,
+    value: "hello",
+  } as const;
   controller.events.notifyTranscript("other", { ...event, id: 2 });
   controller.events.notifyTranscript("test", event);
   expect(await frames.next()).toBe(`event: delta\ndata: ${JSON.stringify(event)}\n\n`);

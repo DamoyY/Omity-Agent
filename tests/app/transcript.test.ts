@@ -112,7 +112,13 @@ test("live stream events match persisted snapshots and keep their cursor", () =>
   const queueId = db.appendUser("stream-session", "question");
   const emitted: StreamEvent[] = [];
   db.onChange((event) => emitted.push(event));
-  const event = db.streamToken("stream-session", queueId, "hello", "message-1");
+  const event = db.appendStream("stream-session", {
+    kind: "assistant_text_delta",
+    messageId: "message-1",
+    partId: "text-1",
+    queueId,
+    value: "hello",
+  });
   const streaming = loadTranscript(db, "stream-session");
   expect(emitted).toEqual([event]);
   expect(streaming.events).toEqual([displayStreamEvent(event)]);
@@ -134,17 +140,18 @@ test("snapshot refresh does not discard a tool event committed after its events 
   const emitted: StreamEvent[] = [];
   writer.onChange((event) => emitted.push(event));
   const racingReader = afterQuery(reader, "FROM events WHERE session_id", () => {
-    writer.streamToolCall(
-      sessionId,
+    writer.appendStream(sessionId, {
+      kind: "tool_call_delta",
+      messageId: "assistant-race",
+      partId: "tool-0",
       queueId,
-      {
-        args: '{"command":"pwd"}',
-        id: "call-race",
+      value: {
+        argumentsDelta: '{"command":"pwd"}',
+        idDelta: "call-race",
         index: 0,
-        name: "terminal_send_command",
+        nameDelta: "terminal_send_command",
       },
-      "assistant-race",
-    );
+    });
   });
   const snapshot = (() => {
     try {

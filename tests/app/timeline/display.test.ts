@@ -32,12 +32,11 @@ test("streaming tool call is hidden after the final tool call is visible", () =>
   const events: DisplayEvent[] = [
     {
       id: 1,
-      message: "tool_call",
-      payload: {
-        call: { id: "call-1", index: 0, name: "terminal_new_tab" },
-        kind: "tool_call_delta",
-        queueId: 1,
-      },
+      kind: "tool_call_delta",
+      messageId: "message-1",
+      partId: "tool-0",
+      queueId: 1,
+      value: { idDelta: "call-1", index: 0, nameDelta: "terminal_new_tab" },
     },
   ];
   const view = buildTimeline(messages, queue, events);
@@ -71,12 +70,11 @@ test("streaming tool call is grouped with previous assistant message", () => {
   const events: DisplayEvent[] = [
     {
       id: 1,
-      message: "tool_call",
-      payload: {
-        call: { id: "call-2", index: 1, name: "terminal_send_command" },
-        kind: "tool_call_delta",
-        queueId: 1,
-      },
+      kind: "tool_call_delta",
+      messageId: "message-2",
+      partId: "tool-1",
+      queueId: 1,
+      value: { idDelta: "call-2", index: 1, nameDelta: "terminal_send_command" },
     },
   ];
   const view = buildTimeline(messages, queue, events);
@@ -131,8 +129,11 @@ test("started tool call exposes an empty output state", () => {
   const events: DisplayEvent[] = [
     {
       id: 1,
-      message: "tool_started",
-      payload: { callId: "call-1", kind: "tool_started", queueId: 1 },
+      kind: "tool_started",
+      messageId: "message-1",
+      partId: "tool-0",
+      queueId: 1,
+      value: "call-1",
     },
   ];
   const part = buildTimeline(messages, [], events)[0]?.parts.find((item) => item.type === "tool");

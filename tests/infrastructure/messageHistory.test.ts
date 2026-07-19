@@ -88,31 +88,46 @@ test("persists only transient stream deltas", () => {
   db.resetSession("123", workspace);
   const queueId = db.appendUser("123", "问题");
   db.setControl("123", "pause");
-  db.streamToken("123", 1, "答案");
-  db.streamToolCall("123", 1, { id: "call-1", name: "tool" });
+  db.appendStream("123", {
+    kind: "assistant_text_delta",
+    messageId: "message-1",
+    partId: "text-1",
+    queueId: 1,
+    value: "答案",
+  });
+  db.appendStream("123", {
+    kind: "tool_call_delta",
+    messageId: "message-1",
+    partId: "tool-0",
+    queueId: 1,
+    value: { idDelta: "call-1", index: 0, nameDelta: "tool" },
+  });
   const events = db.db
     .query<
       {
         kind: string;
-        message_id: string | null;
+        message_id: string;
+        part_id: string;
         payload_json: string;
         queue_id: number;
       },
       []
-    >("SELECT queue_id, message_id, kind, payload_json FROM events ORDER BY id")
+    >("SELECT queue_id, message_id, part_id, kind, payload_json FROM events ORDER BY id")
     .all();
   expect(queueId).toBe(1);
   expect(events).toEqual([
     {
       kind: "assistant_text_delta",
-      message_id: null,
+      message_id: "message-1",
+      part_id: "text-1",
       payload_json: '"答案"',
       queue_id: 1,
     },
     {
       kind: "tool_call_delta",
-      message_id: null,
-      payload_json: '{"id":"call-1","name":"tool"}',
+      message_id: "message-1",
+      part_id: "tool-0",
+      payload_json: '{"idDelta":"call-1","index":0,"nameDelta":"tool"}',
       queue_id: 1,
     },
   ]);
@@ -124,7 +139,13 @@ test("clears stream deltas when their queue becomes terminal", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   const queueId = db.appendUser("123", "问题");
-  db.streamToken("123", queueId, "未完成");
+  db.appendStream("123", {
+    kind: "assistant_text_delta",
+    messageId: "message-1",
+    partId: "text-1",
+    queueId,
+    value: "未完成",
+  });
   db.setQueueStatus(queueId, "canceled");
   expect(db.db.query("SELECT id FROM events").all()).toEqual([]);
   db.close();

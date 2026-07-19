@@ -83,8 +83,20 @@ test("recovery completes a persisted cancel and removes only its run data", () =
   const root = db.appendUser("123", "取消我");
   const appended = db.appendUser("123", "也取消我");
   db.startQueue("123", required(db.nextQueue("123")));
-  db.streamToken("123", root, "partial");
-  db.streamToken("123", appended, "partial append");
+  db.appendStream("123", {
+    kind: "assistant_text_delta",
+    messageId: "message-1",
+    partId: "text-1",
+    queueId: root,
+    value: "partial",
+  });
+  db.appendStream("123", {
+    kind: "assistant_text_delta",
+    messageId: "message-2",
+    partId: "text-1",
+    queueId: appended,
+    value: "partial append",
+  });
   insertThreadData(db, `123:${root.toString()}`);
   insertThreadData(db, "unrelated:1");
   db.setControl("123", "cancel");

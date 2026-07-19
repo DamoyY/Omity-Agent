@@ -1,4 +1,5 @@
 import type { ErrorDetails } from "../../failures/details";
+import type { StreamEvent } from "../../infrastructure/database/records/streamEvents";
 
 export type DisplayRole = "user" | "assistant" | "tool";
 export interface DisplayImage {
@@ -43,11 +44,7 @@ export interface DisplayQueue {
   userMessageId?: number | null;
   root?: boolean;
 }
-export interface DisplayEvent {
-  id: number;
-  message: string;
-  payload: unknown;
-}
+export type DisplayEvent = StreamEvent;
 export interface TimelineMessage {
   id: number;
   key: string;

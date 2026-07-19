@@ -2,120 +2,92 @@ import { type DisplayEvent, type DisplayQueue, buildTimeline } from "../../../sr
 import { expect, test } from "bun:test";
 import { countTokens } from "../../../src/runtime/tokenizer";
 
-const queue: DisplayQueue[] = [{ content: "run", error: null, id: 1, status: "running" }];
-test("merges tool identity and argument chunks by index", () => {
+const queue: DisplayQueue[] = [
+  { content: "run", error: null, id: 1, status: "running", userMessageId: 1 },
+];
+test("preserves interleaved reasoning, text, and tool part order", () => {
+  const events: DisplayEvent[] = [
+    textEvent(1, "assistant_reasoning_delta", "reasoning-1", "分析"),
+    toolEvent(2, "tool-0", { idDelta: "call-1", index: 0, nameDelta: "inspect" }),
+    textEvent(3, "assistant_text_delta", "text-1", "阶段结论"),
+    textEvent(4, "assistant_reasoning_delta", "reasoning-2", "继续分析"),
+    toolEvent(5, "tool-1", { idDelta: "call-2", index: 1, nameDelta: "execute" }),
+  ];
+  const parts = buildTimeline([], queue, events)[0]?.parts;
+  expect(parts?.map((part) => part.type)).toEqual([
+    "reasoning",
+    "tool",
+    "content",
+    "reasoning",
+    "tool",
+  ]);
+});
+test("merges only events sharing an explicit part identity", () => {
   const calls = streamedCalls([
-    toolEvent(1, { id: "call-1", index: 0, name: "terminal_send_command" }),
-    toolEvent(2, { args: '{"command":"where.exe codex"', index: 0 }),
-    toolEvent(3, { args: ',"waiting":10}', index: 0 }),
+    toolEvent(1, "tool-0", { idDelta: "call-1", index: 0, nameDelta: "terminal_send_command" }),
+    toolEvent(2, "tool-1", { idDelta: "call-2", index: 0, nameDelta: "terminal_send_command" }),
+    toolEvent(3, "tool-0", { argumentsDelta: '{"command":"first"}', index: 0 }),
+    toolEvent(4, "tool-1", { argumentsDelta: '{"command":"second"}', index: 0 }),
   ]);
-  expect(calls).toEqual([
-    {
-      id: "call-1",
-      index: 0,
-      input: {},
-      inputText: '{"command":"where.exe codex","waiting":10}',
-      inputTokens: countTokens('{"command":"where.exe codex","waiting":10}'),
-      name: "terminal_send_command",
-      streaming: true,
-    },
+  expect(calls.map(({ id, inputText }) => ({ id, inputText }))).toEqual([
+    { id: "call-1", inputText: '{"command":"first"}' },
+    { id: "call-2", inputText: '{"command":"second"}' },
   ]);
 });
-test("upgrades an index-only tool call when its identity arrives later", () => {
+test("keeps parallel tool calls separate and accepts cumulative arguments", () => {
   const calls = streamedCalls([
-    toolEvent(1, { args: '{"command":"pwd"}', index: 0 }),
-    toolEvent(2, { id: "call-1", index: 0, name: "terminal_send_command" }),
+    toolEvent(1, "tool-0", { idDelta: "call-1", index: 0, nameDelta: "first_tool" }),
+    toolEvent(2, "tool-1", { idDelta: "call-2", index: 1, nameDelta: "second_tool" }),
+    toolEvent(3, "tool-0", { argumentsDelta: '{"value":', index: 0 }),
+    toolEvent(4, "tool-1", { argumentsDelta: '{"value":2}', index: 1 }),
+    toolEvent(5, "tool-0", { argumentsDelta: "10}", index: 0 }),
   ]);
-  expect(calls).toHaveLength(1);
-  expect(calls[0]).toMatchObject({
-    id: "call-1",
-    index: 0,
-    inputText: '{"command":"pwd"}',
-    name: "terminal_send_command",
-  });
-});
-test("reconciles separate id-only and index-only chunks", () => {
-  const calls = streamedCalls([
-    toolEvent(1, { id: "call-1", name: "terminal_send_command" }),
-    toolEvent(2, { args: '{"command":"pwd"}', index: 0 }),
-    toolEvent(3, { id: "call-1", index: 0 }),
+  expect(calls.map(({ id, inputText }) => ({ id, inputText }))).toEqual([
+    { id: "call-1", inputText: '{"value":10}' },
+    { id: "call-2", inputText: '{"value":2}' },
   ]);
-  expect(calls).toHaveLength(1);
-  expect(calls[0]).toMatchObject({
-    id: "call-1",
-    index: 0,
-    inputText: '{"command":"pwd"}',
-    name: "terminal_send_command",
-  });
 });
-test("preserves repeated argument delta content", () => {
-  const calls = streamedCalls([
-    toolEvent(1, { args: '{"value":"', id: "call-1", index: 0 }),
-    toolEvent(2, { args: "aa", index: 0 }),
-    toolEvent(3, { args: "aa", index: 0 }),
-    toolEvent(4, { args: '"}', index: 0 }),
-  ]);
-  expect(calls[0]?.inputText).toBe('{"value":"aaaa"}');
-});
-test("accepts cumulative argument snapshots", () => {
-  const calls = streamedCalls([
-    toolEvent(1, { args: '{"value":', id: "call-1", index: 0 }),
-    toolEvent(2, { args: '{"value":1', index: 0 }),
-    toolEvent(3, { args: '{"value":10}', index: 0 }),
-  ]);
-  expect(calls[0]?.inputText).toBe('{"value":10}');
-});
-test("updates token count from raw argument text while streaming", () => {
-  const [initial] = streamedCalls([toolEvent(1, { args: '{"command":"', id: "call-1", index: 0 })]);
-  const [complete] = streamedCalls([
-    toolEvent(1, { args: '{"command":"', id: "call-1", index: 0 }),
-    toolEvent(2, { args: 'echo 你好"}', index: 0 }),
-  ]);
-  expect(initial?.inputTokens).toBe(countTokens('{"command":"'));
-  expect(complete?.inputTokens).toBe(countTokens('{"command":"echo 你好"}'));
-});
-test("exposes raw Freeform input while streaming", () => {
-  const input = "*** Begin Patch\n*** End Patch";
+test("preserves repeated argument deltas and Freeform input", () => {
   const [call] = streamedCalls([
-    toolEvent(1, {
-      args: input,
+    toolEvent(1, "tool-0", {
+      argumentsDelta: "*** Begin ",
       freeform: true,
-      id: "call-1",
+      idDelta: "call-1",
       index: 0,
-      name: "apply_patch",
+      nameDelta: "apply_patch",
     }),
+    toolEvent(2, "tool-0", { argumentsDelta: "Patch", index: 0 }),
+    toolEvent(3, "tool-0", { argumentsDelta: "Patch", index: 0 }),
   ]);
-  expect(call?.rawInput).toBe(input);
-});
-test("keeps parallel tool call indexes separate", () => {
-  const calls = streamedCalls([
-    toolEvent(1, { id: "call-1", index: 0, name: "first_tool" }),
-    toolEvent(2, { id: "call-2", index: 1, name: "second_tool" }),
-    toolEvent(3, { args: '{"value":1}', index: 0 }),
-    toolEvent(4, { args: '{"value":2}', index: 1 }),
-  ]);
-  expect(calls.map(({ id, inputText, name }) => ({ id, inputText, name }))).toEqual([
-    { id: "call-1", inputText: '{"value":1}', name: "first_tool" },
-    { id: "call-2", inputText: '{"value":2}', name: "second_tool" },
-  ]);
+  expect(call?.rawInput).toBe("*** Begin PatchPatch");
+  expect(call?.inputTokens).toBe(countTokens("*** Begin PatchPatch"));
 });
 function streamedCalls(events: DisplayEvent[]) {
-  const view = buildTimeline([], queue, events);
-  return view[0]?.parts.flatMap((part) => (part.type === "tool" ? [part.call] : [])) ?? [];
+  return (
+    buildTimeline([], queue, events)[0]?.parts.flatMap((part) =>
+      part.type === "tool" ? [part.call] : [],
+    ) ?? []
+  );
 }
 function toolEvent(
   id: number,
-  call: {
-    args?: string;
-    freeform?: boolean;
-    id?: string;
-    index?: number;
-    name?: string;
-  },
+  partId: string,
+  value: Extract<DisplayEvent, { kind: "tool_call_delta" }>["value"],
 ): DisplayEvent {
   return {
     id,
-    message: "tool_call",
-    payload: { call, kind: "tool_call_delta", queueId: 1 },
+    kind: "tool_call_delta",
+    messageId: "message-1",
+    partId,
+    queueId: 1,
+    value,
   };
+}
+function textEvent(
+  id: number,
+  kind: "assistant_reasoning_delta" | "assistant_text_delta",
+  partId: string,
+  value: string,
+): DisplayEvent {
+  return { id, kind, messageId: "message-1", partId, queueId: 1, value };
 }

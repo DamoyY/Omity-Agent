@@ -54,7 +54,8 @@ export const migrationSql = [
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL,
       queue_id INTEGER NOT NULL,
-      message_id TEXT,
+      message_id TEXT NOT NULL,
+      part_id TEXT NOT NULL,
       kind TEXT NOT NULL,
       payload_json TEXT NOT NULL,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
@@ -128,7 +129,7 @@ export const migrationSql = [
     )
   `,
 ] as const;
-const schemaVersion = 1;
+const schemaVersion = 2;
 export function applySchema(db: Database) {
   const version = queryGet<{ user_version: number }>(db, "PRAGMA user_version")?.user_version;
   if (version === schemaVersion) {

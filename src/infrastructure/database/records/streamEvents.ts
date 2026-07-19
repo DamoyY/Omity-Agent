@@ -1,11 +1,12 @@
 import type { Database } from "bun:sqlite";
 
-export type StreamToolCallDelta = Partial<
-  Record<"args" | "id" | "name", string> & {
-    freeform: boolean;
-    index: number;
-  }
->;
+export interface StreamToolCallDelta {
+  index: number;
+  argumentsDelta?: string;
+  freeform?: boolean;
+  idDelta?: string;
+  nameDelta?: string;
+}
 export type StreamEventKind =
   | "assistant_reasoning_delta"
   | "assistant_text_delta"
@@ -13,8 +14,9 @@ export type StreamEventKind =
   | "tool_started";
 interface StreamEventBase {
   id: number;
+  messageId: string;
+  partId: string;
   queueId: number;
-  messageId?: string;
 }
 interface StreamEventValues {
   assistant_reasoning_delta: string;
@@ -29,68 +31,37 @@ type StreamEventOf<Kind extends StreamEventKind> = StreamEventBase & {
 export type StreamEvent = {
   [Kind in StreamEventKind]: StreamEventOf<Kind>;
 }[StreamEventKind];
-function insertStreamEvent<Kind extends StreamEventKind>(
+export type StreamEventDraft = {
+  [Kind in StreamEventKind]: Omit<StreamEventOf<Kind>, "id">;
+}[StreamEventKind];
+
+export function insertStreamEvent(
   db: Database,
   sessionId: string,
-  queueId: number,
-  kind: Kind,
-  payload: StreamEventValues[Kind],
-  messageId?: string,
-): StreamEventOf<Kind> {
+  event: StreamEventDraft,
+): StreamEvent {
   const result = db.run(
-    "INSERT INTO events (session_id, queue_id, message_id, kind, payload_json) VALUES (?, ?, ?, ?, ?)",
-    [sessionId, queueId, messageId ?? null, kind, JSON.stringify(payload)],
+    `INSERT INTO events
+       (session_id, queue_id, message_id, part_id, kind, payload_json)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      sessionId,
+      event.queueId,
+      event.messageId,
+      event.partId,
+      event.kind,
+      JSON.stringify(event.value),
+    ],
   );
   const id = Number(result.lastInsertRowid);
   if (!Number.isSafeInteger(id)) {
     throw new Error(`流式事件 ID 超出安全整数范围：${String(result.lastInsertRowid)}`);
   }
-  return {
-    id,
-    kind,
-    queueId,
-    value: payload,
-    ...(messageId ? { messageId } : {}),
-  };
+  return { ...event, id };
 }
-export function insertStreamToken(
-  db: Database,
-  sessionId: string,
-  queueId: number,
-  text: string,
-  messageId?: string,
-) {
-  return insertStreamEvent(db, sessionId, queueId, "assistant_text_delta", text, messageId);
-}
-export function insertStreamReasoning(
-  db: Database,
-  sessionId: string,
-  queueId: number,
-  text: string,
-  messageId?: string,
-) {
-  return insertStreamEvent(db, sessionId, queueId, "assistant_reasoning_delta", text, messageId);
-}
-export function insertStreamToolCall(
-  db: Database,
-  sessionId: string,
-  queueId: number,
-  call: StreamToolCallDelta,
-  messageId?: string,
-) {
-  return insertStreamEvent(db, sessionId, queueId, "tool_call_delta", call, messageId);
-}
-export function insertToolStarted(
-  db: Database,
-  sessionId: string,
-  queueId: number,
-  callId: string,
-) {
-  return insertStreamEvent(db, sessionId, queueId, "tool_started", callId);
-}
-export function clearStreamEvents(db: Database, sessionId: string) {
+export function deleteSessionStream(db: Database, sessionId: string) {
   db.run("DELETE FROM events WHERE session_id = ?", [sessionId]);
 }
-export function clearQueueStreamEvents(db: Database, queueId: number) {
+export function deleteQueueStream(db: Database, queueId: number) {
   db.run("DELETE FROM events WHERE queue_id = ?", [queueId]);
 }

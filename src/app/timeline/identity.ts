@@ -5,7 +5,7 @@ export function sameToolCall(a: DisplayToolCall, b: DisplayToolCall) {
   return left !== undefined && left === toolCallIdentity(b);
 }
 function toolCallIdentity(call: DisplayToolCall) {
-  if (!call.id.startsWith("i:") && !call.id.startsWith("tool-")) {
+  if (!call.id.startsWith("stream:") && !call.id.startsWith("tool-")) {
     return `call:${call.id}`;
   }
   return call.messageId ? `message:${call.messageId}:index:${call.index.toString()}` : undefined;

@@ -22,6 +22,13 @@ test("deduplicates event ids without collapsing repeated text", () => {
   ]);
   expect(data.events.map(({ id }) => id)).toEqual([1, 2]);
 });
+test("accepts a lower event id that arrives after a higher id beyond the snapshot cursor", () => {
+  const initial = reconcileTranscript(snapshot(0, []));
+  const high = appendTranscriptEvents(initial, [textEvent(3, "C")]);
+  const complete = appendTranscriptEvents(high, [textEvent(1, "A"), textEvent(2, "B")]);
+  expect(complete.events.map(({ id }) => id)).toEqual([1, 2, 3]);
+  expect(complete.view.at(-1)?.content).toBe("ABC");
+});
 test("completed snapshots replace cleared stream events", () => {
   const streaming = reconcileTranscript(snapshot(2, [textEvent(1, "A"), textEvent(2, "B")]));
   const completed: TranscriptSnapshot = {
@@ -66,7 +73,10 @@ function snapshot(eventCursor: number, events: DisplayEvent[]): TranscriptSnapsh
 function textEvent(id: number, text: string): DisplayEvent {
   return {
     id,
-    message: "assistant_text_delta",
-    payload: { kind: "assistant_text_delta", queueId: 1, text },
+    kind: "assistant_text_delta",
+    messageId: "message-1",
+    partId: "text-1",
+    queueId: 1,
+    value: text,
   };
 }

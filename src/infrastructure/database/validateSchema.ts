@@ -21,6 +21,7 @@ export function assertCoreSchema(db: Database) {
     "session_id",
     "queue_id",
     "message_id",
+    "part_id",
     "kind",
     "payload_json",
   ]);

@@ -73,7 +73,8 @@ export function loadTranscript(db: AgentDatabase, sessionId: string) {
     }));
     const events = queryAll<PersistedEventRow>(
       db.db,
-      "SELECT id, queue_id, message_id, kind, payload_json FROM events WHERE session_id = ? ORDER BY id",
+      `SELECT id, queue_id, message_id, part_id, kind, payload_json
+       FROM events WHERE session_id = ? ORDER BY id`,
       sessionId,
     ).map(persistedDisplayEvent);
     const eventCursor =

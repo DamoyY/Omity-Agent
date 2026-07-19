@@ -29,7 +29,7 @@ test("database waits for transient writer contention", () => {
   expect(row?.timeout).toBe(sqliteBusyTimeoutMs);
   expect(db.db.query<{ auto_vacuum: number }, []>("PRAGMA auto_vacuum").get()?.auto_vacuum).toBe(2);
   expect(db.db.query<{ user_version: number }, []>("PRAGMA user_version").get()?.user_version).toBe(
-    1,
+    2,
   );
   db.close();
 });

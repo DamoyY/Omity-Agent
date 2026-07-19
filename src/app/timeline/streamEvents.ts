@@ -1,171 +1,148 @@
-import type { DisplayEvent, DisplayToolCall } from "./types";
-import type { StreamEvent } from "../../infrastructure/database/records/streamEvents";
+import type {
+  DisplayEvent,
+  DisplayMessage,
+  DisplayToolCall,
+  TimelineMessage,
+  TimelinePart,
+} from "./types";
 import { countTokens } from "../../runtime/tokenizer";
 
-export function displayStreamEvent(event: StreamEvent): DisplayEvent {
-  const payload =
-    event.kind === "tool_call_delta"
-      ? { call: event.value }
-      : event.kind === "tool_started"
-        ? { callId: event.value }
-        : { text: event.value };
-  return {
-    id: event.id,
-    message: event.kind,
-    payload: {
-      kind: event.kind,
-      queueId: event.queueId,
-      ...payload,
-      ...(event.messageId ? { messageId: event.messageId } : {}),
-    },
+type TextPart = {
+  [Kind in "assistant_reasoning_delta" | "assistant_text_delta"]: {
+    content: string;
+    kind: Kind;
   };
-}
-interface ToolCallAccumulator {
+}["assistant_reasoning_delta" | "assistant_text_delta"];
+interface ToolPart {
+  args: string;
   freeform?: boolean;
   id?: string;
-  index?: number;
-  inputText: string;
-  messageId?: string;
+  index: number;
+  kind: "tool_call_delta";
   name: string;
 }
-export function eventText(event: DisplayEvent, queueId: number) {
-  return assistantDelta(event, queueId, "assistant_text_delta");
+type Part = TextPart | ToolPart;
+interface StreamMessage {
+  messageId: string;
+  order: string[];
+  parts: Map<string, Part>;
 }
-export function eventReasoning(event: DisplayEvent, queueId: number) {
-  return assistantDelta(event, queueId, "assistant_reasoning_delta");
+export function displayStreamEvent(event: DisplayEvent): DisplayEvent {
+  return event;
 }
 export function eventQueueId(event: DisplayEvent) {
-  return isRecord(event.payload) && typeof event.payload["queueId"] === "number"
-    ? event.payload["queueId"]
-    : undefined;
+  return event.queueId;
 }
 export function eventMessageId(event: DisplayEvent) {
-  return isRecord(event.payload) && typeof event.payload["messageId"] === "string"
-    ? event.payload["messageId"]
-    : undefined;
+  return event.messageId;
 }
 export function eventStartedCallId(event: DisplayEvent) {
-  return isRecord(event.payload) &&
-    event.payload["kind"] === "tool_started" &&
-    typeof event.payload["callId"] === "string"
-    ? event.payload["callId"]
-    : undefined;
+  return event.kind === "tool_started" ? event.value : undefined;
 }
-export function currentToolCallEvents(events: DisplayEvent[]) {
-  const lastTextIndex = events.findLastIndex((event) => {
-    const queueId = eventQueueId(event) ?? -1;
-    return eventText(event, queueId).length > 0 || eventReasoning(event, queueId).length > 0;
-  });
-  return events.slice(lastTextIndex + 1);
-}
-export function streamToolCalls(events: DisplayEvent[]): DisplayToolCall[] {
-  const calls: ToolCallAccumulator[] = [];
+export function streamTimelineMessages(
+  events: DisplayEvent[],
+  outputs: Map<string, DisplayMessage>,
+  startedCallIds: Set<string>,
+): TimelineMessage[] {
+  const messages = new Map<string, StreamMessage>();
   for (const event of events) {
-    const delta = toolCallDelta(event);
-    if (delta) {
-      const matches = calls.filter((call) => matchesDelta(call, delta));
-      let current = matches.shift();
-      if (!current) {
-        current = { inputText: "", name: "" };
-        calls.push(current);
+    if (event.kind !== "tool_started") {
+      let message = messages.get(event.messageId);
+      if (!message) {
+        message = { messageId: event.messageId, order: [], parts: new Map() };
+        messages.set(event.messageId, message);
       }
-      for (const duplicate of matches) {
-        mergeCall(current, duplicate);
-        calls.splice(calls.indexOf(duplicate), 1);
+      let part = message.parts.get(event.partId);
+      if (!part) {
+        part = createPart(event);
+        message.parts.set(event.partId, part);
+        message.order.push(event.partId);
+      } else {
+        mergePart(part, event);
       }
-      mergeDelta(current, delta);
     }
   }
-  return calls.map((call, order) => {
-    const toolCall: DisplayToolCall = {
-      id: call.id ?? `i:${(call.index ?? order).toString()}`,
-      index: call.index ?? order,
-      input: {},
-      inputText: call.inputText,
-      inputTokens: countTokens(call.inputText),
-      name: call.name || "tool",
-      streaming: true,
+  return [...messages.values()].map((message) => timelineMessage(message, outputs, startedCallIds));
+}
+function createPart(event: Exclude<DisplayEvent, { kind: "tool_started" }>): Part {
+  if (event.kind === "tool_call_delta") {
+    return {
+      args: event.value.argumentsDelta ?? "",
+      ...(event.value.freeform ? { freeform: true } : {}),
+      ...(event.value.idDelta ? { id: event.value.idDelta } : {}),
+      index: event.value.index,
+      kind: event.kind,
+      name: event.value.nameDelta ?? "",
     };
-    if (call.messageId) {
-      toolCall.messageId = call.messageId;
+  }
+  return { content: event.value, kind: event.kind };
+}
+function mergePart(part: Part, event: Exclude<DisplayEvent, { kind: "tool_started" }>) {
+  if (part.kind !== event.kind) {
+    throw new Error(`流片段 ${event.partId} 的类型发生变化`);
+  }
+  if (part.kind === "tool_call_delta" && event.kind === "tool_call_delta") {
+    if (part.index !== event.value.index) {
+      throw new Error(`工具流片段 ${event.partId} 的索引发生变化`);
     }
-    if (call.freeform) {
-      toolCall.rawInput = call.inputText;
+    part.args += event.value.argumentsDelta ?? "";
+    part.freeform ??= event.value.freeform;
+    part.id = appendDelta(part.id, event.value.idDelta);
+    part.name += event.value.nameDelta ?? "";
+  } else if (part.kind !== "tool_call_delta" && event.kind !== "tool_call_delta") {
+    part.content += event.value;
+  }
+}
+function timelineMessage(
+  message: StreamMessage,
+  outputs: Map<string, DisplayMessage>,
+  startedCallIds: Set<string>,
+): TimelineMessage {
+  const parts = message.order.flatMap((partId): TimelinePart[] => {
+    const part = message.parts.get(partId);
+    if (!part) {
+      throw new Error(`流消息缺少片段：${partId}`);
     }
-    return toolCall;
+    if (part.kind === "assistant_reasoning_delta") {
+      return part.content.trim() ? [{ content: part.content, type: "reasoning" }] : [];
+    }
+    if (part.kind === "assistant_text_delta") {
+      return part.content.trim() ? [{ content: part.content, type: "content" }] : [];
+    }
+    const call = displayCall(part, message.messageId, partId);
+    return [
+      {
+        call,
+        output: outputs.get(call.id),
+        type: "tool",
+        ...(startedCallIds.has(call.id) ? { started: true } : {}),
+      },
+    ];
   });
-}
-function matchesDelta(
-  call: ToolCallAccumulator,
-  delta: NonNullable<ReturnType<typeof toolCallDelta>>,
-) {
-  if (delta.id && call.id === delta.id) {
-    return true;
-  }
-  return (
-    delta.index !== undefined &&
-    call.index === delta.index &&
-    (!delta.id || !call.id || delta.id === call.id)
-  );
-}
-function mergeCall(target: ToolCallAccumulator, source: ToolCallAccumulator) {
-  target.freeform ??= source.freeform;
-  target.id ??= source.id;
-  target.index ??= source.index;
-  target.messageId ??= source.messageId;
-  target.inputText = appendArguments(target.inputText, source.inputText);
-  target.name += source.name;
-}
-function mergeDelta(
-  target: ToolCallAccumulator,
-  delta: NonNullable<ReturnType<typeof toolCallDelta>>,
-) {
-  target.freeform ??= delta.freeform;
-  target.id ??= delta.id;
-  target.index ??= delta.index;
-  target.messageId ??= delta.messageId;
-  target.inputText = appendArguments(target.inputText, delta.args);
-  target.name += delta.name ?? "";
-}
-function toolCallDelta(event: DisplayEvent) {
-  if (!isRecord(event.payload) || event.payload["kind"] !== "tool_call_delta") {
-    return null;
-  }
-  const { call } = event.payload;
-  if (!isRecord(call)) {
-    return null;
-  }
   return {
-    args: typeof call["args"] === "string" ? call["args"] : undefined,
-    freeform: call["freeform"] === true ? true : undefined,
-    id: typeof call["id"] === "string" ? call["id"] : undefined,
-    index: typeof call["index"] === "number" ? call["index"] : undefined,
-    messageId: eventMessageId(event),
-    name: typeof call["name"] === "string" ? call["name"] : undefined,
+    content: parts.flatMap((part) => (part.type === "content" ? [part.content] : [])).join(""),
+    createdAt: 0,
+    id: -1,
+    key: `stream-${message.messageId}`,
+    parts,
+    role: "assistant",
   };
 }
-function appendArguments(current = "", delta?: string) {
-  if (!delta) {
-    return current;
-  }
-  if (current.length === 0 || delta.startsWith(current)) {
-    return delta;
-  }
-  return current + delta;
+function displayCall(part: ToolPart, messageId: string, partId: string): DisplayToolCall {
+  const inputText = part.args;
+  return {
+    id: part.id ?? `stream:${messageId}:${partId}`,
+    index: part.index,
+    input: {},
+    inputText,
+    inputTokens: countTokens(inputText),
+    messageId,
+    name: part.name || "tool",
+    streaming: true,
+    ...(part.freeform ? { rawInput: inputText } : {}),
+  };
 }
-function assistantDelta(
-  event: DisplayEvent,
-  queueId: number,
-  kind: "assistant_reasoning_delta" | "assistant_text_delta",
-) {
-  if (eventQueueId(event) !== queueId || !isRecord(event.payload)) {
-    return "";
-  }
-  if (event.payload["kind"] !== kind) {
-    return "";
-  }
-  return typeof event.payload["text"] === "string" ? event.payload["text"] : "";
-}
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+function appendDelta(current: string | undefined, incoming?: string) {
+  const value = (current ?? "") + (incoming ?? "");
+  return value || undefined;
 }

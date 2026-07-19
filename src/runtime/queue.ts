@@ -1,7 +1,13 @@
 import { CanceledRunError, type QueueRun, cancelRun, finishRun, setRunStatus } from "./run";
 import { type HostContext, readGraphState, streamGraphWithTaskInterrupts } from "./context";
+import {
+  completeActiveStream,
+  createStreamLogState,
+  discardActiveStream,
+  handleStreamEvent,
+  recordToolExecutionStarted,
+} from "./stream";
 import { consumeBoundaryAppends, recoverConsumedAppends } from "./appends";
-import { createStreamLogState, handleStreamEvent, recordToolExecutionStarted } from "./stream";
 import { pauseForStop, waitIfPaused } from "./execution/pause";
 import { HostLeaseLostError } from "./execution/lease";
 import type { QueueItem } from "../types";
@@ -105,8 +111,10 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       reachedBoundary = true;
     } catch (error) {
       if (!isModelNetworkError(error)) {
+        discardActiveStream(ctx, streamLogState, item.id);
         throw error;
       }
+      discardActiveStream(ctx, streamLogState, item.id);
       modelNetworkRetry += 1;
       const shouldRetry = await waitBeforeModelNetworkRetry(ctx, run, error, modelNetworkRetry, {
         cancel: () => {
@@ -139,6 +147,7 @@ async function runGraphUntilBoundary(ctx: HostContext, run: QueueRun) {
       const { messages } = state.values;
       if (messages.length > 0) {
         ctx.db.syncHistory(ctx.sessionId, messages);
+        completeActiveStream(streamLogState);
         ctx.observer?.changed?.(ctx.sessionId);
         ctx.logger.debug("已持久化节点上下文", { messages: messages.length });
       }

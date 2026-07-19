@@ -13,7 +13,6 @@ import {
 } from "./validation/responses";
 import type { Control } from "../../../types";
 import type { InitialSessionState } from "../../initialState";
-import { reportError } from "./errors";
 import { request } from "./request";
 
 export { ApiError } from "./request";
@@ -126,10 +125,5 @@ export async function forkSession(sessionId: string, beforeMessageId: number) {
   });
 }
 function eventSource(path: string) {
-  const events = new EventSource(path);
-  events.addEventListener("error", (error) => {
-    events.close();
-    reportError(error, { path });
-  });
-  return events;
+  return new EventSource(path);
 }

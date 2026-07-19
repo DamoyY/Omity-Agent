@@ -17,9 +17,11 @@ test("only the next pending tool call is marked as started", () => {
   const db = makeDb();
   const started: string[] = [];
   const executions = new ToolExecutions();
-  spyOn(db, "toolStarted").mockImplementation((_sessionId, _queueId, callId) => {
-    started.push(callId);
-    return { id: started.length, kind: "tool_started", queueId: 1, value: callId };
+  spyOn(db, "appendStream").mockImplementation((_sessionId, event) => {
+    if (event.kind === "tool_started") {
+      started.push(event.value);
+    }
+    return { ...event, id: started.length };
   });
   try {
     recordToolExecutionStarted(
@@ -27,6 +29,7 @@ test("only the next pending tool call is marked as started", () => {
       [
         new AIMessage({
           content: "",
+          id: "message-1",
           tool_calls: [
             { args: {}, id: "call-1", name: "first" },
             { args: {}, id: "call-2", name: "second" },

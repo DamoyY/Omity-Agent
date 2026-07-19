@@ -1,4 +1,5 @@
 import type { AttachmentSettings } from "../../../attachments/contract";
+import type { DisplayEvent } from "../../../timeline";
 import type { ErrorDetails } from "../../../../failures/details";
 import type { SessionInfo } from "../../../sessionState";
 import type { TranscriptSnapshot } from "../transcript/cache";
@@ -60,7 +61,38 @@ const queueSchema = z.object({
   status: z.enum(["draft", "pending", "running", "paused", "done", "canceled"]),
   userMessageId: integer.positive().nullable().optional(),
 });
-const eventSchema = z.object({ id: integer.positive(), message: z.string(), payload: z.unknown() });
+const eventSchema: z.ZodType<DisplayEvent> = z.discriminatedUnion("kind", [
+  z.object({
+    id: integer.positive(),
+    kind: z.enum(["assistant_reasoning_delta", "assistant_text_delta"]),
+    messageId: z.string().min(1),
+    partId: z.string().min(1),
+    queueId: integer.positive(),
+    value: z.string(),
+  }),
+  z.object({
+    id: integer.positive(),
+    kind: z.literal("tool_call_delta"),
+    messageId: z.string().min(1),
+    partId: z.string().min(1),
+    queueId: integer.positive(),
+    value: z.object({
+      argumentsDelta: z.string().optional(),
+      freeform: z.boolean().optional(),
+      idDelta: z.string().optional(),
+      index: integer.nonnegative(),
+      nameDelta: z.string().optional(),
+    }),
+  }),
+  z.object({
+    id: integer.positive(),
+    kind: z.literal("tool_started"),
+    messageId: z.string().min(1),
+    partId: z.string().min(1),
+    queueId: integer.positive(),
+    value: z.string(),
+  }),
+]);
 export const transcriptResponseSchema: z.ZodType<TranscriptSnapshot> = z.object({
   control: z.enum(["running", "pause", "cancel", "pause_cancel"]),
   eventCursor: integer.nonnegative(),

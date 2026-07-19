@@ -15,6 +15,7 @@ export interface TranscriptSnapshot {
   eventCursor: number;
 }
 export interface TranscriptData extends TranscriptSnapshot {
+  snapshotCursor: number;
   view: TimelineMessage[];
 }
 export function emptyTranscriptData(): TranscriptData {
@@ -24,6 +25,7 @@ export function emptyTranscriptData(): TranscriptData {
     events: [],
     messages: [],
     queue: [],
+    snapshotCursor: 0,
     view: [],
   };
 }
@@ -31,39 +33,43 @@ export function reconcileTranscript(
   snapshot: TranscriptSnapshot,
   current?: TranscriptData,
 ): TranscriptData {
-  const replay = current?.events.filter((event) => event.id > snapshot.eventCursor);
+  const replay = current?.events.filter((event) => event.id > snapshot.eventCursor) ?? [];
+  const events = mergeEvents(snapshot.events, replay);
   return buildTranscript(
     {
       ...snapshot,
-      eventCursor: replay?.at(-1)?.id ?? snapshot.eventCursor,
-      events: replay?.length ? [...snapshot.events, ...replay] : snapshot.events,
+      eventCursor: Math.max(snapshot.eventCursor, current?.eventCursor ?? 0),
+      events,
     },
     optimisticMessages(current),
+    snapshot.eventCursor,
   );
 }
 export function appendTranscriptEvents(current: TranscriptData, incoming: DisplayEvent[]) {
-  const events = [
-    ...new Map(
-      incoming.filter((event) => event.id > current.eventCursor).map((event) => [event.id, event]),
-    ).values(),
-  ].toSorted((left, right) => left.id - right.id);
-  if (events.length === 0) {
+  const accepted = incoming.filter((event) => event.id > current.snapshotCursor);
+  const events = mergeEvents(current.events, accepted);
+  if (events.length === current.events.length) {
     return current;
   }
   return buildTranscript(
     {
       ...current,
-      eventCursor: events.at(-1)?.id ?? current.eventCursor,
-      events: [...current.events, ...events],
+      eventCursor: Math.max(current.eventCursor, ...accepted.map((event) => event.id)),
+      events,
     },
     optimisticMessages(current),
+    current.snapshotCursor,
   );
 }
 export function rebuildTranscript(
   current: TranscriptData,
   changes: Partial<Pick<TranscriptData, "queue" | "messages" | "events">>,
 ) {
-  return buildTranscript({ ...current, ...changes }, optimisticMessages(current));
+  return buildTranscript(
+    { ...current, ...changes },
+    optimisticMessages(current),
+    current.snapshotCursor,
+  );
 }
 export function withoutOptimistic(current: TranscriptData, key: string): TranscriptData {
   return { ...current, view: current.view.filter((item) => item.key !== key) };
@@ -71,11 +77,18 @@ export function withoutOptimistic(current: TranscriptData, key: string): Transcr
 function buildTranscript(
   snapshot: TranscriptSnapshot,
   optimistic: TimelineMessage[],
+  snapshotCursor: number,
 ): TranscriptData {
   return {
     ...snapshot,
+    snapshotCursor,
     view: [...buildTimeline(snapshot.messages, snapshot.queue, snapshot.events), ...optimistic],
   };
+}
+function mergeEvents(left: DisplayEvent[], right: DisplayEvent[]) {
+  return [...new Map([...left, ...right].map((event) => [event.id, event])).values()].toSorted(
+    (a, b) => a.id - b.id,
+  );
 }
 function optimisticMessages(current?: TranscriptData) {
   return current?.view.filter((item) => item.optimistic === true) ?? [];

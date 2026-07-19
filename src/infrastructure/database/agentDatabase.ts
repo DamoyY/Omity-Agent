@@ -1,12 +1,10 @@
 import type { Control, QueueItem, QueueStatus } from "../../types";
 import {
   type StreamEvent,
-  clearQueueStreamEvents,
-  clearStreamEvents,
-  insertStreamReasoning,
-  insertStreamToken,
-  insertStreamToolCall,
-  insertToolStarted,
+  type StreamEventDraft,
+  deleteQueueStream,
+  deleteSessionStream,
+  insertStreamEvent,
 } from "./records/streamEvents";
 import {
   appendDraftQueue,
@@ -47,7 +45,6 @@ import { loadMessages } from "./records/messages/history";
 import { resetSessionStorage } from "./maintenance";
 import { syncMessages } from "./records/messages/sync";
 
-type DatabaseArgs<T> = T extends (db: Database, ...args: infer Args) => unknown ? Args : never;
 export class AgentDatabase extends RecoverableDatabase {
   private notify?: (event: StreamEvent) => void;
   private storageReclaimPending = false;
@@ -125,7 +122,7 @@ export class AgentDatabase extends RecoverableDatabase {
     runTransaction(this.db, () => {
       setQueueStatusRecord(this.db, queueId, status, error);
       if (status === "done" || status === "canceled") {
-        clearQueueStreamEvents(this.db, queueId);
+        deleteQueueStream(this.db, queueId);
       }
     });
   }
@@ -136,7 +133,7 @@ export class AgentDatabase extends RecoverableDatabase {
     this.requireSession(sessionId);
     runTransaction(this.db, () => {
       syncMessages(this.db, sessionId, messages);
-      clearStreamEvents(this.db, sessionId);
+      deleteSessionStream(this.db, sessionId);
       clearToolCancellations(this.db, sessionId);
     });
   }
@@ -157,17 +154,11 @@ export class AgentDatabase extends RecoverableDatabase {
   takeToolCancellation(sessionId: string, callId: string) {
     return takeToolCancellation(this.db, sessionId, callId);
   }
-  streamToken(...args: DatabaseArgs<typeof insertStreamToken>) {
-    return this.notifyStream(insertStreamToken(this.db, ...args));
+  appendStream(sessionId: string, event: StreamEventDraft) {
+    return this.notifyStream(insertStreamEvent(this.db, sessionId, event));
   }
-  streamReasoning(...args: DatabaseArgs<typeof insertStreamReasoning>) {
-    return this.notifyStream(insertStreamReasoning(this.db, ...args));
-  }
-  streamToolCall(...args: DatabaseArgs<typeof insertStreamToolCall>) {
-    return this.notifyStream(insertStreamToolCall(this.db, ...args));
-  }
-  toolStarted(...args: DatabaseArgs<typeof insertToolStarted>) {
-    return this.notifyStream(insertToolStarted(this.db, ...args));
+  discardQueueStream(queueId: number) {
+    deleteQueueStream(this.db, queueId);
   }
   private notifyStream<T extends StreamEvent>(event: T) {
     this.notify?.(event);

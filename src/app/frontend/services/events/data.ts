@@ -15,11 +15,31 @@ const sessionsEventSchema = z.object({
   sessions: z.array(sessionInfoSchema),
 });
 const deletedEventSchema = z.object({ sessionId: z.string() });
-const displayEventSchema: z.ZodType<DisplayEvent> = z.object({
+const eventBase = {
   id: z.number().int().positive(),
-  message: z.string(),
-  payload: z.unknown(),
-});
+  messageId: z.string().min(1),
+  partId: z.string().min(1),
+  queueId: z.number().int().positive(),
+};
+const displayEventSchema: z.ZodType<DisplayEvent> = z.discriminatedUnion("kind", [
+  z.object({
+    ...eventBase,
+    kind: z.enum(["assistant_reasoning_delta", "assistant_text_delta"]),
+    value: z.string(),
+  }),
+  z.object({
+    ...eventBase,
+    kind: z.literal("tool_call_delta"),
+    value: z.object({
+      argumentsDelta: z.string().optional(),
+      freeform: z.boolean().optional(),
+      idDelta: z.string().optional(),
+      index: z.number().int().nonnegative(),
+      nameDelta: z.string().optional(),
+    }),
+  }),
+  z.object({ ...eventBase, kind: z.literal("tool_started"), value: z.string() }),
+]);
 export function readSessionsEvent(event: Event) {
   return readEventData(event, sessionsEventSchema, "sessions").sessions;
 }

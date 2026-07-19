@@ -1,23 +1,18 @@
 import { AIMessage, AIMessageChunk, type BaseMessage, ToolMessage } from "@langchain/core/messages";
-import {
-  type ReasoningStreamState,
-  contentToText,
-  createReasoningStreamState,
-  streamedMessageReasoning,
-} from "./content";
+import { acceptMessageId, createStreamPartState, sequentialPart, toolPart } from "./stream/parts";
+import { contentToText, streamedMessageReasoning } from "./content";
 import type { HostContext } from "./context";
-import stableStringify from "fast-json-stable-stringify";
+import { incrementalSummary } from "./stream/debug";
 
-const omitted = Symbol("omitted");
-type DiffResult = { value: unknown } | typeof omitted;
+export { incrementalSummary } from "./stream/debug";
 export interface StreamLogState {
-  reasoning: ReasoningStreamState;
+  parts: ReturnType<typeof createStreamPartState>;
   seenFacts: Set<string>;
   seenStructures: Set<string>;
 }
 export function createStreamLogState(): StreamLogState {
   return {
-    reasoning: createReasoningStreamState(),
+    parts: createStreamPartState(),
     seenFacts: new Set(),
     seenStructures: new Set(),
   };
@@ -29,49 +24,70 @@ export function handleStreamEvent(
   queueId?: number,
 ) {
   if (!Array.isArray(event) || event.length !== 2) {
-    const delta = incrementalSummary(event, state);
-    if (delta !== undefined) {
-      ctx.logger.debug("LangGraph 事件增量", delta);
-    }
+    logIncrement(ctx, "LangGraph 事件增量", event, state);
     return;
   }
   const [mode, payload] = event;
-  if (mode === "messages") {
-    const [chunk] = Array.isArray(payload) ? payload : [];
-    if (!isAiChunk(chunk)) {
-      return;
-    }
-    const messageId = readMessageId(chunk);
-    const text = contentToText(chunk.content);
-    const reasoning = streamedMessageReasoning(chunk, state.reasoning);
-    if (text && ctx.settings.logging.streamTokens) {
-      ctx.logger.token(text);
-    }
-    if (reasoning && queueId !== undefined) {
-      ctx.db.streamReasoning(ctx.sessionId, queueId, reasoning, messageId);
-    }
-    if (text && queueId !== undefined) {
-      ctx.db.streamToken(ctx.sessionId, queueId, text, messageId);
-      ctx.observer?.token(ctx.sessionId, queueId, text);
-    }
-    for (const call of toolCallDeltas(chunk)) {
-      if (queueId !== undefined) {
-        ctx.db.streamToolCall(ctx.sessionId, queueId, call, messageId);
-      }
-    }
+  if (mode !== "messages") {
+    logIncrement(ctx, mode === "updates" ? "状态更新增量" : "调试事件增量", payload, state);
     return;
   }
-  if (mode === "updates") {
-    const delta = incrementalSummary(payload, state);
-    if (delta !== undefined) {
-      ctx.logger.debug("状态更新增量", delta);
-    }
+  const [chunk] = Array.isArray(payload) ? payload : [];
+  if (!isAiChunk(chunk)) {
     return;
   }
-  const delta = incrementalSummary(payload, state);
-  if (delta !== undefined) {
-    ctx.logger.debug("调试事件增量", delta);
+  const messageId = acceptMessageId(state.parts, readMessageId(chunk));
+  const text = contentToText(chunk.content);
+  const reasoning = streamedMessageReasoning(chunk, state.parts.reasoning);
+  const calls = toolCallDeltas(chunk);
+  if (!reasoning && !text && calls.length === 0) {
+    return;
   }
+  if (queueId === undefined) {
+    return;
+  }
+  if (!messageId) {
+    throw new Error("模型流增量缺少稳定消息 ID");
+  }
+  if (text && ctx.settings.logging.streamTokens) {
+    ctx.logger.token(text);
+  }
+  if (reasoning) {
+    ctx.db.appendStream(ctx.sessionId, {
+      kind: "assistant_reasoning_delta",
+      messageId,
+      partId: sequentialPart(state.parts, "assistant_reasoning_delta"),
+      queueId,
+      value: reasoning,
+    });
+  }
+  if (text) {
+    ctx.db.appendStream(ctx.sessionId, {
+      kind: "assistant_text_delta",
+      messageId,
+      partId: sequentialPart(state.parts, "assistant_text_delta"),
+      queueId,
+      value: text,
+    });
+    ctx.observer?.token(ctx.sessionId, queueId, text);
+  }
+  for (const call of calls) {
+    ctx.db.appendStream(ctx.sessionId, {
+      kind: "tool_call_delta",
+      messageId,
+      partId: toolPart(state.parts, call.index),
+      queueId,
+      value: call,
+    });
+  }
+}
+export function discardActiveStream(ctx: HostContext, state: StreamLogState, queueId: number) {
+  ctx.db.discardQueueStream(queueId);
+  ctx.observer?.changed?.(ctx.sessionId);
+  state.parts = createStreamPartState();
+}
+export function completeActiveStream(state: StreamLogState) {
+  state.parts = createStreamPartState();
 }
 export function recordToolExecutionStarted(
   ctx: HostContext,
@@ -84,89 +100,60 @@ export function recordToolExecutionStarted(
       .map((message) => message.tool_call_id),
   );
   const request = messages.findLast((message) => AIMessage.isInstance(message));
-  if (!request || !AIMessage.isInstance(request)) {
-    return;
+  if (!request || !AIMessage.isInstance(request) || !request.id) {
+    throw new Error("工具执行缺少稳定的请求消息 ID");
   }
-  const call = request.tool_calls?.find(
+  const index = request.tool_calls?.findIndex(
     (candidate) => !candidate.id || !completed.has(candidate.id),
   );
+  if (index === undefined || index < 0) {
+    throw new Error("工具执行缺少稳定的调用 ID");
+  }
+  const call = request.tool_calls?.[index];
   if (!call?.id) {
-    return;
+    throw new Error("工具执行缺少稳定的调用 ID");
   }
   ctx.toolExecutions?.announce(call.id);
-  ctx.db.toolStarted(ctx.sessionId, queueId, call.id);
+  ctx.db.appendStream(ctx.sessionId, {
+    kind: "tool_started",
+    messageId: request.id,
+    partId: `tool-${index.toString()}`,
+    queueId,
+    value: call.id,
+  });
 }
-export function incrementalSummary(value: unknown, state: StreamLogState): unknown {
-  const delta = diffSeen(value, state, "$");
-  return delta === omitted ? undefined : summarize(delta.value);
-}
-function diffSeen(value: unknown, state: StreamLogState, key: string): DiffResult {
-  if (isRecord(value)) {
-    const hash = stableStringify(value);
-    if (state.seenStructures.has(hash)) {
-      return omitted;
+function toolCallDeltas(chunk: AIMessageChunk) {
+  const result = [];
+  for (const call of chunk.tool_call_chunks ?? []) {
+    const { index } = call;
+    if (index === undefined || !Number.isSafeInteger(index) || index < 0) {
+      throw new Error("工具调用流增量缺少有效索引");
     }
-    state.seenStructures.add(hash);
-    const entries = Object.entries(value)
-      .map(([name, child]) => [name, diffSeen(child, state, name)] as const)
-      .filter((entry): entry is readonly [string, { value: unknown }] => entry[1] !== omitted);
-    if (entries.length === 0) {
-      return omitted;
-    }
-    return {
-      value: Object.fromEntries(entries.map(([name, child]) => [name, child.value])),
-    };
+    result.push({
+      index,
+      ...(typeof call.args === "string" ? { argumentsDelta: call.args } : {}),
+      ...(Reflect.get(call, "isCustomTool") === true ? { freeform: true } : {}),
+      ...(typeof call.id === "string" ? { idDelta: call.id } : {}),
+      ...(typeof call.name === "string" ? { nameDelta: call.name } : {}),
+    });
   }
-  if (Array.isArray(value)) {
-    const hash = stableStringify(value);
-    if (state.seenStructures.has(hash)) {
-      return omitted;
-    }
-    state.seenStructures.add(hash);
-    const items = value.map((child) => diffSeen(child, state, key)).filter(isIncluded);
-    return items.length === 0 ? omitted : { value: items.map((item) => item.value) };
-  }
-  const fact = `${key}:${stableStringify(value)}`;
-  if (state.seenFacts.has(fact)) {
-    return omitted;
-  }
-  state.seenFacts.add(fact);
-  return { value };
+  return result;
 }
-function isIncluded(value: DiffResult): value is { value: unknown } {
-  return value !== omitted;
-}
-function summarize(value: unknown) {
-  if (value === undefined) {
-    return undefined;
+function logIncrement(ctx: HostContext, label: string, value: unknown, state: StreamLogState) {
+  const delta = incrementalSummary(value, state);
+  if (delta !== undefined) {
+    ctx.logger.debug(label, delta);
   }
-  const json = JSON.stringify(value, (_key, current: unknown) =>
-    typeof current === "string" && current.length > 240 ? `${current.slice(0, 240)}…` : current,
-  );
-  return JSON.parse(json) as unknown;
-}
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function isAiChunk(value: unknown): value is AIMessageChunk {
   return AIMessageChunk.isInstance(value);
 }
-function readMessageId(value: unknown) {
-  return isRecord(value) && typeof value["id"] === "string" ? value["id"] : undefined;
+function readMessageId(value: AIMessageChunk) {
+  return value.id ?? stringField(value.response_metadata, "id");
 }
-function toolCallDeltas(chunk: unknown) {
-  if (!isRecord(chunk) || !Array.isArray(chunk["tool_call_chunks"])) {
-    return [];
-  }
-  return chunk["tool_call_chunks"]
-    .filter(isRecord)
-    .map((call) =>
-      Object.assign(
-        typeof call["args"] === "string" ? { args: call["args"] } : {},
-        call["isCustomTool"] === true ? { freeform: true } : {},
-        typeof call["id"] === "string" ? { id: call["id"] } : {},
-        typeof call["index"] === "number" ? { index: call["index"] } : {},
-        typeof call["name"] === "string" ? { name: call["name"] } : {},
-      ),
-    );
+function stringField(value: unknown, key: string) {
+  return isRecord(value) && typeof value[key] === "string" ? value[key] : undefined;
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

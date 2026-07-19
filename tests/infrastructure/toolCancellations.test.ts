@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { makeDb, required, workspace } from "../support/database";
-import { insertToolStarted } from "../../src/infrastructure/database/records/streamEvents";
+import { insertStreamEvent } from "../../src/infrastructure/database/records/streamEvents";
 import { toolNotRunning } from "../../src/errors";
 
 test("tool cancellation requests are persisted and consumed once", () => {
@@ -10,7 +10,13 @@ test("tool cancellation requests are persisted and consumed once", () => {
     db.appendUser("session", "run tool");
     const item = required(db.nextQueue("session"));
     db.startQueue("session", item);
-    insertToolStarted(db.db, "session", item.id, "call-1");
+    insertStreamEvent(db.db, "session", {
+      kind: "tool_started",
+      messageId: "message-1",
+      partId: "tool-0",
+      queueId: item.id,
+      value: "call-1",
+    });
     db.requestToolCancellation("session", "call-1");
     expect(db.takeToolCancellation("session", "call-1")).toBe(true);
     expect(db.takeToolCancellation("session", "call-1")).toBe(false);

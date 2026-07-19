@@ -77,12 +77,11 @@ test("stream deltas preserve optimistic users", () => {
     appendTranscriptEvents(current ?? empty(), [
       {
         id: 1,
-        message: "assistant_text_delta",
-        payload: {
-          kind: "assistant_text_delta",
-          queueId: 1,
-          text: "answer",
-        },
+        kind: "assistant_text_delta",
+        messageId: "message-1",
+        partId: "text-1",
+        queueId: 1,
+        value: "answer",
       },
     ]),
   );

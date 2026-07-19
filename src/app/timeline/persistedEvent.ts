@@ -2,14 +2,13 @@ import type {
   StreamEvent,
   StreamEventKind,
 } from "../../infrastructure/database/records/streamEvents";
-import type { DisplayEvent } from "./types";
-import { displayStreamEvent } from "./streamEvents";
 import { z } from "zod";
 
 export interface PersistedEventRow {
   id: number;
   queue_id: number;
-  message_id: string | null;
+  message_id: string;
+  part_id: string;
   kind: StreamEventKind;
   payload_json: string;
 }
@@ -21,34 +20,34 @@ const payloadSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("tool_call_delta"),
     value: z.object({
-      args: z.string().optional(),
+      argumentsDelta: z.string().optional(),
       freeform: z.boolean().optional(),
-      id: z.string().optional(),
-      index: z.number().optional(),
-      name: z.string().optional(),
+      idDelta: z.string().optional(),
+      index: z.number().int().nonnegative(),
+      nameDelta: z.string().optional(),
     }),
   }),
   z.object({ kind: z.literal("tool_started"), value: z.string() }),
 ]);
-export function persistedDisplayEvent(row: PersistedEventRow): DisplayEvent {
+export function persistedDisplayEvent(row: PersistedEventRow): StreamEvent {
   const parsed = payloadSchema.safeParse({
     kind: row.kind,
     value: JSON.parse(row.payload_json) as unknown,
   });
   if (!parsed.success) {
-    throw new Error("stream 文本增量无效");
+    throw new Error("流式事件内容无效");
   }
-  const value = parsed.data;
   const base = {
     id: row.id,
+    messageId: row.message_id,
+    partId: row.part_id,
     queueId: row.queue_id,
-    ...(row.message_id ? { messageId: row.message_id } : {}),
   };
-  const event: StreamEvent =
-    value.kind === "tool_call_delta"
-      ? { ...base, kind: value.kind, value: value.value }
-      : value.kind === "tool_started"
-        ? { ...base, kind: value.kind, value: value.value }
-        : { ...base, kind: value.kind, value: value.value };
-  return displayStreamEvent(event);
+  if (parsed.data.kind === "tool_call_delta") {
+    return { ...base, kind: parsed.data.kind, value: parsed.data.value };
+  }
+  if (parsed.data.kind === "tool_started") {
+    return { ...base, kind: parsed.data.kind, value: parsed.data.value };
+  }
+  return { ...base, kind: parsed.data.kind, value: parsed.data.value };
 }
