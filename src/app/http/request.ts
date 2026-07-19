@@ -131,6 +131,10 @@ function readAttachments(form: FormData, fields: Set<string>) {
     if (!match || typeof value === "string") {
       throw new HttpError(400, `附件字段无效：${key}`);
     }
+    const name: unknown = Reflect.get(value, "name");
+    if (typeof name !== "string" || name.length === 0) {
+      throw new HttpError(400, `附件缺少有效文件名：${key}`);
+    }
     return [{ file: value, id: match.groups?.["id"] ?? "" }];
   });
 }

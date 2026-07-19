@@ -20,6 +20,10 @@ export interface AttachmentSettings {
   allowedSuffixes: string[];
   maxSizeBytes: number;
 }
+interface AttachmentMetadata {
+  name: string;
+  size: number;
+}
 export function appendAttachments(body: FormData, attachments: PendingAttachment[]) {
   for (const { id, file } of attachments) {
     body.append(`file:${id}`, file);
@@ -41,9 +45,26 @@ export function fileSuffix(name: string) {
   return index > 0 ? name.slice(index).toLowerCase() : "";
 }
 export function validateAttachment(
-  file: Pick<File, "name" | "size">,
+  file: unknown,
   settings: AttachmentSettings,
-) {
+): asserts file is AttachmentMetadata {
+  if (
+    typeof file !== "object" ||
+    file === null ||
+    !("name" in file) ||
+    typeof file.name !== "string" ||
+    file.name.length === 0
+  ) {
+    throw new DomainError("ATTACHMENT_INVALID", "附件缺少有效文件名");
+  }
+  if (
+    !("size" in file) ||
+    typeof file.size !== "number" ||
+    !Number.isSafeInteger(file.size) ||
+    file.size < 0
+  ) {
+    throw new DomainError("ATTACHMENT_INVALID", `附件 ${file.name} 的大小无效`);
+  }
   const suffix = fileSuffix(file.name);
   if (!settings.allowedSuffixes.includes(suffix)) {
     throw new DomainError(
@@ -58,14 +79,12 @@ export function validateAttachment(
     );
   }
 }
-export function validateAttachmentBatch(
-  files: Pick<File, "name" | "size">[],
-  settings: AttachmentSettings,
-) {
+export function validateAttachmentBatch(files: readonly unknown[], settings: AttachmentSettings) {
+  let total = 0;
   for (const file of files) {
     validateAttachment(file, settings);
+    total += file.size;
   }
-  const total = files.reduce((size, file) => size + file.size, 0);
   if (!Number.isSafeInteger(total)) {
     throw new DomainError("ATTACHMENT_TOO_LARGE", "附件总大小超出安全整数范围");
   }

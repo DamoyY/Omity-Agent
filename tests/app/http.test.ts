@@ -48,6 +48,46 @@ test("message multipart validation forwards placeholders and files", async () =>
     },
   ]);
 });
+test("multipart attachments without filenames are rejected", async () => {
+  const calls: Parameters<ApiController["sendMessage"]>[] = [];
+  const controller = createApiController({
+    sendMessage: (...args) => {
+      calls.push(args);
+      return Promise.resolve({ content: "unused", queueId: 1 });
+    },
+  });
+  const boundary = "attachment-test-boundary";
+  const body = [
+    `--${boundary}`,
+    'Content-Disposition: form-data; name="content"',
+    "",
+    "查看附件",
+    `--${boundary}`,
+    'Content-Disposition: form-data; name="draftRevision"',
+    "",
+    "0",
+    `--${boundary}`,
+    'Content-Disposition: form-data; name="file:a1b2c3d4"; filename=""',
+    "Content-Type: text/plain",
+    "",
+    "hello",
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+  const response = await createApi(controller).request("/api/sessions/test/messages", {
+    body,
+    headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+    method: "POST",
+  });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({
+    error: {
+      code: "BAD_REQUEST",
+      message: "附件缺少有效文件名：file:a1b2c3d4",
+    },
+  });
+  expect(calls).toHaveLength(0);
+});
 test("session creation validates and forwards the complete initial state", async () => {
   const calls: Parameters<ApiController["createSession"]>[] = [];
   const controller = createApiController({

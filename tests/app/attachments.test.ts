@@ -57,6 +57,18 @@ test("attachment whitelist and combined size limit are enforced", () => {
     validateAttachmentBatch([new File(["123"], "a.txt"), new File(["456"], "b.txt")], settings);
   }).toThrow("附件总大小超过上限");
 });
+test("malformed attachment metadata is rejected explicitly", () => {
+  const settings = {
+    allowedSuffixes: [".txt"],
+    maxSizeBytes: 5,
+  };
+  expect(() => {
+    validateAttachmentBatch([{ size: 1 }], settings);
+  }).toThrow("附件缺少有效文件名");
+  expect(() => {
+    validateAttachmentBatch([{ name: "notes.txt" }], settings);
+  }).toThrow("附件 notes.txt 的大小无效");
+});
 function temporaryDirectory() {
   const directory = createTestDirectory("attachments");
   dirs.push(directory);
