@@ -1,4 +1,5 @@
 import { type Connection, MultiServerMCPClient, loadMcpTools } from "@langchain/mcp-adapters";
+import { overrideMcpToolDescriptions, renameMcpTools } from "./toolOverrides";
 import type { Logger } from "../logging/logger";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { collectReadableZodIssues } from "./schemaIssues";
@@ -7,7 +8,6 @@ import { createMcpToolFailureClient } from "./toolFailures";
 import { disableMcpRequestTimeout } from "./requestTimeout";
 import { existsSync } from "node:fs";
 import { readMcpConfiguration } from "./config";
-import { renameMcpTools } from "./nameOverrides";
 import { resolve } from "node:path";
 
 export interface LoadedMcp {
@@ -39,11 +39,12 @@ export async function loadMcp(root: string, logger: Logger): Promise<LoadedMcp> 
     logger.info("MCP 未配置服务器，Agent 将不带工具运行");
     return emptyMcp();
   }
-  return connectMcp(configuration, names, logger);
+  return connectMcp(configuration, names, root, logger);
 }
 async function connectMcp(
   configuration: ReturnType<typeof readMcpConfiguration>,
   names: string[],
+  root: string,
   logger: Logger,
 ): Promise<LoadedMcp> {
   const end = logger.child("MCP 工具加载");
@@ -55,9 +56,10 @@ async function connectMcp(
       prefixToolNameWithServerName: true,
       throwOnLoadError: false,
     });
-    const tools = renameMcpTools(
-      await loadServerTools(client, names),
-      configuration.toolNameOverrides,
+    const tools = overrideMcpToolDescriptions(
+      renameMcpTools(await loadServerTools(client, names), configuration.toolNameOverrides),
+      configuration.toolDescriptionOverrides,
+      root,
     );
     const configured = configureFreeformMcpTools(tools, configuration.freeformToolInputs);
     logger.info("已加载 MCP 工具", {
@@ -137,6 +139,9 @@ function validateConfiguredServers(
   }
   if (Object.keys(configuration.toolNameOverrides).length > 0) {
     throw new Error("MCP 工具重命名配置需要至少配置一个 MCP 服务器");
+  }
+  if (Object.keys(configuration.toolDescriptionOverrides).length > 0) {
+    throw new Error("MCP 工具描述覆盖配置需要至少配置一个 MCP 服务器");
   }
   if (configuration.freeformToolInputs.length > 0) {
     throw new Error("MCP free-form 工具配置需要至少配置一个 MCP 服务器");

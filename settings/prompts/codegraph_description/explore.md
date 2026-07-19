@@ -1,0 +1,1 @@
+Returns the verbatim source of the relevant symbols grouped by file in ONE capped call, plus the call path among them. Query can be a natural-language (English) question OR a bag of symbol/file names.

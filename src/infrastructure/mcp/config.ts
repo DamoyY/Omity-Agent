@@ -1,6 +1,9 @@
+import {
+  normalizeMcpToolDescriptionOverrides,
+  normalizeMcpToolNameOverrides,
+} from "./toolOverrides";
 import YAML from "yaml";
 import { normalizeFreeformToolInputs } from "./freeformInputs";
-import { normalizeMcpToolNameOverrides } from "./nameOverrides";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 
@@ -12,6 +15,7 @@ const mcpConfigurationSchema = z
   .object({
     freeformToolInputs: z.unknown().optional(),
     mcpServers: mcpServersSchema.optional(),
+    toolDescriptionOverrides: z.unknown().optional(),
     toolNameOverrides: z.unknown().optional(),
   })
   .strict();
@@ -35,6 +39,9 @@ export function readMcpConfiguration(path: string) {
   return {
     freeformToolInputs: normalizeFreeformToolInputs(configuration.freeformToolInputs),
     mcpServers: normalizeMcpServers(configuration.mcpServers ?? {}),
+    toolDescriptionOverrides: normalizeMcpToolDescriptionOverrides(
+      configuration.toolDescriptionOverrides,
+    ),
     toolNameOverrides: normalizeMcpToolNameOverrides(configuration.toolNameOverrides),
   };
 }

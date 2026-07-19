@@ -16,6 +16,11 @@
 # toolNameOverrides:
 #   brave__brave_web_search: web_search
 #
+# 可选：使用文件内容覆盖 MCP 工具描述，键是重命名后的最终工具名，值是描述文件路径。
+# 相对路径以项目根目录为基准。
+# toolDescriptionOverrides:
+#   web_search: settings/tool-descriptions/web-search.md
+#
 # 可选：将仅有一个字符串参数的工具作为 free-form 工具暴露给模型。
 # 工具名使用重命名后的最终名称。
 # freeformToolInputs:
@@ -48,7 +53,7 @@ mcpServers:
       - serve
       - --mcp
     env:
-      CODEGRAPH_MCP_TOOLS: explore,node,search,callers,callees,impact,codegraph_explore,codegraph_node,codegraph_search,codegraph_callers,codegraph_callees,codegraph_impact
+      CODEGRAPH_MCP_TOOLS: codegraph_explore,codegraph_node,codegraph_search,codegraph_callers,codegraph_callees,codegraph_impact
   capture:
     transport: stdio
     command: F:/workspace/windows_capture/target/release/WinCapture.exe
@@ -69,6 +74,15 @@ toolNameOverrides:
   codegraph__codegraph_callees: codegraph_callees
   codegraph__codegraph_impact: codegraph_impact
   image_viewer__view_images: view_images
+  capture__search_hwnd: search_hwnd
+
+toolDescriptionOverrides:
+  codegraph_search: F:/workspace/omity/settings/prompts/codegraph_description/search.md
+  codegraph_callers: F:/workspace/omity/settings/prompts/codegraph_description/callers.md
+  codegraph_callees: F:/workspace/omity/settings/prompts/codegraph_description/callees.md
+  codegraph_impact: F:/workspace/omity/settings/prompts/codegraph_description/impact.md
+  codegraph_node: F:/workspace/omity/settings/prompts/codegraph_description/node.md
+  codegraph_explore: F:/workspace/omity/settings/prompts/codegraph_description/explore.md
 
 freeformToolInputs:
   - apply_patch

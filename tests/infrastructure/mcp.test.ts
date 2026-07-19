@@ -7,7 +7,7 @@ import {
 import {
   normalizeMcpToolNameOverrides,
   renameMcpTools,
-} from "../../src/infrastructure/mcp/nameOverrides";
+} from "../../src/infrastructure/mcp/toolOverrides";
 import { rmSync, writeFileSync } from "node:fs";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { createTestDirectory } from "../support/artifacts";
