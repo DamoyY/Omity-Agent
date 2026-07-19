@@ -83,7 +83,7 @@ test("persists only replay and display message fields", () => {
   expect(stored).not.toContain("do not persist");
   db.close();
 });
-test("persists only transient stream deltas", () => {
+test("persists user boundaries while clearing transient stream deltas", () => {
   const db = makeDb();
   db.resetSession("123", workspace);
   const queueId = db.appendUser("123", "问题");
@@ -117,6 +117,13 @@ test("persists only transient stream deltas", () => {
   expect(queueId).toBe(1);
   expect(events).toEqual([
     {
+      kind: "user_appended",
+      message_id: "queue:123:1",
+      part_id: "user",
+      payload_json: "null",
+      queue_id: 1,
+    },
+    {
       kind: "assistant_text_delta",
       message_id: "message-1",
       part_id: "text-1",
@@ -132,7 +139,7 @@ test("persists only transient stream deltas", () => {
     },
   ]);
   db.syncHistory("123", [new HumanMessage("问题"), new AIMessage("答案")]);
-  expect(db.db.query("SELECT id FROM events").all()).toEqual([]);
+  expect(db.db.query("SELECT kind FROM events").all()).toEqual([{ kind: "user_appended" }]);
   db.close();
 });
 test("clears stream deltas when their queue becomes terminal", () => {

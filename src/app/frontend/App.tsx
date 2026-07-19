@@ -28,6 +28,7 @@ import { AccessGate } from "./components/Access/AccessGate";
 import { ChatPage } from "./components/Chat/ChatPage";
 import { Sidebar } from "./components/Sidebar";
 import { cx } from "styled-system/css";
+import { pauseRequestPending } from "./components/Chat/actionState";
 import { recentWorkspaces } from "./services/recentWorkspaces";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -67,8 +68,7 @@ function AuthenticatedApp() {
   }, []);
   usePageNavigation(page, currentPage, setPage);
   const queueRunning = transcript.queue.some((item) => item.status === "running");
-  const pausing =
-    pausingSessionId === activeSession?.id && transcript.control === "running" && queueRunning;
+  const pausing = pauseRequestPending(pausingSessionId, activeSession?.id, transcript.queue);
   const workspaces = useMemo(() => recentWorkspaces(sessions), [sessions]);
   const openNewSession = useCallback(() => {
     setNewWorkspace(undefined);

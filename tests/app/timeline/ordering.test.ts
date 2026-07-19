@@ -82,6 +82,59 @@ test("keeps a streaming tool call before a pending user append", () => {
   );
   expect(view[2]?.content).toBe("追加问题");
 });
+test("places output generated after an append behind the user message", () => {
+  const queue: DisplayQueue[] = [
+    {
+      content: "",
+      error: null,
+      id: 1,
+      root: true,
+      status: "running",
+      userMessageId: 1,
+    },
+    {
+      content: "追加问题",
+      error: null,
+      id: 2,
+      root: false,
+      status: "pending",
+      userMessageId: null,
+    },
+  ];
+  const events: DisplayEvent[] = [
+    {
+      id: 1,
+      kind: "assistant_text_delta",
+      messageId: "before",
+      partId: "text-1",
+      queueId: 1,
+      value: "插入前",
+    },
+    {
+      id: 2,
+      kind: "user_appended",
+      messageId: "queue:session:2",
+      partId: "user",
+      queueId: 2,
+      value: null,
+    },
+    {
+      id: 3,
+      kind: "assistant_text_delta",
+      messageId: "after",
+      partId: "text-1",
+      queueId: 1,
+      value: "插入后",
+    },
+  ];
+  const view = buildTimeline([message(1, "user", "开始", 1)], queue, events);
+  expect(summary(view)).toEqual([
+    "user:开始",
+    "assistant:插入前",
+    "user:追加问题",
+    "assistant:插入后",
+  ]);
+});
 function message(
   id: number,
   role: DisplayMessage["role"],

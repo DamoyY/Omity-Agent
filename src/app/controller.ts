@@ -9,11 +9,14 @@ import { hasLiveHostLease, recoverAppSessions } from "./runtime/recovery";
 import { AppEvents } from "./events";
 import { AppHosts } from "./hosts";
 import type { AppInstanceOwner } from "./runtime/instanceLock";
+import { AppMcp } from "./runtime/mcp";
 import { AsyncFileDialog } from "@bindrs/rfd";
+import { Logger } from "../infrastructure/logging/logger";
 import { cancelSessionTool } from "./sessionCommands";
 import { controllerHostEvents } from "./controllerHostEvents";
 import { deleteHostSession } from "../sessionStorage";
 import { enqueueMessageWithAttachments } from "./attachments/message";
+import { loadMcp } from "../infrastructure/mcp/loadTools";
 import { loadSessionTranscript } from "./transcript";
 import { loadSettings } from "../infrastructure/configuration/loadSettings";
 import { runClient } from "../client";
@@ -36,6 +39,7 @@ export class AppController {
     this.registry = new AppRegistry(this.settings);
     this.events = new AppEvents();
     const owner = options.owner ?? appOwner();
+    const mcp = new AppMcp(() => loadMcp(appRoot, new Logger(this.settings.logging.level, true)));
     this.hosts = new AppHosts(
       appRoot,
       controllerHostEvents(
@@ -47,6 +51,7 @@ export class AppController {
       ),
       owner,
       this.settings.host.shutdownTimeoutMs,
+      mcp,
     );
   }
   close = () => this.hosts.close();

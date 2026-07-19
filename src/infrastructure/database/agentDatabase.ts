@@ -36,12 +36,12 @@ import {
   touchSessionRecord,
   writeControlRecord,
 } from "./records/sessions";
+import { loadMessages, queueMessageId } from "./records/messages/history";
 import type { BaseMessage } from "@langchain/core/messages";
 import { Database } from "bun:sqlite";
 import type { ErrorDetails } from "../../failures/details";
 import { RecoverableDatabase } from "./records/recovery";
 import { applySchema } from "./schema";
-import { loadMessages } from "./records/messages/history";
 import { resetSessionStorage } from "./maintenance";
 import { syncMessages } from "./records/messages/sync";
 
@@ -92,11 +92,20 @@ export class AgentDatabase extends RecoverableDatabase {
   }
   appendUser(sessionId: string, content: string) {
     this.requireSession(sessionId);
-    return runTransaction(this.db, () => {
-      const queueId = appendUserQueue(this.db, sessionId, content);
+    const { event, queueId } = runTransaction(this.db, () => {
+      const insertedQueueId = appendUserQueue(this.db, sessionId, content);
+      const insertedEvent = insertStreamEvent(this.db, sessionId, {
+        kind: "user_appended",
+        messageId: queueMessageId(sessionId, insertedQueueId),
+        partId: "user",
+        queueId: insertedQueueId,
+        value: null,
+      });
       touchSessionRecord(this.db, sessionId);
-      return queueId;
+      return { event: insertedEvent, queueId: insertedQueueId };
     });
+    this.notify?.(event);
+    return queueId;
   }
   appendDraft(sessionId: string, content: string) {
     this.requireSession(sessionId);

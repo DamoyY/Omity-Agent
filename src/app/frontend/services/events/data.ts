@@ -39,6 +39,12 @@ const displayEventSchema: z.ZodType<DisplayEvent> = z.discriminatedUnion("kind",
     }),
   }),
   z.object({ ...eventBase, kind: z.literal("tool_started"), value: z.string() }),
+  z.object({
+    ...eventBase,
+    kind: z.literal("user_appended"),
+    partId: z.literal("user"),
+    value: z.null(),
+  }),
 ]);
 export function readSessionsEvent(event: Event) {
   return readEventData(event, sessionsEventSchema, "sessions").sessions;

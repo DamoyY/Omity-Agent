@@ -21,6 +21,7 @@ export function addOptimisticUser(queryClient: QueryClient, sessionId: string, c
       view: [
         ...transcript.view,
         {
+          afterEventId: transcript.eventCursor,
           content,
           createdAt: Date.now(),
           id: -1,
@@ -45,12 +46,16 @@ export function confirmOptimisticUser(
     if (!current) {
       return current;
     }
+    const optimistic = current.view.find((item) => item.key === key);
     const queueItem = current.queue.find(({ id }) => id === queueId);
     const queue = queueItem
       ? current.queue
       : [
           ...current.queue,
           {
+            ...(optimistic?.afterEventId === undefined
+              ? {}
+              : { afterEventId: optimistic.afterEventId }),
             content,
             error: null,
             id: queueId,

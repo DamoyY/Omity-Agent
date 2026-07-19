@@ -1,6 +1,7 @@
 import {
   type ChatActionState,
   deriveChatActionState,
+  pauseRequestPending,
 } from "../../../src/app/frontend/components/Chat/actionState";
 import type { Control, SessionStatus } from "../../../src/types";
 import { expect, test } from "bun:test";
@@ -89,6 +90,11 @@ test.each(matrix)("derives chat actions for $name", (entry) => {
       sessionStatus: entry.sessionStatus,
     }),
   ).toEqual(entry.expected);
+});
+test("pause request remains pending until the running queue reaches a boundary", () => {
+  expect(pauseRequestPending("session", "session", [{ status: "running" }])).toBe(true);
+  expect(pauseRequestPending("session", "session", [{ status: "paused" }])).toBe(false);
+  expect(pauseRequestPending("session", "session", [{ status: "done" }])).toBe(false);
 });
 function state(
   controlState: ChatActionState["controlState"],

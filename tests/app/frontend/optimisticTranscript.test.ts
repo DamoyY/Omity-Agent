@@ -90,6 +90,95 @@ test("stream deltas preserve optimistic users", () => {
     role: "user",
   });
 });
+test("stream deltas generated after an optimistic append stay behind the user", () => {
+  const client = new QueryClient();
+  client.setQueryData<TranscriptData>(transcriptKey("session"), {
+    ...empty(),
+    eventCursor: 1,
+    events: [
+      {
+        id: 1,
+        kind: "assistant_text_delta",
+        messageId: "before",
+        partId: "text-1",
+        queueId: 1,
+        value: "before",
+      },
+    ],
+    queue: [
+      {
+        content: "",
+        error: null,
+        id: 1,
+        status: "running",
+        userMessageId: 1,
+      },
+    ],
+  });
+  addOptimisticUser(client, "session", "hello");
+  client.setQueryData<TranscriptData>(transcriptKey("session"), (current) =>
+    appendTranscriptEvents(current ?? empty(), [
+      {
+        id: 2,
+        kind: "assistant_text_delta",
+        messageId: "after",
+        partId: "text-1",
+        queueId: 1,
+        value: "after",
+      },
+    ]),
+  );
+  expect(transcript(client).view.map(({ content, role }) => `${role}:${content}`)).toEqual([
+    "assistant:before",
+    "user:hello",
+    "assistant:after",
+  ]);
+});
+test("send confirmation preserves the optimistic stream boundary until refresh", () => {
+  const client = new QueryClient();
+  client.setQueryData<TranscriptData>(transcriptKey("session"), {
+    ...empty(),
+    eventCursor: 1,
+    events: [
+      {
+        id: 1,
+        kind: "assistant_text_delta",
+        messageId: "before",
+        partId: "text-1",
+        queueId: 1,
+        value: "before",
+      },
+    ],
+    queue: [
+      {
+        content: "",
+        error: null,
+        id: 1,
+        status: "running",
+        userMessageId: 1,
+      },
+    ],
+  });
+  const key = addOptimisticUser(client, "session", "hello");
+  confirmOptimisticUser(client, "session", key, 2, "hello");
+  client.setQueryData<TranscriptData>(transcriptKey("session"), (current) =>
+    appendTranscriptEvents(current ?? empty(), [
+      {
+        id: 2,
+        kind: "assistant_text_delta",
+        messageId: "after",
+        partId: "text-1",
+        queueId: 1,
+        value: "after",
+      },
+    ]),
+  );
+  expect(transcript(client).view.map(({ content, role }) => `${role}:${content}`)).toEqual([
+    "assistant:before",
+    "user:hello",
+    "assistant:after",
+  ]);
+});
 function transcript(client: QueryClient) {
   const data = client.getQueryData<TranscriptData>(transcriptKey("session"));
   if (!data) {

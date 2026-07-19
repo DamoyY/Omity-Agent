@@ -82,7 +82,7 @@ function buildTranscript(
   return {
     ...snapshot,
     snapshotCursor,
-    view: [...buildTimeline(snapshot.messages, snapshot.queue, snapshot.events), ...optimistic],
+    view: buildTimeline(snapshot.messages, snapshot.queue, snapshot.events, optimistic),
   };
 }
 function mergeEvents(left: DisplayEvent[], right: DisplayEvent[]) {

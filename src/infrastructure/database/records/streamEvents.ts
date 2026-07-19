@@ -11,7 +11,8 @@ export type StreamEventKind =
   | "assistant_reasoning_delta"
   | "assistant_text_delta"
   | "tool_call_delta"
-  | "tool_started";
+  | "tool_started"
+  | "user_appended";
 interface StreamEventBase {
   id: number;
   messageId: string;
@@ -23,6 +24,7 @@ interface StreamEventValues {
   assistant_text_delta: string;
   tool_call_delta: StreamToolCallDelta;
   tool_started: string;
+  user_appended: null;
 }
 type StreamEventOf<Kind extends StreamEventKind> = StreamEventBase & {
   kind: Kind;
@@ -60,7 +62,7 @@ export function insertStreamEvent(
   return { ...event, id };
 }
 export function deleteSessionStream(db: Database, sessionId: string) {
-  db.run("DELETE FROM events WHERE session_id = ?", [sessionId]);
+  db.run("DELETE FROM events WHERE session_id = ? AND kind <> 'user_appended'", [sessionId]);
 }
 export function deleteQueueStream(db: Database, queueId: number) {
   db.run("DELETE FROM events WHERE queue_id = ?", [queueId]);

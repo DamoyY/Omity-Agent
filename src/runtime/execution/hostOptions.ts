@@ -1,4 +1,5 @@
 import type { HostObserver } from "../context";
+import type { LoadedMcp } from "../../infrastructure/mcp/loadTools";
 import type { ProcessOwner } from "../../infrastructure/process/ownership";
 
 export interface HostControls {
@@ -7,6 +8,7 @@ export interface HostControls {
 export interface HostRunOptions {
   controller?: AbortController;
   cwd?: string;
+  mcp?: () => Promise<LoadedMcp>;
   observer?: HostObserver;
   onReady?: (controls: HostControls) => void;
   owner?: ProcessOwner;

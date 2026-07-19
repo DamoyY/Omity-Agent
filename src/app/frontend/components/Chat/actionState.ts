@@ -18,6 +18,13 @@ export interface ChatActionState {
   nextControl: RequestedControl;
   queueRunning: boolean;
 }
+export function pauseRequestPending(
+  requestedSessionId: string | undefined,
+  activeSessionId: string | undefined,
+  queue: QueueState[],
+) {
+  return requestedSessionId === activeSessionId && queue.some(({ status }) => status === "running");
+}
 export function deriveChatActionState({
   control,
   pausing,

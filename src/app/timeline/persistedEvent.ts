@@ -28,6 +28,7 @@ const payloadSchema = z.discriminatedUnion("kind", [
     }),
   }),
   z.object({ kind: z.literal("tool_started"), value: z.string() }),
+  z.object({ kind: z.literal("user_appended"), value: z.null() }),
 ]);
 export function persistedDisplayEvent(row: PersistedEventRow): StreamEvent {
   const parsed = payloadSchema.safeParse({
@@ -47,6 +48,9 @@ export function persistedDisplayEvent(row: PersistedEventRow): StreamEvent {
     return { ...base, kind: parsed.data.kind, value: parsed.data.value };
   }
   if (parsed.data.kind === "tool_started") {
+    return { ...base, kind: parsed.data.kind, value: parsed.data.value };
+  }
+  if (parsed.data.kind === "user_appended") {
     return { ...base, kind: parsed.data.kind, value: parsed.data.value };
   }
   return { ...base, kind: parsed.data.kind, value: parsed.data.value };

@@ -121,11 +121,15 @@ test("live stream events match persisted snapshots and keep their cursor", () =>
   });
   const streaming = loadTranscript(db, "stream-session");
   expect(emitted).toEqual([event]);
-  expect(streaming.events).toEqual([displayStreamEvent(event)]);
+  expect(streaming.events.map(({ kind }) => kind)).toEqual([
+    "user_appended",
+    "assistant_text_delta",
+  ]);
+  expect(streaming.events[1]).toEqual(displayStreamEvent(event));
   expect(streaming.eventCursor).toBe(event.id);
   db.syncHistory("stream-session", [new HumanMessage("question"), new AIMessage("hello")]);
   const completed = loadTranscript(db, "stream-session");
-  expect(completed.events).toEqual([]);
+  expect(completed.events.map(({ kind }) => kind)).toEqual(["user_appended"]);
   expect(completed.eventCursor).toBe(event.id);
   db.close();
 });

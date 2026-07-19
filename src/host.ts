@@ -74,7 +74,7 @@ export async function runHostSession(
   } else {
     logger.info("已覆盖会话", { db: paths.dbPath, sessionId: mode.sessionId });
   }
-  let mcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
+  let ownedMcp: Awaited<ReturnType<typeof loadMcp>> | undefined;
   const unwireSignals = wireHostSignals({
     enabled: options.wireSigint ?? false,
     force: controller,
@@ -83,7 +83,7 @@ export async function runHostSession(
     timeoutMs: settings.host.shutdownTimeoutMs,
   });
   try {
-    mcp = await loadMcp(root, logger);
+    const mcp = options.mcp ? await options.mcp() : (ownedMcp = await loadMcp(root, logger));
     const hooks = new HookRuntime(
       settings.hooks,
       mcp.tools,
@@ -120,7 +120,7 @@ export async function runHostSession(
   } finally {
     unwireSignals();
     try {
-      await mcp?.close();
+      await ownedMcp?.close();
     } finally {
       try {
         lease.close();

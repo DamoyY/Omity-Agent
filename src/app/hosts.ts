@@ -1,5 +1,6 @@
 import { type ErrorDetails, captureError } from "../failures/details";
 import type { HostMode, SessionStatus } from "../types";
+import type { AppMcp } from "./runtime/mcp";
 import type { ProcessOwner } from "../infrastructure/process/ownership";
 import type { StreamEvent } from "../infrastructure/database/records/streamEvents";
 import { runHostSession } from "../host";
@@ -29,6 +30,7 @@ export class AppHosts {
     private readonly events: AppHostEvents,
     private readonly owner: ProcessOwner,
     private readonly shutdownTimeoutMs: number,
+    private readonly mcp: AppMcp,
   ) {}
   has(sessionId: string) {
     return this.running.has(sessionId);
@@ -62,6 +64,7 @@ export class AppHosts {
     const hostPromise = runHostSession({ kind, sessionId }, this.appRoot, {
       controller: force,
       cwd: root,
+      mcp: () => this.mcp.load(),
       observer: this.observer(force),
       onReady: (controls) => {
         cancelTool = (callId) => controls.cancelTool(callId);
@@ -104,7 +107,11 @@ export class AppHosts {
       host.stopping.abort(new Error("App 正在关闭"));
       this.events.changed(sessionId);
     }
-    await Promise.all(hosts.map(([, host]) => this.stopAtDeadline(host)));
+    try {
+      await Promise.all(hosts.map(([, host]) => this.stopAtDeadline(host)));
+    } finally {
+      await this.mcp.close();
+    }
   }
   private observer(force: AbortController) {
     return {

@@ -92,6 +92,14 @@ const eventSchema: z.ZodType<DisplayEvent> = z.discriminatedUnion("kind", [
     queueId: integer.positive(),
     value: z.string(),
   }),
+  z.object({
+    id: integer.positive(),
+    kind: z.literal("user_appended"),
+    messageId: z.string().min(1),
+    partId: z.literal("user"),
+    queueId: integer.positive(),
+    value: z.null(),
+  }),
 ]);
 export const transcriptResponseSchema: z.ZodType<TranscriptSnapshot> = z.object({
   control: z.enum(["running", "pause", "cancel", "pause_cancel"]),

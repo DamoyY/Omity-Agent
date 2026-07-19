@@ -10,7 +10,7 @@ import { readMcpConfiguration } from "./config";
 import { renameMcpTools } from "./nameOverrides";
 import { resolve } from "node:path";
 
-interface LoadedMcp {
+export interface LoadedMcp {
   tools: StructuredToolInterface[];
   modelTools: StructuredToolInterface[];
   freeformToolParameters: ReadonlyMap<string, string>;
@@ -80,21 +80,27 @@ async function connectMcp(
     end();
   }
 }
-async function loadServerTools(client: MultiServerMCPClient, names: string[]) {
-  const serverTools = await Promise.all(
-    names.map(async (name) => {
-      const serverClient = await client.getClient(name);
-      if (serverClient === undefined) {
-        throw new Error(`MCP 服务器客户端未建立：${name}`);
-      }
-      return loadMcpTools(name, createMcpToolFailureClient(serverClient), {
+export async function loadServerTools(
+  client: {
+    getClient: (name: string) => Promise<Parameters<typeof loadMcpTools>[1] | undefined>;
+  },
+  names: string[],
+) {
+  const tools: StructuredToolInterface[] = [];
+  for (const name of names) {
+    const serverClient = await client.getClient(name);
+    if (serverClient === undefined) {
+      throw new Error(`MCP 服务器客户端未建立：${name}`);
+    }
+    tools.push(
+      ...(await loadMcpTools(name, createMcpToolFailureClient(serverClient), {
         prefixToolNameWithServerName: true,
         throwOnLoadError: false,
         useStandardContentBlocks: true,
-      });
-    }),
-  );
-  return serverTools.flat();
+      })),
+    );
+  }
+  return tools;
 }
 function collectMcpConnections(mcpServers: Record<string, unknown>) {
   const connections: Record<string, Connection> = {};

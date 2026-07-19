@@ -1,4 +1,9 @@
-import { type DisplayEvent, type DisplayQueue, buildTimeline } from "../../../src/app/timeline";
+import {
+  type DisplayEvent,
+  type DisplayMessage,
+  type DisplayQueue,
+  buildTimeline,
+} from "../../../src/app/timeline";
 import { expect, test } from "bun:test";
 import { countTokens } from "../../../src/runtime/tokenizer";
 
@@ -61,6 +66,36 @@ test("preserves repeated argument deltas and Freeform input", () => {
   ]);
   expect(call?.rawInput).toBe("*** Begin PatchPatch");
   expect(call?.inputTokens).toBe(countTokens("*** Begin PatchPatch"));
+});
+test("completed streamed tool call exposes its output and settled state", () => {
+  const output: DisplayMessage = {
+    content: "done",
+    createdAt: 2,
+    id: 2,
+    images: [],
+    queueId: null,
+    reasoning: "",
+    role: "tool",
+    toolCallId: "call-1",
+    toolCalls: [],
+  };
+  const events: DisplayEvent[] = [
+    toolEvent(1, "tool-0", { idDelta: "call-1", index: 0, nameDelta: "capture" }),
+    {
+      id: 2,
+      kind: "tool_started",
+      messageId: "message-1",
+      partId: "tool-0",
+      queueId: 1,
+      value: "call-1",
+    },
+  ];
+  const part = buildTimeline([output], queue, events)[0]?.parts.find(
+    (item) => item.type === "tool",
+  );
+  expect(part?.output).toBe(output);
+  expect(part?.started).toBeUndefined();
+  expect(part?.call.streaming).toBeUndefined();
 });
 function streamedCalls(events: DisplayEvent[]) {
   return (

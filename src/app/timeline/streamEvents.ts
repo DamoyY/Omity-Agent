@@ -23,6 +23,7 @@ interface ToolPart {
 }
 type Part = TextPart | ToolPart;
 interface StreamMessage {
+  firstEventId: number;
   messageId: string;
   order: string[];
   parts: Map<string, Part>;
@@ -46,10 +47,15 @@ export function streamTimelineMessages(
 ): TimelineMessage[] {
   const messages = new Map<string, StreamMessage>();
   for (const event of events) {
-    if (event.kind !== "tool_started") {
+    if (event.kind !== "tool_started" && event.kind !== "user_appended") {
       let message = messages.get(event.messageId);
       if (!message) {
-        message = { messageId: event.messageId, order: [], parts: new Map() };
+        message = {
+          firstEventId: event.id,
+          messageId: event.messageId,
+          order: [],
+          parts: new Map(),
+        };
         messages.set(event.messageId, message);
       }
       let part = message.parts.get(event.partId);
@@ -64,7 +70,9 @@ export function streamTimelineMessages(
   }
   return [...messages.values()].map((message) => timelineMessage(message, outputs, startedCallIds));
 }
-function createPart(event: Exclude<DisplayEvent, { kind: "tool_started" }>): Part {
+function createPart(
+  event: Exclude<DisplayEvent, { kind: "tool_started" | "user_appended" }>,
+): Part {
   if (event.kind === "tool_call_delta") {
     return {
       args: event.value.argumentsDelta ?? "",
@@ -77,7 +85,10 @@ function createPart(event: Exclude<DisplayEvent, { kind: "tool_started" }>): Par
   }
   return { content: event.value, kind: event.kind };
 }
-function mergePart(part: Part, event: Exclude<DisplayEvent, { kind: "tool_started" }>) {
+function mergePart(
+  part: Part,
+  event: Exclude<DisplayEvent, { kind: "tool_started" | "user_appended" }>,
+) {
   if (part.kind !== event.kind) {
     throw new Error(`流片段 ${event.partId} 的类型发生变化`);
   }
@@ -109,11 +120,13 @@ function timelineMessage(
     if (part.kind === "assistant_text_delta") {
       return part.content.trim() ? [{ content: part.content, type: "content" }] : [];
     }
-    const call = displayCall(part, message.messageId, partId);
+    const callId = part.id ?? `stream:${message.messageId}:${partId}`;
+    const output = outputs.get(callId);
+    const call = displayCall(part, message.messageId, partId, output === undefined);
     return [
       {
         call,
-        output: outputs.get(call.id),
+        output,
         type: "tool",
         ...(startedCallIds.has(call.id) ? { started: true } : {}),
       },
@@ -123,12 +136,17 @@ function timelineMessage(
     content: parts.flatMap((part) => (part.type === "content" ? [part.content] : [])).join(""),
     createdAt: 0,
     id: -1,
-    key: `stream-${message.messageId}`,
+    key: `stream-${message.messageId}-${message.firstEventId.toString()}`,
     parts,
     role: "assistant",
   };
 }
-function displayCall(part: ToolPart, messageId: string, partId: string): DisplayToolCall {
+function displayCall(
+  part: ToolPart,
+  messageId: string,
+  partId: string,
+  streaming: boolean,
+): DisplayToolCall {
   const inputText = part.args;
   return {
     id: part.id ?? `stream:${messageId}:${partId}`,
@@ -138,7 +156,7 @@ function displayCall(part: ToolPart, messageId: string, partId: string): Display
     inputTokens: countTokens(inputText),
     messageId,
     name: part.name || "tool",
-    streaming: true,
+    ...(streaming ? { streaming: true } : {}),
     ...(part.freeform ? { rawInput: inputText } : {}),
   };
 }
